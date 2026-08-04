@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 nabi-fs = { workspace = true }
 nabi-proto = { workspace = true }
+nabi-ssh = { workspace = true }   # 호스트키 검증 핸들러 재사용(SFTP도 MITM 보호).
 russh = { workspace = true }
 russh-sftp = { workspace = true }
 async-trait = { workspace = true }

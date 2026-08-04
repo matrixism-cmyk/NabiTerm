@@ -39,8 +39,12 @@ fn filepart_len(local: &str) -> u64 {
 }
 
 /// 새 SFTP 연결을 만들어 속도 제한·취소 플래그를 연결한다(재접속용). 실패 시 None.
+///
+/// 재접속도 known_hosts를 확인한다 — 최초 연결에서 학습한 키와 다르면(=중간자 개입) 거부된다.
+/// 확인 모달은 붙이지 않는다(전송 중 자동 재시도라 사용자 개입 지점이 아님).
 async fn reconnect_sftp(params: &SshParams, limit_kbps: u32, cancel: Arc<AtomicBool>) -> Option<Conn> {
-    connect_sftp(params).await.ok().map(|mut f| {
+    let known_hosts = nabi_config::StorageLayout::resolve().known_hosts;
+    connect_sftp(params, known_hosts, None).await.ok().map(|mut f| {
         f.set_limit(limit_kbps as u64 * 1024);
         f.set_cancel(cancel);
         Conn::Sftp(f)

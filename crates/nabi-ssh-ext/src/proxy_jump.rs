@@ -26,8 +26,19 @@ pub async fn connect_via_jump(
         .map_err(|e| e.to_string())?;
     let stream = channel.into_stream();
 
-    let config = Arc::new(client::Config::default());
-    let mut target_handle = client::connect_stream(config, stream, Fwd)
+    let config = Arc::new(client::Config {
+        keepalive_interval: Some(std::time::Duration::from_secs(30)),
+        keepalive_max: 3,
+        ..Default::default()
+    });
+    // 경유지 너머의 목적지도 호스트키를 검증한다(터널 안이라고 신뢰하지 않는다).
+    let target_hostkey = Fwd::new(
+        target.host.clone(),
+        target.port,
+        nabi_config::StorageLayout::resolve().known_hosts,
+        None,
+    );
+    let mut target_handle = client::connect_stream(config, stream, target_hostkey)
         .await
         .map_err(|e| e.to_string())?;
 

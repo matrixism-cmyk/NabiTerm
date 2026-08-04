@@ -51,11 +51,14 @@ pub fn spawn_sftp(
     rt: &Handle,
     conns: &mut SftpConns,
     event_tx: &Sender<Event>,
+    verifier: std::sync::Arc<crate::hostkey::OrchVerifier>,
 ) {
     let (tx, mut rx) = mpsc::unbounded_channel::<SftpReq>();
     let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     conns.insert(id, (tx, cancel.clone()));
     let ev = event_tx.clone();
+    // SSH 터미널과 같은 known_hosts·확인 모달을 쓴다(SFTP만 무방비이던 문제 해소).
+    let known_hosts = nabi_config::StorageLayout::resolve().known_hosts;
     rt.spawn(async move {
         // 재시도·재접속용 취소 플래그 클론(set_cancel가 원본을 소비하기 전에 확보).
         let cancel_retry = cancel.clone();
@@ -65,11 +68,13 @@ pub fn spawn_sftp(
                 .await
                 .map(Conn::Ftp)
         } else {
-            connect_sftp(&params).await.map(|mut f| {
-                f.set_limit(limit_kbps as u64 * 1024); // KB/s → bytes/s.
-                f.set_cancel(cancel); // 외부 취소 플래그 연결.
-                Conn::Sftp(f)
-            })
+            connect_sftp(&params, known_hosts.clone(), Some(verifier.clone()))
+                .await
+                .map(|mut f| {
+                    f.set_limit(limit_kbps as u64 * 1024); // KB/s → bytes/s.
+                    f.set_cancel(cancel); // 외부 취소 플래그 연결.
+                    Conn::Sftp(f)
+                })
         };
         let mut fs = match conn {
             Ok(c) => {

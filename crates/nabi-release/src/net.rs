@@ -42,11 +42,32 @@ pub(super) fn check_github_release() -> Result<Option<ReleaseInfo>, String> {
         return Err(format!("릴리스에 {ASSET_PREFIX}*.exe 자산이 없습니다"));
     }
 
+    let notes = release["body"].as_str().unwrap_or("").to_string();
     Ok(Some(ReleaseInfo {
         version: version.to_string(),
         download_url,
-        notes: release["body"].as_str().unwrap_or("").to_string(),
+        sha256: parse_sha256(&notes), // 노트에 적힌 체크섬(설치 전 대조용).
+        notes,
     }))
+}
+
+/// 릴리스 노트에서 인스톨러의 SHA-256을 찾는다.
+///
+/// `nabiTerm-setup.exe`가 언급된 줄, 또는 `sha256`이 언급된 줄에서 64자리 16진수를 취한다.
+/// 형식을 강제하지 않으려 느슨하게 훑되, 64자리 16진수만 유효로 본다.
+pub(super) fn parse_sha256(notes: &str) -> Option<String> {
+    let is_hash = |w: &str| w.len() == 64 && w.chars().all(|c| c.is_ascii_hexdigit());
+    notes
+        .lines()
+        .filter(|l| {
+            let low = l.to_ascii_lowercase();
+            low.contains("sha256") || low.contains(&ASSET_PREFIX.to_ascii_lowercase())
+        })
+        .find_map(|l| {
+            l.split(|c: char| !c.is_ascii_hexdigit())
+                .find(|w| is_hash(w))
+                .map(|w| w.to_ascii_lowercase())
+        })
 }
 
 /// 인스톨러를 %LOCALAPPDATA%\nabi\update 아래로 내려받고 경로를 돌려준다.

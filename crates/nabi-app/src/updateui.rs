@@ -67,10 +67,11 @@ pub(crate) fn update_section(
                     .text(format!("{:.0}%  {}", p.percent(), p.display()));
                 ui.add(bar);
             }
-            UpdateStatus::Downloaded(path) => {
+            UpdateStatus::Downloaded(path, want) => {
                 ui.colored_label(GREEN, format!("\u{2713} {}", tr(lang, "update.done")));
                 if ui.button(tr(lang, "update.install")).clicked() {
-                    let _ = nabi_release::launch_installer(&path, quit);
+                    // 실행 전 SHA-256 대조(불일치·미공지면 실행하지 않는다).
+                    let _ = nabi_release::launch_installer(&path, want.as_deref(), quit);
                 }
             }
             UpdateStatus::Error(msg) => {

@@ -1,4 +1,4 @@
-//! 새 버전 알림 모달 — 시작 시 새 버전이 확인되면 한 번 떠서 선택을 받는다:
+﻿//! 새 버전 알림 모달 — 시작 시 새 버전이 확인되면 한 번 떠서 선택을 받는다:
 //! 업데이트 / 다음에 / 일주일 후에 / 앞으로 확인 안 함.
 
 use crate::app::NabiApp;
@@ -124,7 +124,7 @@ fn prompt_body(
                     .text(format!("{:.0}%  {}", p.percent(), p.display())),
             );
         }
-        UpdateStatus::Downloaded(_) => {
+        UpdateStatus::Downloaded(..) => {
             ui.colored_label(GREEN, format!("\u{2713} {}", tr(lang, "update.done")));
         }
         UpdateStatus::Error(msg) => {

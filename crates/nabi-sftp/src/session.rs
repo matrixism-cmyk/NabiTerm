@@ -1,26 +1,31 @@
 //! SFTP 연결 수립(별도 연결, 비밀번호·키 파일 인증).
+//!
+//! 호스트키는 SSH 터미널과 **동일한** 검증기(nabi-ssh `ClientHandler`)를 쓴다 —
+//! 같은 호스트인데 터미널만 MITM 보호되고 SFTP는 무방비이던 문제를 없앤다.
 
 use crate::fs::SftpFs;
 use nabi_proto::{SshAuth, SshParams};
+use nabi_ssh::handler::ClientHandler;
+use nabi_ssh::verify::HostKeyVerifier;
 use russh::client::{self, AuthResult};
+use std::path::PathBuf;
 use std::sync::Arc;
 
-/// 호스트키 핸들러(구조 구현: 임시 수락). 실제 known_hosts 검증은 nabi-ssh 참조.
-pub(crate) struct Handler;
+/// SFTP 연결에 쓰는 호스트키 핸들러(= SSH 터미널과 동일 구현).
+pub(crate) type Handler = ClientHandler;
 
-impl client::Handler for Handler {
-    type Error = russh::Error;
-
-    async fn check_server_key(
-        &mut self,
-        _key: &russh::keys::PublicKey,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
-    }
-}
-
-/// SFTP 세션을 연다. 런타임 동작 확인엔 SSH 서버가 필요하다.
-pub async fn connect_sftp(params: &SshParams) -> Result<SftpFs, String> {
+/// SFTP 세션을 연다.
+///
+/// `known_hosts`에 알려진 키면 수락, 미지 호스트는 `verifier`가 있으면 사용자에게 묻고
+/// 없으면 TOFU 학습, **키가 바뀌었으면 거부**한다. 런타임 확인엔 SSH 서버가 필요하다.
+pub async fn connect_sftp(
+    params: &SshParams,
+    known_hosts: PathBuf,
+    verifier: Option<HostKeyVerifier>,
+) -> Result<SftpFs, String> {
+    let handler = |host: &str, port: u16| {
+        ClientHandler::new(host.to_string(), port, known_hosts.clone(), verifier.clone())
+    };
     // 유휴 연결이 서버 타임아웃으로 끊기지 않도록 keepalive(30초마다, 3회 실패 시 종료).
     let config = Arc::new(client::Config {
         keepalive_interval: Some(std::time::Duration::from_secs(30)),
@@ -28,18 +33,20 @@ pub async fn connect_sftp(params: &SshParams) -> Result<SftpFs, String> {
         ..Default::default()
     });
     // 점프 호스트(ProxyJump, D2)가 있으면 경유, 아니면 직접 연결. jump 핸들은 터널 유지용.
+    // 점프 호스트도 목적지와 똑같이 호스트키를 검증한다(경유지가 MITM 지점이 되지 않게).
     let (handle, jump) = if let Some(j) = &params.jump {
-        let jc = client::connect(config.clone(), (j.host.as_str(), j.port), Handler);
+        let jc = client::connect(config.clone(), (j.host.as_str(), j.port), handler(&j.host, j.port));
         let mut jh = tokio::time::timeout(std::time::Duration::from_secs(15), jc)
             .await.map_err(|_| "점프 연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
         auth(&mut jh, j).await?;
         let ch = jh.channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
             .await.map_err(|e| e.to_string())?;
-        let mut th = client::connect_stream(config, ch.into_stream(), Handler).await.map_err(|e| e.to_string())?;
+        let mut th = client::connect_stream(config, ch.into_stream(), handler(&params.host, params.port))
+            .await.map_err(|e| e.to_string())?;
         auth(&mut th, params).await?;
         (th, Some(jh))
     } else {
-        let connect = client::connect(config, (params.host.as_str(), params.port), Handler);
+        let connect = client::connect(config, (params.host.as_str(), params.port), handler(&params.host, params.port));
         let mut handle = tokio::time::timeout(std::time::Duration::from_secs(15), connect)
             .await.map_err(|_| "연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
         auth(&mut handle, params).await?;

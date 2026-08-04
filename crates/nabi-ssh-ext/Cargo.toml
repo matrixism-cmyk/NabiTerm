@@ -7,6 +7,8 @@ publish = false
 
 [dependencies]
 nabi-proto = { workspace = true }
+nabi-ssh = { workspace = true }      # 호스트키 검증 핸들러 재사용(터널도 MITM 보호).
+nabi-config = { workspace = true }   # known_hosts 경로 확인.
 russh = { workspace = true }
 tokio = { workspace = true }
 rand = { workspace = true }

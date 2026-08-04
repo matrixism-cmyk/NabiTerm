@@ -1,4 +1,4 @@
-//! 도움말 대화상자 — 좌측 내비(정보/단축키/AI 제어). 본문은 [`crate::helppages`].
+﻿//! 도움말 대화상자 — 좌측 내비(정보/단축키/AI 제어). 본문은 [`crate::helppages`].
 
 use crate::app::NabiApp;
 use nabi_i18n::tr;
@@ -22,7 +22,7 @@ impl NabiApp {
                 updater.get_status(),
                 nabi_release::UpdateStatus::Checking
                     | nabi_release::UpdateStatus::Downloading(_)
-                    | nabi_release::UpdateStatus::Downloaded(_)
+                    | nabi_release::UpdateStatus::Downloaded(..)
             ) {
                 updater.check_async();
             }

@@ -6,9 +6,11 @@ use russh::Channel;
 use tokio::net::TcpStream;
 
 /// 인입 x11 채널을 로컬 X 서버(x_host:x_port)로 릴레이하는 핸들러.
+/// 호스트키 검증은 SSH 터미널과 같은 `ClientHandler`에 위임한다.
 pub struct X11Fwd {
     x_host: String,
     x_port: u16,
+    hostkey: nabi_ssh::handler::ClientHandler,
 }
 
 impl client::Handler for X11Fwd {
@@ -16,9 +18,9 @@ impl client::Handler for X11Fwd {
 
     async fn check_server_key(
         &mut self,
-        _key: &russh::keys::PublicKey,
+        key: &russh::keys::PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        self.hostkey.check_server_key(key).await
     }
 
     async fn server_channel_open_x11(
@@ -47,8 +49,22 @@ pub async fn request_x11_forward(
     x_host: String,
     x_port: u16,
 ) -> Result<Handle<X11Fwd>, String> {
-    let config = std::sync::Arc::new(client::Config::default());
-    let mut handle = client::connect(config, (params.host.as_str(), params.port), X11Fwd { x_host, x_port })
+    let config = std::sync::Arc::new(client::Config {
+        keepalive_interval: Some(std::time::Duration::from_secs(30)),
+        keepalive_max: 3,
+        ..Default::default()
+    });
+    let handler = X11Fwd {
+        x_host,
+        x_port,
+        hostkey: nabi_ssh::handler::ClientHandler::new(
+            params.host.clone(),
+            params.port,
+            nabi_config::StorageLayout::resolve().known_hosts,
+            None,
+        ),
+    };
+    let mut handle = client::connect(config, (params.host.as_str(), params.port), handler)
         .await
         .map_err(|e| e.to_string())?;
 

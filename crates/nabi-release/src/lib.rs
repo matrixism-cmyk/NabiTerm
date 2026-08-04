@@ -23,6 +23,9 @@ pub struct ReleaseInfo {
     pub version: String,
     pub download_url: String,
     pub notes: String,
+    /// 인스톨러의 기대 SHA-256(소문자 16진 64자). 릴리스 노트에 적혀 있으면 채워지며,
+    /// 설치 실행 **전에** 대조한다. 없으면 검증 없이 실행하지 않고 사용자에게 알린다.
+    pub sha256: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -60,7 +63,8 @@ pub enum UpdateStatus {
     UpToDate,
     Available(ReleaseInfo),
     Downloading(DownloadProgress),
-    Downloaded(String),
+    /// (내려받은 경로, 릴리스가 공지한 기대 SHA-256) — 실행 전 이 해시로 검증한다.
+    Downloaded(String, Option<String>),
     Error(String),
 }
 
@@ -115,15 +119,76 @@ impl UpdateChecker {
         }));
         std::thread::spawn(move || match net::download_installer(&release.download_url, &status) {
             Ok(path) => {
-                *status.lock().unwrap_or_else(|e| e.into_inner()) =
-                    UpdateStatus::Downloaded(path.clone());
-                let _ = launch_installer(&path, &request_quit);
+                let want = release.sha256.clone();
+                // 검증 실패면 실행하지 않고 오류 상태로 남긴다(변조·손상 파일 실행 차단).
+                match launch_installer(&path, want.as_deref(), &request_quit) {
+                    Ok(()) => {
+                        *status.lock().unwrap_or_else(|e| e.into_inner()) =
+                            UpdateStatus::Downloaded(path, want);
+                    }
+                    Err(e) => {
+                        *status.lock().unwrap_or_else(|e| e.into_inner()) =
+                            UpdateStatus::Error(e);
+                    }
+                }
             }
             Err(e) => {
                 *status.lock().unwrap_or_else(|e| e.into_inner()) =
                     UpdateStatus::Error(format!("다운로드 실패: {e}"));
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod verify_tests {
+    use super::verify_installer;
+
+    fn tmp(name: &str) -> String {
+        std::env::temp_dir()
+            .join(format!("nabi-verify-{}-{name}", std::process::id()))
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn accepts_matching_hash() {
+        let p = tmp("ok");
+        std::fs::write(&p, b"nabi").unwrap();
+        let actual = super::sha256_hex(&p).expect("해시 계산");
+        assert_eq!(actual.len(), 64, "SHA-256은 16진 64자");
+        assert!(verify_installer(&p, Some(&actual)).is_ok(), "일치하면 통과");
+        // 대소문자 무관하게 일치해야 한다(릴리스 노트가 대문자로 적힐 수 있음).
+        assert!(verify_installer(&p, Some(&actual.to_uppercase())).is_ok());
+        assert!(std::path::Path::new(&p).exists(), "정상 파일은 지우지 않는다");
+        let _ = std::fs::remove_file(&p);
+    }
+
+    #[test]
+    fn rejects_and_deletes_on_mismatch() {
+        let p = tmp("bad");
+        std::fs::write(&p, b"tampered").unwrap();
+        let wrong = "0".repeat(64);
+        assert!(verify_installer(&p, Some(&wrong)).is_err(), "불일치는 거부");
+        assert!(!std::path::Path::new(&p).exists(), "변조 파일은 남기지 않는다");
+    }
+
+    #[test]
+    fn refuses_when_no_hash_published() {
+        let p = tmp("nohash");
+        std::fs::write(&p, b"x").unwrap();
+        assert!(verify_installer(&p, None).is_err(), "해시 미공지면 실행하지 않는다");
+        assert!(!std::path::Path::new(&p).exists());
+    }
+
+    #[test]
+    fn parses_hash_from_release_notes() {
+        let h = "a".repeat(64);
+        let notes = format!("## v1\n\n- 수정 사항\n\nSHA256 (nabiTerm-setup.exe) = {h}\n");
+        assert_eq!(crate::net::parse_sha256(&notes).as_deref(), Some(h.as_str()));
+        assert_eq!(crate::net::parse_sha256("체크섬 없음"), None);
+        // 64자리가 아니면 무시한다.
+        assert_eq!(crate::net::parse_sha256("sha256: abc123"), None);
     }
 }
 
@@ -137,8 +202,41 @@ pub fn download_file(url: &str, dest: &str) -> Result<(), String> {
     net::download_plain(url, dest)
 }
 
-/// 다운로드된 인스톨러 실행 + 종료 플래그 설정(호출측이 다음 프레임에 종료).
-pub fn launch_installer(path: &str, request_quit: &Arc<AtomicBool>) -> Result<(), String> {
+/// 파일의 SHA-256을 소문자 16진 문자열로.
+fn sha256_hex(path: &str) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let data = std::fs::read(path).map_err(|e| format!("파일 읽기 실패: {e}"))?;
+    let mut h = Sha256::new();
+    h.update(&data);
+    Ok(h.finalize().iter().map(|b| format!("{b:02x}")).collect())
+}
+
+/// 내려받은 인스톨러가 릴리스에 공지된 해시와 일치하는지 확인한다.
+///
+/// 관리자 권한으로 실행될 파일이므로 **검증 없이 실행하지 않는다**. 해시가 공지되지 않았거나
+/// 일치하지 않으면 파일을 지우고 오류를 돌려준다(사용자는 릴리스 페이지에서 수동 설치 가능).
+pub fn verify_installer(path: &str, expected: Option<&str>) -> Result<(), String> {
+    let Some(expected) = expected else {
+        let _ = std::fs::remove_file(path);
+        return Err("릴리스에 SHA-256이 공지되지 않아 설치를 중단했습니다".into());
+    };
+    let actual = sha256_hex(path)?;
+    if actual.eq_ignore_ascii_case(expected) {
+        return Ok(());
+    }
+    let _ = std::fs::remove_file(path); // 손상·변조 파일은 남기지 않는다.
+    Err(format!("무결성 검증 실패(SHA-256 불일치): {actual} ≠ {expected}"))
+}
+
+/// 검증된 인스톨러 실행 + 종료 플래그 설정(호출측이 다음 프레임에 종료).
+///
+/// `expected_sha256`은 릴리스가 공지한 해시. 일치할 때만 실행한다.
+pub fn launch_installer(
+    path: &str,
+    expected_sha256: Option<&str>,
+    request_quit: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    verify_installer(path, expected_sha256)?;
     std::process::Command::new(path)
         .spawn()
         .map_err(|e| format!("인스톨러 실행 실패: {e}"))?;

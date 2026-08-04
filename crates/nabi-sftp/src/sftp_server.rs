@@ -246,9 +246,21 @@ async fn start_server() -> std::net::SocketAddr {
     addr
 }
 
+/// 테스트용 known_hosts 경로(매 호출 고유) — TOFU 학습이 실제 사용자 파일을 건드리지 않게.
+pub(crate) fn test_known_hosts() -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static N: AtomicU64 = AtomicU64::new(0);
+    std::env::temp_dir().join(format!(
+        "nabi-test-known-hosts-{}-{}",
+        std::process::id(),
+        N.fetch_add(1, Ordering::Relaxed)
+    ))
+}
+
 /// 인프로세스 서버에 접속해 SftpFs를 돌려준다(테스트 진입점).
 pub(crate) async fn connect_fs() -> crate::SftpFs {
     let addr = start_server().await;
     let params = SshParams::password(addr.ip().to_string(), addr.port(), "u", "p");
-    connect_sftp(&params).await.expect("sftp connect")
+    // verifier 없음 → 미지 호스트는 TOFU 학습(임시 파일). 키 변경은 여전히 거부된다.
+    connect_sftp(&params, test_known_hosts(), None).await.expect("sftp connect")
 }
