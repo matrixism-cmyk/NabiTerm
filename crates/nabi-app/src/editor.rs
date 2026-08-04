@@ -210,7 +210,7 @@ impl NabiApp {
                 doc.path = path;
                 doc.remote = None; // 로컬 파일로 전환.
                 doc.dirty = false;
-                if let Some(eb) = doc.edit.as_mut() { eb.dirty = false; }
+                if let Some(eb) = doc.edit.as_mut() { eb.mark_saved(); }
                 if let Some(h) = doc.hex.as_mut() { h.dirty = false; }
                 format!("\u{2713} {}", doc.title)
             }
@@ -303,7 +303,7 @@ impl NabiApp {
         self.record_editor_mtime(pane, &path); // 자기 저장을 외부 변경으로 오인하지 않도록 갱신.
         if let Some(d) = self.editors.get_mut(&pane) {
             d.dirty = false;
-            if let Some(eb) = d.edit.as_mut() { eb.dirty = false; }
+            if let Some(eb) = d.edit.as_mut() { eb.mark_saved(); }
             if let Some(h) = d.hex.as_mut() { h.dirty = false; }
         }
     }

@@ -37,6 +37,12 @@ pub(crate) struct EditBuf {
     /// 현재 undo 묶음이 열려 있는지(연속 편집 누적용 — editbufedit).
     pub(crate) undo_open: bool,
     pub(crate) last_kind: Option<EditKind>,
+    /// 직전 편집 직후의 커서 위치 — 인접 편집인지 판정한다.
+    pub(crate) last_at: usize,
+    /// 직전 편집 시각 — 너무 오래 끊긴 타자는 다른 묶음으로 나눈다.
+    pub(crate) last_time: Option<std::time::Instant>,
+    /// 마지막 저장 시점의 undo 깊이. 되돌려 이 상태로 오면 수정 표시가 사라진다.
+    pub(crate) saved_depth: Option<usize>,
 }
 
 impl EditBuf {
@@ -46,7 +52,7 @@ impl EditBuf {
             rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
-            undo_open: false, last_kind: None,
+            undo_open: false, last_kind: None, last_at: 0, last_time: None, saved_depth: Some(0),
         }
     }
 

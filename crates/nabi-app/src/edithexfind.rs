@@ -30,12 +30,10 @@ impl HexBuf {
         if !pat.is_empty() && self.selected_bytes() == pat {
             if let Some((lo, hi)) = self.selection() {
                 let rep = self.replacement();
-                self.push_undo();
                 let hi = hi.min(self.bytes.len());
-                self.bytes.splice(lo..hi, rep.iter().copied());
+                self.splice(lo, hi - lo, &rep, false);
                 self.cursor = (lo + rep.len()).min(self.bytes.len().saturating_sub(1));
                 self.anchor = None;
-                self.dirty = true;
             }
         }
         self.find_step(true);
@@ -59,11 +57,11 @@ impl HexBuf {
             }
         }
         if n > 0 {
-            self.push_undo();
-            self.bytes = out;
+            // 앞뒤 공통 부분을 빼고 실제로 달라진 가운데만 기록한다(전체 복제 방지).
+            let (at, del, mid) = narrowed(&self.bytes, &out);
+            self.splice(at, del, mid, false);
             self.cursor = self.cursor.min(self.bytes.len().saturating_sub(1));
             self.anchor = None;
-            self.dirty = true;
         }
         n
     }
@@ -88,6 +86,20 @@ impl HexBuf {
             self.low_nibble = false;
         }
     }
+}
+
+/// 두 바이트열의 공통 앞·뒤를 잘라내 실제로 다른 가운데만 남긴다.
+/// 반환 = (시작 위치, 지울 길이, 새로 넣을 조각).
+fn narrowed<'a>(old: &[u8], new: &'a [u8]) -> (usize, usize, &'a [u8]) {
+    let mut p = 0;
+    while p < old.len() && p < new.len() && old[p] == new[p] {
+        p += 1;
+    }
+    let mut s = 0;
+    while s < old.len() - p && s < new.len() - p && old[old.len() - 1 - s] == new[new.len() - 1 - s] {
+        s += 1;
+    }
+    (p, old.len() - p - s, &new[p..new.len() - s])
 }
 
 /// `from` 이상에서 needle이 처음 나타나는 시작 위치.

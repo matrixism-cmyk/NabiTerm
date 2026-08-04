@@ -8,17 +8,25 @@ impl HexBuf {
         self.selection().map(|(a, b)| (a, b.min(self.bytes.len()))).unwrap_or((0, self.bytes.len()))
     }
 
-    /// 대상 바이트마다 f를 적용(길이 불변). undo 스냅샷 후 변경.
+    /// 대상 바이트마다 f를 적용(길이 불변). 바뀐 구간만 undo에 기록된다.
     fn map_bytes(&mut self, f: impl Fn(u8) -> u8) {
         let (lo, hi) = self.op_range();
         if lo >= hi {
             return;
         }
-        self.push_undo();
-        for b in &mut self.bytes[lo..hi] {
-            *b = f(*b);
+        let new: Vec<u8> = self.bytes[lo..hi].iter().map(|b| f(*b)).collect();
+        self.splice(lo, hi - lo, &new, false);
+    }
+
+    /// 대상 구간을 통째로 다시 만들어 갈아 끼운다(순서 바꾸기 계열 공용).
+    fn rebuild(&mut self, min_len: usize, f: impl Fn(&mut [u8])) {
+        let (lo, hi) = self.op_range();
+        if hi.saturating_sub(lo) < min_len {
+            return;
         }
-        self.dirty = true;
+        let mut new = self.bytes[lo..hi].to_vec();
+        f(&mut new);
+        self.splice(lo, hi - lo, &new, false);
     }
 
     /// 비트 반전(NOT).
@@ -68,42 +76,25 @@ impl HexBuf {
 
     /// 16비트 워드 단위로 바이트를 맞바꾼다(리틀↔빅 엔디언, 2바이트씩). 홀수 끝 바이트는 유지.
     pub(crate) fn swap_bytes16(&mut self) {
-        let (lo, hi) = self.op_range();
-        if lo + 1 >= hi {
-            return;
-        }
-        self.push_undo();
-        let mut i = lo;
-        while i + 1 < hi {
-            self.bytes.swap(i, i + 1);
-            i += 2;
-        }
-        self.dirty = true;
+        self.rebuild(2, |s| {
+            for c in s.chunks_exact_mut(2) {
+                c.swap(0, 1);
+            }
+        });
     }
 
     /// 32비트 워드 단위로 바이트 순서를 뒤집는다(4바이트씩). 끝 1~3바이트는 유지.
     pub(crate) fn swap_bytes32(&mut self) {
-        let (lo, hi) = self.op_range();
-        if lo + 3 >= hi {
-            return;
-        }
-        self.push_undo();
-        let mut i = lo;
-        while i + 4 <= hi {
-            self.bytes[i..i + 4].reverse();
-            i += 4;
-        }
-        self.dirty = true;
+        self.rebuild(4, |s| {
+            for c in s.chunks_exact_mut(4) {
+                c.reverse();
+            }
+        });
     }
 
     /// 대상 범위의 바이트 순서를 뒤집는다(엔디언 전환 등).
     pub(crate) fn reverse_bytes(&mut self) {
-        let (lo, hi) = self.op_range();
-        if lo < hi {
-            self.push_undo();
-            self.bytes[lo..hi].reverse();
-            self.dirty = true;
-        }
+        self.rebuild(1, |s| s.reverse());
     }
 }
 

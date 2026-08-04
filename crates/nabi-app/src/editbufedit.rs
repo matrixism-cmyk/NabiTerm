@@ -7,22 +7,51 @@ use crate::editbuf::{EditBuf, EditKind};
 
 /// undo 스냅샷 최대 개수(rope clone은 구조 공유라 메모리 부담은 작음).
 const UNDO_MAX: usize = 1000;
+/// 연속 타자로 볼 최대 간격(ms). CodeMirror 기본값과 같다.
+const GROUP_MS: u128 = 500;
 
 impl EditBuf {
     /// 편집 직전 호출 — 같은 종류 연속이면 묶고(스냅샷 생략), 아니면 새 스냅샷을 쌓는다.
+    ///
+    /// 묶는 조건은 **시간 AND 인접성**이다. 시간만 보면 취소 단위가 타자 속도에 따라
+    /// 들쭉날쭉해지고, 인접성만 보면 한참 뒤에 같은 자리를 고쳐도 예전 편집과 한 덩어리가 된다.
     fn begin(&mut self, kind: EditKind, fresh: bool) {
-        if !fresh && self.undo_open && self.last_kind == Some(kind) {
+        let recent = self.last_time.map(|t| t.elapsed().as_millis() <= GROUP_MS).unwrap_or(false);
+        let adjacent = self.cursor() == self.last_at;
+        if !fresh && self.undo_open && self.last_kind == Some(kind) && recent && adjacent {
             self.redo.clear(); // 묶음 계속 — 스냅샷 추가 안 함.
         } else {
             let snap = (self.rope.clone(), self.cursor());
             self.undo.push(snap);
             if self.undo.len() > UNDO_MAX {
                 self.undo.remove(0);
+                // 가장 오래된 스냅샷을 버리면 저장 지점의 깊이도 한 칸 당겨진다.
+                self.saved_depth = self.saved_depth.and_then(|d| d.checked_sub(1));
             }
             self.redo.clear();
             self.undo_open = true;
         }
         self.last_kind = Some(kind);
+    }
+
+    /// 편집 후 공통 마무리 — 묶음 판정 기준 갱신 + 수정 표시 동기화 + 커서 따라가기.
+    fn after_edit(&mut self) {
+        self.last_at = self.cursor();
+        self.last_time = Some(std::time::Instant::now());
+        self.ensure_visible = true;
+        self.sync_dirty();
+    }
+
+    /// 마지막 저장 시점과 같은 깊이면 수정 표시를 지운다(되돌려 원래대로 온 경우).
+    pub(crate) fn sync_dirty(&mut self) {
+        self.dirty = self.saved_depth != Some(self.undo.len());
+    }
+
+    /// 저장 완료 표시. 이후 되돌려 이 상태로 오면 수정 표시가 다시 사라진다.
+    pub(crate) fn mark_saved(&mut self) {
+        self.saved_depth = Some(self.undo.len());
+        self.undo_open = false; // 저장 뒤 타자는 새 묶음 — 한 번의 취소가 저장 지점을 넘지 않게.
+        self.dirty = false;
     }
 
     /// 선택이 있으면 지우고 캐럿을 그 시작점에 둔다(없으면 선택만 해제 — 이미 캐럿).
@@ -41,8 +70,7 @@ impl EditBuf {
         let at = self.cursor();
         self.rope.insert(at, s);
         self.set_cursor(at + s.chars().count());
-        self.dirty = true;
-        self.ensure_visible = true;
+        self.after_edit();
         if s.contains('\n') {
             self.undo_open = false; // 줄바꿈 후 새 묶음.
         }
@@ -66,8 +94,7 @@ impl EditBuf {
             self.rope.remove(a..c);
             self.set_cursor(a);
         }
-        self.dirty = true;
-        self.ensure_visible = true;
+        self.after_edit();
     }
 
     /// Delete(앞 글자 삭제, 선택 우선).
@@ -80,8 +107,7 @@ impl EditBuf {
             let (c, b) = (self.cursor(), self.step_right()); // grapheme 통째로.
             self.rope.remove(c..b);
         }
-        self.dirty = true;
-        self.ensure_visible = true;
+        self.after_edit();
     }
 
     /// 단어 삭제(Ctrl+Backspace=왼쪽 / Ctrl+Delete=오른쪽). 선택이 있으면 선택 삭제.
@@ -99,8 +125,7 @@ impl EditBuf {
         let (a, b) = (c.min(target), c.max(target));
         self.rope.remove(a..b);
         self.set_cursor(a);
-        self.dirty = true;
-        self.ensure_visible = true;
+        self.after_edit();
     }
 
     pub(crate) fn undo(&mut self) {
@@ -109,8 +134,8 @@ impl EditBuf {
             self.redo.push(snap);
             self.rope = r;
             self.set_cursor(c.min(self.rope.len_chars()));
-            self.dirty = true;
             self.ensure_visible = true;
+            self.sync_dirty(); // 저장 지점까지 되돌아왔으면 수정 표시가 사라진다.
         }
         self.undo_open = false;
         self.last_kind = None;
@@ -122,8 +147,8 @@ impl EditBuf {
             self.undo.push(snap);
             self.rope = r;
             self.set_cursor(c.min(self.rope.len_chars()));
-            self.dirty = true;
             self.ensure_visible = true;
+            self.sync_dirty();
         }
         self.undo_open = false;
         self.last_kind = None;
@@ -223,6 +248,47 @@ mod tests {
 
 
 
+
+    #[test]
+    fn distant_edits_are_separate_undo_groups() {
+        // 멀리 떨어진 자리를 고치면 붙어 있던 타자와 한 덩어리가 되면 안 된다.
+        let mut b = buf("abcdefghij");
+        b.set_cursor(1);
+        b.insert("X");
+        b.set_cursor(8); // 이동은 묶음 경계지만, 인접성 조건이 이중으로 막아준다.
+        b.insert("Y");
+        b.undo();
+        assert_eq!(b.rope.to_string(), "aXbcdefghij", "마지막 편집만 취소");
+        b.undo();
+        assert_eq!(b.rope.to_string(), "abcdefghij");
+    }
+
+    #[test]
+    fn returning_to_saved_state_clears_dirty() {
+        // 저장 후 고쳤다가 되돌리면 수정 표시가 사라져야 한다(VS Code 동작).
+        let mut b = buf("abc");
+        b.mark_saved();
+        assert!(!b.dirty);
+        b.set_cursor(3);
+        b.insert("d");
+        assert!(b.dirty, "고쳤으니 수정 표시");
+        b.undo();
+        assert!(!b.dirty, "저장 지점으로 돌아왔으니 수정 표시 해제");
+        b.redo();
+        assert!(b.dirty);
+    }
+
+    #[test]
+    fn save_closes_undo_group() {
+        // 저장 직후의 타자가 저장 전 타자와 묶이면, 한 번의 취소가 저장 지점을 건너뛴다.
+        let mut b = buf("");
+        b.insert("a");
+        b.mark_saved();
+        b.insert("b");
+        b.undo();
+        assert_eq!(b.rope.to_string(), "a", "저장 시점까지만 취소");
+        assert!(!b.dirty);
+    }
 
     #[test]
     fn newline_keeps_indentation() {

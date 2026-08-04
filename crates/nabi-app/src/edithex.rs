@@ -28,12 +28,24 @@ pub(crate) struct HexBuf {
     pub find: String,
     pub find_text: bool,
     pub replace: String,
-    /// 실행 취소/다시 실행 스냅샷 스택((바이트, 커서)). 누적 크기는 MAX_UNDO_BYTES로 제한.
-    pub undo: Vec<(Vec<u8>, usize)>,
-    pub redo: Vec<(Vec<u8>, usize)>,
+    /// 실행 취소/다시 실행 스택. 누적 크기는 MAX_UNDO_BYTES로 제한.
+    pub undo: Vec<HexDelta>,
+    pub redo: Vec<HexDelta>,
 }
 
-/// undo 히스토리 누적 바이트 상한(초과 시 오래된 스냅샷부터 버림).
+/// 되돌릴 수 있는 한 번의 변경 — `bytes[at..at+old.len()]`이 `new`로 바뀌었다.
+///
+/// 전체 스냅샷 대신 바뀐 구간만 담는다. 100MB 파일에서 한 바이트를 고칠 때마다
+/// 100MB를 복제하던 것이 없어져, 편집 한 번의 비용이 파일 크기와 무관해진다.
+pub struct HexDelta {
+    pub at: usize,
+    pub old: Vec<u8>,
+    pub new: Vec<u8>,
+    /// 변경 직전 커서(되돌릴 때 복원).
+    pub cur: usize,
+}
+
+/// undo 히스토리 누적 바이트 상한(초과 시 오래된 기록부터 버림).
 pub(crate) const MAX_UNDO_BYTES: usize = 64_000_000;
 
 impl HexBuf {
