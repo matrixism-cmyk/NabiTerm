@@ -51,6 +51,7 @@ encoding_rs = "0.8"       # 내장 에디터 파일 인코딩 디코드(BOM/EUC-
 chardetng = "0.1"         # 내장 에디터 자동 인코딩 감지(순수 Rust)
 memmap2 = "0.9"           # 대용량 파일 뷰어 메모리 매핑
 ropey = "1"               # 대용량 파일 편집 엔진(rope, O(1) clone로 undo 스냅샷 효율적)
+unicode-segmentation = { workspace = true }  # 캐럿을 grapheme cluster 단위로 이동/삭제
 rfd = "0.15"              # 네이티브 파일 대화상자(다른 이름으로 저장) + 소프트웨어GL 확인창
 pollster = "0.3"          # 시작 시 wgpu 어댑터 사전 프로브(async→sync 블록)
 zip = { version = "2", default-features = false, features = ["deflate"] }  # 소프트웨어GL(Mesa) 자산 압축해제(C 의존 회피=deflate만)

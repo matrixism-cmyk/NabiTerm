@@ -56,7 +56,12 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     row(ui, "nabipad.menu.show", &mut e.show_menu_bar);
     // 아래 셋은 새로 여는 문서에 적용된다.
     row(ui, "editor.highlight", &mut e.syntax_highlight);
-    row(ui, "editor.wrap", &mut e.word_wrap); row(ui, "editor.showws", &mut e.show_whitespace); row(ui, "editor.trimonsave", &mut e.trim_on_save); row(ui, "editor.finalnl", &mut e.final_newline); row(ui, "editor.autosave", &mut e.autosave); crate::editorsyntax::settings_ui(ui, e, lang);
+    row(ui, "editor.wrap", &mut e.word_wrap); row(ui, "editor.showws", &mut e.show_whitespace); row(ui, "editor.trimonsave", &mut e.trim_on_save); row(ui, "editor.finalnl", &mut e.final_newline); row(ui, "editor.autosave", &mut e.autosave);
+    row(ui, "editor.indentspaces", &mut e.indent_spaces);
+    ui.label(tr(lang, "editor.tabsize"));
+    ui.add(egui::Slider::new(&mut e.tab_size, 1..=8));
+    ui.end_row();
+    crate::editorsyntax::settings_ui(ui, e, lang);
 }
 
 /// 2열 그리드 한 페이지(라벨 열 고정폭 + 여유 간격 — 현대식 설정 폼).

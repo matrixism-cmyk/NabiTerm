@@ -3079,6 +3079,7 @@ dependencies = [
  "tracing",
  "trash",
  "ttf-parser",
+ "unicode-segmentation",
  "windows 0.58.0",
  "windows-core 0.58.0",
  "winres",
@@ -3307,6 +3308,7 @@ name = "nabi-types"
 version = "0.1.406"
 dependencies = [
  "serde",
+ "unicode-width",
 ]
 
 [[package]]

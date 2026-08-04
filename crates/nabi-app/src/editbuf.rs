@@ -25,6 +25,13 @@ pub(crate) struct EditBuf {
     pub ensure_visible: bool,
     pub enc: String,
     pub eol: &'static str,
+    /// 탭 폭(칸) — 표시·탭 스톱 계산 기준(EditorConfig.tab_size).
+    pub tab: usize,
+    /// Tab 키를 공백으로 넣는다(EditorConfig.indent_spaces).
+    pub spaces: bool,
+    /// 지금까지 본 최대 표시 열 — 가로 스크롤 범위. 보이는 줄만으로 정하면 스크롤 중
+    /// 범위가 요동치므로 줄지 않게 누적한다.
+    pub seen_cols: usize,
     pub(crate) undo: Vec<(Rope, usize)>,
     pub(crate) redo: Vec<(Rope, usize)>,
     /// 현재 undo 묶음이 열려 있는지(연속 편집 누적용 — editbufedit).
@@ -37,7 +44,8 @@ impl EditBuf {
     pub(crate) fn new_buf(lf: &str, enc: String, eol: &'static str) -> EditBuf {
         EditBuf {
             rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
-            ensure_visible: false, enc, eol, undo: Vec::new(), redo: Vec::new(),
+            ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
+            seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None,
         }
     }
@@ -120,6 +128,39 @@ impl EditBuf {
     pub(crate) fn cursor_line_col(&self) -> (usize, usize) {
         let line = self.rope.char_to_line(self.cursor());
         (line, self.cursor() - self.rope.line_to_char(line))
+    }
+
+    /// 커서가 있는 줄의 표시 형태(탭 확장 + 열 대응).
+    pub(crate) fn disp_line(&self, line: usize) -> crate::editbufcol::DispLine {
+        crate::editbufcol::DispLine::new(&self.line_string(line), self.tab)
+    }
+
+    /// 커서 왼쪽 grapheme 경계(줄 처음이면 앞 줄 끝). 결합 문자·이모지를 쪼개지 않는다.
+    pub(crate) fn step_left(&self) -> usize {
+        let c = self.cursor();
+        if c == 0 {
+            return 0;
+        }
+        let line = self.rope.char_to_line(c);
+        let ls = self.rope.line_to_char(line);
+        if c == ls {
+            return c - 1; // 개행을 넘어 앞 줄 끝으로.
+        }
+        ls + crate::editbufcol::grapheme_left(&self.line_string(line), c - ls)
+    }
+
+    /// 커서 오른쪽 grapheme 경계(줄 끝이면 다음 줄 처음).
+    pub(crate) fn step_right(&self) -> usize {
+        let c = self.cursor();
+        if c >= self.rope.len_chars() {
+            return self.rope.len_chars();
+        }
+        let line = self.rope.char_to_line(c);
+        let (ls, s) = (self.rope.line_to_char(line), self.line_string(line));
+        if c - ls >= s.chars().count() {
+            return c + 1; // 줄 끝(개행) 넘기.
+        }
+        ls + crate::editbufcol::grapheme_right(&s, c - ls)
     }
 
     /// 커서 왼쪽 단어 경계(이전 단어 시작). 비단어 건너뛴 뒤 단어를 건너뛴다.

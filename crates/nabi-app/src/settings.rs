@@ -133,6 +133,13 @@ impl NabiApp {
         // 구문 강조 테마·확장자 매핑을 라이브 반영(다음 하이라이트부터 적용).
         crate::editorsyntax::set_theme(self.editor_config.theme.clone());
         crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());
+        // 탭 폭·들여쓰기는 이미 열린 편집 버퍼에도 바로 반영한다(재시작/재열기 불필요).
+        let (tab, spaces) = (self.editor_config.tab_size.max(1), self.editor_config.indent_spaces);
+        for d in self.editors.values_mut() {
+            if let Some(eb) = d.edit.as_mut() {
+                (eb.tab, eb.spaces, eb.seen_cols) = (tab, spaces, 0); // 탭 폭이 바뀌면 가로 범위도 다시.
+            }
+        }
         // 에이전트 제어 모드(off/ask/on)를 라이브 정책에 즉시 반영 — 안 하면 설정을 "켬"으로
         // 바꿔도 재시작 전까지 계속 승인을 요구한다(버그 수정).
         self.control_policy

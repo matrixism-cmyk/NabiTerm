@@ -78,7 +78,7 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
         Key::Backspace if !readonly => eb.backspace(),
         Key::Delete if !readonly => eb.delete(),
         Key::Enter if !readonly => eb.insert_newline(), // 자동 들여쓰기.
-        Key::Tab if !readonly => eb.insert("\t"),
+        Key::Tab if !readonly => eb.insert_indent(), // 설정(탭/공백)에 따라.
         _ => {}
     }
 }

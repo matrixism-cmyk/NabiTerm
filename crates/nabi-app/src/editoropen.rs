@@ -148,7 +148,9 @@ impl NabiApp {
     /// 대용량(2MB~EDIT_CAP) → rope 가상화 편집기 탭(E6).
     fn open_rope_editor(&mut self, path: PathBuf) {
         match crate::editbuf::EditBuf::open(&path) {
-            Some(eb) => {
+            Some(mut eb) => {
+                eb.tab = self.editor_config.tab_size.max(1); // 표시·탭 스톱 기준(설정).
+                eb.spaces = self.editor_config.indent_spaces;
                 let (title, encoding, eol) = (file_name(&path), eb.enc.clone(), eb.eol);
                 let mut doc = EditorDoc::make(title, path, None, String::new(), true, self.font_size, encoding, eol);
                 doc.edit = Some(eb);

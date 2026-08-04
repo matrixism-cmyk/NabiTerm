@@ -62,9 +62,9 @@ impl EditBuf {
         if self.selection().is_some() {
             self.del_selection();
         } else if self.cursor() > 0 {
-            let c = self.cursor();
-            self.rope.remove(c - 1..c);
-            self.set_cursor(c - 1);
+            let (c, a) = (self.cursor(), self.step_left()); // grapheme 통째로 지운다.
+            self.rope.remove(a..c);
+            self.set_cursor(a);
         }
         self.dirty = true;
         self.ensure_visible = true;
@@ -77,61 +77,11 @@ impl EditBuf {
         if self.selection().is_some() {
             self.del_selection();
         } else if self.cursor() < self.rope.len_chars() {
-            let c = self.cursor();
-            self.rope.remove(c..c + 1);
+            let (c, b) = (self.cursor(), self.step_right()); // grapheme 통째로.
+            self.rope.remove(c..b);
         }
         self.dirty = true;
         self.ensure_visible = true;
-    }
-
-    /// 커서를 새 위치로(select=true면 선택 확장). 이동은 undo 묶음 경계.
-    pub(crate) fn move_to(&mut self, pos: usize, select: bool) {
-        let pos = pos.min(self.rope.len_chars());
-        if select {
-            self.move_head(pos); // 고정단(anchor)은 그대로 — 선택 확장.
-        } else {
-            self.set_cursor(pos);
-        }
-        self.ensure_visible = true;
-        self.undo_open = false;
-    }
-
-    /// 좌우 이동(dx=±1).
-    pub(crate) fn move_h(&mut self, dx: i64, select: bool) {
-        let pos = (self.cursor() as i64 + dx).clamp(0, self.rope.len_chars() as i64) as usize;
-        self.move_to(pos, select);
-    }
-
-    /// 상하 이동(dy 줄, 열 유지). 줄 끝 길이로 클램프.
-    pub(crate) fn move_v(&mut self, dy: i64, select: bool) {
-        let (line, col) = self.cursor_line_col();
-        let last = self.rope.len_lines().saturating_sub(1);
-        let target = (line as i64 + dy).clamp(0, last as i64) as usize;
-        let pos = self.rope.line_to_char(target) + col.min(self.line_len(target));
-        self.move_to(pos, select);
-    }
-
-    /// 줄 처음/끝으로.
-    pub(crate) fn home(&mut self, select: bool) {
-        let (line, _) = self.cursor_line_col();
-        self.move_to(self.rope.line_to_char(line), select);
-    }
-
-    pub(crate) fn end(&mut self, select: bool) {
-        let (line, _) = self.cursor_line_col();
-        self.move_to(self.rope.line_to_char(line) + self.line_len(line), select);
-    }
-
-    /// 전체 선택(undo 묶음 경계).
-    pub(crate) fn select_all(&mut self) {
-        self.sel = crate::editsel::Selection::single(0, self.rope.len_chars());
-        self.undo_open = false;
-    }
-
-    /// 단어 단위 이동(Ctrl+←/→). select=true면 선택 확장.
-    pub(crate) fn move_word(&mut self, right: bool, select: bool) {
-        let pos = if right { self.word_right() } else { self.word_left() };
-        self.move_to(pos, select);
     }
 
     /// 단어 삭제(Ctrl+Backspace=왼쪽 / Ctrl+Delete=오른쪽). 선택이 있으면 선택 삭제.
@@ -208,23 +158,7 @@ mod tests {
         assert!(b.selection().is_none());
     }
 
-    #[test]
-    fn vertical_move_clamps_column() {
-        let mut b = buf("abcd\nef\nghij");
-        b.set_cursor(3);
-        b.move_v(1, false);
-        assert_eq!(b.cursor_line_col(), (1, 2));
-    }
 
-    #[test]
-    fn home_end() {
-        let mut b = buf("hi\nworld");
-        b.set_cursor(6);
-        b.home(false);
-        assert_eq!(b.cursor_line_col(), (1, 0));
-        b.end(false);
-        assert_eq!(b.cursor_line_col(), (1, 5));
-    }
 
     #[test]
     fn undo_coalesces_consecutive_typing() {
@@ -276,6 +210,19 @@ mod tests {
         b.undo();
         assert_eq!(b.rope.to_string(), "");
     }
+
+    #[test]
+    fn backspace_deletes_whole_grapheme() {
+        // e + 결합 악센트는 char 2개 — 한 번의 백스페이스로 통째로 지워야 한다.
+        let mut b = buf("xe\u{0301}");
+        b.set_cursor(3);
+        b.backspace();
+        assert_eq!(b.rope.to_string(), "x");
+        assert_eq!(b.cursor(), 1);
+    }
+
+
+
 
     #[test]
     fn newline_keeps_indentation() {

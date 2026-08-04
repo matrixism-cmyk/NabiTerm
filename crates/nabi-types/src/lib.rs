@@ -7,8 +7,10 @@ pub mod attrs;
 pub mod color;
 pub mod geometry;
 pub mod ids;
+pub mod textcol;
 
 pub use attrs::CellAttrs;
 pub use color::{ansi16, Rgba};
 pub use geometry::{Cols, GridSize, Rows};
 pub use ids::{next_pane_id, next_window_id, PaneId, WindowId};
+pub use textcol::{advance, char_cols, str_cols, tab_stop, DEFAULT_TAB};

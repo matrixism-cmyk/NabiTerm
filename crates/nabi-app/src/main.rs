@@ -1,4 +1,4 @@
-//! nabi 진입점 — eframe 부트스트랩.
+﻿//! nabi 진입점 — eframe 부트스트랩.
 // 릴리스(설치본)는 GUI 서브시스템 — 실행 시 콘솔(파워셸 로그 창)이 뜨지 않는다.
 // 디버그는 콘솔 유지(NABI_LOG 실시간 관찰용).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -69,7 +69,7 @@ mod editorstats;
 mod edithex; mod edithexedit; mod edithexfind; mod edithexmenu; mod edithexview;
 mod encodings;
 mod editorhl; mod editorhlinc; mod editorhlspans; mod editorsyntax;
-mod editbig; mod editbuf; mod editbufedit; mod editbufview; mod editbufkeys;
+mod editbig; mod editbuf; mod editbufcol; mod editbufedit; mod editbufkeys; mod editbufmove; mod editbufpaint; mod editbufview;
 mod editorfind;
 mod floatpanels;
 mod floatterm;

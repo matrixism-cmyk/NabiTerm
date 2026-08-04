@@ -258,6 +258,9 @@ pub(crate) const CATALOG_EDITOR2: &[(&str, &str, &str, &str)] = &[
     // v0.1.134.
     ("editor.normhex", "Normalize hex color", "HEX 색상 정규화", "HEX色を正規化"),
     ("editor.dequote", "Remove surrounding quotes", "감싼 따옴표 제거", "囲み引用符を除去"),
+    // v0.1.407 — 들여쓰기 설정.
+    ("editor.tabsize", "Tab width", "탭 폭", "タブ幅"),
+    ("editor.indentspaces", "Insert spaces instead of tab", "탭 대신 공백 넣기", "タブの代わりにスペース"),
 ];
 
 #[cfg(test)]
