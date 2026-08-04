@@ -137,7 +137,11 @@ fn theme_combo(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
         .show_ui(ui, |ui| {
             for name in nabi_vt::Theme::preset_names() {
                 let t = nabi_vt::Theme::preset(name);
-                let item = egui::RichText::new(format!("  Aa  {}  ", nabi_vt::Theme::preset_label(name))).monospace().color(egui::Color32::from_rgb(t.fg.r, t.fg.g, t.fg.b)).background_color(egui::Color32::from_rgb(t.bg.r, t.bg.g, t.bg.b));
+                let label = format!("  Aa  {}  ", nabi_vt::Theme::preset_label(name));
+                let item = egui::RichText::new(label)
+                    .monospace()
+                    .color(egui::Color32::from_rgb(t.fg.r, t.fg.g, t.fg.b))
+                    .background_color(egui::Color32::from_rgb(t.bg.r, t.bg.g, t.bg.b));
                 if ui.selectable_label(cfg.appearance.theme == *name, item).clicked() { cfg.appearance.theme = (*name).to_owned(); }
             }
         });
@@ -171,7 +175,17 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
 
     // 새 터미널 기본 시작 디렉터리(비우면 포커스 셸 cwd 상속). 찾아보기 버튼 포함.
     ui.label(tr(lang, "settings.defaultcwd"));
-    ui.horizontal(|ui| { ui.add(egui::TextEdit::singleline(&mut cfg.terminal.default_cwd).desired_width(220.0).hint_text(tr(lang, "settings.defaultcwdhint"))); if ui.button("\u{1f4c1}").clicked() { if let Some(d) = rfd::FileDialog::new().pick_folder() { cfg.terminal.default_cwd = d.to_string_lossy().into_owned(); } } });
+    ui.horizontal(|ui| {
+        let edit = egui::TextEdit::singleline(&mut cfg.terminal.default_cwd)
+            .desired_width(220.0)
+            .hint_text(tr(lang, "settings.defaultcwdhint"));
+        ui.add(edit);
+        if ui.button("\u{1f4c1}").clicked() {
+            if let Some(d) = rfd::FileDialog::new().pick_folder() {
+                cfg.terminal.default_cwd = d.to_string_lossy().into_owned();
+            }
+        }
+    });
     ui.end_row();
 
     ui.label(tr(lang, "settings.encoding"));
@@ -202,7 +216,17 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
     // SFTP 다운로드 기본 폴더(비우면 로컬 창/홈) + 매번 물어보기 여부.
     ui.label(tr(lang, "settings.downloaddir"));
-    ui.horizontal(|ui| { ui.add(egui::TextEdit::singleline(&mut cfg.terminal.download_dir).desired_width(220.0).hint_text(tr(lang, "settings.downloaddirhint"))); if ui.button("\u{1f4c1}").clicked() { if let Some(d) = rfd::FileDialog::new().pick_folder() { cfg.terminal.download_dir = d.to_string_lossy().into_owned(); } } });
+    ui.horizontal(|ui| {
+        let edit = egui::TextEdit::singleline(&mut cfg.terminal.download_dir)
+            .desired_width(220.0)
+            .hint_text(tr(lang, "settings.downloaddirhint"));
+        ui.add(edit);
+        if ui.button("\u{1f4c1}").clicked() {
+            if let Some(d) = rfd::FileDialog::new().pick_folder() {
+                cfg.terminal.download_dir = d.to_string_lossy().into_owned();
+            }
+        }
+    });
     ui.end_row();
     ui.label(tr(lang, "settings.downloadask"));
     ui.checkbox(&mut cfg.terminal.download_ask, tr(lang, "settings.downloadaskhint")); ui.end_row();

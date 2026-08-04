@@ -146,7 +146,14 @@ impl NabiApp {
         if let Some(old) = start_rename { self.sidebar_rename_to = old.clone(); self.sidebar_rename_group = Some(old); }
         if let Some(f) = ungroup_folder { self.rename_folder(&f, ""); }
         if let Some((old, new)) = rename_apply { self.rename_folder(&old, &new); self.sidebar_rename_group = None; }
-        if let Some(g) = toggle_group { let v = &mut self.config.appearance.collapsed_groups; if let Some(i) = v.iter().position(|x| x == &g) { v.remove(i); } else { v.push(g); } let _ = nabi_config::save(&self.config_path, &self.config); }
+        if let Some(g) = toggle_group {
+            let v = &mut self.config.appearance.collapsed_groups;
+            match v.iter().position(|x| x == &g) {
+                Some(i) => drop(v.remove(i)),
+                None => v.push(g),
+            }
+            let _ = nabi_config::save(&self.config_path, &self.config);
+        }
         if let Some(a) = action { self.apply(ctx, a); }
     }
 

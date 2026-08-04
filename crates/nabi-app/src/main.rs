@@ -1,4 +1,4 @@
-﻿//! nabi 진입점 — eframe 부트스트랩.
+//! nabi 진입점 — eframe 부트스트랩.
 // 릴리스(설치본)는 GUI 서브시스템 — 실행 시 콘솔(파워셸 로그 창)이 뜨지 않는다.
 // 디버그는 콘솔 유지(NABI_LOG 실시간 관찰용).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
@@ -8,10 +8,10 @@
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-mod app; mod appicon; mod gpu; mod softgl;
+mod app; mod appnew; mod appicon; mod gpu; mod softgl;
 mod arrange; mod bell;
 mod browser; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
-mod browserclip; mod browsercols; mod browserops; mod browserpanel; mod browserrows;
+mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell;
 mod controlui;
 mod filetype;
 mod humanfmt;
@@ -28,8 +28,8 @@ mod fonts;
 mod fontinstall;
 mod netinfo;
 mod drives;
-mod editor;
-mod editoropen;
+mod editor; mod editorsave;
+mod editoropen; mod editorclose;
 mod editload;
 mod editortab;
 mod filezilla;
@@ -103,8 +103,8 @@ mod help;
 mod hostkeyui;
 mod knownhostsui;
 mod menu;
-mod menuact;
-mod palette; mod palettecmds; mod pathline;
+mod menuact; mod menuactio;
+mod palette; mod palettecmds; mod palettedispatch; mod pathline;
 mod quake;
 mod qcparse;
 mod paneio;
@@ -119,7 +119,7 @@ mod sessionsmenu;
 mod snippetvars;
 mod recent;
 mod sftpact;
-mod sftpentries;
+mod sftpentries; mod sftpentryfmt;
 mod sftpnav;
 mod sftppanel;
 mod sftptab;
@@ -152,7 +152,7 @@ mod settingsui;
 mod settingsui2;
 mod shortcuts;
 mod splitmenu;
-mod statusbar;
+mod statusbar; mod statusfmt;
 mod tabmenu;
 mod tabops; mod tabspawn;
 mod theme_ui;

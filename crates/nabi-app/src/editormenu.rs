@@ -91,9 +91,33 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                 ui.menu_button(tr(lang, "nabipad.syntaxlang"), |ui| crate::editorstatus::syntax_lang_picker(ui, doc, lang));
                 ui.menu_button(tr(lang, "nabipad.bookmarks"), |ui| {
                     doc.bookmarks.retain(|&b| b < doc.text.lines().count().max(1)); // 편집으로 사라진 줄의 stale 북마크 self-heal.
-                    if ui.button(tr(lang, "nabipad.bmtoggle")).clicked() { let l = doc.cur_line; if let Some(i) = doc.bookmarks.iter().position(|&b| b == l) { doc.bookmarks.remove(i); } else { doc.bookmarks.push(l); doc.bookmarks.sort_unstable(); } ui.close_menu(); }
-                    if ui.button(tr(lang, "nabipad.bmnext")).clicked() { let n = doc.bookmarks.iter().find(|&&b| b > doc.cur_line).or_else(|| doc.bookmarks.first()).copied(); if let Some(n) = n { doc.jump_to_line(n); } ui.close_menu(); }
-                    if ui.button(tr(lang, "nabipad.bmprev")).clicked() { let n = doc.bookmarks.iter().rev().find(|&&b| b < doc.cur_line).or_else(|| doc.bookmarks.last()).copied(); if let Some(n) = n { doc.jump_to_line(n); } ui.close_menu(); }
+                    if ui.button(tr(lang, "nabipad.bmtoggle")).clicked() {
+                        let l = doc.cur_line;
+                        match doc.bookmarks.iter().position(|&b| b == l) {
+                            Some(i) => drop(doc.bookmarks.remove(i)),
+                            None => {
+                                doc.bookmarks.push(l);
+                                doc.bookmarks.sort_unstable(); // 다음/이전 점프가 순서대로.
+                            }
+                        }
+                        ui.close_menu();
+                    }
+                    if ui.button(tr(lang, "nabipad.bmnext")).clicked() {
+                        // 아래로 가장 가까운 북마크(없으면 처음으로 감싸기).
+                        let next = doc.bookmarks.iter().find(|&&b| b > doc.cur_line);
+                        if let Some(n) = next.or_else(|| doc.bookmarks.first()).copied() {
+                            doc.jump_to_line(n);
+                        }
+                        ui.close_menu();
+                    }
+                    if ui.button(tr(lang, "nabipad.bmprev")).clicked() {
+                        // 위로 가장 가까운 북마크(없으면 마지막으로 감싸기).
+                        let prev = doc.bookmarks.iter().rev().find(|&&b| b < doc.cur_line);
+                        if let Some(n) = prev.or_else(|| doc.bookmarks.last()).copied() {
+                            doc.jump_to_line(n);
+                        }
+                        ui.close_menu();
+                    }
                     if ui.button(tr(lang, "nabipad.bmclear")).clicked() { doc.bookmarks.clear(); ui.close_menu(); }
                 });
                 ui.menu_button(tr(lang, "editor.docinfo"), |ui| {

@@ -41,8 +41,8 @@ use crate::browsercols::{header_cell, type_label};
 /// 유형/비교 색(비교 모드면 비교색 우선, 아니면 폴더=금색·파일=카테고리색).
 pub(crate) fn row_color(row: &Row, remote_map: &HashMap<String, (bool, u64)>) -> egui::Color32 {
     if !remote_map.is_empty() {
-        let st = crate::sftpentries::cmp_status(&row.name, row.size, row.is_dir, remote_map);
-        if let Some(c) = crate::sftpentries::cmp_color(st) {
+        let st = crate::sftpentryfmt::cmp_status(&row.name, row.size, row.is_dir, remote_map);
+        if let Some(c) = crate::sftpentryfmt::cmp_color(st) {
             return c;
         }
     }
@@ -144,45 +144,6 @@ pub(crate) fn row_interact(
 }
 
 /// 이름 컬럼 셀(테이블): 색칠된 아이콘+이름 + 공유 상호작용.
-/// 이 행이 이름변경 대상이면 셀 위치에 인라인 편집기를 그린다(탐색기식).
-#[allow(clippy::too_many_arguments)]
-fn name_cell(
-    ui: &mut egui::Ui,
-    row: &Row,
-    path: &Path,
-    remote_map: &HashMap<String, (bool, u64)>,
-    can_upload: bool,
-    lang: Lang,
-    is_selected: bool,
-    acts: &mut RowActs,
-    ren: &mut crate::renameui::RenameUi,
-) {
-    let icon = if row.is_link {
-        "\u{1f517}".to_string() // 🔗 심볼릭 링크(SFTP 표시와 일관). 더블클릭은 대상이 dir면 진입.
-    } else if row.is_dir {
-        "\u{1f4c1}".to_string()
-    } else {
-        crate::filetype::file_icon(&row.name).to_string()
-    };
-    let text = format!("{icon} {}", row.name);
-    let font = egui::TextStyle::Body.resolve(ui.style());
-    let color = row_color(row, remote_map);
-    // 보통은 칸 전체를 클릭 영역으로(텍스트만 노리지 않아도 됨). 단, 자동맞춤(sizing pass) 때는
-    // 자연 너비(아이콘+이름)를 보고해야 구분선 더블클릭이 칸을 내용 최대값에 맞춘다.
-    let w = if ui.is_sizing_pass() {
-        ui.painter().layout_no_wrap(text.clone(), font.clone(), color).size().x + 6.0
-    } else {
-        ui.available_width().max(40.0)
-    };
-    let (rect, resp) =
-        ui.allocate_exact_size(egui::vec2(w, ui.available_height().max(16.0)), egui::Sense::click_and_drag());
-    if ren.try_edit(ui, rect, &row.name) {
-        return; // 인라인 편집 중 — 라벨/상호작용 생략.
-    }
-    ui.painter().text(rect.left_center(), egui::Align2::LEFT_CENTER, text, font, color);
-    row_interact(ui, &resp, row, path, can_upload, lang, is_selected, acts);
-}
-
 /// 탐색기식 컬럼 테이블로 항목을 그린다.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn browser_rows(
@@ -269,7 +230,7 @@ pub(crate) fn browser_rows(
                 let row = &visible[idx - usize::from(up)];
                 let sel = is_sel(row.name.as_str());
                 r.set_selected(sel); // 선택(다중 포함) 하이라이트.
-                r.col(|ui| name_cell(ui, row, path, remote_map, can_upload, lang, sel, &mut acts, ren));
+                r.col(|ui| crate::browsercell::name_cell(ui, row, path, remote_map, can_upload, lang, sel, &mut acts, ren));
                 r.col(|ui| {
                     ui.label(type_label(row, lang));
                 });

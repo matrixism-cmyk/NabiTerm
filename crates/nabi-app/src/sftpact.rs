@@ -48,7 +48,15 @@ impl NabiApp {
         if let (Some((name, size)), Some(id)) = (a.dl, self.sftp.id) {
             // 다중 선택에 속하면 선택 파일 전체(FileZilla식, 폴더 제외), 아니면 단일.
             // 목적지는 사용자에게 물어본다(무단 다운로드 방지 — 취소 시 아무 동작 없음).
-            let targets: Vec<(String, u64)> = if self.sftp.multi.len() > 1 && self.sftp.multi.contains(&name) { self.sftp.entries.iter().filter(|e| !e.is_dir && self.sftp.multi.contains(&e.name)).map(|e| (e.name.clone(), e.size)).collect() } else { vec![(name, size)] };
+            // 여러 개를 고른 상태에서 그중 하나를 지정했으면 고른 것 전부가 대상이다.
+            let batch = self.sftp.multi.len() > 1 && self.sftp.multi.contains(&name);
+            let targets: Vec<(String, u64)> = if batch {
+                let sel = self.sftp.entries.iter();
+                let sel = sel.filter(|e| !e.is_dir && self.sftp.multi.contains(&e.name));
+                sel.map(|e| (e.name.clone(), e.size)).collect()
+            } else {
+                vec![(name, size)]
+            };
             self.download_prompt(id, targets);
         }
         if let Some(name) = a.del {

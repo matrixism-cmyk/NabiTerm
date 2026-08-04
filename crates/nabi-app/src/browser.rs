@@ -231,7 +231,7 @@ fn render_inner(
     // 빈 공간 우클릭 메뉴: 행보다 "먼저" 배경 클릭영역을 등록한다(나중 등록되는 행이 히트테스트에서
     // 위에 있어 좌/우클릭을 가져가고, 빈 칸 우클릭만 이 배경 메뉴가 받는다 — 행 클릭 회귀 방지).
     let bg = ui.interact(ui.available_rect_before_wrap(), ui.id().with("empty_bg"), egui::Sense::click());
-    bg.context_menu(|ui| empty_space_menu(ui, &mut a, lang, &path));
+    bg.context_menu(|ui| crate::browsermenu::empty_space_menu(ui, &mut a, lang, &path));
     let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::none(), |ui| {
         let acts = crate::browserrows::browser_rows(
             ui, &entries, &path, &filt, remote_map, can_upload, lang, b.sort, b.sort_desc,
@@ -261,7 +261,16 @@ fn render_inner(
     }
     if a.select_all { b.multi = entries.iter().map(|r| r.name.clone()).collect(); } // 빈 공간 메뉴 ▸ 전체 선택.
     if a.invert_sel { let cur = b.multi.clone(); b.multi = entries.iter().map(|r| r.name.clone()).filter(|n| !cur.contains(n)).collect(); } // 선택 반전.
-    if a.copy_paths { let names: Vec<String> = if b.multi.is_empty() { entries.iter().map(|r| r.name.clone()).collect() } else { b.multi.iter().cloned().collect() }; ui.ctx().copy_text(names.iter().map(|n| path.join(n).to_string_lossy().into_owned()).collect::<Vec<_>>().join("\n")); } // 선택(없으면 전체) 경로 복사.
+    if a.copy_paths {
+        // 선택이 없으면 보이는 항목 전체의 경로를 복사한다.
+        let names: Vec<String> = if b.multi.is_empty() {
+            entries.iter().map(|r| r.name.clone()).collect()
+        } else {
+            b.multi.iter().cloned().collect()
+        };
+        let joined = names.iter().map(|n| path.join(n).to_string_lossy().into_owned());
+        ui.ctx().copy_text(joined.collect::<Vec<_>>().join("\n"));
+    }
     // 종료 시점에 실제 사용 영역∪할당 영역으로 over 재확정(아래 빈 공간 포함).
     let panel = ui.min_rect().union(ui.max_rect());
     a.over = a.over || ui.rect_contains_pointer(panel);
@@ -269,24 +278,3 @@ fn render_inner(
     a
 }
 
-/// 파일 목록 빈 공간 우클릭 메뉴 — 새 폴더/파일·붙여넣기·여기서 터미널·숨김 토글·경로 복사(툴바와 동일 동작).
-fn empty_space_menu(ui: &mut egui::Ui, a: &mut BrowserAct, lang: Lang, path: &std::path::Path) {
-    let tr = |k| nabi_i18n::tr(lang, k);
-    if ui.button(format!("\u{1f4c1}+ {}", tr("sftp.newfolder"))).clicked() { a.new_folder = true; ui.close_menu(); }
-    if ui.button(format!("\u{1f4c4}+ {}", tr("sftp.newfile"))).clicked() { a.new_file = true; ui.close_menu(); }
-    if ui.button(format!("\u{1f4cb}\u{2193} {}", tr("browser.paste"))).clicked() { a.paste = true; ui.close_menu(); }
-    ui.separator();
-    if ui.button(format!("\u{1f4bb} {}", tr("browser.termhere"))).clicked() { a.term_here = true; ui.close_menu(); }
-    if ui.button(format!("\u{1f441} {}", tr("sftp.hidden"))).clicked() { a.toggle_hidden = true; ui.close_menu(); }
-    if ui.button(format!("\u{1f4cb} {}", tr("browser.copycurpath"))).clicked() { ui.ctx().copy_text(path.to_string_lossy().into_owned()); ui.close_menu(); }
-    ui.separator();
-    // 선택·분석 도구는 "도구" 서브메뉴로 묶어 최상위를 간결하게(메뉴 정리).
-    ui.menu_button(tr("editor.toolsmenu"), |ui| {
-        if ui.button(format!("\u{2611} {}", tr("menu.selectall"))).clicked() { a.select_all = true; ui.close_menu(); }
-        if ui.button(format!("\u{21c4} {}", tr("menu.invertsel"))).clicked() { a.invert_sel = true; ui.close_menu(); }
-        if ui.button(format!("\u{1f4cb} {}", tr("menu.copypaths"))).clicked() { a.copy_paths = true; ui.close_menu(); }
-        ui.separator();
-        if ui.button(format!("\u{1f333} {}", tr("dir.tree"))).clicked() { a.dir_tree = true; ui.close_menu(); }
-        if ui.button(format!("\u{1f4ca} {}", tr("dir.stats"))).clicked() { a.dir_stats = true; ui.close_menu(); }
-    });
-}

@@ -79,7 +79,14 @@ impl NabiApp {
                     self.last_exit.remove(&pane);
                     self.cmd_start.remove(&pane);
                     self.last_duration.remove(&pane);
-                    self.progress.remove(&pane); self.pane_font.remove(&pane); self.server_stats.remove(&pane); self.pane_status.remove(&pane); self.ssh_connect_time.remove(&pane); self.ssh_alert_on.remove(&pane); self.ctx_alert_on.remove(&pane); self.blocked_alert.remove(&pane);
+                    self.progress.remove(&pane);
+                    self.pane_font.remove(&pane);
+                    self.server_stats.remove(&pane);
+                    self.pane_status.remove(&pane);
+                    self.ssh_connect_time.remove(&pane);
+                    self.ssh_alert_on.remove(&pane);
+                    self.ctx_alert_on.remove(&pane);
+                    self.blocked_alert.remove(&pane);
                     if self.selection.is_some_and(|s| s.pane == pane) {
                         self.selection = None;
                     }

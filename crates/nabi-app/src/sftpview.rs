@@ -1,7 +1,8 @@
 //! SFTP 항목 보기 모드(윈도우 탐색기식): 자세히/목록/큰·작은 아이콘/타일.
 //! 항목 클릭·컨텍스트 메뉴 처리는 공유하고, 레이아웃만 모드별로 다르게 그린다.
 
-use crate::sftpentries::{cmp_color, cmp_status, EClick};
+use crate::sftpentries::EClick;
+use crate::sftpentryfmt::{cmp_color, cmp_status};
 use crate::sftppath::join_path;
 use nabi_i18n::{tr, Lang};
 use nabi_proto::SftpEntry;
@@ -183,7 +184,7 @@ fn details(
         let resp = if perm.is_empty() {
             resp
         } else {
-            let rwx = crate::sftpentries::mode_to_rwx(e.mode, e.is_dir, e.is_link);
+            let rwx = crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link);
             resp.on_hover_text(format!("{rwx}  ({:03o})", e.mode & 0o777))
         };
         if let Some(a) = actions(&resp, e, cur, lang) {

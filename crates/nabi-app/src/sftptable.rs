@@ -1,6 +1,7 @@
 //! SFTP 탐색기식 컬럼 테이블(이름·유형·크기·수정일) — 로컬 브라우저와 동일한 모양.
 
-use crate::sftpentries::{cmp_color, cmp_status, EClick};
+use crate::sftpentries::EClick;
+use crate::sftpentryfmt::{cmp_color, cmp_status};
 use crate::sftppanel::SftpPanel;
 use crate::sftptab::SftpAct;
 use crate::sftpview::{actions, icon, RemoteName};
@@ -154,7 +155,7 @@ fn name_cell(
         ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c));
     }
     let resp = if e.mode & 0o777 != 0 {
-        let rwx = crate::sftpentries::mode_to_rwx(e.mode, e.is_dir, e.is_link);
+        let rwx = crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link);
         resp.on_hover_text(format!("{rwx}  ({:03o})", e.mode & 0o777))
     } else {
         resp

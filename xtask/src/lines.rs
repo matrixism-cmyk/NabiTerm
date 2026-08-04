@@ -61,14 +61,39 @@ pub fn run() -> ExitCode {
     }
 }
 
-/// 가장 긴 줄의 (줄 번호, 문자 수). 주석 전용 줄은 세지 않는다(설명은 길어도 된다).
+/// 가장 긴 줄의 (줄 번호, 코드 문자 수). 주석 전용 줄은 세지 않고,
+/// 문자열 리터럴 **안쪽**도 세지 않는다 — 잡으려는 것은 "한 줄에 문장 여러 개"이지
+/// 긴 문장(i18n 번역문·안내 문구)이 아니다.
 fn widest_line(path: &Path) -> Option<(usize, usize)> {
     let s = std::fs::read_to_string(path).ok()?;
     s.lines()
         .enumerate()
         .filter(|(_, l)| !l.trim_start().starts_with("//"))
-        .map(|(i, l)| (i + 1, l.chars().count()))
+        .map(|(i, l)| (i + 1, code_cols(l)))
         .max_by_key(|&(_, c)| c)
+}
+
+/// 문자열 리터럴 내용을 뺀 줄 길이. 이스케이프(`\"`)를 건너뛴다.
+fn code_cols(line: &str) -> usize {
+    let (mut n, mut in_str, mut esc) = (0usize, false, false);
+    for c in line.chars() {
+        if in_str {
+            if esc {
+                esc = false;
+            } else if c == '\\' {
+                esc = true;
+            } else if c == '"' {
+                in_str = false;
+                n += 1; // 닫는 따옴표는 코드로 센다.
+            }
+            continue;
+        }
+        n += 1;
+        if c == '"' {
+            in_str = true;
+        }
+    }
+    n
 }
 
 /// 코드 라인만 센다 — 빈 줄과 주석 전용 줄(`//`/`///`/`//!`, 블록 `/* */`)은 제외.

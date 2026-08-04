@@ -173,7 +173,14 @@ impl NabiApp {
             MenuAction::OpenNabiPad => self.open_empty_pad(),
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
-            MenuAction::TogglePin(name) => { let v = &mut self.config.appearance.pinned_sessions; if let Some(i) = v.iter().position(|x| x == &name) { v.remove(i); } else { v.push(name); } let _ = nabi_config::save(&self.config_path, &self.config); }
+            MenuAction::TogglePin(name) => {
+                let v = &mut self.config.appearance.pinned_sessions;
+                match v.iter().position(|x| x == &name) {
+                    Some(i) => drop(v.remove(i)),
+                    None => v.push(name),
+                }
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
             MenuAction::EditNote(name) => { let cur = self.config.appearance.session_notes.get(&name).cloned().unwrap_or_default(); self.note_edit = Some((name, cur)); }
             MenuAction::ConnectFolder(f) => {
                 // 폴더 내 모든 세션을 한 번에 연결(E7 레이아웃).
@@ -230,32 +237,4 @@ impl NabiApp {
         }
     }
 
-    /// 가져온 세션들을 추가(이름 중복은 교체)하고 저장 + 개수 토스트. 외부 형식 가져오기 공용.
-    fn import_sessions(&mut self, imported: Vec<nabi_session::SavedSession>, label_key: &str) {
-        let n = imported.len();
-        for s in imported {
-            self.sessions.remove(&s.name);
-            self.sessions.add(s);
-        }
-        let dup = self.sessions.dedup(); // 여러 소스에서 가져와도 같은 대상 중복은 자동 제거.
-        self.save_sessions();
-        let label = tr(self.lang, label_key);
-        let extra = if dup > 0 { format!(" -{dup}") } else { String::new() };
-        self.notify = Some((format!("{label} +{n}{extra}"), std::time::Instant::now()));
-    }
-
-    /// 세션 내보내기 공용: 저장 대화상자로 위치를 받아 외부 형식 문자열을 쓴다.
-    fn export_sessions_to(&mut self, data: String, name: &str, ext: &str, label_key: &str) {
-        let mut dlg = rfd::FileDialog::new().set_file_name(name);
-        if !ext.is_empty() {
-            dlg = dlg.add_filter(ext, &[ext]);
-        }
-        if let Some(p) = dlg.save_file() {
-            let msg = match std::fs::write(&p, data) {
-                Ok(()) => format!("{} \u{2713}", tr(self.lang, label_key)),
-                Err(e) => format!("\u{2715} {e}"),
-            };
-            self.notify = Some((msg, std::time::Instant::now()));
-        }
-    }
 }

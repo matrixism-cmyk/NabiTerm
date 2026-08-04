@@ -1,6 +1,7 @@
 //! SFTP 권한 변경 메뉴(프리셋·재귀·커스텀 8진수) — sftptable에서 분리.
 
-use crate::sftpentries::{mode_to_rwx, parse_octal_mode, EClick};
+use crate::sftpentries::EClick;
+use crate::sftpentryfmt::{mode_to_rwx, parse_octal_mode};
 use nabi_i18n::{tr, Lang};
 
 /// 권한 변경 서브메뉴: 프리셋 + (디렉터리) 하위 포함 재귀 + 커스텀 8진수. 선택 시 Chmod 동작을 돌려준다.

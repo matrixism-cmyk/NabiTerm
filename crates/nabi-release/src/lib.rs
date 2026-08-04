@@ -4,6 +4,7 @@
 //! 다운로드/설치 상태기계를 소유한다. 저장소는 `matrixism-cmyk/NabiTermPub`.
 
 mod net;
+mod netparse;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};

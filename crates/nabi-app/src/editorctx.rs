@@ -81,7 +81,13 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                 ui.close_menu();
             }
             if ui.add_enabled(!doc.text.is_empty(), egui::Button::new(tr(lang, "ctx.copyfilemd"))).clicked() { ctx.copy_text(format!("{hdr}```{hint}\n{}\n```", doc.text.trim_end())); ui.close_menu(); }
-            if ui.add_enabled(!doc.path.as_os_str().is_empty(), egui::Button::new(tr(lang, "ctx.copyloc"))).clicked() { ctx.copy_text(format!("{}:{}", doc.path.display(), crate::editorloc::loc_linespec(&doc.text, range, doc.cur_line))); ui.close_menu(); } // 선택 줄 범위 포함.
+            let has_path = !doc.path.as_os_str().is_empty();
+            if ui.add_enabled(has_path, egui::Button::new(tr(lang, "ctx.copyloc"))).clicked() {
+                // 파일:줄[-줄] — 선택이 있으면 그 줄 범위까지 붙는다.
+                let spec = crate::editorloc::loc_linespec(&doc.text, range, doc.cur_line);
+                ctx.copy_text(format!("{}:{}", doc.path.display(), spec));
+                ui.close_menu();
+            }
         });
         // 선택을 터미널에서 실행(에디터에 명령 작성→첫 터미널 pane에 전송+Enter, AI 바이브코딩).
         if ui.add_enabled(has_sel, egui::Button::new(tr(lang, "ctx.runterm"))).clicked() {
