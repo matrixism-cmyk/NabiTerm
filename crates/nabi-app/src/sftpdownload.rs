@@ -1,4 +1,4 @@
-//! SFTP 다운로드 — 목적지 선택(rfd) + 파일/폴더/DnD 다운로드 경로. sftpxfer(큐)에서 분리.
+﻿//! SFTP 다운로드 — 목적지 선택(rfd) + 파일/폴더/DnD 다운로드 경로. sftpxfer(큐)에서 분리.
 
 use crate::app::NabiApp;
 use crate::sftppath::join_path;
@@ -92,7 +92,7 @@ impl NabiApp {
             let remote = join_path(&self.sftp.path, &n);
             let local = target.to_string_lossy().into_owned();
             let resume = self.resume_at(&local, sz);
-            self.push_xfer(n, false, sz, Command::SftpDownload { id, remote, local, resume });
+            self.push_xfer(n, false, sz, |xfer| Command::SftpDownload { id, xfer, remote, local, resume });
         }
     }
 
@@ -117,7 +117,7 @@ impl NabiApp {
             let local = path.to_string_lossy().into_owned();
             let resume = self.resume_at(&local, *size);
             self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
-            self.push_xfer(name.clone(), false, *size, Command::SftpDownload { id, remote, local, resume });
+            self.push_xfer(name.clone(), false, *size, |xfer| Command::SftpDownload { id, xfer, remote, local, resume });
             return;
         }
         let Some(dir) = rfd::FileDialog::new().set_directory(&start).pick_folder() else {
@@ -135,7 +135,7 @@ impl NabiApp {
         let Some(dir) = self.resolve_download_folder() else { return };
         let local = dir.join(&base).to_string_lossy().into_owned();
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
-        self.push_xfer(base, false, 0, Command::SftpDownloadDir { id, remote, local });
+        self.push_xfer(base, false, 0, |xfer| Command::SftpDownloadDir { id, xfer, remote, local });
     }
 
     /// 원격 디렉터리를 재귀 다운로드한다(대상 폴더를 물어본다).
@@ -145,7 +145,7 @@ impl NabiApp {
         let Some(dir) = self.resolve_download_folder() else { return };
         let local = dir.join(&name).to_string_lossy().into_owned();
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
-        self.push_xfer(name, false, 0, Command::SftpDownloadDir { id, remote, local });
+        self.push_xfer(name, false, 0, |xfer| Command::SftpDownloadDir { id, xfer, remote, local });
     }
 
     /// 부분 파일이 남아 있으면 이어받기 오프셋(이름으로 원격 크기 조회). DnD 드롭 경로용.
@@ -165,14 +165,16 @@ impl NabiApp {
             .join(&name)
             .to_string_lossy()
             .into_owned();
-        let cmd = if is_dir {
-            Command::SftpDownloadDir { id, remote, local }
-        } else {
-            let resume = self.resume_offset(&local, &name); // 부분 파일 이어받기.
-            Command::SftpDownload { id, remote, local, resume }
-        };
+        // 부분 파일 이어받기(폴더는 해당 없음). 분기는 클로저 안에서 — 밖에서 나누면 타입이 달라진다.
+        let resume = if is_dir { 0 } else { self.resume_offset(&local, &name) };
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
-        self.push_xfer(format!("{subfolder}/{name}"), false, 0, cmd);
+        self.push_xfer(format!("{subfolder}/{name}"), false, 0, move |xfer| {
+            if is_dir {
+                Command::SftpDownloadDir { id, xfer, remote, local }
+            } else {
+                Command::SftpDownload { id, xfer, remote, local, resume }
+            }
+        });
     }
 
     /// 원격 항목을 로컬 브라우저 폴더로 다운로드한다(SFTP→로컬 DnD).
@@ -180,14 +182,15 @@ impl NabiApp {
         let Some(id) = self.sftp.id else { return };
         let remote = join_path(&self.sftp.path, &name);
         let local = self.browser.path.join(&name).to_string_lossy().into_owned();
-        let cmd = if is_dir {
-            Command::SftpDownloadDir { id, remote, local }
-        } else {
-            let resume = self.resume_offset(&local, &name); // 부분 파일 이어받기.
-            Command::SftpDownload { id, remote, local, resume }
-        };
+        let resume = if is_dir { 0 } else { self.resume_offset(&local, &name) };
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
-        self.push_xfer(name, false, 0, cmd);
+        self.push_xfer(name, false, 0, move |xfer| {
+            if is_dir {
+                Command::SftpDownloadDir { id, xfer, remote, local }
+            } else {
+                Command::SftpDownload { id, xfer, remote, local, resume }
+            }
+        });
     }
 }
 

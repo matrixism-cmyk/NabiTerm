@@ -48,15 +48,44 @@ impl NabiApp {
         }
     }
 
-    /// 유휴 repaint 하트비트(ms): 벨 플래시 50 · 커서 깜빡임 260 · 그 외 500.
-    pub(crate) fn idle_ms(&self) -> u64 {
-        if self.bell_flash.is_some() {
-            50
-        } else if self.config.appearance.cursor_blink {
-            260
-        } else {
-            500
+    /// 현재 시점의 커서 표시 여부(깜빡임 위상). 깜빡임이 꺼져 있으면 항상 표시.
+    pub(crate) fn blink_on(&self) -> bool {
+        if !self.config.appearance.cursor_blink {
+            return true;
         }
+        let half = self.config.appearance.blink_ms.max(1) as u128;
+        (self.blink_start.elapsed().as_millis() / half).is_multiple_of(2)
+    }
+
+    /// 다음 프레임을 **필요한 시점에만** 예약한다.
+    ///
+    /// 예전에는 매 프레임 무조건 하트비트를 걸어 앱이 영원히 잠들지 못했다(최소화 상태에서도).
+    /// 지금은 실제로 화면이 바뀔 시점 — 깜빡임 토글 경계, 벨 플래시 — 만 예약하고,
+    /// 창이 안 보이면(비포커스·최소화) 아무 것도 예약하지 않는다. 출력·입력은 각자 repaint를
+    /// 요청하므로 반응성에는 영향이 없다.
+    pub(crate) fn schedule_next_frame(&self, ctx: &egui::Context) {
+        use std::time::Duration;
+        // 벨 플래시는 짧게 사라지는 애니메이션이라 진행 중에는 촘촘히.
+        if self.bell_flash.is_some() {
+            ctx.request_repaint_after(Duration::from_millis(50));
+            return;
+        }
+        if !self.config.appearance.cursor_blink {
+            return; // 깜빡이지 않으면 유휴 시 그릴 이유가 없다.
+        }
+        // 최소화되었거나 포커스가 없으면 커서 깜빡임이 보이지 않는다 → 깨울 필요 없음.
+        let visible = ctx.input(|i| {
+            let vp = i.viewport();
+            vp.focused.unwrap_or(true) && !vp.minimized.unwrap_or(false)
+        });
+        if !visible {
+            return;
+        }
+        // 다음 토글 경계까지만 잔다(자유 주기 폴링이면 토글과 어긋나 헛 프레임이 생긴다).
+        let half = self.config.appearance.blink_ms.max(1) as u128;
+        let phase = self.blink_start.elapsed().as_millis() % (2 * half);
+        let next = if phase < half { half - phase } else { 2 * half - phase };
+        ctx.request_repaint_after(Duration::from_millis((next as u64).max(1)));
     }
 
     pub(crate) fn process_pending(&mut self, ctx: &egui::Context) {

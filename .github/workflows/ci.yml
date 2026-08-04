@@ -1,0 +1,74 @@
+name: ci
+
+# 품질 게이트를 사람이 기억해서 돌리는 대신 기계가 강제한다.
+# (라인 한도 → 포맷 → clippy 0경고 → 테스트 순서 = 개발 중 게이트와 동일)
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  # 디버그 정보는 target을 크게 부풀린다. CI 캐시 한도(리포지토리당 10GB) 안에 들어가게 끈다.
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_PROFILE_TEST_DEBUG: 0
+  RUST_BACKTRACE: 1
+
+jobs:
+  windows-gnu:
+    # windows-latest는 예고 없이 이미지가 바뀐다 → 고정.
+    # 이 이미지에는 MinGW(gcc, ucrt)와 Inno Setup이 이미 들어 있어 별도 설치 단계가 없다.
+    runs-on: windows-2025
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # 러너 이미지가 바뀌어 링커 도구가 사라지면, 40분짜리 링크 오류 대신 3초 만에 명확히 실패시킨다.
+      # (gnu 타깃은 rustc가 gcc를 링커로 부르고, wgpu의 DX12 백엔드는 MinGW 사이루트의
+      #  libdxgi/libd3d12 등을 필요로 한다 — rustup self-contained에는 없다)
+      - name: MinGW 도구 확인
+        shell: pwsh
+        run: |
+          foreach ($t in 'gcc','ld','ar','dlltool','windres') {
+            $p = (Get-Command "$t.exe" -ErrorAction SilentlyContinue).Source
+            if (-not $p) { throw "없음: $t.exe — 러너 이미지의 MinGW 구성이 바뀌었다" }
+            Write-Host "$t -> $p"
+          }
+          gcc --version
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-gnu
+          components: rustfmt, clippy
+
+      # 캐시 키에 rustc 버전이 들어가므로 반드시 툴체인 설치 뒤에 온다.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: win-gnu
+          cache-on-failure: true
+          # 캐시 저장은 main에서만 — PR마다 저장하면 10GB 한도를 금방 넘겨 서로 밀어낸다.
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      # 소스 파일 크기 규율(소프트 250 / 하드 400 코드줄).
+      - name: 라인 한도
+        run: cargo run -p xtask --locked -- lines
+
+      # 포맷 검사(cargo fmt --check)는 일부러 넣지 않는다.
+      # 이 코드베이스는 파일 크기 규율(250줄) 때문에 짧은 문장을 한 줄에 묶는 관용구를 쓰는데,
+      # rustfmt는 그걸 모두 펼쳐 라인 한도를 깨뜨린다(현재 1,300곳 이상 상이).
+      # 포맷을 강제하려면 라인 한도와의 상충을 먼저 해결해야 한다 — 그 전에는 규율의 실체인
+      # 라인 한도와 clippy만 기계로 강제한다.
+
+      # 경고 0이 릴리스 기준이므로 CI에서도 경고를 오류로 취급한다.
+      - name: clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: 테스트
+        run: cargo test --workspace --locked
+
+      # 실서버가 필요한 #[ignore] 테스트는 환경변수가 없으면 스스로 건너뛴다.
+      # 여기서는 "적어도 컴파일되고 수집된다"까지만 확인한다.
+      - name: 실서버 테스트 수집 확인
+        run: cargo test -p nabi-sftp --locked -- --ignored --list

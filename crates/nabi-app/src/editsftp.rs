@@ -1,4 +1,4 @@
-//! 원격 파일 편집(MobaXterm/FileZilla식): 원격 파일을 임시로 내려받아 OS 기본
+﻿//! 원격 파일 편집(MobaXterm/FileZilla식): 원격 파일을 임시로 내려받아 OS 기본
 //! 편집기로 열고, 저장(임시파일 수정)이 감지되면 원격으로 자동 재업로드한다.
 //!
 //! 별도 연결 없이 기존 SFTP 다운로드/업로드 명령을 재사용한다. 다운로드 완료는
@@ -56,6 +56,7 @@ impl NabiApp {
         let local = temp.to_string_lossy().into_owned();
         self.orch.send(Command::SftpDownload {
             id,
+            xfer: crate::sftpxfer::XFER_NONE,
             remote: remote.clone(),
             local,
             resume: 0, // 편집은 항상 새로(덮어쓰기).
@@ -206,6 +207,7 @@ impl NabiApp {
         for (id, local, remote) in ups {
             self.orch.send(Command::SftpUpload {
                 id,
+                xfer: crate::sftpxfer::XFER_NONE,
                 local,
                 remote: remote.clone(),
             });

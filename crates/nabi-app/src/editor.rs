@@ -1,4 +1,4 @@
-//! 내장 텍스트 에디터 — 문서 모델 + 열기/저장/로드 + 디스패치. 렌더는 [`crate::editortab`].
+﻿//! 내장 텍스트 에디터 — 문서 모델 + 열기/저장/로드 + 디스패치. 렌더는 [`crate::editortab`].
 //! 각 문서는 도크 탭(PaneId) 하나로, 다른 패널처럼 탭/분리 창에 배치된다.
 
 use crate::app::NabiApp;
@@ -288,6 +288,7 @@ impl NabiApp {
                 if let Some((id, rp)) = remote {
                     self.orch.send(Command::SftpUpload {
                         id,
+                        xfer: crate::sftpxfer::XFER_NONE,
                         local: path.to_string_lossy().into_owned(),
                         remote: rp.clone(),
                     });

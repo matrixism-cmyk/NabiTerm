@@ -159,6 +159,7 @@ mod sftpdownload;
 mod sftpperms;
 mod sftptoolbar;
 mod sftpops;
+mod eventsftp;
 mod sshconfig;
 mod settings;
 mod settingslists;

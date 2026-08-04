@@ -57,10 +57,21 @@ pub enum Event {
     SftpSearchResults { id: SftpId, results: Vec<String> },
     /// 원격 디렉터리 집계 결과(경로, 파일 수, 폴더 수, 총 바이트).
     SftpDirSize { id: SftpId, path: String, files: u64, dirs: u64, bytes: u64 },
-    /// 전송 진행(누적 바이트).
-    SftpProgress { id: SftpId, bytes: u64 },
-    /// 파일 전송(다운로드/업로드) 완료.
+    /// 전송 진행(누적 바이트). `xfer`는 명령에 실어 보낸 큐 항목 식별자.
+    SftpProgress { id: SftpId, xfer: u64, bytes: u64 },
+    /// 파일 전송(다운로드/업로드) 완료. `xfer`로 큐 항목을 정확히 지목한다.
     SftpTransferDone {
+        id: SftpId,
+        xfer: u64,
+        name: String,
+        ok: bool,
+        message: String,
+    },
+    /// 파일 작업(삭제·이름변경·폴더생성·권한 등) 완료 — **전송이 아니다**.
+    ///
+    /// 예전에는 이것도 `SftpTransferDone`으로 보내서, 진행 중인 전송 큐 항목이 엉뚱하게
+    /// 완료 처리됐다(2GB 다운로드 중 파일 하나 삭제하면 다운로드가 "끝난 것"이 됨).
+    SftpOpDone {
         id: SftpId,
         name: String,
         ok: bool,

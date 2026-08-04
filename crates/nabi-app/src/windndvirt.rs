@@ -1,4 +1,4 @@
-//! SFTP 원격 파일 → 탐색기 드래그-아웃(가상 파일, 드롭 시 다운로드).
+﻿//! SFTP 원격 파일 → 탐색기 드래그-아웃(가상 파일, 드롭 시 다운로드).
 //!
 //! 원격 파일은 로컬 실파일이 없으므로 CFSTR_FILEDESCRIPTORW(이름·크기) +
 //! CFSTR_FILECONTENTS(IStream)를 제공한다. 탐색기가 드롭 시 FILECONTENTS를 읽을 때
@@ -93,6 +93,7 @@ impl VirtData {
         let _ = std::fs::remove_file(&temp);
         let _ = self.cmd_tx.send(Command::SftpDownload {
             id: self.sftp_id,
+            xfer: crate::sftpxfer::XFER_NONE, // 큐에 표시하지 않는 내부 전송(드래그아웃).
             remote: self.file.remote_path.clone(),
             local: temp.to_string_lossy().into_owned(),
             resume: 0,

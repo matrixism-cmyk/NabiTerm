@@ -26,6 +26,8 @@ pub struct NabiApp {
     pub sftp_bg: std::collections::HashMap<nabi_types::PaneId, crate::sftppanel::SftpPanel>,
     /// 원격 연결/탭 전역 카운터(연결 id + 고유 PaneId 파생).
     pub sftp_seq: u64,
+    /// 전송 큐 항목 식별자 발급기(단조 증가). 진행률·완료 이벤트가 이 값으로 항목을 지목한다.
+    pub xfer_seq: u64,
     /// 편집: 외부 편집기 감시 목록(다운로드→재업로드) + 내장 텍스트 에디터(인앱).
     /// 편집: 외부 편집기 감시 목록 + 내장 에디터 문서들(PaneId별 도크 탭).
     pub edits: Vec<crate::editsftp::EditWatch>, pub editors: HashMap<PaneId, crate::editor::EditorDoc>,
@@ -228,6 +230,7 @@ impl NabiApp {
             sftp_pane: None,
             sftp_bg: std::collections::HashMap::new(),
             sftp_seq: 0,
+            xfer_seq: 0,
             edits: Vec::new(), editors: HashMap::new(),
             compare_on: false,
             sync_browse: false,

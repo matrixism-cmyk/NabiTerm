@@ -28,12 +28,13 @@ impl NabiApp {
         let size = std::fs::metadata(&local).map(|m| m.len()).unwrap_or(0);
         let is_dir = local.is_dir();
         let local = local.to_string_lossy().into_owned();
-        let cmd = if is_dir {
-            Command::SftpUploadDir { id, local, remote }
-        } else {
-            Command::SftpUpload { id, local, remote }
-        };
-        self.push_xfer(format!("{subfolder}/{fname}"), true, size, cmd);
+        self.push_xfer(format!("{subfolder}/{fname}"), true, size, move |xfer| {
+            if is_dir {
+                Command::SftpUploadDir { id, xfer, local, remote }
+            } else {
+                Command::SftpUpload { id, xfer, local, remote }
+            }
+        });
     }
 
     /// 로컬 경로 하나를 현재 원격 디렉터리로 업로드한다(파일/폴더 자동, 앱 내 DnD·드롭 공용).
@@ -56,17 +57,21 @@ impl NabiApp {
         let is_dir = local.is_dir();
         let size = std::fs::metadata(&local).map(|m| m.len()).unwrap_or(0);
         let local = local.to_string_lossy().into_owned();
-        let cmd = if is_dir {
-            Command::SftpUploadDir { id, local, remote }
-        } else {
-            Command::SftpUpload { id, local, remote }
-        };
-        self.push_xfer(fname, true, size, cmd);
+        self.push_xfer(fname, true, size, move |xfer| {
+            if is_dir {
+                Command::SftpUploadDir { id, xfer, local, remote }
+            } else {
+                Command::SftpUpload { id, xfer, local, remote }
+            }
+        });
     }
 }
 
 /// 한 건의 파일 전송 상태.
 pub(crate) struct Transfer {
+    /// 이 항목의 고유 식별자. 진행률·완료 이벤트가 이 값으로 항목을 지목하므로
+    /// 큐 순서가 바뀌거나(재시도) 다른 파일 작업이 끼어들어도 엉뚱한 행이 갱신되지 않는다.
+    pub xfer: u64,
     pub name: String,
     pub up: bool,
     pub size: u64,
@@ -82,16 +87,34 @@ pub(crate) struct Transfer {
 }
 
 impl Transfer {
-    pub(crate) fn new(name: String, up: bool, size: u64) -> Self {
-        Self { name, up, size, bytes: 0, done: false, ok: false, started: std::time::Instant::now(), retry: None, err: String::new() }
+    pub(crate) fn new(xfer: u64, name: String, up: bool, size: u64) -> Self {
+        Self { xfer, name, up, size, bytes: 0, done: false, ok: false, started: std::time::Instant::now(), retry: None, err: String::new() }
     }
 }
 
+/// 전송 큐에 항목이 없는 내부 전송(원격 편집 임시파일·드래그아웃 등)의 식별자.
+///
+/// 이 값으로 온 진행률·완료 이벤트는 큐에서 매칭되는 항목이 없어 조용히 무시된다 —
+/// 의도된 동작이다(사용자에게 보여줄 큐 행이 애초에 없다).
+pub(crate) const XFER_NONE: u64 = 0;
+
 impl NabiApp {
     /// 전송 명령을 보내고 큐에 항목을 추가한다(재시도용 명령 보관, H2). 모든 업/다운로드 경로 공용.
-    pub(crate) fn push_xfer(&mut self, name: String, up: bool, size: u64, cmd: Command) {
+    ///
+    /// 식별자를 여기서 발급해 `make`로 명령에 주입한다 — 큐 항목과 명령이 항상 같은 id를
+    /// 갖도록 강제해, 호출부가 실수로 어긋나게 만들 수 없다.
+    pub(crate) fn push_xfer(
+        &mut self,
+        name: String,
+        up: bool,
+        size: u64,
+        make: impl FnOnce(u64) -> Command,
+    ) {
+        self.xfer_seq += 1;
+        let xfer = self.xfer_seq;
+        let cmd = make(xfer);
         self.orch.send(cmd.clone());
-        let mut t = Transfer::new(name, up, size);
+        let mut t = Transfer::new(xfer, name, up, size);
         t.retry = Some(cmd);
         self.sftp.transfers.push(t);
     }
@@ -201,7 +224,38 @@ pub(crate) fn show_transfers(ui: &mut egui::Ui, transfers: &[Transfer], lang: La
 
 #[cfg(test)]
 mod tests {
-    use super::{eta_secs, human_secs, xfer_totals};
+    use super::{eta_secs, human_secs, xfer_totals, Transfer, XFER_NONE};
+
+    /// 큐 항목은 id로 지목해야 한다 — 위치로 찾으면 다른 파일 작업이 끼어들거나
+    /// 재시도로 순서가 바뀔 때 엉뚱한 행이 갱신된다(과거 "첫 미완료 항목" 방식의 버그).
+    #[test]
+    fn transfers_are_addressed_by_id_not_position() {
+        let mut q = [
+            Transfer::new(10, "big.iso".into(), false, 1000),
+            Transfer::new(11, "a.txt".into(), false, 10),
+        ];
+        // 두 번째 항목이 먼저 끝났다고 알려와도, 첫 항목(진행 중)은 건드리지 않아야 한다.
+        if let Some(t) = q.iter_mut().find(|t| t.xfer == 11) {
+            t.done = true;
+            t.ok = true;
+        }
+        assert!(!q[0].done, "진행 중이던 큰 파일이 완료 처리되면 안 된다");
+        assert!(q[1].done);
+
+        // 진행률도 id로 귀속된다.
+        if let Some(t) = q.iter_mut().find(|t| t.xfer == 10) {
+            t.bytes = 512;
+        }
+        assert_eq!(q[0].bytes, 512);
+        assert_eq!(q[1].bytes, 0, "다른 항목의 진행률이 새면 안 된다");
+    }
+
+    /// 큐에 없는 내부 전송(원격 편집·드래그아웃)은 매칭되는 항목이 없어 조용히 무시된다.
+    #[test]
+    fn internal_transfers_match_nothing() {
+        let q = [Transfer::new(1, "x".into(), false, 1)];
+        assert!(q.iter().all(|t| t.xfer != XFER_NONE), "내부 전송 id는 큐와 겹치지 않는다");
+    }
 
     #[test]
     fn totals_sum_components() {

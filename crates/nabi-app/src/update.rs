@@ -131,8 +131,9 @@ impl eframe::App for NabiApp {
         self.handle_close(ctx);
         self.process_pending(ctx);
         perf_overlay(ctx, frame); // NABI_PERF 설정 시 프레임 CPU 시간 HUD(P5 측정).
-        // 유휴 CPU 절약: 출력 이벤트는 즉시 repaint를 요청하므로, 하트비트만 조정.
-        ctx.request_repaint_after(std::time::Duration::from_millis(self.idle_ms()));
+        // 유휴 CPU 절약: 출력·입력은 각자 repaint를 요청하므로, 여기서는 화면이 실제로
+        // 바뀔 시점(깜빡임 토글·벨 플래시)만 예약한다. 안 보이는 창은 아예 깨우지 않는다.
+        self.schedule_next_frame(ctx);
     }
 }
 

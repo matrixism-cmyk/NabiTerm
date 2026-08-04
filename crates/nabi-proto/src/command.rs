@@ -59,8 +59,12 @@ pub enum Command {
     /// 원격 디렉터리 목록 요청.
     SftpList { id: SftpId, path: String },
     /// 원격 파일을 로컬 경로로 내려받기. resume>0이면 그 오프셋부터 이어받기.
+    ///
+    /// `xfer`는 UI 전송 큐 항목 식별자. 진행률·완료 이벤트가 이 값을 그대로 돌려주므로
+    /// 큐 위치가 아니라 **항목 자체**에 귀속된다(재시도로 순서가 바뀌어도 안전).
     SftpDownload {
         id: SftpId,
+        xfer: u64,
         remote: String,
         local: String,
         resume: u64,
@@ -68,6 +72,7 @@ pub enum Command {
     /// 로컬 파일을 원격 경로로 올리기.
     SftpUpload {
         id: SftpId,
+        xfer: u64,
         local: String,
         remote: String,
     },
@@ -111,6 +116,7 @@ pub enum Command {
     /// 원격 디렉터리를 로컬로 재귀 다운로드.
     SftpDownloadDir {
         id: SftpId,
+        xfer: u64,
         remote: String,
         local: String,
     },
@@ -124,6 +130,7 @@ pub enum Command {
     /// 로컬 디렉터리를 원격으로 재귀 업로드.
     SftpUploadDir {
         id: SftpId,
+        xfer: u64,
         local: String,
         remote: String,
     },

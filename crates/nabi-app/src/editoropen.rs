@@ -1,4 +1,4 @@
-//! nabiPad 파일 열기 라우팅 — 이진=HEX, 초대용량=뷰어, 대용량=rope, 그 외=텍스트.
+﻿//! nabiPad 파일 열기 라우팅 — 이진=HEX, 초대용량=뷰어, 대용량=rope, 그 외=텍스트.
 //! 패널 추가(도크 탭/분리 창)와 원격 다운로드 적재도 여기서 처리한다. editor.rs에서 분리.
 
 use crate::app::NabiApp;
@@ -223,6 +223,7 @@ impl NabiApp {
         }
         self.orch.send(Command::SftpDownload {
             id,
+            xfer: crate::sftpxfer::XFER_NONE,
             remote: remote.clone(),
             local: temp.to_string_lossy().into_owned(),
             resume: 0,
@@ -245,7 +246,7 @@ impl NabiApp {
         let msg = match std::fs::write(&path, &data) {
             Ok(()) => {
                 if let Some((id, rp)) = &remote {
-                    self.orch.send(Command::SftpUpload { id: *id, local: path.to_string_lossy().into_owned(), remote: rp.clone() });
+                    self.orch.send(Command::SftpUpload { id: *id, xfer: crate::sftpxfer::XFER_NONE, local: path.to_string_lossy().into_owned(), remote: rp.clone() });
                 }
                 format!("\u{2713} {label}")
             }

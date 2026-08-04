@@ -80,12 +80,13 @@ pub fn handle_command(
         Command::SftpList { id, path } => sftp_request(id, SftpReq::List(path), sftp),
         Command::SftpDownload {
             id,
+            xfer,
             remote,
             local,
             resume,
-        } => sftp_request(id, SftpReq::Download { remote, local, resume }, sftp),
-        Command::SftpUpload { id, local, remote } => {
-            sftp_request(id, SftpReq::Upload { local, remote }, sftp)
+        } => sftp_request(id, SftpReq::Download { xfer, remote, local, resume }, sftp),
+        Command::SftpUpload { id, xfer, local, remote } => {
+            sftp_request(id, SftpReq::Upload { xfer, local, remote }, sftp)
         }
         Command::SftpRemove { id, path } => sftp_request(id, SftpReq::Remove(path), sftp),
         Command::SftpRename { id, from, to } => {
@@ -106,14 +107,14 @@ pub fn handle_command(
         Command::SftpChmodRecursive { id, path, mode } => {
             sftp_request(id, SftpReq::ChmodRec { path, mode }, sftp)
         }
-        Command::SftpDownloadDir { id, remote, local } => {
-            sftp_request(id, SftpReq::DownloadDir { remote, local }, sftp)
+        Command::SftpDownloadDir { id, xfer, remote, local } => {
+            sftp_request(id, SftpReq::DownloadDir { xfer, remote, local }, sftp)
         }
         Command::SftpDownloadDirSync { id, remote, local, done } => {
             sftp_request(id, SftpReq::DownloadDirSync { remote, local, done }, sftp)
         }
-        Command::SftpUploadDir { id, local, remote } => {
-            sftp_request(id, SftpReq::UploadDir { local, remote }, sftp)
+        Command::SftpUploadDir { id, xfer, local, remote } => {
+            sftp_request(id, SftpReq::UploadDir { xfer, local, remote }, sftp)
         }
         Command::SftpClose { id } => sftp_request(id, SftpReq::Close, sftp),
         Command::StartLocalForward {

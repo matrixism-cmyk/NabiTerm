@@ -1,4 +1,4 @@
-//! 오케스트레이터 이벤트 처리(pane 생성/종료/출력/클립보드/cwd).
+﻿//! 오케스트레이터 이벤트 처리(pane 생성/종료/출력/클립보드/cwd).
 
 use crate::app::NabiApp;
 use nabi_proto::Event;
@@ -8,6 +8,8 @@ impl NabiApp {
         let focused = self.focused_pane();
         for ev in self.orch.drain_events() {
             self.control_events.publish(&ev); // 제어 평면 Wait/Tail 구독자에 fan-out.
+            // SFTP 이벤트는 eventsftp.rs가 처리하고, 아니면 이벤트를 그대로 돌려준다.
+            let Some(ev) = self.handle_sftp_event(ev, ctx) else { continue };
             match ev {
                 Event::PaneSpawned { pane, seq } => {
                     if self.control_float {
@@ -168,95 +170,6 @@ impl NabiApp {
                 },
                 Event::ControlOsc { pane, verb, json } => {
                     self.handle_control_osc(pane, &verb, &json);
-                }
-                Event::SftpConnected { id } => {
-                    let connected = nabi_i18n::tr(self.lang, "sftp.connected").to_string();
-                    let found = if let Some(p) = self.remote_panel_mut(id) {
-                        p.status = connected;
-                        p.path = ".".to_string();
-                        true
-                    } else {
-                        false
-                    };
-                    if found {
-                        self.orch.send(nabi_proto::Command::SftpList {
-                            id,
-                            path: ".".to_string(),
-                        });
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpListing {
-                    id,
-                    path,
-                    mut entries,
-                } => {
-                    let sort = self.browser.sort; // 활성/배경 어느 패널이든 동일 정렬.
-                    let desc = self.browser.sort_desc;
-                    if let Some(p) = self.remote_panel_mut(id) {
-                        crate::sftpentries::sort_sftp(&mut entries, sort, desc);
-                        p.path = path;
-                        p.entries = entries;
-                        p.status.clear();
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpError { id, message } => {
-                    if let Some(p) = self.remote_panel_mut(id) {
-                        p.status = message;
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpSearchResults { id, results } => {
-                    if let Some(p) = self.remote_panel_mut(id) {
-                        p.search_results = results;
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpDirSize { id, path, files, dirs, bytes } => {
-                    let lang = self.lang;
-                    if let Some(p) = self.remote_panel_mut(id) {
-                        let base = crate::sftppath::remote_basename(&path);
-                        // 폴더 속성: 이름 · N개 파일 · M개 폴더 · 총 크기.
-                        p.status = format!("{} {} \u{00b7} {}\u{1f4c4} {}\u{1f4c1} \u{00b7} {}",
-                            nabi_i18n::tr(lang, "sftp.dirsize"), base, files, dirs, crate::browserfs::human(bytes));
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpProgress { id, bytes } => {
-                    if let Some(p) = self.remote_panel_mut(id) {
-                        if let Some(t) = p.transfers.iter_mut().find(|t| !t.done) {
-                            t.bytes = bytes;
-                        }
-                        ctx.request_repaint();
-                    }
-                }
-                Event::SftpTransferDone {
-                    id, name, ok, message,
-                } => {
-                    let res = self.remote_panel_mut(id).map(|p| {
-                        let was_upload = p.transfers.iter().find(|t| !t.done).map(|t| t.up).unwrap_or(false);
-                        if let Some(t) = p.transfers.iter_mut().find(|t| !t.done) {
-                            t.done = true;
-                            t.ok = ok;
-                            if !ok {
-                                t.err = message.clone(); // 항목별 실패 사유 저장(툴팁).
-                            }
-                        }
-                        p.status = if ok { format!("\u{2193} {name}") } else { message };
-                        let drained = !p.transfers.iter().any(|t| !t.done); // 큐의 마지막 전송인가.
-                        (was_upload, p.path.clone(), drained)
-                    });
-                    if let Some((was_upload, path, drained)) = res {
-                        self.sftp_xfer_notify(ctx, ok, &name, drained); // H6 완료 토스트+attention.
-                        if ok {
-                            self.on_edit_download(&name); // 외부 편집기 오픈 또는 내장 에디터 적재.
-                        }
-                        if ok && was_upload {
-                            self.orch.send(nabi_proto::Command::SftpList { id, path });
-                        }
-                        ctx.request_repaint();
-                    }
                 }
                 Event::ForwardStarted { id, message } => {
                     self.notify =

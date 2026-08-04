@@ -1,4 +1,4 @@
-//! SFTP 전송 재시도·자동 재접속(S2 #14/#15) — 연결 오류 시 지수 백오프 후 재접속하고
+﻿//! SFTP 전송 재시도·자동 재접속(S2 #14/#15) — 연결 오류 시 지수 백오프 후 재접속하고
 //! `.filepart` 이어받기로 재시도한다. 취소·비연결 오류는 즉시 실패(무의미한 재시도 방지).
 
 use crate::connsftp::Conn;
@@ -64,6 +64,7 @@ pub(crate) async fn run_download(
     limit_kbps: u32,
     cancel: &Arc<AtomicBool>,
     id: SftpId,
+    xfer: u64,
     remote: &str,
     local: &str,
     mut resume: u64,
@@ -76,7 +77,7 @@ pub(crate) async fn run_download(
             .download(remote, local, resume, |total| {
                 if total - last >= PROGRESS_STEP {
                     last = total;
-                    let _ = ev.send(Event::SftpProgress { id, bytes: total });
+                    let _ = ev.send(Event::SftpProgress { id, xfer, bytes: total });
                 }
             })
             .await;
@@ -103,6 +104,7 @@ pub(crate) async fn run_upload(
     limit_kbps: u32,
     cancel: &Arc<AtomicBool>,
     id: SftpId,
+    xfer: u64,
     local: &str,
     remote: &str,
     ev: &Sender<Event>,
@@ -114,7 +116,7 @@ pub(crate) async fn run_upload(
             .upload(local, remote, |total| {
                 if total - last >= PROGRESS_STEP {
                     last = total;
-                    let _ = ev.send(Event::SftpProgress { id, bytes: total });
+                    let _ = ev.send(Event::SftpProgress { id, xfer, bytes: total });
                 }
             })
             .await;

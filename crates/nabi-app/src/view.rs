@@ -77,12 +77,7 @@ impl NabiApp {
                 });
                 return;
             }
-            let blink_on = if self.config.appearance.cursor_blink {
-                let ms = self.config.appearance.blink_ms.max(1) as u128;
-                (self.blink_start.elapsed().as_millis() / ms).is_multiple_of(2)
-            } else {
-                true
-            };
+            let blink_on = self.blink_on();
             self.tab_ctx_open = false; // 매 프레임 리셋 — dock.show 중 탭 메뉴가 열리면 true.
             // egui_dock 내장 'Eject'(같은 창 안에 떠 있는 패널로) 라벨을 알기 쉽게 — lang 바뀔 때만 갱신.
             let eject = nabi_i18n::tr(self.lang, "tab.eject");

@@ -116,12 +116,7 @@ impl NabiApp {
             return;
         }
         let font_size = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
-        let blink_on = if self.config.appearance.cursor_blink {
-            let ms = self.config.appearance.blink_ms.max(1) as u128;
-            (self.blink_start.elapsed().as_millis() / ms).is_multiple_of(2)
-        } else {
-            true
-        };
+        let blink_on = self.blink_on();
         let find = if self.find_open && !self.find_query.is_empty() {
             Some(self.find_query.clone())
         } else {
@@ -146,6 +141,7 @@ impl NabiApp {
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
         }
+        self.schedule_next_frame(vctx); // 이 분리 창도 필요한 시점에만 깨운다.
         self.show_floating_link_menu(vctx); // 링크 길게누르기 팝업(P2).
     }
 
@@ -162,12 +158,7 @@ impl NabiApp {
         if self.docked_float.is_empty() {
             return;
         }
-        let blink_on = if self.config.appearance.cursor_blink {
-            let ms = self.config.appearance.blink_ms.max(1) as u128;
-            (self.blink_start.elapsed().as_millis() / ms).is_multiple_of(2)
-        } else {
-            true
-        };
+        let blink_on = self.blink_on();
         let find = (self.find_open && !self.find_query.is_empty()).then(|| self.find_query.clone());
         let mut closed = Vec::new();
         for pane in self.docked_float.clone() {
@@ -243,6 +234,8 @@ fn render_floating(
             ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom, link_click,
         );
     });
-    ctx.request_repaint();
+    // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.
+    // 여기서 무조건 request_repaint()를 걸면 이 뷰포트가 영원히 최대 프레임으로 돌아
+    // 코어 하나를 계속 먹는다(출력이 없어도).
 }
 

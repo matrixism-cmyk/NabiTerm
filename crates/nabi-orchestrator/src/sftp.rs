@@ -16,15 +16,15 @@ use tokio::sync::mpsc;
 /// 액터로 보내는 요청.
 pub enum SftpReq {
     List(String),
-    Download { remote: String, local: String, resume: u64 },
-    Upload { local: String, remote: String },
+    Download { xfer: u64, remote: String, local: String, resume: u64 },
+    Upload { xfer: u64, local: String, remote: String },
     Remove(String),
     Rename { from: String, to: String },
     Mkdir(String),
     Touch(String),
-    DownloadDir { remote: String, local: String },
+    DownloadDir { xfer: u64, remote: String, local: String },
     DownloadDirSync { remote: String, local: String, done: std::sync::mpsc::Sender<bool> },
-    UploadDir { local: String, remote: String },
+    UploadDir { xfer: u64, local: String, remote: String },
     Chmod { path: String, mode: u32 },
     ChmodRec { path: String, mode: u32 },
     Search { root: String, needle: String },
@@ -97,58 +97,58 @@ pub fn spawn_sftp(
                         let _ = ev.send(Event::SftpError { id, message });
                     }
                 },
-                SftpReq::Download { remote, local, resume } => {
+                SftpReq::Download { xfer, remote, local, resume } => {
                     // 연결 오류 시 재접속+이어받기로 재시도(S2 #14/#15).
                     let res = crate::sftpretry::run_download(
-                        &mut fs, &params, limit_kbps, &cancel_retry, id, &remote, &local, resume, &ev,
+                        &mut fs, &params, limit_kbps, &cancel_retry, id, xfer, &remote, &local, resume, &ev,
                     )
                     .await;
-                    let _ = ev.send(transfer_done(id, &local, res));
+                    let _ = ev.send(transfer_done(id, xfer, &local, res));
                 }
-                SftpReq::Upload { local, remote } => {
+                SftpReq::Upload { xfer, local, remote } => {
                     let res = crate::sftpretry::run_upload(
-                        &mut fs, &params, limit_kbps, &cancel_retry, id, &local, &remote, &ev,
+                        &mut fs, &params, limit_kbps, &cancel_retry, id, xfer, &local, &remote, &ev,
                     )
                     .await;
-                    let _ = ev.send(transfer_done(id, &remote, res));
+                    let _ = ev.send(transfer_done(id, xfer, &remote, res));
                 }
                 SftpReq::Remove(path) => {
                     // 재귀 삭제(비어있지 않은 디렉터리도 안전하게 제거).
                     let res = fs.remove_recursive(&path).await;
-                    let _ = ev.send(transfer_done(id, &path, res));
+                    let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::Rename { from, to } => {
                     let res = fs.rename(&from, &to).await;
-                    let _ = ev.send(transfer_done(id, &to, res));
+                    let _ = ev.send(op_done(id, &to, res));
                 }
                 SftpReq::Mkdir(path) => {
                     let res = fs.mkdir(&path).await;
-                    let _ = ev.send(transfer_done(id, &path, res));
+                    let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::Touch(path) => {
                     let res = fs.touch(&path).await;
-                    let _ = ev.send(transfer_done(id, &path, res));
+                    let _ = ev.send(op_done(id, &path, res));
                 }
-                SftpReq::DownloadDir { remote, local } => {
+                SftpReq::DownloadDir { xfer, remote, local } => {
                     let res = fs.download_dir(&remote, Path::new(&local)).await;
-                    let _ = ev.send(transfer_done(id, &local, res));
+                    let _ = ev.send(transfer_done(id, xfer, &local, res));
                 }
                 SftpReq::DownloadDirSync { remote, local, done } => {
                     // 가상 폴더 드래그-아웃: 완료를 done 채널로(UI 이벤트 루프 비경유).
                     let res = fs.download_dir(&remote, Path::new(&local)).await;
                     let _ = done.send(res.is_ok());
                 }
-                SftpReq::UploadDir { local, remote } => {
+                SftpReq::UploadDir { xfer, local, remote } => {
                     let res = fs.upload_dir(Path::new(&local), &remote).await;
-                    let _ = ev.send(transfer_done(id, &remote, res));
+                    let _ = ev.send(transfer_done(id, xfer, &remote, res));
                 }
                 SftpReq::Chmod { path, mode } => {
                     let res = fs.chmod(&path, mode).await;
-                    let _ = ev.send(transfer_done(id, &path, res));
+                    let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::ChmodRec { path, mode } => {
                     let res = fs.chmod_recursive(&path, mode).await;
-                    let _ = ev.send(transfer_done(id, &path, res));
+                    let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::Search { root, needle } => {
                     let results = fs.search(&root, &needle, 500).await;
@@ -182,9 +182,20 @@ pub fn sftp_cancel(id: SftpId, conns: &SftpConns) {
     }
 }
 
-/// 전송 결과를 완료 이벤트로 변환.
-fn transfer_done(id: SftpId, name: &str, res: Result<(), String>) -> Event {
+/// 전송 결과를 완료 이벤트로 변환(큐 항목 `xfer`에 귀속).
+fn transfer_done(id: SftpId, xfer: u64, name: &str, res: Result<(), String>) -> Event {
     Event::SftpTransferDone {
+        id,
+        xfer,
+        name: name.to_string(),
+        ok: res.is_ok(),
+        message: res.err().unwrap_or_default(),
+    }
+}
+
+/// 파일 작업(삭제·이름변경·권한 등) 결과 — 전송 큐와 무관한 별도 이벤트.
+fn op_done(id: SftpId, name: &str, res: Result<(), String>) -> Event {
+    Event::SftpOpDone {
         id,
         name: name.to_string(),
         ok: res.is_ok(),
