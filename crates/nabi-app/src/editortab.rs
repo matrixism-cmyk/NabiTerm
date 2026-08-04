@@ -163,15 +163,15 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
     let mut cur = (1usize, 1usize);
     let mut sel_chars = 0usize;
     // syntect 하이라이트(켜짐 + 임계 이하). 캐시로 변경 시에만 재계산.
-    let hl = doc.highlight && doc.text.len() < crate::editorhl::MAX_HL_BYTES;
+    let hl = doc.highlight && doc.text.len() < crate::editorhl::MAX_SYNTAX_BYTES;
     let ext = doc.lang_ext(); // 구문 언어 모드 우선(무제목/오탐 문서도 강조), 없으면 확장자.
-    let (fsize, ctx) = (doc.font_size, ui.ctx().clone());
+    let (fsize, hl_id) = (doc.font_size, ui.id().with("hl").value()); // hl_id=증분 강조 캐시 키.
     // wrap(=doc.wrap)이 꺼져 있으면 layouter의 줄바꿈 폭을 무한대로 둔다 — egui가 넘겨주는 폭은
     // 뷰포트 폭(유한값)이라 그대로 쓰면 wrap=off여도 줄바꿈돼 버린다(가로 스크롤로 표시되도록).
     let mut layouter = move |ui: &egui::Ui, text: &str, wrap_w: f32| {
         let max_w = if wrap { wrap_w } else { f32::INFINITY };
         let mut job = if hl {
-            crate::editorhl::highlight(&ctx, text, &ext, fsize)
+            crate::editorhl::highlight(hl_id, text, &ext, fsize)
         } else {
             let color = ui.visuals().text_color();
             egui::text::LayoutJob::simple(text.to_owned(), egui::FontId::monospace(fsize), color, max_w)

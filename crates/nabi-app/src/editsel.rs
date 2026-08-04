@@ -1,4 +1,4 @@
-//! 편집 선택 모델 — 고정단(anchor)/이동단(head) 범위의 정렬·비겹침 집합.
+﻿//! 편집 선택 모델 — 고정단(anchor)/이동단(head) 범위의 정렬·비겹침 집합.
 //!
 //! 지금은 항상 범위 1개로 동작하지만 자료구조는 **처음부터 여러 개**를 담는다.
 //! 단일 커서(`cursor: usize` + `anchor: Option<usize>`)로 만들어 두면 나중에 멀티커서를
@@ -75,16 +75,21 @@ impl Selection {
     }
 
     /// 모든 범위(정렬 순).
+    // 아래 네 메서드는 멀티커서 UI가 붙기 전까지 테스트에서만 쓰인다. 자료구조를 미리 맞추는
+    // 것이 이 단계의 목적이므로(C2), 지금 지우면 명령들을 나중에 다시 고쳐야 한다.
+    #[allow(dead_code)]
     pub(crate) fn ranges(&self) -> &[Range] {
         &self.ranges
     }
 
     /// 범위 개수.
+    #[allow(dead_code)]
     pub(crate) fn len(&self) -> usize {
         self.ranges.len()
     }
 
     /// 범위를 추가한다(겹치면 병합).
+    #[allow(dead_code)]
     pub(crate) fn push(&mut self, r: Range) {
         self.ranges.push(r);
         self.primary = self.ranges.len() - 1;
@@ -92,6 +97,7 @@ impl Selection {
     }
 
     /// 주 범위만 남긴다(Esc 등으로 멀티커서 해제).
+    #[allow(dead_code)]
     pub(crate) fn collapse_to_primary(&mut self) {
         let p = self.primary();
         self.ranges = vec![p];
