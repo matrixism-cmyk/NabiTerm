@@ -9,6 +9,8 @@ mod catalog3;
 mod catalog_editor;
 mod catalog_editor2;
 mod catalog_sftp;
+mod catalog_vault;
+mod catalog_conn;
 
 pub use catalog::tr;
 

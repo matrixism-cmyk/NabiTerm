@@ -162,7 +162,7 @@ mod toast;
 mod titlebar;
 mod tabs;
 mod vault;
-mod view;
+mod view; mod viewacts;
 mod winclip;
 mod windnd;
 mod windndvirt;

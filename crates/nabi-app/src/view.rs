@@ -189,66 +189,14 @@ impl NabiApp {
             if dock_float == Some(p) { self.docked_float.push(p); } else { self.floating.push(p); }
         }
         self.open_terminal_pathline(); // 터미널 `파일:줄` 더블클릭 → 에디터로 점프(pending 처리).
-        // 탭 우클릭 'SFTP 열기': 그 SSH pane의 출처(host/user/자격증명)로 SFTP 브라우저를 연다.
         if let Some(p) = sftp_open {
-            if let Some(nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump }) =
-                self.pane_origins.get(&p).cloned()
-            {
-                self.open_sftp_saved(
-                    nabi_session::SavedSession {
-                        name: format!("{user}@{host}"),
-                        folder: None,
-                        kind: nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump },
-                        on_connect: None,
-                        cwd: None,
-                        is_ftp: false,
-                        open_sftp: false,
-                    },
-                    false,
-                );
-            }
+            self.open_sftp_from_pane(p);
         }
-        // 브라우저 탭 액션 적용(동시에 보이는 모든 탭): 사이드패널 상태와 잠시 스왑해
-        // 기존 적용 경로 재사용(전송 목적지 등은 self.browser.path를 읽으므로 스왑이 정확).
-        for (p, a) in browser_act {
-            if let Some(r) = a.rect {
-                self.drop_zones.push((crate::dnd::DropTarget::BrowserTab(p), r));
-            }
-            if let Some(mut bp) = self.browser_tabs.remove(&p) {
-                std::mem::swap(&mut self.browser, &mut bp);
-                self.apply_browser_act(ctx, a);
-                std::mem::swap(&mut self.browser, &mut bp);
-                self.browser_tabs.insert(p, bp);
-            }
-        }
-        if let Some(p) = browser_closed {
-            self.browser_tabs.remove(&p); // 닫힌 탭 상태 폐기.
-        }
-        // 에디터 탭 액션(저장) 적용 + 닫힘 정리.
-        for (p, a) in editor_act {
-            if a.toggle_menu_bar { self.toggle_editor_menu_bar(); }
-            if a.toggle_hex { self.toggle_editor_hex(p); }
-            if a.reload { self.reload_editor_doc(p); }
-            if a.save { self.save_editor_doc(p); }
-            if a.save_all { let n = self.save_all_docs(); self.notify = Some((format!("{} {n}", nabi_i18n::tr(self.lang, "cmd.savedall")), std::time::Instant::now())); }
-            if a.save_as { self.save_editor_as(p); }
-            if let Some(lbl) = a.set_encoding { self.reload_editor_encoding(p, lbl); }
-            if let Some(lbl) = a.save_encoding { self.save_with_encoding(p, lbl); }
-            if let Some(eol) = a.set_eol { self.convert_editor_eol(p, eol); }
-            if a.close {
-                self.request_editor_close(p); // #4: 미저장이면 확인 모달.
-            }
-            if a.open_settings { self.editor_settings_for = Some(p); }
-            if a.new_doc { self.open_empty_pad(); }
-            if a.open_file { if let Some(fp) = rfd::FileDialog::new().pick_file() { self.open_editor_local(fp); } }
-            if let Some(rp) = a.open_recent { self.open_editor_local(rp.into()); }
-            if a.diff_disk { self.diff_editor_against_disk(p); }
-            if let Some(c) = a.run_in_term { self.run_in_first_terminal(c); }
-        }
+        self.apply_browser_tab_acts(ctx, browser_act, browser_closed);
+        self.apply_editor_tab_acts(editor_act, editor_closed);
         // 도크 에디터가 연 nabiPad 설정 창은 메인 ctx에 렌더(분리 창은 floating_editor에서 vctx).
-        if self.editor_settings_for.is_some_and(|p| !self.floating.contains(&p)) { self.render_editor_settings(ctx); }
-        if let Some(p) = editor_closed {
-            self.editors.remove(&p);
+        if self.editor_settings_for.is_some_and(|p| !self.floating.contains(&p)) {
+            self.render_editor_settings(ctx);
         }
         self.apply_pending_focus(); // 비활성 pane 우클릭 포커스 요청 적용(첫 우클릭=활성화).
         // 탭바 빈 공간 우클릭 메뉴(그룹별 띠 감지 + 해당 그룹 포커스).

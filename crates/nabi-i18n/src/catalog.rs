@@ -180,21 +180,12 @@ const CATALOG: &[(&str, &str, &str, &str)] = &[
         "ネイティブ Windows 端末 · SSH クライアント (Rust/egui)",
     ),
     ("help.shortcuts", "Keyboard shortcuts:", "키보드 단축키:", "キーボードショートカット:"),
-    ("vault.title", "Unlock Vault", "볼트 잠금 해제", "Vault のロック解除"),
-    ("vault.prompt", "Master password:", "마스터 비밀번호:", "マスターパスワード:"),
-    ("vault.unlock", "Unlock", "잠금 해제", "ロック解除"),
-    ("vault.create", "Create Vault", "볼트 만들기", "Vault 作成"),
-    ("vault.unlocked", "Vault unlocked. Stored entries:", "볼트 잠금 해제됨. 저장 항목:", "解除済み。保存:"),
-    ("vault.lock", "Lock", "잠금", "ロック"),
     (
         "vault.firstuse",
         "First use: the password you set here becomes the master password.",
         "처음 사용: 여기서 정한 비밀번호가 마스터 비밀번호가 됩니다.",
         "初回: ここで設定したパスワードがマスターになります。",
     ),
-    ("vault.reset", "Reset (delete vault)", "초기화(볼트 삭제)", "リセット(削除)"),
-    ("vault.remember", "Remember password (OS credential)", "비밀번호 기억(OS 자격증명)", "パスワードを記憶(OS資格情報)"),
-    ("vault.remember.warn", "Stores the master password in Windows Credential Manager and auto-unlocks on start. Convenient but lower security — anyone using this Windows account can open the vault.", "마스터 비밀번호를 Windows 자격증명 관리자에 저장하고 시작 시 자동으로 잠금을 해제합니다. 편리하지만 보안은 낮아집니다 — 이 Windows 계정을 쓰는 누구나 볼트를 열 수 있습니다.", "マスターパスワードをWindows資格情報マネージャーに保存し、起動時に自動でロック解除します。便利ですが安全性は下がります — このWindowsアカウントを使う誰でも開けます。"),
     (
         "vault.reset_done",
         "Vault deleted. Set a new master password.",
@@ -219,7 +210,7 @@ pub fn tr(lang: Lang, key: &str) -> &'static str {
         .chain(crate::catalog3::CATALOG3)
         .chain(crate::catalog_editor::CATALOG_EDITOR)
         .chain(crate::catalog_editor2::CATALOG_EDITOR2)
-        .chain(crate::catalog_sftp::CATALOG_SFTP)
+        .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN)
     {
         if *k == key {
             return match lang {
@@ -249,7 +240,7 @@ mod tests {
         use std::collections::HashSet;
         let mut seen = HashSet::new();
         for (k, en, ko, ja) in CATALOG.iter().chain(crate::catalog2::CATALOG2).chain(crate::catalog3::CATALOG3).chain(crate::catalog_editor::CATALOG_EDITOR).chain(crate::catalog_editor2::CATALOG_EDITOR2)
-        .chain(crate::catalog_sftp::CATALOG_SFTP) {
+        .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN) {
             assert!(seen.insert(*k), "중복 키: {k}");
             assert!(
                 !en.is_empty() && !ko.is_empty() && !ja.is_empty(),
