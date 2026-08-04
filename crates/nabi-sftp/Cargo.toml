@@ -1,0 +1,17 @@
+[package]
+name = "nabi-sftp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-fs = { workspace = true }
+nabi-proto = { workspace = true }
+russh = { workspace = true }
+russh-sftp = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

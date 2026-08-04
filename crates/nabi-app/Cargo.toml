@@ -1,0 +1,82 @@
+[package]
+name = "nabi-app"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "nabi"
+path = "src/main.rs"
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-proto = { workspace = true }
+nabi-vt = { workspace = true }
+nabi-pty = { workspace = true }
+nabi-render = { workspace = true }
+nabi-orchestrator = { workspace = true }
+nabi-config = { workspace = true }
+nabi-session = { workspace = true }
+nabi-ssh = { workspace = true }
+nabi-ssh-ext = { workspace = true }
+rand = { workspace = true }
+nabi-secret = { workspace = true }
+nabi-telegram = { workspace = true }
+nabi-i18n = { workspace = true }
+nabi-log = { workspace = true }
+nabi-control = { workspace = true }
+nabi-release = { workspace = true }
+egui = { workspace = true }
+egui_extras = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+sha1 = "0.11"
+sha2 = "0.11"
+eframe = { workspace = true }
+egui_dock = { workspace = true }
+bytes = { workspace = true }
+crossbeam-channel = { workspace = true }
+arboard = "3"   # 우클릭 붙여넣기용 클립보드 읽기(eframe도 사용 — dedup)
+ron = "0.8"     # 도크 레이아웃 직렬화(eframe persistence가 이미 사용)
+global-hotkey = "0.6"   # Quake 모드 OS 전역 핫키
+trash = "5"     # 로컬 파일 삭제를 휴지통으로(복구 가능)
+raw-window-handle = "0.6" # 창 HWND 추출(OS 파일 드롭 위치 판정 — ScreenToClient)
+ttf-parser = "0.25"       # 설치 폰트의 등폭 여부·패밀리명 파싱(설정 폰트 목록)
+encoding_rs = "0.8"       # 내장 에디터 파일 인코딩 디코드(BOM/EUC-KR 등)
+chardetng = "0.1"         # 내장 에디터 자동 인코딩 감지(순수 Rust)
+memmap2 = "0.9"           # 대용량 파일 뷰어 메모리 매핑
+ropey = "1"               # 대용량 파일 편집 엔진(rope, O(1) clone로 undo 스냅샷 효율적)
+rfd = "0.15"              # 네이티브 파일 대화상자(다른 이름으로 저장) + 소프트웨어GL 확인창
+pollster = "0.3"          # 시작 시 wgpu 어댑터 사전 프로브(async→sync 블록)
+zip = { version = "2", default-features = false, features = ["deflate"] }  # 소프트웨어GL(Mesa) 자산 압축해제(C 의존 회피=deflate만)
+regex = "1"               # 내장 에디터 찾기/바꾸기 정규식·전체단어(순수 Rust)
+# 코드 하이라이트: onig(C) 회피 위해 default-features off + fancy-regex(순수 Rust).
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+# 탐색기 연동: CF_HDROP 클립보드 복사/붙여넣기 + OLE 드래그-아웃(DoDragDrop).
+windows-core = "0.58" # #[implement] 매크로가 생성하는 windows_core 경로 해석용.
+windows = { version = "0.58", features = [
+    "implement",
+    "Win32_Foundation",
+    "Win32_System_Memory",
+    "Win32_System_LibraryLoader",
+    "Win32_System_DataExchange",
+    "Win32_System_Ole",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_SystemServices",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+winres = "0.1" # exe 아이콘 임베드(gnu는 windres 사용 — MinGW 환경 전제).
+
+# windows-core는 #[implement] 매크로가 생성하는 ::windows_core 경로용 — 소스에 직접
+# 안 나타나 cargo-machete가 오탐한다. 무시 목록에 둬 향후 의존성 점검을 깨끗하게 유지.
+[package.metadata.cargo-machete]
+ignored = ["windows-core"]

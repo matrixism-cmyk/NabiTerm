@@ -1,0 +1,11 @@
+[package]
+name = "nabi-proto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+serde = { workspace = true }
+bytes = { workspace = true }

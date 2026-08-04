@@ -1,0 +1,10 @@
+[package]
+name = "nabi-telegram"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde_json = { workspace = true }
+native-tls = "0.2"   # Schannel 백엔드(OpenSSL 불필요 — gnu/MinGW 빌드 OK), nabi-release와 동일.

@@ -1,0 +1,12 @@
+# 자동 업데이트(GitHub Releases 확인·다운로드·실행). 크레이트명은 Windows 설치 감지
+# 휴리스틱(이름에 "update/setup/install"이 들면 권한 상승 강제)을 피하려 nabi-release.
+[package]
+name = "nabi-release"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde_json = { workspace = true }
+native-tls = "0.2"   # Windows에서 Schannel 백엔드(OpenSSL 불필요 — gnu/MinGW 빌드 OK)

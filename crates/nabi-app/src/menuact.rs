@@ -1,0 +1,261 @@
+//! 메뉴 액션 실행(menu_bar에서 분리).
+
+use crate::app::NabiApp;
+use crate::menu::MenuAction;
+use nabi_i18n::tr;
+
+impl NabiApp {
+    pub(crate) fn apply(&mut self, ctx: &egui::Context, a: MenuAction) {
+        match a {
+            MenuAction::Spawn(s) => self.spawn_local(s),
+            MenuAction::Find => self.find_open = true,
+            MenuAction::ResetTerm => self.reset_focused(),
+            MenuAction::SendSnippet(cmd) => self.send_snippet(&cmd),
+            MenuAction::AddSnippet => {
+                if let Some(t) = self.selection_text().map(|s| s.trim().to_string()) {
+                    if !t.is_empty() {
+                        self.config.terminal.snippets.push(t);
+                        let _ = nabi_config::save(&self.config_path, &self.config);
+                    }
+                }
+            }
+            MenuAction::RemoveSnippet(i) => {
+                if i < self.config.terminal.snippets.len() {
+                    self.config.terminal.snippets.remove(i);
+                    let _ = nabi_config::save(&self.config_path, &self.config);
+                }
+            }
+            MenuAction::SortSnippets => {
+                self.config.terminal.snippets.sort_by_key(|s| s.to_lowercase());
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
+            MenuAction::ExportSnippets => { let d = self.config.terminal.snippets.join("\n"); self.export_sessions_to(d, "nabi-snippets.txt", "txt", "menu.exportsnippets"); } MenuAction::ImportSnippets => self.import_snippets(),
+            MenuAction::CopyLastOutput => self.copy_last_output(ctx),
+            MenuAction::ToggleFloatOnTop => self.floating_on_top = !self.floating_on_top,
+            MenuAction::Copy => self.copy_selection(ctx),
+            MenuAction::Paste => self.paste_to_focused(),
+            MenuAction::SelectAll => {
+                if let Some(t) = self.select_all_focused() {
+                    ctx.copy_text(t);
+                }
+            }
+            MenuAction::ConnectSaved(s) => self.connect_saved(s),
+            MenuAction::OpenSftp(s) => self.open_sftp_saved(s, false),
+            MenuAction::ImportSshConfig => {
+                let path = crate::browser::home_dir().join(".ssh").join("config");
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    let imported = crate::sshconfig::parse_ssh_config(&content);
+                    self.import_sessions(imported, "menu.importsshconfig");
+                }
+            }
+            MenuAction::ImportFileZilla => {
+                // 설치본을 자동 탐지(%APPDATA%\FileZilla\sitemanager.xml). 없으면 파일 선택 폴백.
+                let auto = crate::filezilla::default_path();
+                let path = auto.or_else(|| {
+                    let mut dlg = rfd::FileDialog::new().add_filter("FileZilla sitemanager", &["xml"]);
+                    if let Some(d) = std::env::var_os("APPDATA") {
+                        dlg = dlg.set_directory(std::path::Path::new(&d).join("FileZilla"));
+                    }
+                    dlg.pick_file()
+                });
+                if let Some(p) = path {
+                    if let Ok(b) = std::fs::read(&p) {
+                        // 인코딩 자동 감지(BOM/UTF-16/ANSI) — 한글 등 깨짐 방지.
+                        let text = crate::editload::decode(&b).0;
+                        self.import_sessions(crate::filezilla::parse_filezilla(&text), "menu.importfilezilla");
+                    }
+                }
+            }
+            MenuAction::ImportMobaXterm => {
+                let path = crate::mobaxterm::default_path()
+                    .or_else(|| rfd::FileDialog::new().add_filter("MobaXterm.ini", &["ini"]).pick_file());
+                if let Some(p) = path {
+                    if let Ok(b) = std::fs::read(&p) {
+                        let text = crate::editload::decode(&b).0; // 인코딩 자동 감지(MobaXterm.ini는 UTF-16/ANSI 흔함).
+                        self.import_sessions(crate::mobaxterm::parse_mobaxterm(&text), "menu.importmobaxterm");
+                    }
+                }
+            }
+            MenuAction::ImportPuTTY => {
+                // PuTTY는 세션을 레지스트리에 둔다 — reg.exe로 export해 파싱. 실패 시 .reg 파일 선택.
+                let text = crate::putty::export_registry_text().or_else(|| {
+                    rfd::FileDialog::new()
+                        .add_filter("PuTTY .reg", &["reg"])
+                        .pick_file()
+                        .and_then(|p| std::fs::read(p).ok())
+                        .map(|b| crate::editload::decode(&b).0)
+                });
+                if let Some(t) = text {
+                    self.import_sessions(crate::putty::parse_putty_reg(&t), "menu.importputty");
+                }
+            }
+            MenuAction::ExportFileZilla => {
+                let data = crate::filezilla::to_sitemanager(&self.sessions.sessions);
+                self.export_sessions_to(data, "sitemanager.xml", "xml", "menu.exportfilezilla");
+            }
+            MenuAction::ExportPuTTY => {
+                let data = crate::putty::to_putty_reg(&self.sessions.sessions);
+                self.export_sessions_to(data, "putty-sessions.reg", "reg", "menu.exportputty");
+            }
+            MenuAction::ExportMobaXterm => {
+                let data = crate::mobaxterm::to_ini(&self.sessions.sessions);
+                self.export_sessions_to(data, "MobaXterm.ini", "ini", "menu.exportmobaxterm");
+            }
+            MenuAction::ExportSshConfig => {
+                let data = crate::sshconfig::to_ssh_config(&self.sessions.sessions);
+                self.export_sessions_to(data, "config", "", "menu.exportsshconfig");
+            }
+            MenuAction::DedupSessions => {
+                let n = self.sessions.dedup();
+                self.save_sessions();
+                let label = tr(self.lang, "menu.dedupsessions");
+                self.notify = Some((format!("{label} -{n}"), std::time::Instant::now()));
+            }
+            MenuAction::SortSessions => {
+                self.sessions.sort();
+                self.save_sessions();
+                self.notify = Some((tr(self.lang, "menu.sortsessions").to_string(), std::time::Instant::now()));
+            }
+            MenuAction::SortSessionsByHost => {
+                self.sessions.sort_by_host();
+                self.save_sessions();
+                self.notify = Some((tr(self.lang, "menu.sortbyhost").to_string(), std::time::Instant::now()));
+            }
+            MenuAction::DuplicateSession(s) => { let mut dup = s.clone(); dup.name = self.sessions.unique_copy_name(&s.name); self.sessions.add(dup); self.save_sessions(); }
+            MenuAction::EditSession(s) => self.edit_session(&s),
+            MenuAction::NewSshConnection => self.new_ssh_connection(),
+            MenuAction::DeleteSession(name) => {
+                self.sessions.remove(&name);
+                // 삭제된 세션의 고정·메모도 함께 제거(고아 방지).
+                let ap = &mut self.config.appearance; let hit = ap.pinned_sessions.iter().any(|p| p == &name) | ap.session_notes.remove(&name).is_some(); ap.pinned_sessions.retain(|p| p != &name);
+                if hit { let _ = nabi_config::save(&self.config_path, &self.config); }
+                self.save_sessions();
+            }
+            MenuAction::ExportSessions => {
+                if let (Ok(json), Some(dir)) =
+                    (nabi_session::export::to_json(&self.sessions), self.config_path.parent())
+                {
+                    let path = dir.join("sessions_export.json");
+                    let _ = std::fs::write(&path, json);
+                    let _ = std::process::Command::new("explorer").arg(dir).spawn();
+                }
+            }
+            MenuAction::ImportSessions => {
+                if let Some(dir) = self.config_path.parent() {
+                    let path = dir.join("sessions_export.json");
+                    if let Ok(tree) = std::fs::read_to_string(&path)
+                        .map_err(|e| e.to_string())
+                        .and_then(|s| nabi_session::export::from_json(&s))
+                    {
+                        let n = tree.sessions.len();
+                        self.sessions.sessions.extend(tree.sessions);
+                        self.save_sessions();
+                        let label = tr(self.lang, "menu.importsessions");
+                        self.notify = Some((format!("{label} +{n}"), std::time::Instant::now()));
+                    }
+                }
+            }
+            MenuAction::ToggleBrowser => self.toggle_browser(),
+            MenuAction::OpenBrowserTab => {
+                self.open_browser_tab();
+            }
+            MenuAction::ToggleSessionsPanel => {
+                self.config.appearance.show_sessions_panel =
+                    !self.config.appearance.show_sessions_panel;
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
+            MenuAction::ToggleQcBar => {
+                self.config.appearance.show_quickconnect_bar =
+                    !self.config.appearance.show_quickconnect_bar;
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
+            MenuAction::ToggleAiDashboard => self.ai_dash_open = !self.ai_dash_open,
+            MenuAction::OpenNabiPad => self.open_empty_pad(),
+            MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
+            MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
+            MenuAction::TogglePin(name) => { let v = &mut self.config.appearance.pinned_sessions; if let Some(i) = v.iter().position(|x| x == &name) { v.remove(i); } else { v.push(name); } let _ = nabi_config::save(&self.config_path, &self.config); }
+            MenuAction::EditNote(name) => { let cur = self.config.appearance.session_notes.get(&name).cloned().unwrap_or_default(); self.note_edit = Some((name, cur)); }
+            MenuAction::ConnectFolder(f) => {
+                // 폴더 내 모든 세션을 한 번에 연결(E7 레이아웃).
+                for s in self.sessions.sessions.clone().into_iter().filter(|s| s.folder.as_deref() == Some(f.as_str())) {
+                    self.connect_saved(s);
+                }
+            }
+            MenuAction::TearOff => self.tear_off_focused(),
+            MenuAction::DockFloat => self.dock_float_focused(),
+            MenuAction::SplitSpawn(s, right) => {
+                self.pending_split = Some(right);
+                self.spawn_local(s);
+            }
+            MenuAction::SplitConnect(sess, right) => {
+                self.pending_split = Some(right);
+                self.connect_saved(sess);
+            }
+            MenuAction::Arrange(m) => self.pending_arrange = Some(m),
+            MenuAction::ToggleBroadcast => self.broadcast = !self.broadcast,
+            MenuAction::ToggleOnTop => {
+                self.always_on_top = !self.always_on_top;
+                self.pending_on_top = Some(self.always_on_top);
+                self.config.appearance.always_on_top = self.always_on_top; // 마지막 값 기억.
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
+
+            MenuAction::ToggleFullscreen => {
+                self.fullscreen = !self.fullscreen;
+                self.pending_fullscreen = Some(self.fullscreen);
+            }
+            MenuAction::SaveWorkspace => self.save_workspace(),
+            MenuAction::RestoreWorkspace => {
+                let b = self.dock_browser_panes();
+                self.restore_workspace(b);
+            }
+            MenuAction::OpenConfigDir => {
+                if let Some(dir) = self.config_path.parent() {
+                    let _ = std::process::Command::new("explorer").arg(dir).spawn();
+                }
+            }
+            MenuAction::OpenSettings => self.settings_open = true,
+            MenuAction::OpenVault => self.vault_unlock_open = true,
+            MenuAction::OpenForward => self.open_forward(),
+            MenuAction::TileTabs => self.tile_tabs(),
+            MenuAction::TabifyTabs => self.tabify_tabs(),
+            MenuAction::OpenAbout => self.about_open = true,
+            MenuAction::Exit => {
+                if self.config.terminal.confirm_close && self.dock.iter_all_tabs().count() > 1 {
+                    self.confirm_close = true;
+                } else {
+                    self.quit();
+                }
+            }
+        }
+    }
+
+    /// 가져온 세션들을 추가(이름 중복은 교체)하고 저장 + 개수 토스트. 외부 형식 가져오기 공용.
+    fn import_sessions(&mut self, imported: Vec<nabi_session::SavedSession>, label_key: &str) {
+        let n = imported.len();
+        for s in imported {
+            self.sessions.remove(&s.name);
+            self.sessions.add(s);
+        }
+        let dup = self.sessions.dedup(); // 여러 소스에서 가져와도 같은 대상 중복은 자동 제거.
+        self.save_sessions();
+        let label = tr(self.lang, label_key);
+        let extra = if dup > 0 { format!(" -{dup}") } else { String::new() };
+        self.notify = Some((format!("{label} +{n}{extra}"), std::time::Instant::now()));
+    }
+
+    /// 세션 내보내기 공용: 저장 대화상자로 위치를 받아 외부 형식 문자열을 쓴다.
+    fn export_sessions_to(&mut self, data: String, name: &str, ext: &str, label_key: &str) {
+        let mut dlg = rfd::FileDialog::new().set_file_name(name);
+        if !ext.is_empty() {
+            dlg = dlg.add_filter(ext, &[ext]);
+        }
+        if let Some(p) = dlg.save_file() {
+            let msg = match std::fs::write(&p, data) {
+                Ok(()) => format!("{} \u{2713}", tr(self.lang, label_key)),
+                Err(e) => format!("\u{2715} {e}"),
+            };
+            self.notify = Some((msg, std::time::Instant::now()));
+        }
+    }
+}

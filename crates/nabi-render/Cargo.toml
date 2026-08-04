@@ -1,0 +1,11 @@
+[package]
+name = "nabi-render"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-vt = { workspace = true }
+egui = { workspace = true }

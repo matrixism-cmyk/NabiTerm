@@ -1,0 +1,18 @@
+[package]
+name = "nabi-control"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-proto = { workspace = true }
+nabi-orchestrator = { workspace = true } # SharedPanes 읽기(질의 응답 출처)
+serde = { workspace = true }
+serde_json = { workspace = true }
+nabi-vt = { workspace = true } # TermModel 직접 질의(tail 델타·bracketed paste)
+crossbeam-channel = { workspace = true }
+bytes = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

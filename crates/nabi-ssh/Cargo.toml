@@ -1,0 +1,18 @@
+[package]
+name = "nabi-ssh"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-pty = { workspace = true }
+nabi-proto = { workspace = true }
+russh = { workspace = true }
+tokio = { workspace = true }
+crossbeam-channel = { workspace = true }
+bytes = { workspace = true }
+
+[dev-dependencies]
+rand = "0.9"   # 인-프로세스 테스트 서버의 호스트키 생성(russh 예제와 동일)

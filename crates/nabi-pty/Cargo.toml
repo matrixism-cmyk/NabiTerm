@@ -1,0 +1,13 @@
+[package]
+name = "nabi-pty"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-proto = { workspace = true }
+portable-pty = { workspace = true }
+crossbeam-channel = { workspace = true }
+bytes = { workspace = true }

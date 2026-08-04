@@ -1,0 +1,12 @@
+[package]
+name = "nabi-vt"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-image = { workspace = true }
+# 터미널 코어(T1에서 vt100 교체): 견고한 스크롤백 + 향후 이미지/reflow 기반.
+alacritty_terminal = "0.24"

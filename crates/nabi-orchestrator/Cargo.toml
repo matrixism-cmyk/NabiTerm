@@ -1,0 +1,25 @@
+[package]
+name = "nabi-orchestrator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-types = { workspace = true }
+nabi-proto = { workspace = true }
+nabi-vt = { workspace = true }
+nabi-pty = { workspace = true }
+nabi-osc = { workspace = true }
+nabi-ssh = { workspace = true }
+nabi-ssh-ext = { workspace = true }
+nabi-sftp = { workspace = true }
+nabi-ftp = { workspace = true }
+nabi-fs = { workspace = true }
+nabi-config = { workspace = true }
+nabi-log = { workspace = true }
+crossbeam-channel = { workspace = true }
+encoding_rs = "0.8"
+bytes = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }

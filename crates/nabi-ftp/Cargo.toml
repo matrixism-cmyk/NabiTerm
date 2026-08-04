@@ -1,0 +1,12 @@
+[package]
+name = "nabi-ftp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+nabi-fs = { workspace = true }
+async-trait = { workspace = true }
+suppaftp = { workspace = true }
+tokio = { workspace = true }

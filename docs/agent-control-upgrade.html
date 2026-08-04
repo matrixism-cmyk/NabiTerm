@@ -1,0 +1,441 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>에이전트 제어 평면 업그레이드 계획</title>
+<style>
+  @page { margin: 20mm 18mm; }
+  body { font-family: "Malgun Gothic", "Noto Sans KR", sans-serif; font-size: 11pt; line-height: 1.6; color: #222; max-width: 900px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 18pt; border-bottom: 2px solid #2c3e50; padding-bottom: 8px; color: #2c3e50; }
+  h2 { font-size: 14pt; border-bottom: 1px solid #bdc3c7; padding-bottom: 4px; color: #34495e; margin-top: 28px; }
+  h3 { font-size: 12pt; color: #555; margin-top: 18px; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 10pt; }
+  th { background: #2c3e50; color: #fff; padding: 7px 10px; text-align: left; }
+  td { border: 1px solid #ddd; padding: 6px 10px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8f9fa; }
+  code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; font-family: "Consolas", monospace; font-size: 10pt; }
+  pre { background: #1e1e1e; color: #d4d4d4; padding: 14px; border-radius: 6px; overflow-x: auto; font-size: 9.5pt; line-height: 1.5; }
+  pre code { background: none; padding: 0; color: inherit; }
+  blockquote { border-left: 4px solid #3498db; margin: 12px 0; padding: 6px 16px; background: #eaf4fd; color: #555; }
+  a { color: #2980b9; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 24px 0; }
+</style>
+</head>
+<body>
+<h1 id="cp-5-cp-8">에이전트 제어 평면 업그레이드 계획 — 참조 설계 기반 (CP-5 ~ CP-8)</h1>
+<p>← <a href="./agent-control.md">에이전트 제어 평면 설계</a> · <a href="./architecture.md">아키텍처</a> · <a href="./DEVELOPMENT_PLAN.md">개발 계획서</a></p>
+<h2 id="0-v1cp-1cp-4">0. 현황 — v1(CP-1~CP-4) 구현 완료</h2>
+<p><code>nabi-control</code> 크레이트(protocol/server/dispatch/policy/subscribe/client)로 다음이 <strong>동작·실사용 검증</strong>됨:</p>
+<table>
+<thead>
+<tr>
+<th>영역</th>
+<th>구현 상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>전송</td>
+<td>named pipe NDJSON(<code>\\.\pipe\nabi-control-&lt;PID&gt;</code>), Hello 토큰 인증, env 주입(<code>NABI_PANE_ID</code>/<code>NABI_CONTROL_PIPE</code>/<code>NABI_CONTROL_TOKEN</code>)</td>
+</tr>
+<tr>
+<td>질의</td>
+<td><code>list</code>(id·제목·크기), <code>capture</code>(화면+스크롤백 N줄, 커서 위치)</td>
+</tr>
+<tr>
+<td>동작</td>
+<td><code>spawn</code>(shell/cwd), <code>send</code>(raw), <code>kill</code>, <code>resize</code>, <code>open-browser</code>, <code>open-sftp</code>(저장 세션)</td>
+</tr>
+<tr>
+<td>구독</td>
+<td><code>wait --until exit/command-done/output/idle</code>, <code>tail</code>(출력 스트림)</td>
+</tr>
+<tr>
+<td>정책</td>
+<td>off/ask/on + 요청자 pane별 1회 승인(토스트), tracing 감사 로그</td>
+</tr>
+</tbody>
+</table>
+<p>v1은 "에이전트가 옆 pane에 명령 띄우고 결과 관찰" 시나리오를 성립시켰다. 본 문서는 참조 설계
+(tmux·WezTerm·Kitty·iTerm2·Herdr·cmux) 분석으로 v1의 갭을 메우고 에이전트 1급 시민 터미널로
+끌어올리는 계획이다.</p>
+<h2 id="1">1. 참조 설계 분석 — 무엇을 배우나</h2>
+<table>
+<thead>
+<tr>
+<th>참조</th>
+<th>핵심 기능</th>
+<th>nabi에 가져올 것</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>tmux</strong></td>
+<td><code>capture-pane -p -e -S/-E</code>(범위·이스케이프), <code>pipe-pane</code>(출력 파이프), <code>wait-for</code>, 타깃 문법(<code>session:win.pane</code>), hooks</td>
+<td>capture 범위 지정·SGR 보존 옵션, tail의 <strong>델타 스트림</strong>화, pane 종료/벨 훅 알림</td>
+</tr>
+<tr>
+<td><strong>WezTerm</strong></td>
+<td><code>cli spawn</code>/<code>split-pane --right/--bottom/--top-level</code>(pane ID 회신), <code>send-text</code>(bracketed paste 존중), <code>list --format json</code>, <code>activate-pane</code></td>
+<td><strong>DockTarget</strong>(탭/분할/새 창) 스폰, <strong><code>--json</code> 출력 모드</strong>, send의 paste 의미론, <code>focus</code> verb</td>
+</tr>
+<tr>
+<td><strong>Kitty</strong></td>
+<td><code>kitten @ --match "title:x cwd:y"</code>(속성 매칭), <code>remote_control_password</code>+<strong>액션 단위 권한</strong>(<code>--rc-permission</code>), 창별 제어 제한</td>
+<td><strong><code>--match</code> 주소지정</strong>, <strong>verb 그룹별 권한 정책</strong>, pane별 제어 허용/차단</td>
+</tr>
+<tr>
+<td><strong>iTerm2</strong></td>
+<td>Python API: 세션 변수 구독, 비동기 모니터(출력/프롬프트/변수), 트리거</td>
+<td>변수형 pane 메타데이터(cwd·exit code·명령)의 <strong>구독 가능한 단일 모델</strong></td>
+</tr>
+<tr>
+<td><strong>Herdr</strong></td>
+<td>에이전트 상태(working/idle/blocked) 사이드바 상시 표시</td>
+<td>pane <strong>활동 상태 머신</strong>을 list 응답·탭 UI 양쪽에 노출</td>
+</tr>
+<tr>
+<td><strong>cmux</strong></td>
+<td>Unix socket API, 에이전트 알림·진행 보고, 오케스트레이터 AI가 다중 에이전트 스폰</td>
+<td><code>notify</code> verb(에이전트→사용자 토스트), <strong>MCP 서버</strong> 노출(에이전트 네이티브 도구화)</td>
+</tr>
+</tbody>
+</table>
+<p>공통 패턴: ① 머신 가독 출력(JSON)은 기본 소양, ② 주소지정은 ID+속성 매칭 병행, ③ 권한은 액션
+단위가 업계 표준(Kitty), ④ 2026 에이전트 도구들은 "상태 인지(busy/idle/blocked)"를 1급으로 다룸.</p>
+<h2 id="2-v1">2. 갭 분석 — v1 코드 리뷰 결과</h2>
+<h3 id="21">2.1 정합성 결함 (즉시 수정 대상)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>결함</th>
+<th>위치</th>
+<th>내용</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G1</td>
+<td>스폰 ID 폴링 레이스</td>
+<td><code>dispatch.rs</code></td>
+<td>새 pane ID를 before/after 집합 차이로 폴링 — 동시 스폰 2건이면 ID가 뒤바뀔 수 있음. <code>Command::SpawnLocalPane</code>에 응답 oneshot(또는 seq 태그) 추가로 <strong>정확한 ID 회신</strong></td>
+</tr>
+<tr>
+<td>G2</td>
+<td>tail이 델타가 아님</td>
+<td><code>server.rs</code></td>
+<td>출력 변경 시 마지막 40줄을 통째로 재덤프 — 중복 출력·빠른 스크롤 유실. VT damage/스크롤백 오프셋 기반 <strong>새 줄만 전송</strong></td>
+</tr>
+<tr>
+<td>G3</td>
+<td>wait가 데이터를 버림</td>
+<td><code>subscribe.rs</code></td>
+<td><code>until exit</code>의 종료 코드, <code>command-done</code>의 CommandBlock(명령·exit code·소요시간)이 이벤트에 있는데 <code>data: ""</code>로 응답. <strong>이벤트 페이로드를 data(JSON)로 회신</strong></td>
+</tr>
+<tr>
+<td>G4</td>
+<td>wait/tail 정책 분류 오류</td>
+<td><code>server.rs</code></td>
+<td>읽기 전용 구독인데 쓰기 정책(<code>allow_write</code>) 게이트 — capture는 자유인데 tail은 승인 필요한 비일관. <strong>읽기로 재분류</strong>(§4 정책 재설계와 함께)</td>
+</tr>
+<tr>
+<td>G5</td>
+<td>파이프 ACL 미명시</td>
+<td><code>server.rs</code></td>
+<td><code>ServerOptions::new().create()</code> 기본 보안 기술자 사용 — <strong>현재 사용자 SID 전용 DACL 명시</strong> 필요(설계 문서 §4 약속 사항)</td>
+</tr>
+<tr>
+<td>G6</td>
+<td>send의 paste 안전 미구현</td>
+<td><code>dispatch.rs</code></td>
+<td>raw 바이트 직주입 — 타깃이 bracketed paste 모드면 200~/201~ 래핑하는 기존 붙여넣기 경로와 불일치(설계 문서 §4 약속 사항). WezTerm <code>send-text</code> 의미론 채택</td>
+</tr>
+</tbody>
+</table>
+<h3 id="22">2.2 기능 갭 (참조 설계 대비)</h3>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>갭</th>
+<th>참조</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G7</td>
+<td><code>PaneInfo</code>가 id/제목/크기뿐 — 종류(local/ssh/browser/sftp)·cwd·마지막 exit code·실행 중 명령·<strong>활동 상태</strong> 없음</td>
+<td>Herdr·iTerm2</td>
+</tr>
+<tr>
+<td>G8</td>
+<td>CLI 출력이 사람용 표뿐 — 에이전트가 표를 파싱해야 함</td>
+<td>WezTerm <code>--format json</code></td>
+</tr>
+<tr>
+<td>G9</td>
+<td>주소지정이 숫자 ID뿐 — 제목/cwd 매칭 불가</td>
+<td>Kitty <code>--match</code></td>
+</tr>
+<tr>
+<td>G10</td>
+<td>스폰 위치 지정 불가(항상 탭) — 분할/새 OS 창 선택 없음. SSH 스폰도 없음</td>
+<td>WezTerm <code>split-pane</code></td>
+</tr>
+<tr>
+<td>G11</td>
+<td>권한이 요청자 pane 전부-아니면-전무 — verb 단위 구분 없음, 승인 취소 UI 없음</td>
+<td>Kitty rc-permission</td>
+</tr>
+<tr>
+<td>G12</td>
+<td><code>focus</code>/<code>set-title</code> 없음 — 에이전트가 사용자 주의를 유도할 수단 없음</td>
+<td>WezTerm <code>activate-pane</code></td>
+</tr>
+<tr>
+<td>G13</td>
+<td><code>notify</code> 없음 — 장기 작업 완료를 사용자에게 알릴 표준 경로 없음(OSC 9는 자기 pane 한정)</td>
+<td>cmux</td>
+</tr>
+<tr>
+<td>G14</td>
+<td>OSC 7771 in-band 채널 미구현 — 원격(SSH) pane에서 제어 발화 불가(설계상 의도된 연기)</td>
+<td>설계 문서 §2.2</td>
+</tr>
+<tr>
+<td>G15</td>
+<td>MCP 서버 미노출 — 에이전트가 매번 셸 명령으로 우회(토큰·왕복 비용, 파싱 부담)</td>
+<td>CMUX Agent</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3">3. 업그레이드 설계</h2>
+<h3 id="31-a-pane-g7-herdr">3.1 [A] pane 메타데이터·활동 상태 (G7) — Herdr 모델</h3>
+<p>오케스트레이터에 <code>pane_meta.rs</code> 신설: pane별 최신 cwd(OSC 7)·실행 중 명령·마지막 CommandBlock
+(exit code·소요시간)·종류를 캐시(이미 흐르는 이벤트의 구독 집계 — 신규 신호 없음).</p>
+<p><strong>활동 상태 머신</strong> (list 응답 + 탭 UI 배지 공용):</p>
+<pre><code>Idle     — 마지막 출력 후 2초 경과, 명령 경계 닫힘(OSC 133 D 수신)
+Working  — 명령 실행 중(133 C 후 D 미수신) 또는 출력 진행 중
+Blocked  — Working인데 N초(기본 15) 출력 정지 → 입력 대기 추정(프롬프트/암호/페이저)
+Exited   — 프로세스 종료(exit code 보존)
+</code></pre>
+<p><code>PaneInfo</code> 확장: <code>kind</code>(local/ssh/browser/sftp), <code>cwd</code>, <code>state</code>, <code>last_exit</code>, <code>running_cmd</code>,
+<code>title</code>, <code>cols×rows</code>. Blocked 판정은 휴리스틱이므로 응답에 <code>state_since_ms</code> 동봉(소비자가 재판정 가능).</p>
+<h3 id="32-b-g8g9">3.2 [B] 머신 가독 출력·주소지정 (G8·G9)</h3>
+<ul>
+<li>모든 CLI verb에 <strong><code>--json</code></strong>: 응답 ControlResponse를 그대로 직렬화(이미 serde — 클라이언트 출력부만 분기).</li>
+<li><strong><code>--match "&lt;k&gt;:&lt;v&gt;[,..]"</code></strong> 주소지정: <code>title:</code>(부분일치)·<code>cwd:</code>(접두)·<code>kind:</code>·<code>state:</code>.
+  서버 측 해석(ListPanes 필터와 동일 코드), 매칭 0건/2건 이상이면 명시적 오류(모호성 거부 — Kitty 방식).
+  예: <code>nabi cli send --match "cwd:C:\proj,state:idle" --data "git pull</code>r"`.</li>
+</ul>
+<h3 id="33-c-ssh-g1g10">3.3 [C] 스폰 위치·SSH 스폰 (G1·G10)</h3>
+<ul>
+<li><code>SpawnTerminal</code>에 <code>dock: tab|split-right|split-down|new-window</code> 추가(기본 tab).
+  분할/새 창은 <code>AppCtl</code>로 도킹 적용(앱이 PaneSpawned 수신 시 위치 결정 — 기존 분할 경로 재사용).</li>
+<li><strong>G1 수정과 결합:</strong> <code>Command::SpawnLocalPane</code>에 <code>reply: Option&lt;u64&gt;</code>(요청 seq) 추가,
+  <code>Event::PaneSpawned</code>에 seq 에코 → 제어 서버가 자기 seq의 PaneSpawned를 EventHub에서 기다림(폴링 제거).</li>
+<li><code>spawn --ssh &lt;저장세션&gt;</code>: 자격증명 볼트 경유(평문 금지 원칙 유지), <code>Command::ConnectSsh</code> 재사용.</li>
+</ul>
+<h3 id="34-d-v2-g4g11-kitty">3.4 [D] 권한 정책 v2 (G4·G11) — Kitty 모델</h3>
+<p>verb를 3그룹으로 재분류하고 그룹별 정책:</p>
+<table>
+<thead>
+<tr>
+<th>그룹</th>
+<th>verbs</th>
+<th>off</th>
+<th>ask</th>
+<th>on</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>read</strong></td>
+<td>list, capture, wait, tail</td>
+<td>거부</td>
+<td><strong>항상 허용</strong></td>
+<td>허용</td>
+</tr>
+<tr>
+<td><strong>act</strong></td>
+<td>spawn, resize, focus, set-title, notify, open-browser</td>
+<td>거부</td>
+<td>pane별 1회 승인</td>
+<td>허용</td>
+</tr>
+<tr>
+<td><strong>inject</strong></td>
+<td>send, kill, open-sftp</td>
+<td>거부</td>
+<td>pane별 1회 승인(<strong>별도 집합</strong> — act 승인이 inject를 풀지 않음)</td>
+<td>허용</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>승인 토스트에 <strong>요청 verb·타깃 표시</strong>("pane 3이 pane 5에 입력 주입을 요청") + 허용 범위 선택(이번만/이 pane 항상/모두).</li>
+<li>설정 다이얼로그에 승인 현황·<strong>취소(revoke)</strong> UI. 승인은 세션 한정(영속 안 함 — 보수 기본).</li>
+<li>wait/tail은 read로 이동(G4 해소). <code>[control] read = on</code> 기본(읽기는 ask 모드에서도 무승인).</li>
+</ul>
+<h3 id="35-e-verbs-g12g13">3.5 [E] 사용자 상호작용 verbs (G12·G13)</h3>
+<ul>
+<li><code>focus --pane N</code> — 해당 pane 탭 활성화(+분리 창이면 창 전면). <code>AppCtl::Focus</code>.</li>
+<li><code>set-title --pane N --title S</code> — 탭 제목 변경(기존 우클릭 이름변경과 동일 경로).</li>
+<li><code>notify --title S --body S</code> — 토스트+데스크톱 알림. 기존 OSC 9/777 알림 파이프라인 재사용,
+  발신자 pane 표기("pane 3에서: 빌드 완료").</li>
+</ul>
+<h3 id="36-f-mcp-g15">3.6 [F] MCP 서버 (G15) — 에이전트 네이티브 통합</h3>
+<p><code>nabi.exe mcp</code> 서브커맨드: <strong>stdio MCP 서버</strong>로 떠서 제어 파이프의 프록시가 된다.
+Claude Code 쪽 등록은 <code>claude mcp add nabiterm -- nabi.exe mcp</code> 한 줄.</p>
+<ul>
+<li>도구 세트 = ControlRequest와 1:1(<code>nabi_list_panes</code>, <code>nabi_capture</code>, <code>nabi_spawn</code>, …) — 어휘 재사용,
+  신규 로직 없음. 응답은 §3.2의 JSON 그대로.</li>
+<li>이점: 에이전트가 셸 왕복·표 파싱 없이 구조화 호출; <code>wait</code>를 MCP의 장기 도구 호출로 자연 표현.</li>
+<li>정책은 동일 파이프 경유라 <strong>자동 상속</strong>(MCP라고 우회 없음). rust-mcp 계열 크레이트 1개 핀 필요
+  (구현 시 결정; 의존 무거우면 NDJSON 직구현 — MCP stdio는 JSON-RPC 한 겹이라 소형).</li>
+</ul>
+<h3 id="37-g-capturetail-g2g6-tmux">3.7 [G] capture·tail 품질 (G2·G6 + tmux 패리티)</h3>
+<ul>
+<li><code>capture --start &lt;-N|줄&gt; --end &lt;줄&gt;</code>(스크롤백 범위, tmux <code>-S/-E</code>), <code>--escapes</code>(SGR 보존 — 색/굵기
+  복원용, tmux <code>-e</code>), 응답에 <code>alt_screen: bool</code> 동봉(vim 등 전체화면 앱 판별).</li>
+<li><code>tail</code>을 <strong>줄 델타 스트림</strong>으로: pane별 누적 출력 줄 카운터(스크롤백 absolute line index) 기준
+  신규 줄만 전송. 80ms 폴링 유지하되 damage 이벤트로 깨우기(EventHub 재사용).</li>
+<li><code>send</code>: 타깃 모델의 bracketed paste 상태 조회 후 200~/201~ 래핑(<code>--raw</code>로 우회 가능 — 제어문자
+  의도 주입용). 기존 paste 주입 방지 경로와 코드 공유.</li>
+</ul>
+<h3 id="38-h-osc-7771-g14">3.8 [H] OSC 7771 (G14) — 마지막</h3>
+<p>설계 문서 §2.2 그대로(fire-and-forget verb만, 기본 off, 로컬 pane 한정). 원격 에이전트 유스케이스가
+실제로 생기기 전까지 최후순위 — MCP(§3.6)가 로컬 유스케이스를 대부분 흡수한다.</p>
+<h2 id="4-2026-06-11">4. 마일스톤 — <strong>전체 구현 완료(2026-06-11)</strong></h2>
+<table>
+<thead>
+<tr>
+<th>단계</th>
+<th>범위</th>
+<th>상태</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CP-5 정합성</strong></td>
+<td>G1(스폰 seq 회신)·G2(tail 델타)·G3(wait 페이로드)·G4(read 재분류)·G5(파이프 DACL)·G6(send paste 안전)</td>
+<td>✅ 전부 구현·테스트(seq 정합 roundtrip, tail 델타 중복0/유실0 3종, wait exit code 회신, DACL SID 단위테스트)</td>
+</tr>
+<tr>
+<td><strong>CP-6 에이전트 가시성</strong></td>
+<td>§3.1 pane_meta+상태머신 · §3.2 <code>--json</code>/<code>--match</code> · 탭 UI ⚙ 배지</td>
+<td>✅ list --json에 kind/cwd/state/state_ms/last_exit 노출, match 모호성 거부 테스트, 상태 전이 단위테스트</td>
+</tr>
+<tr>
+<td><strong>CP-7 동작 확장·정책 v2</strong></td>
+<td>§3.3 dock/SSH 스폰 · §3.4 verb 그룹(read/act/inject) 정책+승인 그룹 표기+설정 revoke UI · §3.5 focus/set-title/notify</td>
+<td>✅ DockNext(split/new-window)·spawn --ssh(볼트 경유), 그룹별 별도 승인+revoke 테스트</td>
+</tr>
+<tr>
+<td><strong>CP-8 통합</strong></td>
+<td>§3.6 MCP 서버(<code>nabi mcp</code>) · §3.7 capture --start/--end/--escapes+alt_screen · §3.8 OSC 7771(opt-in, CP-4에서 선구현)</td>
+<td>✅ MCP 12도구(initialize/tools/list/call), SGR 덤프 단위테스트</td>
+</tr>
+</tbody>
+</table>
+<p>비고: §3.1의 Exited 상태는 레지스트리가 종료 pane을 즉시 제거(좀비 방지)하므로 list에
+표시되지 않는다 — 종료 코드는 <code>wait --until exit</code>(JSON <code>{code}</code>)로 회수한다.</p>
+<p>순서 원칙: <strong>결함 수정(CP-5) → 에이전트가 보는 것(CP-6) → 에이전트가 하는 것(CP-7) → 접속 방식(CP-8)</strong>.
+각 단계는 독립 배포 가능; CP-5는 프로토콜 비파괴(응답 필드 추가뿐), CP-6의 PaneInfo 확장은
+serde 기본값으로 하위호환.</p>
+<h2 id="5-250400">5. 모듈 매핑 (라인 게이트 250/400)</h2>
+<table>
+<thead>
+<tr>
+<th>위치</th>
+<th>모듈</th>
+<th>변경</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>nabi-orchestrator</td>
+<td><code>pane_meta.rs</code> (신규)</td>
+<td>이벤트 집계 캐시 + 상태머신(§3.1)</td>
+</tr>
+<tr>
+<td>nabi-proto</td>
+<td><code>command.rs</code></td>
+<td>SpawnLocalPane에 <code>reply_seq</code>, <code>event.rs</code> PaneSpawned에 seq 에코</td>
+</tr>
+<tr>
+<td>nabi-proto</td>
+<td><code>appctl.rs</code></td>
+<td>Dock/Focus/SetTitle/Notify variant 추가</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>protocol.rs</code></td>
+<td>PaneInfo 확장·Match 타입·신규 verb(serde 기본값으로 하위호환)</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>matcher.rs</code> (신규)</td>
+<td><code>--match</code> 해석·모호성 거부(§3.2)</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>policy.rs</code></td>
+<td>verb 그룹 3분류·집합 분리·revoke(§3.4)</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>tail_delta.rs</code> (신규)</td>
+<td>줄 카운터 기반 델타 스트림(§3.7)</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>pipe_acl.rs</code> (신규)</td>
+<td>현재 사용자 SID DACL 생성(G5, windows-rs 보안 API)</td>
+</tr>
+<tr>
+<td>nabi-control</td>
+<td><code>mcp.rs</code> (신규)</td>
+<td>stdio JSON-RPC ↔ 파이프 프록시(§3.6)</td>
+</tr>
+<tr>
+<td>nabi-app</td>
+<td><code>cli.rs</code></td>
+<td><code>--json</code>/<code>--match</code>/신규 verb 파싱(파일 분할: <code>cliparse.rs</code>)</td>
+</tr>
+<tr>
+<td>nabi-app</td>
+<td><code>ctlapply.rs</code></td>
+<td>Dock/Focus/SetTitle/Notify 적용</td>
+</tr>
+<tr>
+<td>nabi-app</td>
+<td>settings</td>
+<td>verb 그룹 정책 UI·승인 현황·revoke</td>
+</tr>
+<tr>
+<td>nabi-vt</td>
+<td><code>model</code></td>
+<td>absolute line index 노출(tail 델타·capture 범위 공용)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="6">6. 비범위 (여전히 제외)</h2>
+<ul>
+<li>tmux <code>-CC</code>식 전체 제어 모드(터미널 상태 전체 스트림) — 비용 대비 수요 불명.</li>
+<li>다중 nabiTerm 인스턴스 간 제어·인스턴스 발견 — 파이프는 PID 스코프 유지.</li>
+<li>승인 영속화(재시작 후 기억) — 보안 검토 후 별도 결정.</li>
+<li>플러그인 API(M4) 통합 — ControlRequest 어휘 재사용 가능하게만 유지.</li>
+</ul>
+<h2 id="7">7. 참고 자료</h2>
+<ul>
+<li>WezTerm CLI: <a href="https://wezterm.org/cli/cli/index.html">cli 개요</a> · <a href="https://wezterm.org/cli/cli/spawn.html">spawn</a> · <a href="https://wezterm.org/cli/cli/split-pane.html">split-pane</a></li>
+<li>Kitty: <a href="https://sw.kovidgoyal.net/kitty/remote-control/">remote control</a> · <a href="https://sw.kovidgoyal.net/kitty/rc_protocol/">rc 프로토콜</a> · <a href="https://sw.kovidgoyal.net/kitty/launch/">launch</a></li>
+<li><a href="https://herdr.dev/">Herdr — 에이전트 상태 인지 멀티플렉서</a> · <a href="https://betterstack.com/community/guides/ai/herdr-ai-agent/">해설</a></li>
+<li><a href="https://mcpmarket.com/server/cmux-agent">cmux — 에이전트 오케스트레이션 터미널(MCP)</a></li>
+<li><a href="https://pasqualepillitteri.it/en/news/3493/tmux-runtime-coding-agents-2026">tmux in the Coding Agents Era</a> · <a href="https://dev.to/battyterm/how-tmux-became-the-runtime-for-ai-agent-teams-gmi">tmux as AI agent runtime</a></li>
+</ul>
+</body>
+</html>

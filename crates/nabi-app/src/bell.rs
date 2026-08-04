@@ -1,0 +1,49 @@
+//! 비주얼 벨: 터미널이 BEL을 울리면 화면을 잠깐 번쩍인다(소리 대신 시각 피드백).
+
+use crate::app::NabiApp;
+use nabi_types::PaneId;
+use std::time::{Duration, Instant};
+
+impl NabiApp {
+    pub(crate) fn visual_bell(&mut self, ctx: &egui::Context) {
+        // 1) 각 pane의 벨 카운트 증가를 감지(가드 잡은 채 self를 변경하지 않도록 먼저 수집).
+        let counts: Vec<(PaneId, usize)> = match self.orch.panes.read() {
+            Ok(panes) => panes
+                .iter()
+                .filter_map(|(id, v)| v.model.lock().ok().map(|m| (*id, m.bell_count())))
+                .collect(),
+            Err(_) => return,
+        };
+        for (id, c) in counts {
+            let last = self.last_bell.get(&id).copied().unwrap_or(c);
+            if c > last {
+                if self.config.appearance.visual_bell {
+                    self.bell_flash = Some(Instant::now());
+                }
+                // 벨이 울렸는데 창이 비포커스면 작업표시줄로 주의 환기(벨의 본래 목적).
+                if !ctx.input(|i| i.focused) {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Critical));
+                }
+            }
+            self.last_bell.insert(id, c);
+        }
+
+        // 2) 플래시 렌더(짧게).
+        if let Some(t) = self.bell_flash {
+            if t.elapsed() < Duration::from_millis(120) {
+                let painter = ctx.layer_painter(egui::LayerId::new(
+                    egui::Order::Foreground,
+                    egui::Id::new("nabi-bell"),
+                ));
+                painter.rect_filled(
+                    ctx.screen_rect(),
+                    egui::Rounding::ZERO,
+                    egui::Color32::from_white_alpha(48),
+                );
+                ctx.request_repaint();
+            } else {
+                self.bell_flash = None;
+            }
+        }
+    }
+}

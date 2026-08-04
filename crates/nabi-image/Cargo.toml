@@ -1,0 +1,10 @@
+[package]
+name = "nabi-image"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+# 순수 Rust 이미지 디코더(iTerm/Kitty PNG·JPEG·GIF 페이로드용). C 의존 없음.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif"] }
