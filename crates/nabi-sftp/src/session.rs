@@ -27,9 +27,16 @@ pub async fn connect_sftp(
         ClientHandler::new(host.to_string(), port, known_hosts.clone(), verifier.clone())
     };
     // 유휴 연결이 서버 타임아웃으로 끊기지 않도록 keepalive(30초마다, 3회 실패 시 종료).
+    //
+    // 전송 속도 관련 두 가지를 기본값에서 바꾼다:
+    // - nodelay: SFTP는 작은 요청/응답을 주고받는데 Nagle이 켜져 있으면 매 왕복에 지연이 붙는다.
+    // - window_size: SSH 채널 창이 곧 처리량 상한이다(창 ÷ RTT). 기본 2MiB는 RTT 50ms에서
+    //   약 41MB/s로 묶여, 요청을 아무리 파이프라이닝해도 그 위로 못 올라간다.
     let config = Arc::new(client::Config {
         keepalive_interval: Some(std::time::Duration::from_secs(30)),
         keepalive_max: 3,
+        nodelay: true,
+        window_size: 16 * 1024 * 1024,
         ..Default::default()
     });
     // 점프 호스트(ProxyJump, D2)가 있으면 경유, 아니면 직접 연결. jump 핸들은 터널 유지용.
@@ -61,7 +68,14 @@ pub async fn connect_sftp(
         .request_subsystem(true, "sftp")
         .await
         .map_err(|e| e.to_string())?;
-    let sftp = russh_sftp::client::SftpSession::new(channel.into_stream())
+    // 업로드 파이프라인 깊이를 기본(8)보다 올린다. SFTP는 요청/응답이라 미결 요청 수가 곧
+    // 처리량이다(요청수 × 청크 ÷ RTT). OpenSSH sftp 클라이언트도 기본 64를 쓴다.
+    // max_packet_len은 서버가 VERSION에서 알려주는 값과 min으로 협상되므로 상한만 크게 둔다.
+    let cfg = russh_sftp::client::Config {
+        max_concurrent_writes: 64,
+        ..Default::default()
+    };
+    let sftp = russh_sftp::client::SftpSession::new_with_config(channel.into_stream(), cfg)
         .await
         .map_err(|e| e.to_string())?;
 

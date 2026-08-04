@@ -30,7 +30,11 @@ fn panic_text(e: Box<dyn std::any::Any + Send>) -> String {
 pub fn start<W: Fn() + Send + 'static>(waker: W) -> OrchestratorHandle {
     let (cmd_tx, cmd_rx) = unbounded::<Command>();
     let (event_tx, event_rx) = unbounded::<Event>();
-    let (out_tx, out_rx) = unbounded::<(PaneId, Bytes)>();
+    // 출력 버스만 상한을 둔다. 무제한이면 `yes`처럼 폭주하는 pane이 메모리를 끝없이 먹는다
+    // (액터가 UI 페인트에 밀려 느려지는 동안 큐가 계속 자람). 상한에 닿으면 PTY 리더 스레드가
+    // 블록 → 커널 PTY 버퍼가 참 → 자식이 write에서 대기 = 실제 흐름 제어.
+    // SSH는 async라 블록 대신 재시도한다(nabi-ssh::session::send_output).
+    let (out_tx, out_rx) = crossbeam_channel::bounded::<(PaneId, Bytes)>(nabi_pty::OUT_BUS_CAPACITY);
     let panes = new_shared_panes();
     let panes_thread = panes.clone();
 

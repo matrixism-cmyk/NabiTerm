@@ -247,41 +247,43 @@ pub(crate) fn browser_rows(
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.modified"), Some(Sort::Date), act(Sort::Date), desc, &mut set_sort));
             h.col(|_| {}); // 빈 필러 헤더.
         })
-        .body(|mut body| {
-            // 맨 위 ".." 행: 더블클릭으로 상위 폴더 이동(루트가 아닐 때).
-            if let Some(parent) = path.parent().map(|p| p.to_path_buf()) {
-                body.row(rh, |mut r| {
+        .body(|body| {
+            // body.rows()는 보이는 행만 그린다. row()를 항목마다 부르면 화면 밖 수천 행까지
+            // 매 프레임 레이아웃·페인트한다(대용량 폴더에서 그대로 프레임 시간이 된다).
+            let parent = path.parent().map(|p| p.to_path_buf()); // 맨 위 ".." 행(상위 이동).
+            let up = parent.is_some();
+            let total = visible.len() + usize::from(up);
+            body.rows(rh, total, |mut r| {
+                let idx = r.index();
+                if let (true, 0) = (up, idx) {
                     r.col(|ui| {
                         if crate::browsergrid::up_row(ui) {
-                            acts.nav = Some(parent.clone());
+                            acts.nav = parent.clone();
                         }
                     });
-                    r.col(|_| {});
-                    r.col(|_| {});
-                    r.col(|_| {});
-                    r.col(|_| {});
+                    for _ in 0..4 {
+                        r.col(|_| {});
+                    }
+                    return;
+                }
+                let row = &visible[idx - usize::from(up)];
+                let sel = is_sel(row.name.as_str());
+                r.set_selected(sel); // 선택(다중 포함) 하이라이트.
+                r.col(|ui| name_cell(ui, row, path, remote_map, can_upload, lang, sel, &mut acts, ren));
+                r.col(|ui| {
+                    ui.label(type_label(row, lang));
                 });
-            }
-            for row in &visible {
-                body.row(rh, |mut r| {
-                    let sel = is_sel(row.name.as_str());
-                    r.set_selected(sel); // 선택(다중 포함) 하이라이트.
-                    r.col(|ui| name_cell(ui, row, path, remote_map, can_upload, lang, sel, &mut acts, ren));
-                    r.col(|ui| {
-                        ui.label(type_label(row, lang));
+                r.col(|ui| {
+                    // 크기는 오른쪽 정렬(탐색기식).
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(if row.is_dir { String::new() } else { human(row.size) });
                     });
-                    r.col(|ui| {
-                        // 크기는 오른쪽 정렬(탐색기식).
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.label(if row.is_dir { String::new() } else { human(row.size) });
-                        });
-                    });
-                    r.col(|ui| {
-                        ui.label(human_datetime(row.mtime));
-                    });
-                    r.col(|_| {}); // 빈 필러 셀.
                 });
-            }
+                r.col(|ui| {
+                    ui.label(human_datetime(row.mtime));
+                });
+                r.col(|_| {}); // 빈 필러 셀.
+            });
         });
     acts.set_sort = set_sort;
     acts

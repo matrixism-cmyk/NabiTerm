@@ -3,6 +3,11 @@
 // 디버그는 콘솔 유지(NABI_LOG 실시간 관찰용).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+// egui는 프레임마다 작은 할당을 대량으로 한다(레이아웃 잡·갤리·셰이프). Windows 기본 힙은
+// 이 패턴에서 병목이 되어 프레임 시간을 크게 잡아먹는다 — 전역 할당자만 바꿔도 체감이 달라진다.
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 mod app; mod appicon; mod gpu; mod softgl;
 mod arrange; mod bell;
 mod browser;
@@ -273,6 +278,9 @@ fn main() -> eframe::Result<()> {
         // GPU 없는 VM/헤드리스면 softgl이 소프트웨어 GL(Mesa)을 확인 후 받아 GL 백엔드로.
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu::wgpu_options(softgl::resolve_backends()),
+        // 디더링은 그라데이션 밴딩용인데 터미널은 평면 채움+글리프뿐이라 이득이 없다.
+        // 켜두면 프래그먼트마다 추가 연산 — 약한 GPU·RDP·가상 GPU에서 프레임이 눈에 띄게 준다.
+        dithering: false,
         ..Default::default()
     };
     eframe::run_native(

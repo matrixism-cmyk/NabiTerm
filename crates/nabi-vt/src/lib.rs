@@ -9,6 +9,7 @@ mod cache;
 pub mod cell;
 pub mod cursor;
 mod dump;
+mod evsink;
 pub mod grid;
 mod images;
 mod links;

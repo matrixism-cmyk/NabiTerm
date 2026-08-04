@@ -118,6 +118,25 @@ async fn open_authed(
     }
 }
 
+/// 출력 버스로 보낸다. 버스가 가득 차면 **블록하지 않고** 잠깐 양보 후 재시도한다.
+///
+/// 출력 버스는 폭주 방지를 위해 상한이 있는데, 여기서 crossbeam의 블로킹 `send`를 쓰면
+/// tokio 워커 스레드가 통째로 멈춘다(같은 런타임의 다른 SSH 세션·SFTP 전송까지 정지).
+/// 반환 false = 수신측 종료.
+async fn send_output(out_tx: &Sender<(PaneId, Bytes)>, pane: PaneId, data: Bytes) -> bool {
+    let mut item = (pane, data);
+    loop {
+        match out_tx.try_send(item) {
+            Ok(()) => return true,
+            Err(crossbeam_channel::TrySendError::Full(back)) => {
+                item = back;
+                tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+            }
+            Err(crossbeam_channel::TrySendError::Disconnected(_)) => return false,
+        }
+    }
+}
+
 async fn pump(
     pane: PaneId,
     mut channel: russh::Channel<client::Msg>,
@@ -128,10 +147,14 @@ async fn pump(
         tokio::select! {
             msg = channel.wait() => match msg {
                 Some(ChannelMsg::Data { data }) => {
-                    let _ = out_tx.send((pane, Bytes::copy_from_slice(&data)));
+                    if !send_output(&out_tx, pane, Bytes::copy_from_slice(&data)).await {
+                        break;
+                    }
                 }
                 Some(ChannelMsg::ExtendedData { data, .. }) => {
-                    let _ = out_tx.send((pane, Bytes::copy_from_slice(&data)));
+                    if !send_output(&out_tx, pane, Bytes::copy_from_slice(&data)).await {
+                        break;
+                    }
                 }
                 Some(ChannelMsg::Eof) | Some(ChannelMsg::Close) | None => break,
                 _ => {}

@@ -81,6 +81,21 @@ pub fn decoder_for(label: &str) -> Option<encoding_rs::Decoder> {
     (enc != encoding_rs::UTF_8).then(|| enc.new_decoder())
 }
 
+impl PaneRuntime {
+    /// 청크를 pane 인코딩으로 디코드(UTF-8이면 None=원본 사용). 스트리밍(부분 시퀀스 보존).
+    pub fn decode(&mut self, bytes: &[u8]) -> Option<Vec<u8>> {
+        let dec = self.decoder.as_mut()?;
+        let mut out = String::with_capacity(bytes.len() + 16);
+        let _ = dec.decode_to_string(bytes, &mut out, false);
+        Some(out.into_bytes())
+    }
+
+    /// 런타임 인코딩 변경(SetEncoding).
+    pub fn set_encoding(&mut self, label: &str) {
+        self.decoder = decoder_for(label);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,20 +139,5 @@ mod tests {
         }));
         assert!(v.model.lock().is_err(), "모델 잠금이 오염 상태여야 한다");
         model_lock(&v.model).process(b"hello"); // 패닉하지 않고 처리되면 성공.
-    }
-}
-
-impl PaneRuntime {
-    /// 청크를 pane 인코딩으로 디코드(UTF-8이면 None=원본 사용). 스트리밍(부분 시퀀스 보존).
-    pub fn decode(&mut self, bytes: &[u8]) -> Option<Vec<u8>> {
-        let dec = self.decoder.as_mut()?;
-        let mut out = String::with_capacity(bytes.len() + 16);
-        let _ = dec.decode_to_string(bytes, &mut out, false);
-        Some(out.into_bytes())
-    }
-
-    /// 런타임 인코딩 변경(SetEncoding).
-    pub fn set_encoding(&mut self, label: &str) {
-        self.decoder = decoder_for(label);
     }
 }

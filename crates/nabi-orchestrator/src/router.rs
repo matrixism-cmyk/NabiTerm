@@ -21,14 +21,22 @@ pub fn route_output(
 
     // 1) 권위 있는 VT 모델에 먹인다 + 메타(활동 상태) 갱신.
     // 잠금이 오염돼도 복구해서 계속 쓴다 — 건너뛰면 그 pane은 출력이 영영 멈춘다.
+    let mut replies = Vec::new();
     if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {
         {
             let mut model = crate::pane_registry::model_lock(&view.model);
             model.process(feed);
             model.push_detect_sample(bytes); // 디코드 전 raw 표본(인코딩 자동 감지, B9).
+            replies = model.take_replies(); // 장치 속성·커서 위치 등 질의 응답.
         }
         let mut meta = view.meta.lock().unwrap_or_else(|e| e.into_inner());
         meta.on_output();
+    }
+    // 1b) 질의 응답을 PTY로 돌려보낸다 — 안 보내면 질의한 프로그램이 타임아웃한다.
+    if !replies.is_empty() {
+        if let Some(rt) = state.get_mut(&pane) {
+            let _ = rt.transport.write(&replies);
+        }
     }
 
     // 2) OSC 7/133 탭에서 명령 경계/cwd 이벤트를 뽑는다.

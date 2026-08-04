@@ -36,6 +36,7 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 sha1 = "0.11"
 sha2 = "0.11"
+mimalloc = { version = "0.1", default-features = false }  # 전역 할당자(egui의 소량 다발 할당에 유리)
 eframe = { workspace = true }
 egui_dock = { workspace = true }
 bytes = { workspace = true }

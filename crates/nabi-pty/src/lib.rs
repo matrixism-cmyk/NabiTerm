@@ -10,4 +10,5 @@ pub mod spawn;
 
 pub use channel_trait::ByteChannel;
 pub use conpty::{spawn_local, LocalPty};
+pub use pump::OUT_BUS_CAPACITY;
 pub use spawn::{build_command, program_name, resolve_program, resolve_shell, wsl_distros};

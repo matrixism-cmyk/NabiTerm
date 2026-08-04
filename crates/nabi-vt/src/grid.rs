@@ -2,37 +2,14 @@
 //!
 //! vt100에서 교체(T1): 스크롤백 언더플로 버그 해결 + 향후 이미지/reflow 기반.
 
-use alacritty_terminal::event::{Event, EventListener};
 use alacritty_terminal::grid::{Dimensions, Scroll};
 use alacritty_terminal::index::{Column, Line, Point};
 use alacritty_terminal::term::{test::TermSize, Config, Term, TermMode};
 use alacritty_terminal::vte::ansi::{Processor, StdSyncHandler};
 use nabi_types::GridSize;
-use std::sync::{Arc, Mutex};
 
-/// 터미널이 올린 이벤트(제목/벨) 수집 상태.
-#[derive(Default)]
-struct EvState {
-    title: String,
-    bells: usize,
-}
-
-/// Term 이벤트 리스너 — 제목·벨만 수집한다(나머지는 무시).
-#[derive(Clone, Default)]
-pub(crate) struct EvSink(Arc<Mutex<EvState>>);
-
-impl EventListener for EvSink {
-    fn send_event(&self, ev: Event) {
-        if let Ok(mut s) = self.0.lock() {
-            match ev {
-                Event::Title(t) => s.title = t,
-                Event::ResetTitle => s.title.clear(),
-                Event::Bell => s.bells += 1,
-                _ => {}
-            }
-        }
-    }
-}
+/// 터미널이 올린 이벤트(제목·벨·질의 응답) 수집기 — evsink.rs.
+pub(crate) use crate::evsink::EvSink;
 
 /// 한 pane의 권위 있는 화면 상태.
 pub struct TermModel {
@@ -120,10 +97,9 @@ impl TermModel {
             self.parser.advance(&mut self.term, b);
             self.esc_observe(b); // 인라인 이미지(Sixel/iTerm/Kitty) 병렬 관찰.
         }
-        if let Ok(s) = self.sink.0.lock() {
-            if s.title != self.title {
-                self.title = s.title.clone();
-            }
+        let t = self.sink.title();
+        if t != self.title {
+            self.title = t;
         }
         self.dirty = true;
         self.dirty_gen = self.dirty_gen.wrapping_add(1); // 렌더 캐시 무효화.
@@ -215,7 +191,15 @@ impl TermModel {
 
     /// 벨 누적 횟수(시각 벨 트리거용).
     pub fn bell_count(&self) -> usize {
-        self.sink.0.lock().map(|s| s.bells).unwrap_or(0)
+        self.sink.bells()
+    }
+
+    /// 터미널 질의 응답을 꺼낸다(호출측이 PTY로 써야 함). 없으면 빈 Vec.
+    ///
+    /// 장치 속성(`ESC[c`)·커서 위치(`ESC[6n`) 같은 질의는 응답이 돌아와야 프로그램이 진행한다.
+    /// `process()` 직후 호출해 전송하지 않으면 질의한 쪽이 타임아웃한다.
+    pub fn take_replies(&mut self) -> Vec<u8> {
+        self.sink.take_replies()
     }
 
     /// 마우스 리포팅이 켜져 있는지.
@@ -315,6 +299,26 @@ mod tests {
         assert!(m.bracketed_paste());
         m.process(b"\x07");
         assert!(m.bell_count() >= 1);
+    }
+
+    /// 터미널 질의(DA1·커서 위치)는 응답을 만들어야 하고, 그 응답은 꺼내 쓸 수 있어야 한다.
+    /// 이걸 버리면 질의한 프로그램이 응답을 기다리다 멈춘다.
+    #[test]
+    fn queries_produce_replies() {
+        let mut m = TermModel::new(GridSize::new(20, 5), 100);
+        assert!(m.take_replies().is_empty(), "질의 전에는 응답이 없다");
+
+        m.process(b"\x1b[c"); // DA1 — 장치 속성.
+        let da = m.take_replies();
+        assert!(!da.is_empty(), "DA1은 응답해야 한다");
+        assert_eq!(da[0], 0x1b, "CSI 응답이어야 한다");
+        assert!(m.take_replies().is_empty(), "한 번 꺼내면 비워진다");
+
+        m.process(b"\x1b[6n"); // DSR — 커서 위치.
+        let dsr = m.take_replies();
+        assert!(!dsr.is_empty(), "커서 위치 질의는 응답해야 한다");
+        // 형식: ESC [ row ; col R
+        assert_eq!(dsr.last().copied(), Some(b'R'), "커서 위치 응답은 R로 끝난다");
     }
 
     #[test]

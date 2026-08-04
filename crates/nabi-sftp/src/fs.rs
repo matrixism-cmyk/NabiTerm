@@ -6,6 +6,13 @@ use nabi_fs::{FileEntry, FileKind, RemoteFs};
 use russh::client::Handle;
 use russh_sftp::client::SftpSession;
 
+/// 전송 청크 크기.
+///
+/// SFTP는 요청/응답이라 처리량이 `청크 ÷ RTT`에 묶인다. 32KiB에서는 RTT 50ms일 때
+/// 약 640KB/s가 상한이었다. OpenSSH 클라이언트도 서버와 협상해 ~255KiB까지 올려 쓰며,
+/// 서버는 요청이 한도를 넘으면 짧게 잘라 응답하므로(short read) 큰 값이 안전하다.
+const XFER_CHUNK: usize = 256 * 1024;
+
 /// SFTP 백엔드. handle을 함께 보관해 세션을 살려둔다.
 pub struct SftpFs {
     sftp: SftpSession,
@@ -87,7 +94,7 @@ impl SftpFs {
         } else {
             std::fs::File::create(&part).map_err(|e| e.to_string())?
         };
-        let mut buf = vec![0u8; 32 * 1024];
+        let mut buf = vec![0u8; XFER_CHUNK];
         let mut total = resume_from;
         let start = std::time::Instant::now();
         loop {
@@ -154,7 +161,7 @@ impl SftpFs {
         } else {
             self.sftp.create(&part).await.map_err(|e| e.to_string())? // 처음부터(truncate).
         };
-        let mut buf = vec![0u8; 32 * 1024];
+        let mut buf = vec![0u8; XFER_CHUNK];
         let mut total = resume_from;
         let start = std::time::Instant::now();
         loop {

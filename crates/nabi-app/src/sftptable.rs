@@ -208,10 +208,14 @@ pub(crate) fn table(
             h.col(|ui| hdr(ui, tr(lang, "browser.col.size"), Sort::Size, &mut set_sort));
             h.col(|ui| hdr(ui, tr(lang, "browser.col.modified"), Sort::Date, &mut set_sort));
         })
-        .body(|mut body| {
-            // 맨 위 ".." 행: 더블클릭으로 상위 디렉터리 이동(루트가 아닐 때).
-            if cur != "/" && cur != "." {
-                body.row(rh, |mut r| {
+        .body(|body| {
+            // body.rows()는 보이는 행만 그린다. row()를 항목마다 부르면 화면 밖 수천 행까지
+            // 매 프레임 레이아웃·페인트한다(대용량 디렉터리에서 그대로 프레임 시간이 된다).
+            let up = cur != "/" && cur != "."; // 맨 위 ".." 행(상위 이동) 유무.
+            let total = entries.len() + usize::from(up);
+            body.rows(rh, total, |mut r| {
+                let idx = r.index();
+                if up && idx == 0 {
                     r.col(|ui| {
                         if crate::browsergrid::up_row(ui) {
                             click = Some(EClick::Nav(crate::sftppath::parent_dir(cur)));
@@ -220,29 +224,27 @@ pub(crate) fn table(
                     r.col(|_| {});
                     r.col(|_| {});
                     r.col(|_| {});
+                    return;
+                }
+                let e = entries[idx - usize::from(up)];
+                r.set_selected(multi.contains(e.name.as_str()) || selected == Some(e.name.as_str()));
+                r.col(|ui| {
+                    if let Some(a) = name_cell(ui, e, cur, lang, compare, ren) {
+                        click = Some(a);
+                    }
                 });
-            }
-            for e in entries {
-                body.row(rh, |mut r| {
-                    r.set_selected(multi.contains(e.name.as_str()) || selected == Some(e.name.as_str()));
-                    r.col(|ui| {
-                        if let Some(a) = name_cell(ui, e, cur, lang, compare, ren) {
-                            click = Some(a);
-                        }
-                    });
-                    r.col(|ui| {
-                        ui.label(type_label(e, lang));
-                    });
-                    r.col(|ui| {
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.label(if e.is_dir { String::new() } else { crate::browserfs::human(e.size) });
-                        });
-                    });
-                    r.col(|ui| {
-                        ui.label(crate::browserfs::human_datetime(e.mtime));
+                r.col(|ui| {
+                    ui.label(type_label(e, lang));
+                });
+                r.col(|ui| {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.label(if e.is_dir { String::new() } else { crate::browserfs::human(e.size) });
                     });
                 });
-            }
+                r.col(|ui| {
+                    ui.label(crate::browserfs::human_datetime(e.mtime));
+                });
+            });
         });
     click.or(set_sort.map(EClick::SetSort))
 }
