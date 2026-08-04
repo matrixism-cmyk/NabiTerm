@@ -1,4 +1,4 @@
-# nabi — Cargo workspace root.
+﻿# nabi — Cargo workspace root.
 # 모든 외부 의존성은 여기서 정확히 핀 고정한다(단일 진실원).
 # 버전은 2026-06 기준 계획값. UI/term/ssh 등 변동 큰 크레이트는 빌드 시 `cargo update`로 확인.
 [workspace]
@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.406"
+version = "0.1.407"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["aeo <the@aeokorea.com>"]

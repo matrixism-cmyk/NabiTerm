@@ -1,0 +1,45 @@
+# cargo-deny 설정 — 라이선스·보안 권고·중복 의존성 점검.
+# 실행: cargo deny check   (cargo install cargo-deny 필요, CI/사전 배포 점검용)
+#
+# targets를 실제 배포 대상 하나로 고정하면 의존성 그래프에서 다른 OS 전용 크레이트가
+# 통째로 빠진다(그래프 절반 감소 + 우리와 무관한 권고로 인한 잡음 제거).
+
+[graph]
+targets = [{ triple = "x86_64-pc-windows-gnu" }]
+all-features = false
+
+[advisories]
+# 취약점은 막고, 관리중단(unmaintained)은 우리 워크스페이스가 직접 쓰는 것만 본다 —
+# 전이 의존성의 관리중단은 우리가 고칠 수 없고 상위 크레이트의 문제다.
+yanked = "deny"
+unmaintained = "workspace"
+
+[licenses]
+# 배포 가능한 허용 목록. 여기 없는 라이선스가 들어오면 실패한다(사후 발견 방지).
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "Unicode-3.0",
+    "MPL-2.0",
+    "CC0-1.0",
+    "Unlicense",
+    "OpenSSL",
+    "BSL-1.0",
+]
+confidence-threshold = 0.9
+
+[bans]
+# 같은 크레이트의 여러 버전이 섞이면 바이너리가 커지고 타입이 갈린다. 경고로 추적한다
+# (egui/windows 계열은 실제로 여러 버전이 공존해 deny로 두면 실용성이 없다).
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

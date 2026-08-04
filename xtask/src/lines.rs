@@ -7,6 +7,9 @@ use std::process::ExitCode;
 
 const SOFT: usize = 250;
 const HARD: usize = 400;
+/// 한 줄 최대 길이(문자). 줄 수 한도를 한 줄에 여러 문장을 몰아넣어 우회하는 것을 막는다
+/// — 실제로 2천 자짜리 한 줄이 있었다. 줄 수만 세면 규율의 취지가 무력화된다.
+const MAX_COLS: usize = 220;
 
 pub fn run() -> ExitCode {
     let root = workspace_root();
@@ -16,11 +19,17 @@ pub fn run() -> ExitCode {
 
     let mut warnings = Vec::new();
     let mut failures = Vec::new();
+    let mut long = Vec::new();
     for f in &files {
         let n = count_lines(f);
         let rel = f.strip_prefix(&root).unwrap_or(f).display().to_string();
         if crate::overrides::is_allowed(&rel) {
             continue;
+        }
+        if let Some((ln, cols)) = widest_line(f) {
+            if cols > MAX_COLS {
+                long.push((rel.clone(), ln, cols));
+            }
         }
         if n > HARD {
             failures.push((rel, n));
@@ -32,13 +41,16 @@ pub fn run() -> ExitCode {
     for (f, n) in &warnings {
         println!("warn: {f} = {n} 줄 (소프트 {SOFT} 초과)");
     }
+    for (f, ln, cols) in &long {
+        println!("warn: {f}:{ln} = {cols}자 (한 줄 {MAX_COLS}자 초과)");
+    }
     for (f, n) in &failures {
         eprintln!("FAIL: {f} = {n} 줄 (하드 {HARD} 초과)");
     }
     println!(
         "검사 {} 파일 · 경고 {} · 실패 {}",
         files.len(),
-        warnings.len(),
+        warnings.len() + long.len(),
         failures.len()
     );
 
@@ -47,6 +59,16 @@ pub fn run() -> ExitCode {
     } else {
         ExitCode::FAILURE
     }
+}
+
+/// 가장 긴 줄의 (줄 번호, 문자 수). 주석 전용 줄은 세지 않는다(설명은 길어도 된다).
+fn widest_line(path: &Path) -> Option<(usize, usize)> {
+    let s = std::fs::read_to_string(path).ok()?;
+    s.lines()
+        .enumerate()
+        .filter(|(_, l)| !l.trim_start().starts_with("//"))
+        .map(|(i, l)| (i + 1, l.chars().count()))
+        .max_by_key(|&(_, c)| c)
 }
 
 /// 코드 라인만 센다 — 빈 줄과 주석 전용 줄(`//`/`///`/`//!`, 블록 `/* */`)은 제외.

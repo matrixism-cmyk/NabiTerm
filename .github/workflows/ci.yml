@@ -72,3 +72,14 @@ jobs:
       # 여기서는 "적어도 컴파일되고 수집된다"까지만 확인한다.
       - name: 실서버 테스트 수집 확인
         run: cargo test -p nabi-sftp --locked -- --ignored --list
+
+  # 라이선스·보안 권고·출처 점검. 코드와 무관하게 의존성만 보므로 별도 잡으로 병렬 실행한다.
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check
+          # deny.toml이 대상 트리플을 windows-gnu로 고정하므로 러너 OS와 무관하게 같은 그래프를 본다.
+          arguments: --all-features
