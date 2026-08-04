@@ -95,7 +95,7 @@ pub fn start<W: Fn() + Send + 'static>(waker: W) -> OrchestratorHandle {
                         if let Ok((pane, code)) = msg {
                             // 셸 종료: 레지스트리에서 제거(좀비·핸들 누수 방지) + UI 통지.
                             state.remove(&pane);
-                            panes_thread.write().unwrap().remove(&pane);
+                            crate::pane_registry::panes_write(&panes_thread).remove(&pane);
                             let _ = event_tx.send(Event::PaneExited { pane, code });
                         }
                     },

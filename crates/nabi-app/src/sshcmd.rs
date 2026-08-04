@@ -60,7 +60,9 @@ impl NabiApp {
             use std::net::ToSocketAddrs;
             let ok = format!("{host}:{port}").to_socket_addrs().ok().and_then(|mut a| a.next())
                 .map(|addr| std::net::TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(3)).is_ok()).unwrap_or(false);
-            *reach.lock().unwrap() = Some(format!("{} {host}:{port}", tr(lang, if ok { "reach.ok" } else { "reach.fail" })));
+            // 잠금 오염돼도 결과는 남긴다(백그라운드 스레드가 죽어 결과가 사라지지 않게).
+            *reach.lock().unwrap_or_else(|e| e.into_inner()) =
+                Some(format!("{} {host}:{port}", tr(lang, if ok { "reach.ok" } else { "reach.fail" })));
             ctx2.request_repaint();
         });
     }

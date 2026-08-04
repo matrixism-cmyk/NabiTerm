@@ -44,6 +44,29 @@ pub fn new_shared_panes() -> SharedPanes {
     Arc::new(RwLock::new(HashMap::new()))
 }
 
+/// 오염된 잠금을 복구해 읽는다.
+///
+/// 어느 스레드든 잠금을 든 채 패닉하면 `RwLock`이 오염되고, 이후 `unwrap()`은 **모두** 패닉한다.
+/// 오케스트레이터 스레드가 그렇게 죽으면 창은 그려지는데 아무 반응 없는 좀비가 된다.
+/// pane 맵은 단순 컨테이너라 패닉 시점의 논리적 불변식이 깨질 여지가 없으므로 복구해 계속 쓴다.
+/// (actor.rs의 catch_unwind 패닉 격리가 실제로 의미를 가지려면 이 복구가 필요하다.)
+pub fn panes_read(p: &SharedPanes) -> std::sync::RwLockReadGuard<'_, HashMap<PaneId, PaneView>> {
+    p.read().unwrap_or_else(|e| e.into_inner())
+}
+
+/// 오염된 잠금을 복구해 쓴다. 근거는 [`panes_read`] 참조.
+pub fn panes_write(p: &SharedPanes) -> std::sync::RwLockWriteGuard<'_, HashMap<PaneId, PaneView>> {
+    p.write().unwrap_or_else(|e| e.into_inner())
+}
+
+/// 오염된 pane 모델 잠금을 복구해 잠근다.
+///
+/// 모델이 오염되면 기존 코드는 `if let Ok(..)`로 **조용히 건너뛰어**, 그 pane이 입력은 받지만
+/// 출력이 영영 안 나오는 상태가 됐다. VT 모델은 자체적으로 일관성을 복구하므로 이어서 쓴다.
+pub fn model_lock(m: &SharedModel) -> std::sync::MutexGuard<'_, TermModel> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
+}
+
 /// 오케스트레이터 스레드만 소유하는 pane 런타임.
 pub struct PaneRuntime {
     pub transport: Box<dyn ByteChannel>,
@@ -56,6 +79,52 @@ pub struct PaneRuntime {
 pub fn decoder_for(label: &str) -> Option<encoding_rs::Decoder> {
     let enc = encoding_rs::Encoding::for_label(label.as_bytes()).unwrap_or(encoding_rs::UTF_8);
     (enc != encoding_rs::UTF_8).then(|| enc.new_decoder())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nabi_types::{next_pane_id, GridSize};
+
+    fn view() -> PaneView {
+        let model = Arc::new(Mutex::new(TermModel::new(GridSize::new(80, 24), 100)));
+        PaneView::new(model, "t".into(), "local")
+    }
+
+    /// 잠금을 든 채 패닉해 오염시킨 뒤에도 읽기/쓰기가 계속 동작해야 한다.
+    /// (오염 시 unwrap하면 오케스트레이터 스레드가 죽어 앱이 좀비가 된다.)
+    #[test]
+    fn recovers_from_poisoned_panes_lock() {
+        let panes = new_shared_panes();
+        let id = next_pane_id();
+        panes_write(&panes).insert(id, view());
+
+        // 쓰기 잠금을 든 채 패닉 → RwLock 오염.
+        let p = panes.clone();
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _g = panes_write(&p);
+            panic!("보유 중 패닉");
+        }));
+        assert!(panes.read().is_err(), "이 시점에 잠금은 오염 상태여야 한다");
+
+        // 복구 헬퍼는 계속 동작한다.
+        assert!(panes_read(&panes).contains_key(&id), "오염 후에도 읽기 가능");
+        panes_write(&panes).remove(&id);
+        assert!(panes_read(&panes).is_empty(), "오염 후에도 쓰기 가능");
+    }
+
+    /// 모델 잠금이 오염돼도 출력 처리가 이어져야 한다(과거엔 조용히 건너뛰어 pane이 멈췄다).
+    #[test]
+    fn recovers_from_poisoned_model_lock() {
+        let v = view();
+        let m = v.model.clone();
+        let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let _g = model_lock(&m);
+            panic!("모델 잠금 보유 중 패닉");
+        }));
+        assert!(v.model.lock().is_err(), "모델 잠금이 오염 상태여야 한다");
+        model_lock(&v.model).process(b"hello"); // 패닉하지 않고 처리되면 성공.
+    }
 }
 
 impl PaneRuntime {

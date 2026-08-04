@@ -75,9 +75,7 @@ pub fn finish_local_spawn(
             // scrollback 0 = 사실상 무제한(대용량).
             let sb = if d.scrollback == 0 { 100_000 } else { d.scrollback };
             let model = Arc::new(Mutex::new(TermModel::new(d.size, sb)));
-            panes
-                .write()
-                .unwrap()
+            crate::pane_registry::panes_write(panes)
                 .insert(d.pane, PaneView::new(model, d.label, "local"));
             state.insert(
                 d.pane,
@@ -137,7 +135,7 @@ pub fn connect_ssh_pane(
     );
     let sb = if scrollback == 0 { 100_000 } else { scrollback };
     let model = Arc::new(Mutex::new(TermModel::new(size, sb)));
-    panes.write().unwrap().insert(pane, PaneView::new(model, title, "ssh"));
+    crate::pane_registry::panes_write(panes).insert(pane, PaneView::new(model, title, "ssh"));
     state.insert(
         pane,
         PaneRuntime {

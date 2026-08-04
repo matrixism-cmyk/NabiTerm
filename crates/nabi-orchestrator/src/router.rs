@@ -20,14 +20,15 @@ pub fn route_output(
     let feed: &[u8] = decoded.as_deref().unwrap_or(bytes);
 
     // 1) 권위 있는 VT 모델에 먹인다 + 메타(활동 상태) 갱신.
-    if let Some(view) = panes.read().unwrap().get(&pane) {
-        if let Ok(mut model) = view.model.lock() {
+    // 잠금이 오염돼도 복구해서 계속 쓴다 — 건너뛰면 그 pane은 출력이 영영 멈춘다.
+    if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {
+        {
+            let mut model = crate::pane_registry::model_lock(&view.model);
             model.process(feed);
             model.push_detect_sample(bytes); // 디코드 전 raw 표본(인코딩 자동 감지, B9).
         }
-        if let Ok(mut meta) = view.meta.lock() {
-            meta.on_output();
-        }
+        let mut meta = view.meta.lock().unwrap_or_else(|e| e.into_inner());
+        meta.on_output();
     }
 
     // 2) OSC 7/133 탭에서 명령 경계/cwd 이벤트를 뽑는다.
@@ -35,13 +36,12 @@ pub fn route_output(
         for ev in rt.osc.feed(feed) {
             // 명령 경계를 모델에 기록: 133;A=프롬프트 절대 위치(점프), 133;D=종료코드(블록 바).
             if matches!(ev, OscEvent::PromptStart | OscEvent::CommandFinished(_)) {
-                if let Some(view) = panes.read().unwrap().get(&pane) {
-                    if let Ok(mut m) = view.model.lock() {
-                        match &ev {
-                            OscEvent::PromptStart => m.mark_prompt(),
-                            OscEvent::CommandFinished(code) => m.mark_command_done(*code),
-                            _ => {}
-                        }
+                if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {
+                    let mut m = crate::pane_registry::model_lock(&view.model);
+                    match &ev {
+                        OscEvent::PromptStart => m.mark_prompt(),
+                        OscEvent::CommandFinished(code) => m.mark_command_done(*code),
+                        _ => {}
                     }
                 }
             }

@@ -49,10 +49,8 @@ pub fn handle_command(
             if let Some(p) = state.get_mut(&pane) {
                 let _ = p.transport.resize(size);
             }
-            if let Some(view) = panes.read().unwrap().get(&pane) {
-                if let Ok(mut m) = view.model.lock() {
-                    m.resize(size);
-                }
+            if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {
+                crate::pane_registry::model_lock(&view.model).resize(size);
             }
         }
         Command::Broadcast { panes, data } => {
@@ -65,7 +63,7 @@ pub fn handle_command(
         }
         Command::ClosePane { pane } => {
             state.remove(&pane);
-            panes.write().unwrap().remove(&pane);
+            crate::pane_registry::panes_write(panes).remove(&pane);
             let _ = event_tx.send(Event::PaneExited { pane, code: None });
         }
         Command::SetEncoding { pane, label } => {
