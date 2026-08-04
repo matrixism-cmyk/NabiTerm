@@ -4,10 +4,12 @@
 //! 같은 호스트인데 터미널만 MITM 보호되고 SFTP는 무방비이던 문제를 없앤다.
 
 use crate::fs::SftpFs;
+use crate::raw::{Feat, RawFs, POSIX_RENAME};
 use nabi_proto::{SshAuth, SshParams};
 use nabi_ssh::handler::ClientHandler;
 use nabi_ssh::verify::HostKeyVerifier;
 use russh::client::{self, AuthResult};
+use russh_sftp::client::RawSftpSession;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -68,18 +70,38 @@ pub async fn connect_sftp(
         .request_subsystem(true, "sftp")
         .await
         .map_err(|e| e.to_string())?;
-    // 업로드 파이프라인 깊이를 기본(8)보다 올린다. SFTP는 요청/응답이라 미결 요청 수가 곧
-    // 처리량이다(요청수 × 청크 ÷ RTT). OpenSSH sftp 클라이언트도 기본 64를 쓴다.
-    // max_packet_len은 서버가 VERSION에서 알려주는 값과 min으로 협상되므로 상한만 크게 둔다.
-    let cfg = russh_sftp::client::Config {
-        max_concurrent_writes: 64,
+    let raw = open_raw(channel.into_stream()).await?;
+    Ok(SftpFs::new(raw, handle, jump))
+}
+
+/// SFTP 서브시스템 스트림 위에 raw 세션을 열고 서버 확장을 감지한다.
+///
+/// 고수준 `SftpSession`을 쓰지 않는 이유는 raw.rs 참고(확장·파이프라이닝 접근 불가).
+pub(crate) async fn open_raw<S>(stream: S) -> Result<RawFs, String>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
+{
+    // 요청 하나의 응답 대기 시간. 기본 10초는 파이프라인으로 수 MB를 띄워 두는 우리 방식과
+    // 맞지 않는다 — 느린 회선에서 아직 순서를 기다리는 요청이 멀쩡히 시간 초과된다.
+    let cfg = russh_sftp::client::Config { request_timeout_secs: 120, ..Default::default() };
+    let mut session = RawSftpSession::new_with_config(stream, cfg);
+    let version = session.init().await.map_err(|e| e.to_string())?;
+    let has = |name: &str, ver: &str| version.extensions.get(name).is_some_and(|v| v == ver);
+    let mut feat = Feat {
+        posix_rename: has(POSIX_RENAME, "1"),
+        fsync: has("fsync@openssh.com", "1"),
+        statvfs: has("statvfs@openssh.com", "2"),
         ..Default::default()
     };
-    let sftp = russh_sftp::client::SftpSession::new_with_config(channel.into_stream(), cfg)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(SftpFs::new(sftp, handle, jump))
+    // 청크 크기를 추측하지 않고 서버가 알려준 한도를 쓴다(limits@openssh.com).
+    if has("limits@openssh.com", "1") {
+        if let Ok(l) = session.limits().await {
+            feat.read_len = Some(l.max_read_len);
+            feat.write_len = Some(l.max_write_len);
+            session.set_limits(l.into());
+        }
+    }
+    Ok(RawFs::new(session, feat))
 }
 
 /// 핸들에 비밀번호/키 파일 인증을 수행한다(직접·점프 공용).

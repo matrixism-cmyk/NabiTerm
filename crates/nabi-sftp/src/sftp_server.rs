@@ -3,18 +3,14 @@
 //! 외부 서버 없이 SftpFs(list/read/write/remove/rename/mkdir) 왕복을 검증한다.
 //! 테스트 본문은 sftp_test.rs.
 
-use crate::connect_sftp;
-use nabi_proto::SshParams;
 use russh::server::{self, Auth, Msg, Session};
 use russh::{Channel, ChannelId};
 use russh_sftp::protocol::{Data, File, FileAttributes, Handle, Name, OpenFlags, Status, StatusCode};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
-use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-const SERVER_KEY: &str = "-----BEGIN OPENSSH PRIVATE KEY-----
+pub(crate) const SERVER_KEY: &str = "-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACCzPq7zfqLffKoBDe/eo04kH2XxtSmk9D7RQyf1xUqrYgAAAJgAIAxdACAM
 XQAAAAtzc2gtZWQyNTUxOQAAACCzPq7zfqLffKoBDe/eo04kH2XxtSmk9D7RQyf1xUqrYg
@@ -24,7 +20,7 @@ ZfG1KaT0PtFDJ/XFSqtiAAAAEHVzZXJAZXhhbXBsZS5jb20BAgMEBQ==
 ";
 
 #[derive(Default)]
-struct SshSession {
+pub(crate) struct SshSession {
     clients: Arc<Mutex<HashMap<ChannelId, Channel<Msg>>>>,
 }
 
@@ -62,11 +58,11 @@ impl server::Handler for SshSession {
 }
 
 #[derive(Default)]
-struct Sftp {
-    listed: bool,
-    files: HashMap<String, Vec<u8>>,
+pub(crate) struct Sftp {
+    pub(crate) listed: bool,
+    pub(crate) files: HashMap<String, Vec<u8>>,
     /// setstat로 설정된 권한(chmod 라운드트립 검증용).
-    perms: HashMap<String, u32>,
+    pub(crate) perms: HashMap<String, u32>,
 }
 
 impl Sftp {
@@ -83,7 +79,11 @@ impl Sftp {
     }
 }
 
-fn ok_status(id: u32) -> Status {
+/// 한 응답에 실제로 담아 주는 최대 바이트. limits로 광고하는 8KB보다 일부러 작게 둔다
+/// — 실 서버도 "허용 255KB, 실제 100KB"처럼 다르게 답한다.
+pub(crate) const SHORT_READ_CAP: usize = 3000;
+
+pub(crate) fn ok_status(id: u32) -> Status {
     Status {
         id,
         status_code: StatusCode::Ok,
@@ -94,6 +94,18 @@ fn ok_status(id: u32) -> Status {
 
 impl russh_sftp::server::Handler for Sftp {
     type Error = StatusCode;
+
+    async fn init(
+        &mut self,
+        _version: u32,
+        _ext: std::collections::HashMap<String, String>,
+    ) -> Result<russh_sftp::protocol::Version, Self::Error> {
+        // OpenSSH 확장을 광고해 클라이언트의 확장 경로가 실제로 돌게 한다.
+        Ok(russh_sftp::protocol::Version {
+            version: 3,
+            extensions: crate::sftp_serverext::advertised(),
+        })
+    }
 
     fn unimplemented(&self) -> Self::Error {
         StatusCode::OpUnsupported
@@ -165,12 +177,50 @@ impl russh_sftp::server::Handler for Sftp {
         pflags: OpenFlags,
         _attrs: FileAttributes,
     ) -> Result<Handle, Self::Error> {
-        if pflags.contains(OpenFlags::WRITE) {
+        // TRUNCATE일 때만 비운다 — 이어올리기(WRITE|CREATE)는 기존 내용을 유지해야 한다.
+        if pflags.contains(OpenFlags::TRUNCATE) {
             self.files.insert(filename.clone(), Vec::new());
+        } else if pflags.contains(OpenFlags::WRITE) {
+            self.files.entry(filename.clone()).or_default();
         } else if !self.files.contains_key(&filename) {
             return Err(StatusCode::NoSuchFile);
         }
         Ok(Handle { id, handle: filename })
+    }
+
+    /// 크기를 지정하면 자른다/늘린다(이어올리기의 꼬리 절단 검증용).
+    async fn fsetstat(
+        &mut self,
+        id: u32,
+        handle: String,
+        attrs: FileAttributes,
+    ) -> Result<Status, Self::Error> {
+        if let Some(sz) = attrs.size {
+            if let Some(buf) = self.files.get_mut(&handle) {
+                buf.resize(sz as usize, 0);
+            }
+        }
+        Ok(ok_status(id))
+    }
+
+    async fn stat(&mut self, id: u32, path: String) -> Result<russh_sftp::protocol::Attrs, Self::Error> {
+        let buf = self.files.get(&path).ok_or(StatusCode::NoSuchFile)?;
+        let attrs = FileAttributes {
+            size: Some(buf.len() as u64),
+            permissions: Some(self.perms.get(&path).copied().unwrap_or(0o100_644)),
+            mtime: Some(1_700_000_000),
+            ..Default::default()
+        };
+        Ok(russh_sftp::protocol::Attrs { id, attrs })
+    }
+
+    async fn extended(
+        &mut self,
+        id: u32,
+        request: String,
+        data: Vec<u8>,
+    ) -> Result<russh_sftp::protocol::Packet, Self::Error> {
+        crate::sftp_serverext::handle(self, id, &request, &data)
     }
 
     async fn read(
@@ -185,7 +235,9 @@ impl russh_sftp::server::Handler for Sftp {
         if off >= content.len() {
             return Err(StatusCode::Eof);
         }
-        let end = (off + len as usize).min(content.len());
+        // 실 서버(OpenSSH)처럼 요청보다 **짧게** 응답한다. 한도로 알려준 값과 실제로 채워 주는
+        // 길이가 다른 상황을 그대로 재현해, 클라이언트가 그 길이에 맞춰 가는지 검증한다.
+        let end = (off + (len as usize).min(SHORT_READ_CAP)).min(content.len());
         Ok(Data {
             id,
             data: content[off..end].to_vec(),
@@ -226,41 +278,3 @@ impl russh_sftp::server::Handler for Sftp {
     }
 }
 
-/// 인프로세스 SSH+SFTP 서버를 띄우고 접속 주소를 돌려준다.
-async fn start_server() -> std::net::SocketAddr {
-    let key = russh::keys::PrivateKey::from_openssh(SERVER_KEY).unwrap();
-    let config = Arc::new(server::Config {
-        keys: vec![key],
-        ..Default::default()
-    });
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    tokio::spawn(async move {
-        if let Ok((stream, _)) = listener.accept().await {
-            if let Ok(rs) = server::run_stream(config, stream, SshSession::default()).await {
-                let _ = rs.await;
-            }
-        }
-    });
-    tokio::time::sleep(Duration::from_millis(250)).await;
-    addr
-}
-
-/// 테스트용 known_hosts 경로(매 호출 고유) — TOFU 학습이 실제 사용자 파일을 건드리지 않게.
-pub(crate) fn test_known_hosts() -> std::path::PathBuf {
-    use std::sync::atomic::{AtomicU64, Ordering};
-    static N: AtomicU64 = AtomicU64::new(0);
-    std::env::temp_dir().join(format!(
-        "nabi-test-known-hosts-{}-{}",
-        std::process::id(),
-        N.fetch_add(1, Ordering::Relaxed)
-    ))
-}
-
-/// 인프로세스 서버에 접속해 SftpFs를 돌려준다(테스트 진입점).
-pub(crate) async fn connect_fs() -> crate::SftpFs {
-    let addr = start_server().await;
-    let params = SshParams::password(addr.ip().to_string(), addr.port(), "u", "p");
-    // verifier 없음 → 미지 호스트는 TOFU 학습(임시 파일). 키 변경은 여전히 거부된다.
-    connect_sftp(&params, test_known_hosts(), None).await.expect("sftp connect")
-}

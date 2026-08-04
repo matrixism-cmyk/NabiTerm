@@ -5,8 +5,11 @@
 //! 확장한다(현재는 별도 연결 + 비밀번호 인증).
 
 pub mod fs;
+mod pipeline;
+pub mod raw;
 mod recurse;
 pub mod session;
+mod xfer;
 
 pub use fs::SftpFs;
 pub use session::connect_sftp;
@@ -14,6 +17,14 @@ pub use session::connect_sftp;
 #[cfg(test)]
 mod sftp_server;
 #[cfg(test)]
+mod sftp_boot;
+#[cfg(test)]
+mod sftp_serverext;
+#[cfg(test)]
 mod sftp_test;
 #[cfg(test)]
+mod pipeline_test;
+#[cfg(test)]
 mod realserver_test;
+#[cfg(test)]
+mod realserver_pipe;

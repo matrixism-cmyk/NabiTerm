@@ -1,6 +1,6 @@
 //! SftpFs(SFTP 백엔드) 런타임 검증. 인프로세스 SSH+SFTP 서버 하네스는 sftp_server.rs.
 
-use crate::sftp_server::connect_fs;
+use crate::sftp_boot::connect_fs;
 use nabi_fs::RemoteFs;
 
 #[tokio::test]

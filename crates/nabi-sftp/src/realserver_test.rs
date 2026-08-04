@@ -1,4 +1,4 @@
-﻿//! 실 SSH/SFTP 서버 대상 통합테스트(#[ignore] — 기본 게이트 제외, 실서버 동작 검증용).
+//! 실 SSH/SFTP 서버 대상 통합테스트(#[ignore] — 기본 게이트 제외, 실서버 동작 검증용).
 //!
 //! 실행: 서버 정보를 환경변수로 주고 `cargo test -p nabi-sftp -- --ignored`.
 //!   NABI_RT_USER(필수) NABI_RT_KEY(개인키 경로, 필수) NABI_RT_HOST(기본 127.0.0.1) NABI_RT_PORT(기본 22)
@@ -8,7 +8,7 @@ use crate::connect_sftp;
 use nabi_fs::RemoteFs;
 use nabi_proto::SshParams;
 
-fn params() -> Option<SshParams> {
+pub(crate) fn params() -> Option<SshParams> {
     let user = std::env::var("NABI_RT_USER").ok()?;
     let host = std::env::var("NABI_RT_HOST").unwrap_or_else(|_| "127.0.0.1".into());
     let port: u16 = std::env::var("NABI_RT_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(22);
@@ -25,7 +25,7 @@ fn params() -> Option<SshParams> {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_upload_atomic_overwrites() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let remote = "nabi_realtest_up.bin";
     let local = std::env::temp_dir().join(format!("nabi-rt-up-{}.bin", std::process::id()));
     // 1) 최초 업로드.
@@ -47,7 +47,7 @@ async fn realserver_upload_atomic_overwrites() {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_remove_recursive() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let dir = "nabi_realtest_rmdir";
     let _ = fs.mkdir(dir).await;
     let src = std::env::temp_dir().join(format!("nabi-rt-rm-{}.bin", std::process::id()));
@@ -64,7 +64,7 @@ async fn realserver_remove_recursive() {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_dir_size() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let dir = "nabi_realtest_szdir";
     let _ = fs.mkdir(dir).await;
     let src = std::env::temp_dir().join(format!("nabi-rt-sz-{}.bin", std::process::id()));
@@ -84,7 +84,7 @@ async fn realserver_dir_size() {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_download_preserves_mtime() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let remote = "nabi_realtest_mtime.bin";
     let src = std::env::temp_dir().join(format!("nabi-rt-mt-src-{}.bin", std::process::id()));
     std::fs::write(&src, b"mtime-test").unwrap();
@@ -107,7 +107,7 @@ async fn realserver_download_preserves_mtime() {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_upload_resumes_filepart() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let remote = "nabi_realtest_upresume.bin";
     let content = b"ABCDEFGHIJKLMNOP"; // 16바이트.
     // 부분 원격 .filepart(앞 6바이트)를 만들어 중단된 업로드를 흉내낸다.
@@ -127,7 +127,7 @@ async fn realserver_upload_resumes_filepart() {
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
 async fn realserver_download_resume_filepart() {
     let Some(p) = params() else { return };
-    let mut fs = connect_sftp(&p, crate::sftp_server::test_known_hosts(), None).await.expect("connect");
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
     let remote = "nabi_realtest_dl.bin";
     let content = b"0123456789ABCDEF";
     // 원격에 알려진 내용 준비(원자적 업로드로).

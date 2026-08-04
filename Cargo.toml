@@ -65,6 +65,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"   # 회전 파일 로그(사후 진단).
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "macros", "io-util", "net", "time"] }
 crossbeam-channel = "0.5"
+futures-util = { version = "0.3", default-features = false, features = ["std", "async-await"] }
 bytes = "1"
 
 # --- serde / config ---
