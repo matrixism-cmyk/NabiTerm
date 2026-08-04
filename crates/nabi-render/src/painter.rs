@@ -1,7 +1,7 @@
 //! egui Painter 기반 터미널 그리드 렌더.
 #![allow(clippy::too_many_arguments, clippy::needless_range_loop)]
 
-use egui::{Align2, Color32, FontId, Painter, Pos2, Rect, Stroke, Ui, Vec2};
+use egui::{Color32, FontId, Painter, Pos2, Rect, Stroke, Ui, Vec2};
 use nabi_types::{CellAttrs, Rgba};
 use nabi_vt::{CursorShape, RenderCell, TermModel, Theme};
 
@@ -160,6 +160,10 @@ fn paint_row(
     flush_fill(painter, fill_x, x, y, ch, fill_clr);
     // 패스 2 — 텍스트(셀별 정확한 그리드 x) + 밑줄. 각 글자를 자기 셀 위치에 그려, 런 배칭의
     // 글자별 픽셀 라운딩 누적 드리프트(글자 겹침/그리드 어긋남)를 원천 차단한다. 공백은 글리프가 없어 생략.
+    //
+    // 글리프는 캐시된 갤리를 재사용하고(색은 그릴 때 치환), 셰이프는 모아 한 번에 넘긴다 —
+    // painter.text()를 셀마다 부르면 호출당 Context 쓰기잠금 2회 + 할당 2회가 붙는다.
+    let mut shapes: Vec<egui::Shape> = Vec::with_capacity(row.len());
     let mut x = rect.left();
     // 링크 밑줄(단일 스타일)은 런으로 모아 한 줄로 그린다(줌서도 처음~끝 정확·이음새 없음). SGR 밑줄은 셀별.
     let (mut ul_clr, mut ul_x): (Option<Color32>, f32) = (None, x);
@@ -174,7 +178,8 @@ fn paint_row(
             to_c32(cell.fg)
         };
         if !cell.text.is_empty() && cell.text != " " {
-            painter.text(Pos2::new(x, y), Align2::LEFT_TOP, &cell.text, font.clone(), fg);
+            let g = crate::glyphcache::galley(painter.ctx(), &cell.text, font);
+            shapes.push(egui::Shape::galley(Pos2::new(x, y), g, fg));
         }
         if cell.attrs.contains(CellAttrs::ANY_UNDERLINE) {
             flush_uline(painter, ul_x, x, y, ch, ul_clr.take()); // SGR 밑줄 전 링크 런 종료.
@@ -188,6 +193,8 @@ fn paint_row(
         x += adv;
     }
     flush_uline(painter, ul_x, x, y, ch, ul_clr);
+    // 행의 글리프를 한 번에 넘긴다 — extend는 그래픽 잠금을 1회만 잡는다(셀당 add 대비).
+    painter.extend(shapes);
 }
 
 /// 배칭된 링크 밑줄을 한 줄로 그린다(런 시작~끝). 색 None이면 생략.
