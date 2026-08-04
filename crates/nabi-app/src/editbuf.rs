@@ -1,4 +1,4 @@
-//! 대용량 파일 편집 엔진(E6) 모델 — ropey rope + 커서/선택 + 인코딩·EOL. 편집·undo는 editbufedit.
+﻿//! 대용량 파일 편집 엔진(E6) 모델 — ropey rope + 커서/선택 + 인코딩·EOL. 편집·undo는 editbufedit.
 //!
 //! 내부는 **LF 정규화** 텍스트만 보관(열/줄 계산 단순화). 원본 EOL은 따로 기억해 저장 시 복원한다.
 
@@ -15,13 +15,11 @@ pub(crate) enum EditKind {
     Delete,
 }
 
-/// rope 편집 버퍼 — 커서/선택(앵커)/undo·redo 스택 + 원본 인코딩·EOL.
+/// rope 편집 버퍼 — 선택(커서 포함)/undo·redo 스택 + 원본 인코딩·EOL.
 pub(crate) struct EditBuf {
     pub rope: Rope,
-    /// 커서 char 인덱스.
-    pub cursor: usize,
-    /// 선택 앵커(없으면 선택 없음). cursor와 다르면 [min,max)가 선택.
-    pub anchor: Option<usize>,
+    /// 편집 선택. 지금은 항상 범위 1개지만 자료구조는 멀티커서를 담을 수 있다(editsel).
+    pub sel: crate::editsel::Selection,
     pub dirty: bool,
     /// 다음 프레임에 커서를 보이도록 스크롤(키 이동/편집 후 set).
     pub ensure_visible: bool,
@@ -38,7 +36,7 @@ impl EditBuf {
     /// LF 정규화 텍스트로 빈 히스토리 버퍼를 만든다(open·테스트 공용).
     pub(crate) fn new_buf(lf: &str, enc: String, eol: &'static str) -> EditBuf {
         EditBuf {
-            rope: Rope::from_str(lf), cursor: 0, anchor: None, dirty: false,
+            rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
             ensure_visible: false, enc, eol, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None,
         }
@@ -88,12 +86,26 @@ impl EditBuf {
         }
     }
 
+    /// 커서 위치(주 범위의 이동단).
+    pub(crate) fn cursor(&self) -> usize {
+        self.sel.primary().head
+    }
+
+    /// 커서를 옮긴다(선택 해제 — 캐럿만 남긴다).
+    pub(crate) fn set_cursor(&mut self, at: usize) {
+        self.sel = crate::editsel::Selection::caret(at);
+    }
+
+    /// 선택 앵커를 유지한 채 커서만 옮긴다(Shift+이동).
+    pub(crate) fn move_head(&mut self, to: usize) {
+        let anchor = self.sel.primary().anchor;
+        self.sel.set_primary(crate::editsel::Range { anchor, head: to });
+    }
+
     /// 현재 선택 범위 [start,end)(없으면 None).
     pub(crate) fn selection(&self) -> Option<(usize, usize)> {
-        match self.anchor {
-            Some(a) if a != self.cursor => Some((a.min(self.cursor), a.max(self.cursor))),
-            _ => None,
-        }
+        let r = self.sel.primary();
+        (!r.is_caret()).then(|| (r.start(), r.end()))
     }
 
     /// 선택된 텍스트(없으면 빈 문자열).
@@ -106,13 +118,13 @@ impl EditBuf {
 
     /// 커서 (줄, 열) — 0-base.
     pub(crate) fn cursor_line_col(&self) -> (usize, usize) {
-        let line = self.rope.char_to_line(self.cursor);
-        (line, self.cursor - self.rope.line_to_char(line))
+        let line = self.rope.char_to_line(self.cursor());
+        (line, self.cursor() - self.rope.line_to_char(line))
     }
 
     /// 커서 왼쪽 단어 경계(이전 단어 시작). 비단어 건너뛴 뒤 단어를 건너뛴다.
     pub(crate) fn word_left(&self) -> usize {
-        let mut p = self.cursor;
+        let mut p = self.cursor();
         while p > 0 && !is_word(self.rope.char(p - 1)) {
             p -= 1;
         }
@@ -125,7 +137,7 @@ impl EditBuf {
     /// 커서 오른쪽 단어 경계(다음 단어 시작). 단어를 건너뛴 뒤 비단어를 건너뛴다.
     pub(crate) fn word_right(&self) -> usize {
         let len = self.rope.len_chars();
-        let mut p = self.cursor;
+        let mut p = self.cursor();
         while p < len && is_word(self.rope.char(p)) {
             p += 1;
         }
@@ -152,8 +164,7 @@ mod tests {
     #[test]
     fn selection_and_line_accessors() {
         let mut b = buf("hi\nworld");
-        b.cursor = 1;
-        b.anchor = Some(4); // [1,4) = "i\nw"
+        b.sel = crate::editsel::Selection::single(4, 1); // [1,4) = "i\nw"
         assert_eq!(b.selected_text(), "i\nw");
         assert_eq!(b.line_string(1), "world");
         assert_eq!(b.line_len(0), 2);

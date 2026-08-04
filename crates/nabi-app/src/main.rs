@@ -160,6 +160,7 @@ mod sftpperms;
 mod sftptoolbar;
 mod sftpops;
 mod eventsftp;
+mod editsel;
 mod sshconfig;
 mod settings;
 mod settingslists;

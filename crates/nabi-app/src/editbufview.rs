@@ -123,10 +123,12 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
             let pos = hit(eb, p, top, text_left, row_h, char_w);
             let shift = ui.input(|i| i.modifiers.shift);
             if resp.drag_started() {
-                if !shift {
-                    eb.anchor = Some(pos); // 새 드래그 선택의 시작점.
+                // Shift+드래그는 기존 고정단 유지, 아니면 여기서 새 선택을 시작한다.
+                if shift {
+                    eb.move_head(pos);
+                } else {
+                    eb.set_cursor(pos);
                 }
-                eb.cursor = pos;
                 eb.undo_open = false;
             } else if resp.dragged() {
                 eb.move_to(pos, true); // 드래그 중 선택 확장.
@@ -134,8 +136,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
                 if shift {
                     eb.move_to(pos, true); // Shift+클릭 = 현재 위치까지 확장.
                 } else {
-                    eb.cursor = pos;
-                    eb.anchor = Some(pos); // 단순 클릭 = 커서 이동(선택 해제).
+                    eb.set_cursor(pos); // 단순 클릭 = 커서 이동(선택 해제).
                     eb.undo_open = false;
                 }
             }

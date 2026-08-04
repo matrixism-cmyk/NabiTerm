@@ -1,4 +1,4 @@
-//! 편집 버퍼(E6) 변경 연산 + undo/redo(연속 편집 묶음 coalescing). editbuf.rs의 EditBuf impl.
+﻿//! 편집 버퍼(E6) 변경 연산 + undo/redo(연속 편집 묶음 coalescing). editbuf.rs의 EditBuf impl.
 //!
 //! 같은 종류(삽입/삭제) 연속 편집은 한 undo 단위로 묶어 Ctrl+Z가 글자별이 아니라 구간별로 동작한다.
 //! 커서 이동·종류 전환·선택 대체·줄바꿈은 묶음 경계.
@@ -14,7 +14,8 @@ impl EditBuf {
         if !fresh && self.undo_open && self.last_kind == Some(kind) {
             self.redo.clear(); // 묶음 계속 — 스냅샷 추가 안 함.
         } else {
-            self.undo.push((self.rope.clone(), self.cursor));
+            let snap = (self.rope.clone(), self.cursor());
+            self.undo.push(snap);
             if self.undo.len() > UNDO_MAX {
                 self.undo.remove(0);
             }
@@ -24,12 +25,12 @@ impl EditBuf {
         self.last_kind = Some(kind);
     }
 
+    /// 선택이 있으면 지우고 캐럿을 그 시작점에 둔다(없으면 선택만 해제 — 이미 캐럿).
     fn del_selection(&mut self) {
         if let Some((a, b)) = self.selection() {
             self.rope.remove(a..b);
-            self.cursor = a;
+            self.set_cursor(a);
         }
-        self.anchor = None;
     }
 
     /// 텍스트 삽입(선택이 있으면 대체). 줄바꿈/선택대체는 묶음 경계.
@@ -37,8 +38,9 @@ impl EditBuf {
         let fresh = self.selection().is_some() || s.contains('\n');
         self.begin(EditKind::Insert, fresh);
         self.del_selection();
-        self.rope.insert(self.cursor, s);
-        self.cursor += s.chars().count();
+        let at = self.cursor();
+        self.rope.insert(at, s);
+        self.set_cursor(at + s.chars().count());
         self.dirty = true;
         self.ensure_visible = true;
         if s.contains('\n') {
@@ -59,9 +61,10 @@ impl EditBuf {
         self.begin(EditKind::Delete, fresh);
         if self.selection().is_some() {
             self.del_selection();
-        } else if self.cursor > 0 {
-            self.rope.remove(self.cursor - 1..self.cursor);
-            self.cursor -= 1;
+        } else if self.cursor() > 0 {
+            let c = self.cursor();
+            self.rope.remove(c - 1..c);
+            self.set_cursor(c - 1);
         }
         self.dirty = true;
         self.ensure_visible = true;
@@ -73,8 +76,9 @@ impl EditBuf {
         self.begin(EditKind::Delete, fresh);
         if self.selection().is_some() {
             self.del_selection();
-        } else if self.cursor < self.rope.len_chars() {
-            self.rope.remove(self.cursor..self.cursor + 1);
+        } else if self.cursor() < self.rope.len_chars() {
+            let c = self.cursor();
+            self.rope.remove(c..c + 1);
         }
         self.dirty = true;
         self.ensure_visible = true;
@@ -82,19 +86,19 @@ impl EditBuf {
 
     /// 커서를 새 위치로(select=true면 선택 확장). 이동은 undo 묶음 경계.
     pub(crate) fn move_to(&mut self, pos: usize, select: bool) {
+        let pos = pos.min(self.rope.len_chars());
         if select {
-            self.anchor.get_or_insert(self.cursor); // 선택 시작점 유지.
+            self.move_head(pos); // 고정단(anchor)은 그대로 — 선택 확장.
         } else {
-            self.anchor = None;
+            self.set_cursor(pos);
         }
-        self.cursor = pos.min(self.rope.len_chars());
         self.ensure_visible = true;
         self.undo_open = false;
     }
 
     /// 좌우 이동(dx=±1).
     pub(crate) fn move_h(&mut self, dx: i64, select: bool) {
-        let pos = (self.cursor as i64 + dx).clamp(0, self.rope.len_chars() as i64) as usize;
+        let pos = (self.cursor() as i64 + dx).clamp(0, self.rope.len_chars() as i64) as usize;
         self.move_to(pos, select);
     }
 
@@ -120,8 +124,7 @@ impl EditBuf {
 
     /// 전체 선택(undo 묶음 경계).
     pub(crate) fn select_all(&mut self) {
-        self.anchor = Some(0);
-        self.cursor = self.rope.len_chars();
+        self.sel = crate::editsel::Selection::single(0, self.rope.len_chars());
         self.undo_open = false;
     }
 
@@ -138,23 +141,24 @@ impl EditBuf {
             return;
         }
         let target = if right { self.word_right() } else { self.word_left() };
-        if target == self.cursor {
+        let c = self.cursor();
+        if target == c {
             return;
         }
         self.begin(EditKind::Delete, true); // 단어 삭제는 별도 묶음.
-        let (a, b) = (self.cursor.min(target), self.cursor.max(target));
+        let (a, b) = (c.min(target), c.max(target));
         self.rope.remove(a..b);
-        self.cursor = a;
+        self.set_cursor(a);
         self.dirty = true;
         self.ensure_visible = true;
     }
 
     pub(crate) fn undo(&mut self) {
         if let Some((r, c)) = self.undo.pop() {
-            self.redo.push((self.rope.clone(), self.cursor));
+            let snap = (self.rope.clone(), self.cursor());
+            self.redo.push(snap);
             self.rope = r;
-            self.cursor = c.min(self.rope.len_chars());
-            self.anchor = None;
+            self.set_cursor(c.min(self.rope.len_chars()));
             self.dirty = true;
             self.ensure_visible = true;
         }
@@ -164,10 +168,10 @@ impl EditBuf {
 
     pub(crate) fn redo(&mut self) {
         if let Some((r, c)) = self.redo.pop() {
-            self.undo.push((self.rope.clone(), self.cursor));
+            let snap = (self.rope.clone(), self.cursor());
+            self.undo.push(snap);
             self.rope = r;
-            self.cursor = c.min(self.rope.len_chars());
-            self.anchor = None;
+            self.set_cursor(c.min(self.rope.len_chars()));
             self.dirty = true;
             self.ensure_visible = true;
         }
@@ -189,7 +193,7 @@ mod tests {
         let mut b = buf("");
         b.insert("hello");
         assert_eq!(b.rope.to_string(), "hello");
-        assert_eq!(b.cursor, 5);
+        assert_eq!(b.cursor(), 5);
         b.backspace();
         assert_eq!(b.rope.to_string(), "hell");
     }
@@ -197,18 +201,17 @@ mod tests {
     #[test]
     fn selection_replace() {
         let mut b = buf("abcdef");
-        b.cursor = 1;
-        b.anchor = Some(4); // "bcd"
+        b.sel = crate::editsel::Selection::single(4, 1); // "bcd"
         b.insert("X");
         assert_eq!(b.rope.to_string(), "aXef");
-        assert_eq!(b.cursor, 2);
+        assert_eq!(b.cursor(), 2);
         assert!(b.selection().is_none());
     }
 
     #[test]
     fn vertical_move_clamps_column() {
         let mut b = buf("abcd\nef\nghij");
-        b.cursor = 3;
+        b.set_cursor(3);
         b.move_v(1, false);
         assert_eq!(b.cursor_line_col(), (1, 2));
     }
@@ -216,7 +219,7 @@ mod tests {
     #[test]
     fn home_end() {
         let mut b = buf("hi\nworld");
-        b.cursor = 6;
+        b.set_cursor(6);
         b.home(false);
         assert_eq!(b.cursor_line_col(), (1, 0));
         b.end(false);
@@ -226,7 +229,7 @@ mod tests {
     #[test]
     fn undo_coalesces_consecutive_typing() {
         let mut b = buf("a");
-        b.cursor = 1;
+        b.set_cursor(1);
         b.insert("b");
         b.insert("c"); // 연속 → 한 묶음
         assert_eq!(b.rope.to_string(), "abc");
@@ -252,14 +255,14 @@ mod tests {
     #[test]
     fn word_movement_and_delete() {
         let mut b = buf("foo bar_baz qux");
-        b.cursor = 0;
+        b.set_cursor(0);
         assert_eq!(b.word_right(), 4); // "foo " → "bar_baz" 시작
-        b.cursor = 12;
+        b.set_cursor(12);
         assert_eq!(b.word_left(), 4); // 비단어+단어 역순 → bar_baz 시작
-        b.cursor = 0;
+        b.set_cursor(0);
         b.delete_word(true); // "foo " 삭제
         assert_eq!(b.rope.to_string(), "bar_baz qux");
-        assert_eq!(b.cursor, 0);
+        assert_eq!(b.cursor(), 0);
     }
 
     #[test]
@@ -277,9 +280,9 @@ mod tests {
     #[test]
     fn newline_keeps_indentation() {
         let mut b = buf("    ab");
-        b.cursor = 6; // 줄 끝
+        b.set_cursor(6); // 줄 끝
         b.insert_newline();
         assert_eq!(b.rope.to_string(), "    ab\n    "); // 선행 공백 복사
-        assert_eq!(b.cursor, 11);
+        assert_eq!(b.cursor(), 11);
     }
 }
