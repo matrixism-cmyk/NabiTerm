@@ -70,3 +70,43 @@ pub(crate) fn hit(ui: &egui::Ui, eb: &EditBuf, p: Pos2, top: f32, text_left: f32
     let off = crate::editbufcol::grapheme_snap(&src, d.to_src(cur.ccursor.index));
     eb.rope.line_to_char(line) + off
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{x_at, DispLine};
+
+    /// 실제 폰트로 레이아웃한 갤리를 준비한다(GPU 없이 epaint만으로 동작).
+    fn laid_out(src: &str) -> (DispLine, std::sync::Arc<egui::Galley>) {
+        let ctx = egui::Context::default();
+        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        let d = DispLine::new(src, 4);
+        let font = egui::FontId::monospace(14.0);
+        let g = ctx.fonts(|f| f.layout_no_wrap(d.text.clone(), font, egui::Color32::WHITE));
+        (d, g)
+    }
+
+    #[test]
+    fn caret_x_and_hit_test_agree() {
+        // 캐럿을 그리는 x로 다시 클릭하면 같은 글자로 돌아와야 한다. 이 왕복이 깨지면
+        // 탭·넓은 글자가 있는 줄에서 클릭 위치와 커서가 어긋난다(등폭 가정 시절의 버그).
+        for src in ["ab\tcd\te", "plain text", "\t\tindented", "a\tb"] {
+            let (d, g) = laid_out(src);
+            for i in 0..=d.chars() {
+                let x = x_at(&g, d.to_disp(i));
+                let cur = g.cursor_from_pos(egui::vec2(x + 0.1, 0.0));
+                assert_eq!(d.to_src(cur.ccursor.index), i, "{src:?}의 {i}번째에서 왕복 실패");
+            }
+        }
+    }
+
+    #[test]
+    fn caret_x_is_monotonic() {
+        let (d, g) = laid_out("ab\tcd\te");
+        let mut prev = f32::NEG_INFINITY;
+        for i in 0..=d.chars() {
+            let x = x_at(&g, d.to_disp(i));
+            assert!(x >= prev, "캐럿 x가 뒤로 갔다({i})");
+            prev = x;
+        }
+    }
+}
