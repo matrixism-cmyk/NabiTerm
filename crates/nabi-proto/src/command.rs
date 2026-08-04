@@ -4,7 +4,7 @@ use crate::sftp::SftpId;
 use crate::shell::ShellKind;
 use crate::ssh::SshParams;
 use bytes::Bytes;
-use nabi_types::{GridSize, PaneId, WindowId};
+use nabi_types::{GridSize, PaneId};
 
 /// UI(메뉴/팔레트/패널/키보드)가 방출하는 모든 요청.
 #[derive(Debug, Clone)]
@@ -38,8 +38,12 @@ pub enum Command {
     Resize { pane: PaneId, size: GridSize },
     /// pane 닫기(세션 종료).
     ClosePane { pane: PaneId },
-    /// 창 내 모든 pane에 입력 브로드캐스트(synchronize-panes).
-    Broadcast { window: WindowId, data: Bytes },
+    /// 지정한 pane들에 같은 입력을 보낸다(synchronize-panes).
+    ///
+    /// 대상을 **명시 목록**으로 받는다 — 이전에는 `WindowId`를 실었지만 오케스트레이터가 이를
+    /// 무시하고 프로세스의 모든 pane에 썼다(분리 창의 다른 SSH 세션까지). UI가 테두리로 표시하는
+    /// 대상과 실제 수신자가 어긋나지 않도록, 보내는 쪽이 대상을 정한다.
+    Broadcast { panes: Vec<PaneId>, data: Bytes },
     /// pane의 문자 인코딩 변경(예: "UTF-8", "EUC-KR").
     SetEncoding { pane: PaneId, label: String },
     /// 설정 핫리로드 적용.

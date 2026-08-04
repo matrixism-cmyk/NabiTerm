@@ -55,9 +55,12 @@ pub fn handle_command(
                 }
             }
         }
-        Command::Broadcast { data, .. } => {
-            for p in state.values_mut() {
-                let _ = p.transport.write(&data);
+        Command::Broadcast { panes, data } => {
+            // 지정된 pane에만 쓴다(과거: 창 ID를 무시하고 전체 pane에 씀 → 의도치 않은 명령 실행).
+            for id in &panes {
+                if let Some(p) = state.get_mut(id) {
+                    let _ = p.transport.write(&data);
+                }
             }
         }
         Command::ClosePane { pane } => {

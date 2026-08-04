@@ -2,6 +2,8 @@
 
 pub const CATALOG_SFTP: &[(&str, &str, &str, &str)] = &[
     ("sftp.batchtokens", "{n}=number, {nn}/{nnn}=zero-padded, {name}=base, {ext}=extension", "{n}=순번, {nn}/{nnn}=0채움, {name}=이름, {ext}=확장자", "{n}=連番, {nn}/{nnn}=ゼロ埋め, {name}=名前, {ext}=拡張子"),
+    ("sessions.corrupt", "Session file was damaged — original kept at", "세션 파일이 손상되어 원본을 보관했습니다", "セッションファイルが破損 — 原本を保存しました"),
+    ("find.filtersave", "Turn off the line filter before saving — only matching lines are shown", "줄 필터를 끄고 저장하세요 — 지금은 일치하는 줄만 표시됩니다", "行フィルタを解除してから保存してください — 現在は一致行のみ表示中"),
     ("sftp.syncpreview", "files to sync:", "동기화할 파일:", "同期するファイル:"),
     ("sftp.syncapply", "Apply", "적용", "適用"),
     ("sftp.dirsize", "Folder size", "폴더 크기", "フォルダサイズ"),

@@ -27,13 +27,14 @@ impl NabiApp {
                 p.multi.insert(s.clone());
             }
         } else if shift {
-            let names: Vec<&str> = p.entries.iter().map(|e| e.name.as_str()).collect();
-            let i1 = p.selected.as_deref().and_then(|x| names.iter().position(|n| *n == x));
+            // 범위는 화면에 보이는 순서 기준(필터로 가려진 항목이 범위에 끼지 않게).
+            let names = crate::sftptable::visible_names(p);
+            let i1 = p.selected.as_deref().and_then(|x| names.iter().position(|n| n == x));
             let i2 = names.iter().position(|n| *n == s);
             if let (Some(x), Some(y)) = (i1, i2) {
                 p.multi.clear();
                 for n in &names[x.min(y)..=x.max(y)] {
-                    p.multi.insert((*n).to_string());
+                    p.multi.insert(n.clone());
                 }
             }
         } else {

@@ -266,6 +266,15 @@ impl NabiApp {
     /// 한 에디터 탭의 버퍼를 저장한다(로컬=파일, 원격=임시 쓰기 후 업로드).
     pub(crate) fn save_editor_doc(&mut self, pane: nabi_types::PaneId) {
         let Some(doc) = self.editors.get(&pane) else { return };
+        // 찾기 필터가 켜져 있으면 doc.text는 "일치하는 줄만" 남은 부분집합이다.
+        // 그대로 저장하면 나머지 줄이 사라지므로(자동저장 포함) 막고 필터 해제를 안내한다.
+        if doc.find.filter_backup.is_some() {
+            self.notify = Some((
+                format!("\u{26a0} {}", nabi_i18n::tr(self.lang, "find.filtersave")),
+                Instant::now(),
+            ));
+            return;
+        }
         if doc.path.as_os_str().is_empty() {
             self.save_editor_as(pane); // untitled(메모리 문서) → 다른 이름으로 저장 대화상자.
             return;

@@ -28,9 +28,10 @@ pub(crate) fn list_zone(
         if ui.button(format!("\u{1f441} {}", t("sftp.hidden"))).clicked() { sftp.show_hidden = !sftp.show_hidden; ui.close_menu(); }
         if ui.button(format!("\u{1f4cb} {}", t("browser.copycurpath"))).clicked() { ui.ctx().copy_text(sftp.path.clone()); ui.close_menu(); }
         ui.menu_button(t("editor.toolsmenu"), |ui| {
-            if ui.button(format!("\u{2611} {}", t("menu.selectall"))).clicked() { sftp.multi = sftp.entries.iter().map(|e| e.name.clone()).collect(); ui.close_menu(); }
-            if ui.button(format!("\u{21c4} {}", t("menu.invertsel"))).clicked() { let cur = sftp.multi.clone(); sftp.multi = sftp.entries.iter().map(|e| e.name.clone()).filter(|n| !cur.contains(n)).collect(); ui.close_menu(); }
-            if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() { let names: Vec<String> = if sftp.multi.is_empty() { sftp.entries.iter().map(|e| e.name.clone()).collect() } else { sftp.multi.iter().cloned().collect() }; ui.ctx().copy_text(names.iter().map(|n| crate::sftppath::join_path(&sftp.path, n)).collect::<Vec<_>>().join("\n")); ui.close_menu(); }
+            // 선택/복사는 모두 "보이는 항목"만 대상으로 한다(필터로 가려진 파일 보호).
+            if ui.button(format!("\u{2611} {}", t("menu.selectall"))).clicked() { sftp.multi = crate::sftptable::visible_names(sftp).into_iter().collect(); ui.close_menu(); }
+            if ui.button(format!("\u{21c4} {}", t("menu.invertsel"))).clicked() { let cur = sftp.multi.clone(); sftp.multi = crate::sftptable::visible_names(sftp).into_iter().filter(|n| !cur.contains(n)).collect(); ui.close_menu(); }
+            if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() { let names: Vec<String> = if sftp.multi.is_empty() { crate::sftptable::visible_names(sftp) } else { sftp.multi.iter().cloned().collect() }; ui.ctx().copy_text(names.iter().map(|n| crate::sftppath::join_path(&sftp.path, n)).collect::<Vec<_>>().join("\n")); ui.close_menu(); }
         });
     });
     // 인라인 이름변경 편집기(자세히 보기): sftp.input 버퍼를 셀 위치에서 직접 편집.

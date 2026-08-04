@@ -11,6 +11,9 @@ use std::time::{Instant, UNIX_EPOCH};
 
 /// 편집 중인 원격 파일 1건.
 pub(crate) struct EditWatch {
+    /// 이 파일을 내려받은 SFTP 세션. 업로드는 반드시 같은 세션으로 보낸다
+    /// (패널이 다른 호스트로 바뀌어도 엉뚱한 서버를 덮어쓰지 않게).
+    pub id: nabi_proto::SftpId,
     /// 원격 경로.
     pub remote: String,
     /// 로컬 임시 파일.
@@ -59,8 +62,9 @@ impl NabiApp {
         });
         self.sftp.status = nabi_i18n::tr(self.lang, "sftp.downloading").to_string();
         // 중복 방지: 같은 원격을 이미 편집 중이면 갱신만.
-        self.edits.retain(|e| e.remote != remote);
+        self.edits.retain(|e| !(e.id == id && e.remote == remote));
         self.edits.push(EditWatch {
+            id,
             remote,
             temp,
             mtime: 0,
@@ -190,16 +194,16 @@ impl NabiApp {
 
     /// 매 프레임: 편집 임시파일이 저장(수정)되었으면 원격으로 재업로드한다.
     pub(crate) fn poll_edits(&mut self) {
-        let Some(id) = self.sftp.id else { return };
-        let mut ups: Vec<(String, String)> = Vec::new();
+        let mut ups: Vec<(nabi_proto::SftpId, String, String)> = Vec::new();
         for e in self.edits.iter_mut().filter(|e| e.started) {
             let m = file_mtime(&e.temp);
             if m > e.mtime {
                 e.mtime = m;
-                ups.push((e.temp.to_string_lossy().into_owned(), e.remote.clone()));
+                // 내려받은 그 세션으로 올린다(현재 선택된 패널이 아니라).
+                ups.push((e.id, e.temp.to_string_lossy().into_owned(), e.remote.clone()));
             }
         }
-        for (local, remote) in ups {
+        for (id, local, remote) in ups {
             self.orch.send(Command::SftpUpload {
                 id,
                 local,

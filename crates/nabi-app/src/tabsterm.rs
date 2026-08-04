@@ -70,8 +70,9 @@ impl TermTabViewer<'_> {
         if typed {
             if self.broadcast {
                 if self.broadcast_group.is_empty() {
+                    // 그룹 미지정 = "이 창의 터미널 전부". 테두리로 표시하는 대상과 정확히 일치시킨다.
                     self.orch.send(Command::Broadcast {
-                        window: nabi_types::WindowId::new(0),
+                        panes: self.window_panes.iter().copied().collect(),
                         data: Bytes::from(bytes),
                     });
                 } else {

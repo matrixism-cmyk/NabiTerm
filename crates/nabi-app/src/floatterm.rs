@@ -4,7 +4,7 @@ use bytes::Bytes;
 use crossbeam_channel::Sender;
 use nabi_orchestrator::SharedPanes;
 use nabi_proto::Command;
-use nabi_types::{GridSize, PaneId, WindowId};
+use nabi_types::{GridSize, PaneId};
 use nabi_vt::Theme;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -87,8 +87,9 @@ pub(crate) fn paint_floating_term(
     crate::paneio::grab_term_focus(ui, true);
     let typed = !bytes.is_empty() && !crate::paneio::term_input_blocked(ui.ctx());
     if typed {
+        // 분리 창은 자기 pane만 보여준다 — 브로드캐스트라도 보이지 않는 pane에 쓰지 않는다.
         let cmd = if broadcast {
-            Command::Broadcast { window: WindowId::new(0), data: Bytes::from(bytes) }
+            Command::Broadcast { panes: vec![pane], data: Bytes::from(bytes) }
         } else {
             Command::WriteInput { pane, data: Bytes::from(bytes) }
         };

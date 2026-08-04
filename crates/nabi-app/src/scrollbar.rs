@@ -33,8 +33,10 @@ pub(crate) fn draw(ui: &egui::Ui, rect: egui::Rect, pane: PaneId, model: &mut na
 
     // 썸(thumb): 보이는 창이 전체에서 차지하는 위치·비율.
     let top_line = (history - offset) as f32; // 0=맨 위, history=현재 창 top.
-    let thumb_h = ((rows as f32 / total) * track.height()).clamp(24.0, track.height());
-    let thumb_top = (track.top() + (top_line / total) * track.height()).min(track.bottom() - thumb_h);
+    // 트랙이 24px보다 짧으면 min>max로 clamp가 패닉한다(UI 스레드=앱 즉사) → 하한을 트랙 높이로 제한.
+    let thumb_h = ((rows as f32 / total) * track.height()).clamp(24.0_f32.min(track.height()), track.height());
+    let thumb_top = (track.top() + (top_line / total) * track.height())
+        .clamp(track.top(), (track.bottom() - thumb_h).max(track.top()));
     let thumb = egui::Rect::from_min_size(
         egui::pos2(track.left() + 2.0, thumb_top),
         egui::vec2(SB_W - 4.0, thumb_h),

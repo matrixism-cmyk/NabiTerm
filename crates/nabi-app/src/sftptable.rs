@@ -8,6 +8,14 @@ use nabi_i18n::{tr, Lang};
 use nabi_proto::SftpEntry;
 use std::collections::HashMap;
 
+/// 화면에 실제로 보이는 항목의 이름(필터·숨김 반영).
+///
+/// 전체 선택·범위 선택·일괄 경로 복사는 **반드시** 이 목록을 쓴다. `sftp.entries`를 직접 쓰면
+/// 필터로 가려진 파일까지 선택되어, 이어지는 삭제가 안 보이던 파일을 지운다.
+pub(crate) fn visible_names(sftp: &SftpPanel) -> Vec<String> {
+    visible(sftp).iter().map(|e| e.name.clone()).collect()
+}
+
 /// 필터·숨김 적용한 보이는 항목(테이블/키보드 공용 순서).
 fn visible(sftp: &SftpPanel) -> Vec<&SftpEntry> {
     sftp.entries
@@ -43,7 +51,8 @@ pub(crate) fn keyboard_nav(ui: &egui::Ui, sftp: &mut SftpPanel, a: &mut SftpAct)
     // 표준 파일관리 단축키: F2=이름변경, Delete=삭제(선택 항목). 기존 핸들러로 위임.
     if f2 && sftp.rename_from.is_none() { a.rename = a.rename.take().or_else(|| sftp.selected.clone()); }
     if del { a.del = a.del.take().or_else(|| sftp.selected.clone()); }
-    if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::A)) { sftp.multi = sftp.entries.iter().map(|e| e.name.clone()).collect(); } // Ctrl+A 전체 선택.
+    // Ctrl+A: 보이는 항목만 선택(필터로 가려진 파일이 삭제에 휩쓸리지 않게).
+    if ui.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::A)) { sftp.multi = visible_names(sftp).into_iter().collect(); }
     let nav = up || down || home || end || pgup || pgdn;
     if !(nav || enter) {
         return;

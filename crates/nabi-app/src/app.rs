@@ -181,7 +181,8 @@ impl NabiApp {
         // F1: vault_remember면 OS 자격증명으로 시작 시 자동 잠금 해제 시도.
         let (vault, vault_password) = crate::vault::auto_unlock(&config, &vault_path);
         let session_path = layout.sessions_file.clone();
-        let sessions = nabi_session::load_tree(&session_path);
+        // 세션 파일이 깨졌으면 원본을 백업해 두고(데이터 보존) 그 사실을 사용자에게 알린다.
+        let (sessions, session_backup) = nabi_session::load_tree_reporting(&session_path);
 
         let font_size = config.appearance.font_size;
         let lang = nabi_i18n::Lang::from_code(&config.appearance.language);
@@ -297,7 +298,11 @@ impl NabiApp {
             font_installer: crate::fontinstall::FontInstaller::default(), ime_preedit: String::new(), hwnd, drop_zones: Vec::new(), sidebar_selected: None, sidebar_new_group: String::new(), sidebar_rename_group: None, sidebar_rename_to: String::new(), reach: std::sync::Arc::new(std::sync::Mutex::new(None)),
             pending_layout: None, pending_restore: None,
             quake,
-            notify: None,
+            // 세션 파일이 손상돼 백업했다면 첫 화면에서 경로를 알린다(조용한 소멸 방지).
+            notify: session_backup.map(|b| {
+                let msg = nabi_i18n::tr(lang, "sessions.corrupt");
+                (format!("\u{26a0} {msg} \u{2192} {}", b.display()), std::time::Instant::now())
+            }),
             resize_badge: None,
             add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_target: None,

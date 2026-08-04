@@ -26,8 +26,10 @@ pub struct TermTabViewer<'a> {
     /// 사용자 지정 탭 이름(PaneId별). 비어 있으면 기본 제목 사용.
     pub tab_names: &'a mut HashMap<PaneId, String>,
     pub lang: nabi_i18n::Lang,
-    /// 브로드캐스트 대상 그룹(비어 있으면 전체). context_menu에서 토글.
+    /// 브로드캐스트 대상 그룹(비어 있으면 이 창의 터미널 전체). context_menu에서 토글.
     pub broadcast_group: &'a mut std::collections::HashSet<PaneId>,
+    /// 이 창(dock)에 속한 터미널 pane 전체 — 그룹 미지정 브로드캐스트의 대상 범위.
+    pub window_panes: &'a std::collections::HashSet<PaneId>,
     /// 마우스 텍스트 선택 상태(드래그→릴리스 자동 복사).
     pub selection: &'a mut Option<Sel>,
     /// 탭 색상 라벨(PaneId별).

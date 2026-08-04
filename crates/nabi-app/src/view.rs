@@ -89,6 +89,18 @@ impl NabiApp {
             if self.dock.translations.tab_context_menu.eject_button != eject {
                 self.dock.translations.tab_context_menu.eject_button = eject.to_string();
             }
+            // 이 창의 터미널 pane 집합(에디터·브라우저·SFTP 탭 제외) — 브로드캐스트 대상 범위.
+            let window_panes: std::collections::HashSet<nabi_types::PaneId> = self
+                .dock
+                .iter_all_tabs()
+                .map(|(_, p)| *p)
+                .filter(|p| {
+                    !self.editors.contains_key(p)
+                        && !self.browser_tabs.contains_key(p)
+                        && Some(*p) != self.sftp_pane
+                        && !self.sftp_bg.contains_key(p)
+                })
+                .collect();
             let mut viewer = crate::tabs::TermTabViewer {
                 orch: &self.orch,
                 theme: self.theme,
@@ -106,6 +118,7 @@ impl NabiApp {
                 tab_names: &mut self.tab_names,
                 lang: self.lang,
                 broadcast_group: &mut self.broadcast_group,
+                window_panes: &window_panes,
                 selection: &mut self.selection,
                 tab_colors: &mut self.tab_colors,
                 pending_pathline: &mut self.pending_pathline,
