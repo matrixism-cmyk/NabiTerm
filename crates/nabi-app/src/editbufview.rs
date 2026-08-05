@@ -57,7 +57,23 @@ pub(crate) fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> E
     egui::TopBottomPanel::bottom(ui.id().with("eb_status")).show_inside(ui, |ui| {
         eb_status(ui, doc, cur, sel, lang);
     });
-    edit_body(ui, doc);
+    let m = edit_body(ui, doc, lang);
+    // 우클릭 메뉴에서 온 동작은 여기서 처리한다(클로저 안에서 doc을 또 빌릴 수 없다).
+    if let Some(t) = m.copy {
+        if !t.is_empty() {
+            ui.ctx().copy_text(t);
+        }
+    }
+    if m.paste && !doc.readonly {
+        if let Some(t) = crate::paneio::clipboard_text() {
+            if let Some(eb) = doc.edit.as_mut() {
+                eb.insert(&t.replace("\r\n", "\n"));
+            }
+        }
+    }
+    if m.find {
+        doc.find.open = true;
+    }
     act
 }
 
@@ -85,12 +101,13 @@ fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize
 }
 
 /// 가상화 편집 영역 — 보이는 줄만 그리고, 포커스 시 키/마우스로 편집한다.
-fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
+fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
     let mono = egui::FontId::monospace(fsize);
     let row_h = ui.fonts(|f| f.row_height(&mono)).max(1.0);
     let char_w = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
     let scroll_line = doc.find.scroll_to.take();
+    let mut menu_act = crate::editbufmenu::BufMenuAct::default();
     let eb = doc.edit.as_mut().unwrap();
     let lc = eb.rope.len_lines();
     let gutter_w = char_w * (lc.to_string().len().max(4) as f32) + 12.0;
@@ -113,6 +130,10 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
         let text_left = left + gutter_w;
         // 포커스/입력. 클릭 영역은 보이는 부분 전체.
         let resp = ui.interact(ui.clip_rect(), ui.id().with("eb_area"), egui::Sense::click_and_drag());
+        // 우클릭 메뉴 — 대용량 문서에서도 표준 편집 명령을 쓸 수 있게(단축키 전용이 아니라).
+        resp.context_menu(|ui| {
+            menu_act = crate::editbufmenu::context_menu(ui, eb, lang, readonly);
+        });
         if resp.clicked() || resp.drag_started() {
             resp.request_focus();
         }
@@ -183,4 +204,5 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
             painter.rect_filled(caret, egui::Rounding::ZERO, CARET);
         }
     });
+    menu_act
 }

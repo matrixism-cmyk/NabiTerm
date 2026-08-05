@@ -82,6 +82,7 @@ mod agentguide;
 mod aistatus;
 mod aidash;
 mod encsuggest;
+mod editbufmenu;
 mod editbufxform;
 mod sshkey;
 mod sshauth;
