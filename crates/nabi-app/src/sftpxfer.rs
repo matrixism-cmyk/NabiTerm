@@ -212,9 +212,17 @@ pub(crate) fn human_secs(s: u64) -> String {
     }
 }
 
+/// 원격 목록을 다시 받아야 하는가 — **큐가 다 빈 순간에 한 번만**.
+///
+/// 업로드마다 받으면 동시 전송 중에 목록이 계속 갈아엎힌다(24개를 올리면 24번).
+/// `stale`은 소비된다(한 번 새로 고치면 다시 낡을 때까지 안 받는다).
+pub(crate) fn take_refresh(drained: bool, stale: &mut bool) -> bool {
+    drained && std::mem::take(stale)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{eta_secs, human_secs, xfer_totals, Transfer, XferState, XFER_NONE};
+    use super::{eta_secs, human_secs, take_refresh, xfer_totals, Transfer, XferState, XFER_NONE};
 
     /// 큐 항목은 id로 지목해야 한다 — 위치로 찾으면 다른 파일 작업이 끼어들거나
     /// 재시도로 순서가 바뀔 때 엉뚱한 행이 갱신된다(과거 "첫 미완료 항목" 방식의 버그).
@@ -272,5 +280,17 @@ mod tests {
         assert_eq!(human_secs(45), "45s");
         assert_eq!(human_secs(83), "1m23s");
         assert_eq!(human_secs(7505), "2h05m");
+    }
+
+    /// 목록 갱신은 큐가 빈 순간 한 번만 — 항목마다 받으면 동시 전송 중 목록이 요동친다.
+    #[test]
+    fn refresh_only_once_when_queue_drains() {
+        let mut stale = false;
+        assert!(!take_refresh(true, &mut stale), "올린 게 없으면 갱신도 없다");
+        stale = true;
+        assert!(!take_refresh(false, &mut stale), "아직 남았으면 기다린다");
+        assert!(stale, "표시는 그대로 남아 있어야 한다");
+        assert!(take_refresh(true, &mut stale), "다 끝나면 한 번 받는다");
+        assert!(!take_refresh(true, &mut stale), "두 번은 받지 않는다");
     }
 }

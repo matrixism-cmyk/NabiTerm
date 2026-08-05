@@ -20,6 +20,8 @@ pub(crate) struct SftpPanel {
     pub status: String,
     /// 전송 큐(다운로드/업로드 진행·완료). 액터가 FIFO로 처리.
     pub transfers: Vec<Transfer>,
+    /// 업로드가 성공해 원격 목록이 낡았다는 표시. 큐가 다 빈 뒤 한 번만 새로 고친다.
+    pub dir_stale: bool,
     /// 이름 변경 중인 항목(Some이면 인라인 편집기 표시).
     pub rename_from: Option<String>,
     /// 이름변경 시작 직후 1프레임 편집기 포커스.

@@ -114,17 +114,23 @@ impl NabiApp {
                 }
             }
             p.status = if ok { format!("\u{2193} {name}") } else { message };
+            if ok && was_upload {
+                p.dir_stale = true; // 목록 갱신은 큐가 빈 뒤 한 번만(아래 refresh).
+            }
             // 큐가 다 비었는가(대기·정지 항목이 남아 있으면 아직 진행 중인 큐다).
             let drained = !p.transfers.iter().any(|t| !t.state.finished());
-            (was_upload, p.path.clone(), drained)
+            let refresh = crate::sftpxfer::take_refresh(drained, &mut p.dir_stale);
+            (refresh, p.path.clone(), drained)
         });
-        let Some((was_upload, path, drained)) = res else { return };
+        let Some((refresh, path, drained)) = res else { return };
         self.sftp_xfer_notify(ctx, ok, &name, drained); // H6 완료 토스트+attention.
         if ok {
             self.on_edit_download(&name); // 외부 편집기 오픈 또는 내장 에디터 적재.
-            if was_upload {
-                self.orch.send(nabi_proto::Command::SftpList { id, path });
-            }
+        }
+        // 업로드마다 목록을 다시 받으면, 여러 전송이 동시에 도는 동안 파일 목록이 계속
+        // 갈아엎힌다(24개를 올리면 24번). 큐가 비었을 때 한 번만 받는다.
+        if refresh {
+            self.orch.send(nabi_proto::Command::SftpList { id, path });
         }
         self.pump_transfers(id); // 자리가 났으니 다음 대기 항목을 시작한다.
         ctx.request_repaint();
