@@ -261,6 +261,10 @@ pub(crate) const CATALOG_EDITOR2: &[(&str, &str, &str, &str)] = &[
     // v0.1.407 — 들여쓰기 설정.
     ("editor.tabsize", "Tab width", "탭 폭", "タブ幅"),
     ("editor.indentspaces", "Insert spaces instead of tab", "탭 대신 공백 넣기", "タブの代わりにスペース"),
+    ("editor.xform.toobig",
+        "Document too large — select a range to transform",
+        "문서가 너무 큽니다 — 범위를 선택해 변환하세요",
+        "文書が大きすぎます — 範囲を選択してください"),
 ];
 
 #[cfg(test)]

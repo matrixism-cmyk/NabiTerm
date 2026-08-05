@@ -14,6 +14,9 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
     // 찾기는 HEX를 제외한 모든 편집기에서, HEX 전환 라벨은 모드에 맞춰 보인다.
     let is_hex = doc.hex.is_some();
     let plain = doc.hex.is_none() && doc.edit.is_none() && doc.big.is_none();
+    // 변환 명령은 String 문서든 rope(대용량) 문서든 똑같이 쓸 수 있다 — 순수 fn(&str)->String이라
+    // 버퍼 종류를 가릴 이유가 없었는데, 2MB를 넘는 순간 40여 개가 통째로 사라졌었다.
+    let can_transform = plain || doc.edit.is_some();
     egui::menu::bar(ui, |ui| {
         ui.menu_button(tr(lang, "nabipad.menu.file"), |ui| {
             if ui.button(tr(lang, "menu.newpad")).clicked() { act.new_doc = true; ui.close_menu(); }
@@ -49,15 +52,32 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
         ui.menu_button(tr(lang, "nabipad.menu.edit"), |ui| {
             if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close_menu(); }
             // 변환 명령(일반 텍스트 문서 전용)은 전부 주제별 서브메뉴로 묶어 평면 비대화를 막는다.
-            if plain {
+            if can_transform {
                 use crate::editmenugroups as g;
+                // 문서가 너무 커서 전체 적용을 막아야 하면, 눌러도 아무 일이 없게 두지 말고
+                // 아예 비활성으로 보여 준다("선택하고 다시 하라"는 이유까지 붙여서).
+                let blocked = doc.edit.as_ref().is_some_and(|e| {
+                    crate::editbufxform::target_range(e.selection(), e.rope.len_chars()).is_none()
+                });
                 let apply = |ui: &mut egui::Ui, f: Option<fn(&str) -> String>, doc: &mut EditorDoc| {
-                    if let Some(f) = f {
-                        doc.text = f(&doc.text);
-                        doc.dirty = true;
-                        ui.close_menu();
+                    let Some(f) = f else { return };
+                    match doc.edit.as_mut() {
+                        // rope 문서: 선택이 있으면 그 구간만, 없으면 문서 전체(크기 한도 안에서).
+                        Some(e) => {
+                            e.apply_transform(f);
+                            doc.dirty = e.dirty;
+                        }
+                        None => {
+                            doc.text = f(&doc.text);
+                            doc.dirty = true;
+                        }
                     }
+                    ui.close_menu();
                 };
+                if blocked {
+                    ui.label(tr(lang, "editor.xform.toobig"));
+                    ui.disable();
+                }
                 // 줄/공백 정리 그룹.
                 ui.menu_button(tr(lang, "editor.sortmenu"), |ui| { let f = g::sort_menu(ui, lang); apply(ui, f, doc); });
                 ui.menu_button(tr(lang, "editor.wsmenu"), |ui| { let f = g::whitespace_menu(ui, lang); apply(ui, f, doc); });
