@@ -15,4 +15,10 @@ pub const CATALOG_SFTP: &[(&str, &str, &str, &str)] = &[
     ("sftp.calcsize", "Calculating size…", "크기 계산 중…", "サイズ計算中…"),
     ("sftp.overwrite.title", "File already exists", "파일이 이미 있음", "ファイルが既に存在"),
     ("sftp.overwrite.body", "{n} file(s) already exist in the destination.\nYes = overwrite · No = skip existing · Cancel = abort", "대상 폴더에 이미 {n}개 파일이 있습니다.\n예 = 덮어쓰기 · 아니오 = 기존 건너뜀 · 취소 = 중단", "宛先に既に{n}個のファイルがあります。\nはい=上書き · いいえ=既存をスキップ · キャンセル=中止"),
+    // v0.1.409 — 툴바 그룹화(설명 없는 아이콘 줄이기).
+    ("sftp.home", "Home folder", "홈 폴더", "ホームフォルダ"),
+    ("sftp.close", "Close this connection", "이 연결 닫기", "この接続を閉じる"),
+    ("sftp.bookmarks", "Bookmarks", "즐겨찾기", "ブックマーク"),
+    ("sftp.syncgroup", "Compare / sync", "비교·동기화", "比較・同期"),
+    ("sftp.tools", "Tools", "도구", "ツール"),
 ];

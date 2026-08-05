@@ -176,6 +176,8 @@ pub struct TerminalCfg {
     /// SFTP 전송 속도 제한(KB/s, 0=무제한).
     #[serde(default)]
     pub speed_limit_kbps: u32,
+    /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
+    pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
     #[serde(default)]
     pub download_dir: String,
@@ -297,6 +299,7 @@ impl Default for TerminalCfg {
             warn_paste_newline: false,
             snippets: Vec::new(),
             speed_limit_kbps: 0,
+            max_parallel_transfers: 1,
             download_dir: String::new(),
             download_ask: true,
             recent_hosts: Vec::new(),

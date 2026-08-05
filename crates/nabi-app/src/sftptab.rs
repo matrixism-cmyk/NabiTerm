@@ -1,7 +1,7 @@
 //! SFTP 패널 본문 렌더 — ui에 그리며 발생 액션을 SftpAct로 모은다(처리는 sftpact.rs).
 
 use crate::sftppanel::SftpPanel;
-use crate::sftpxfer::show_transfers;
+use crate::sftpqueue::{show_queue, QueueAct};
 use nabi_i18n::{tr, Lang};
 
 /// SFTP 패널 렌더 중 수집된 사용자 액션.
@@ -32,10 +32,8 @@ pub(crate) struct SftpAct {
     pub paste: bool,
     pub do_del: bool,
     pub cancel_del: bool,
-    pub clear_done: bool,
-    pub cancel: bool,
-    /// 실패 전송 재시도 인덱스(H2).
-    pub retry_xfer: Option<usize>,
+    /// 전송 큐에서 모은 동작(일시정지·순서변경·제거·재시도).
+    pub queue: QueueAct,
     /// 디렉터리 동기화 버튼(업로드/다운로드 — 차이 파일만).
     pub sync_up: bool,
     pub sync_down: bool,
@@ -139,10 +137,7 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
         RowAction::DelCancel => a.cancel_del = true,
         RowAction::None => {}
     }
-    let (clr, cancel, retry) = show_transfers(ui, &sftp.transfers, lang);
-    a.clear_done |= clr;
-    a.cancel |= cancel;
-    a.retry_xfer = retry;
+    a.queue = show_queue(ui, &sftp.transfers, lang);
     ui.add(
         egui::TextEdit::singleline(&mut sftp.filter)
             .hint_text(tr(lang, "browser.filter"))

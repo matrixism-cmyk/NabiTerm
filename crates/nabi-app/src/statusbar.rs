@@ -72,7 +72,7 @@ impl NabiApp {
             .iter()
             .chain(self.sftp_bg.values().flat_map(|p| p.transfers.iter()))
         {
-            if !t.done {
+            if !t.state.finished() {
                 xfers += 1;
                 if t.size > 0 {
                     tb += t.bytes;

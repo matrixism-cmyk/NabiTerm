@@ -1,9 +1,18 @@
-//! SFTP 패널 상단 툴바(홈·상위·새로고침·주소창·동기화·새폴더·정렬·검색·북마크·재연결 등).
-//! render_sftp_tab에서 분리(파일 크기 규율). 액션은 SftpAct에 모은다.
+//! SFTP 패널 상단 툴바. render_sftp_tab에서 분리(파일 크기 규율). 액션은 SftpAct에 모은다.
+//!
+//! 아이콘이 열 몇 개가 한 줄에 늘어서면 무엇이 무엇인지 알 수 없다. 자주 쓰는 것만 툴바에
+//! 남기고(이동·새로고침·주소·새로 만들기·붙여넣기) 나머지는 성격별로 묶었다:
+//! **비교·동기화**, **보기**(정렬·숨김), **도구**(검색·일괄이름·폴더받기).
+//! 그룹 사이에는 구분선을 둬 눈으로 끊어 읽히게 한다.
 
 use crate::sftppanel::SftpPanel;
 use crate::sftptab::SftpAct;
 use nabi_i18n::{tr, Lang};
+
+/// 아이콘 버튼 + 툴팁(설명 없는 글리프를 남기지 않는다).
+fn icon(ui: &mut egui::Ui, glyph: &str, lang: Lang, key: &str) -> bool {
+    ui.small_button(glyph).on_hover_text(tr(lang, key)).clicked()
+}
 
 /// SFTP 툴바를 그리고 클릭 액션을 a에 채운다.
 pub(crate) fn render_toolbar(
@@ -14,120 +23,134 @@ pub(crate) fn render_toolbar(
     sort_desc: bool,
     a: &mut SftpAct,
 ) {
-    ui.horizontal(|ui| {
-        let t = if sftp.host.is_empty() {
-            tr(lang, "sftp.title").to_string()
-        } else {
-            sftp.host.clone()
-        };
+    ui.horizontal_wrapped(|ui| {
+        let t = if sftp.host.is_empty() { tr(lang, "sftp.title").to_string() } else { sftp.host.clone() };
         ui.label(format!("\u{1f5a7} {t}"));
-        if ui.small_button("\u{1f3e0}").on_hover_text("Home").clicked() {
+        // ── 이동 ──
+        if icon(ui, "\u{1f3e0}", lang, "sftp.home") {
             a.go = Some(".".to_string());
         }
-        if ui
-            .small_button("\u{2191}")
-            .on_hover_text(tr(lang, "browser.up"))
-            .clicked()
-        {
+        if icon(ui, "\u{2191}", lang, "browser.up") {
             a.go = Some(crate::sftppath::parent_dir(&sftp.path));
         }
-        if ui
-            .small_button("\u{27f3}")
-            .on_hover_text(tr(lang, "sftp.refresh"))
-            .clicked()
-        {
+        if icon(ui, "\u{27f3}", lang, "sftp.refresh") {
             a.go = Some(sftp.path.clone());
         }
-        // 편집 가능한 경로 주소창(FileZilla식 — 직접 입력/붙여넣기로 이동). 비편집 시 현재 경로 표시.
-        let r = ui.add(egui::TextEdit::singleline(&mut sftp.addr).desired_width(200.0).hint_text(tr(lang, "sftp.gotopath")));
+        // 편집 가능한 경로 주소창(FileZilla식 — 직접 입력/붙여넣기로 이동).
+        let r = ui.add(
+            egui::TextEdit::singleline(&mut sftp.addr)
+                .desired_width(200.0)
+                .hint_text(tr(lang, "sftp.gotopath")),
+        );
         if !r.has_focus() {
             sftp.addr = sftp.path.clone();
         } else if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && !sftp.addr.trim().is_empty() {
             a.go = Some(sftp.addr.trim().to_string());
         }
-        // 디렉터리 동기화(차이 파일만) — WinSCP식. 로컬 브라우저 폴더 기준.
-        if ui.small_button("\u{2191}\u{21c5}").on_hover_text(tr(lang, "sftp.syncup")).clicked() { a.sync_up = true; }
-        if ui.small_button("\u{2193}\u{21c5}").on_hover_text(tr(lang, "sftp.syncdown")).clicked() { a.sync_down = true; }
-        if ui
-            .small_button("\u{1f4c1}+")
-            .on_hover_text(tr(lang, "sftp.newfolder"))
-            .clicked()
-        {
+        bookmark_menu(ui, lang, bookmarks, a);
+        ui.separator();
+        // ── 만들기·붙여넣기 ──
+        if icon(ui, "\u{1f4c1}+", lang, "sftp.newfolder") {
             a.new_folder = true;
         }
-        if ui
-            .small_button("\u{1f4c4}+")
-            .on_hover_text(tr(lang, "sftp.newfile"))
-            .clicked()
-        {
+        if icon(ui, "\u{1f4c4}+", lang, "sftp.newfile") {
             a.new_file = true;
         }
-        if ui.small_button("\u{1f4cb}\u{2193}").on_hover_text(tr(lang, "browser.paste")).clicked() { a.paste = true; } // OS 파일 붙여넣기=업로드(툴바 일관성).
-        if ui
-            .small_button("\u{2b07}")
-            .on_hover_text(tr(lang, "sftp.downloaddir"))
-            .clicked()
-        {
-            a.dl_cur = true;
+        if icon(ui, "\u{1f4cb}\u{2193}", lang, "browser.paste") {
+            a.paste = true;
         }
-        // 정렬 방향 표시(▲오름/▼내림). 클릭 시 방향→다음 키 순환(브라우저와 일관).
-        if ui
-            .small_button(if sort_desc { "\u{25bc}" } else { "\u{25b2}" })
-            .on_hover_text(tr(lang, "sftp.sort"))
-            .clicked()
-        {
-            a.cycle_sort = true;
-        }
-        if ui
-            .small_button("\u{21c6}")
-            .on_hover_text(tr(lang, "sftp.compare"))
-            .clicked()
-        {
-            a.toggle_compare = true;
-        }
-        if ui
-            .small_button("\u{1f517}")
-            .on_hover_text(tr(lang, "sftp.sync"))
-            .clicked()
-        {
-            a.toggle_sync = true;
-        }
-        if ui
-            .small_button("\u{1f50d}")
-            .on_hover_text(tr(lang, "sftp.search"))
-            .clicked()
-        {
-            a.search = true;
-        }
-        if ui
-            .small_button("\u{1f524}")
-            .on_hover_text(tr(lang, "sftp.batchrename"))
-            .clicked()
-        {
-            a.batch_toggle = true;
-        }
-        if ui
-            .small_button("\u{1f441}")
-            .on_hover_text(tr(lang, "sftp.hidden"))
-            .clicked()
-        {
-            sftp.show_hidden = !sftp.show_hidden;
-        }
-        // 북마크(FileZilla식 즐겨찾기): ⭐로 현재 경로 추가 + 목록에서 이동/삭제.
-        ui.menu_button("\u{2b50}", |ui| {
-            if ui.button(tr(lang, "sftp.addbookmark")).clicked() { a.bookmark_add = true; ui.close_menu(); }
-            for b in bookmarks {
-                ui.horizontal(|ui| {
-                    if ui.button(b).clicked() { a.bookmark_go = Some(b.clone()); ui.close_menu(); }
-                    if ui.small_button("\u{2715}").clicked() { a.bookmark_del = Some(b.clone()); ui.close_menu(); }
-                });
-            }
-        });
-        if ui.small_button("\u{1f50c}").on_hover_text(tr(lang, "sftp.reconnect")).clicked() {
+        ui.separator();
+        sync_menu(ui, lang, a);
+        view_menu(ui, sftp, lang, sort_desc, a);
+        tools_menu(ui, lang, a);
+        ui.separator();
+        // ── 연결 ──
+        if icon(ui, "\u{1f50c}", lang, "sftp.reconnect") {
             a.reconnect = true;
         }
-        if ui.small_button("\u{2715}").clicked() {
+        if icon(ui, "\u{2715}", lang, "sftp.close") {
             a.close = true;
+        }
+    });
+}
+
+/// 즐겨찾기(FileZilla식): 현재 경로 추가 + 목록에서 이동/삭제.
+fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], a: &mut SftpAct) {
+    ui.menu_button("\u{2b50}", |ui| {
+        if ui.button(tr(lang, "sftp.addbookmark")).clicked() {
+            a.bookmark_add = true;
+            ui.close_menu();
+        }
+        for b in bookmarks {
+            ui.horizontal(|ui| {
+                if ui.button(b).clicked() {
+                    a.bookmark_go = Some(b.clone());
+                    ui.close_menu();
+                }
+                if ui.small_button("\u{2715}").clicked() {
+                    a.bookmark_del = Some(b.clone());
+                    ui.close_menu();
+                }
+            });
+        }
+    })
+    .response
+    .on_hover_text(tr(lang, "sftp.bookmarks"));
+}
+
+/// 로컬↔원격을 견주는 기능 묶음(비교 색칠·동기 이동·차이만 전송).
+fn sync_menu(ui: &mut egui::Ui, lang: Lang, a: &mut SftpAct) {
+    ui.menu_button(format!("\u{21c5} {}", tr(lang, "sftp.syncgroup")), |ui| {
+        if ui.button(format!("\u{21c6} {}", tr(lang, "sftp.compare"))).clicked() {
+            a.toggle_compare = true;
+            ui.close_menu();
+        }
+        if ui.button(format!("\u{1f517} {}", tr(lang, "sftp.sync"))).clicked() {
+            a.toggle_sync = true;
+            ui.close_menu();
+        }
+        ui.separator();
+        if ui.button(format!("\u{2191}\u{21c5} {}", tr(lang, "sftp.syncup"))).clicked() {
+            a.sync_up = true;
+            ui.close_menu();
+        }
+        if ui.button(format!("\u{2193}\u{21c5} {}", tr(lang, "sftp.syncdown"))).clicked() {
+            a.sync_down = true;
+            ui.close_menu();
+        }
+    });
+}
+
+/// 목록 표시 방식(정렬·숨김). 보기 모드 드롭다운은 로컬 브라우저와 같은 자리에 둔다.
+fn view_menu(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, sort_desc: bool, a: &mut SftpAct) {
+    ui.menu_button(format!("\u{1f441} {}", tr(lang, "menu.view")), |ui| {
+        let arrow = if sort_desc { "\u{25bc}" } else { "\u{25b2}" };
+        if ui.button(format!("{arrow} {}", tr(lang, "sftp.sort"))).clicked() {
+            a.cycle_sort = true;
+            ui.close_menu();
+        }
+        let hidden = crate::viewmenu::check(sftp.show_hidden, tr(lang, "sftp.hidden"));
+        if ui.selectable_label(sftp.show_hidden, hidden).clicked() {
+            sftp.show_hidden = !sftp.show_hidden;
+            ui.close_menu();
+        }
+    });
+}
+
+/// 검색·일괄 이름변경·폴더 통째 받기.
+fn tools_menu(ui: &mut egui::Ui, lang: Lang, a: &mut SftpAct) {
+    ui.menu_button(format!("\u{1f527} {}", tr(lang, "sftp.tools")), |ui| {
+        if ui.button(format!("\u{1f50d} {}", tr(lang, "sftp.search"))).clicked() {
+            a.search = true;
+            ui.close_menu();
+        }
+        if ui.button(format!("\u{1f524} {}", tr(lang, "sftp.batchrename"))).clicked() {
+            a.batch_toggle = true;
+            ui.close_menu();
+        }
+        if ui.button(format!("\u{2b07} {}", tr(lang, "sftp.downloaddir"))).clicked() {
+            a.dl_cur = true;
+            ui.close_menu();
         }
     });
 }

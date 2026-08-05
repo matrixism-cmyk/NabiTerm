@@ -182,28 +182,11 @@ impl NabiApp {
                 self.orch.send(Command::SftpList { id, path });
             }
         }
-        if a.clear_done {
-            self.sftp.transfers.retain(|t| !t.done);
-        }
+        self.apply_queue_act(a.queue);
         if a.sync_up { self.sync_upload_diff(); }
         if a.sync_down { self.sync_download_diff(); }
         if a.sync_apply { self.apply_sync_pending(); }
         if a.sync_cancel { self.sftp.sync_pending = None; }
-        if let Some(i) = a.retry_xfer {
-            // H2: 실패 전송 재시도 — 원본 명령 재전송 + 항목 상태 초기화.
-            if let Some(cmd) = self.sftp.transfers.get(i).and_then(|t| t.retry.clone()) {
-                self.orch.send(cmd);
-                if let Some(t) = self.sftp.transfers.get_mut(i) {
-                    (t.done, t.ok, t.bytes, t.started) = (false, false, 0, std::time::Instant::now());
-                    t.err.clear(); // 재시도 시 이전 오류 지움.
-                }
-            }
-        }
-        if a.cancel {
-            if let Some(id) = self.sftp.id {
-                self.orch.send(Command::SftpCancel { id });
-            }
-        }
         if a.close {
             self.close_sftp();
         }

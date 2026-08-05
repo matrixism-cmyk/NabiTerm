@@ -11,6 +11,7 @@ mod catalog_editor2;
 mod catalog_sftp;
 mod catalog_vault;
 mod catalog_conn;
+mod catalog_queue;
 
 pub use catalog::tr;
 

@@ -18,6 +18,11 @@ pub(crate) struct ViewStates {
     pub float_on_top: bool,
 }
 
+/// 토글 라벨 앞에 체크 표시를 붙인다(꺼짐은 같은 폭의 공백 — 글자가 흔들리지 않게).
+pub(crate) fn check(on: bool, label: &str) -> String {
+    format!("{} {label}", if on { "\u{2713}" } else { "\u{2007}" })
+}
+
 /// 보기 메뉴 항목들을 그리고 선택된 액션을 돌려준다.
 pub(crate) fn view_menu(
     ui: &mut egui::Ui,
@@ -27,9 +32,10 @@ pub(crate) fn view_menu(
 ) -> Option<MenuAction> {
     let (broadcast, on_top, fullscreen) = (st.broadcast, st.on_top, st.fullscreen);
     let mut action = None;
-    // 토글 항목은 현재 적용 상태를 강조(selectable_label) — 켜져 있으면 색으로 표시.
+    // 토글 항목은 앞에 ✓를 붙여 켜짐/꺼짐을 분명히 한다. selectable_label의 옅은 배경만으로는
+    // 메뉴 안에서 상태를 읽기 어렵다(Windows 메뉴 관례도 체크 표시).
     let mut sel = |ui: &mut egui::Ui, on: bool, key: &str, a: MenuAction| {
-        if ui.selectable_label(on, tr(lang, key)).clicked() {
+        if ui.selectable_label(on, check(on, tr(lang, key))).clicked() {
             action = Some(a);
             ui.close_menu();
         }
@@ -53,7 +59,7 @@ pub(crate) fn view_menu(
         ui.menu_button(tr(lang, "menu.detach"), |ui| {
             if ui.button(tr(lang, "tab.tearoff")).on_hover_text(tr(lang, "tab.tearoff.hint")).clicked() { action = Some(MenuAction::TearOff); ui.close_menu(); }
             if ui.button(tr(lang, "tab.dockfloat")).on_hover_text(tr(lang, "tab.dockfloat.hint")).clicked() { action = Some(MenuAction::DockFloat); ui.close_menu(); }
-            if ui.selectable_label(st.float_on_top, tr(lang, "float.ontop")).clicked() { action = Some(MenuAction::ToggleFloatOnTop); ui.close_menu(); }
+            if ui.selectable_label(st.float_on_top, check(st.float_on_top, tr(lang, "float.ontop"))).clicked() { action = Some(MenuAction::ToggleFloatOnTop); ui.close_menu(); }
         });
         ui.menu_button(tr(lang, "menu.arrange"), |ui| {
             if ui.button(tr(lang, "arrange.tile")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Tile)); ui.close_menu(); }
@@ -67,18 +73,18 @@ pub(crate) fn view_menu(
     ui.separator();
     // ── 모드 토글 ──
     if ui
-        .selectable_label(broadcast, tr(lang, "menu.broadcast"))
+        .selectable_label(broadcast, check(broadcast, tr(lang, "menu.broadcast")))
         .clicked()
     {
         action = Some(MenuAction::ToggleBroadcast);
         ui.close_menu();
     }
-    if ui.selectable_label(on_top, tr(lang, "menu.ontop")).clicked() {
+    if ui.selectable_label(on_top, check(on_top, tr(lang, "menu.ontop"))).clicked() {
         action = Some(MenuAction::ToggleOnTop);
         ui.close_menu();
     }
     if ui
-        .selectable_label(fullscreen, tr(lang, "menu.fullscreen"))
+        .selectable_label(fullscreen, check(fullscreen, tr(lang, "menu.fullscreen")))
         .clicked()
     {
         action = Some(MenuAction::ToggleFullscreen);

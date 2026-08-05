@@ -214,6 +214,9 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.sshkeepalive")); ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s")).on_hover_text(tr(lang, "settings.sshkeepalivehint")); ui.end_row();
     ui.label(tr(lang, "settings.speedlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
+    ui.label(tr(lang, "settings.maxparallel"));
+    ui.add(egui::Slider::new(&mut cfg.terminal.max_parallel_transfers, 1..=4));
+    ui.end_row();
     // SFTP 다운로드 기본 폴더(비우면 로컬 창/홈) + 매번 물어보기 여부.
     ui.label(tr(lang, "settings.downloaddir"));
     ui.horizontal(|ui| {

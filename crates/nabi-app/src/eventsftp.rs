@@ -100,18 +100,22 @@ impl NabiApp {
         message: String,
         ctx: &egui::Context,
     ) {
+        use crate::sftpxfer::XferState;
         let res = self.remote_panel_mut(id).map(|p| {
             let mut was_upload = false;
             if let Some(t) = p.transfers.iter_mut().find(|t| t.xfer == xfer) {
                 was_upload = t.up;
-                t.done = true;
-                t.ok = ok;
+                // 사용자가 멈춘 항목의 취소 완료는 정지 상태를 유지한다(실패로 표시하지 않는다).
+                if t.state != XferState::Paused {
+                    t.state = if ok { XferState::Done } else { XferState::Failed };
+                }
                 if !ok {
                     t.err = message.clone(); // 항목별 실패 사유 저장(툴팁).
                 }
             }
             p.status = if ok { format!("\u{2193} {name}") } else { message };
-            let drained = !p.transfers.iter().any(|t| !t.done); // 큐의 마지막 전송인가.
+            // 큐가 다 비었는가(대기·정지 항목이 남아 있으면 아직 진행 중인 큐다).
+            let drained = !p.transfers.iter().any(|t| !t.state.finished());
             (was_upload, p.path.clone(), drained)
         });
         let Some((was_upload, path, drained)) = res else { return };
@@ -122,6 +126,7 @@ impl NabiApp {
                 self.orch.send(nabi_proto::Command::SftpList { id, path });
             }
         }
+        self.pump_transfers(id); // 자리가 났으니 다음 대기 항목을 시작한다.
         ctx.request_repaint();
     }
 }
