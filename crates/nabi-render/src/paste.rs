@@ -8,6 +8,15 @@ pub fn sanitize_paste(text: &str) -> String {
         .collect()
 }
 
+/// 붙여넣기 전에 사용자 확인이 필요한가 — 설정이 켜져 있고 **줄바꿈이 섞여 있을 때**.
+///
+/// 줄바꿈이 들어가면 셸이 그 줄을 즉시 실행한다. 그래서 클립보드 출처(Ctrl+Shift+V든
+/// 클립보드 히스토리든)와 무관하게 같은 판단을 써야 한다 — 한쪽만 막으면 안전장치가 아니다.
+/// 캐리지리턴도 개행으로 본다(정규화 전 텍스트가 들어올 수 있다).
+pub fn needs_paste_confirm(warn_enabled: bool, text: &str) -> bool {
+    warn_enabled && text.contains(['\n', '\r'])
+}
+
 /// 붙여넣기 개행을 CR 한 형태로 정규화한다(`\r\n`·`\n`·`\r` → `\r`). 셸은 Enter=CR을 기대하므로
 /// 멀티라인 붙여넣기 시 줄마다 정확히 한 번 실행되도록 통일한다.
 pub fn normalize_newlines(text: &str) -> String {
@@ -30,7 +39,7 @@ pub fn normalize_newlines(text: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{normalize_newlines, sanitize_paste};
+    use super::{needs_paste_confirm, normalize_newlines, sanitize_paste};
 
     #[test]
     fn strips_control_chars_keeps_text_and_newlines() {
@@ -44,5 +53,13 @@ mod tests {
     fn normalizes_newlines_to_cr() {
         assert_eq!(normalize_newlines("a\r\nb\nc\rd"), "a\rb\rc\rd");
         assert_eq!(normalize_newlines("no breaks"), "no breaks");
+    }
+
+    #[test]
+    fn confirm_only_when_enabled_and_multiline() {
+        assert!(needs_paste_confirm(true, "a\nb"));
+        assert!(needs_paste_confirm(true, "a\r"), "CR도 실행을 부른다");
+        assert!(!needs_paste_confirm(true, "one line"));
+        assert!(!needs_paste_confirm(false, "a\nb"), "설정이 꺼져 있으면 묻지 않는다");
     }
 }

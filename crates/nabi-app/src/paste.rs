@@ -13,15 +13,33 @@ impl NabiApp {
         self.clip_history.truncate(30);
     }
 
-    /// 주어진 텍스트를 포커스 pane에 붙여넣는다(클립보드 히스토리 재사용용, bracketed 래핑).
+    /// pane이 bracketed paste 모드인가(모르면 false).
+    fn pane_bracketed(&self, pane: nabi_types::PaneId) -> bool {
+        self.orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&pane).cloned())
+            .and_then(|v| v.model.lock().ok().map(|md| md.bracketed_paste()))
+            .unwrap_or(false)
+    }
+
+    /// 주어진 텍스트를 포커스 pane에 붙여넣는다 — **모든 붙여넣기가 지나는 한 길**.
+    ///
+    /// 여러 줄 확인이 여기 있어야 한다. 예전에는 Ctrl+Shift+V만 확인을 거치고, 클립보드
+    /// 히스토리에서 고른 텍스트는 곧장 셸로 들어갔다 — 같은 위험(여러 줄이면 즉시 실행)인데
+    /// 한쪽만 막고 있었다.
     pub(crate) fn paste_text_to_focused(&mut self, text: String) {
         if text.is_empty() {
             return;
         }
         let Some(pane) = self.focused_pane() else { return };
-        let bracketed = self.orch.panes.read().ok().and_then(|m| m.get(&pane).cloned())
-            .and_then(|v| v.model.lock().ok().map(|md| md.bracketed_paste())).unwrap_or(false);
-        let data = crate::paneio::wrap_paste(&text, bracketed);
+        let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
+        // 여러 줄 붙여넣기는 설정 시 확인 대화상자로 미룬다(붙여넣기 안전).
+        if self.config.terminal.warn_paste_newline && text.contains('\n') {
+            self.pending_paste = Some((pane, data));
+            return;
+        }
         self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
     }
 
@@ -30,31 +48,7 @@ impl NabiApp {
         let Some(text) = crate::paneio::clipboard_text() else {
             return;
         };
-        if text.is_empty() {
-            return;
-        }
-        let multiline = text.contains('\n');
-        let Some(pane) = self.focused_pane() else {
-            return;
-        };
-        let bracketed = self
-            .orch
-            .panes
-            .read()
-            .ok()
-            .and_then(|m| m.get(&pane).cloned())
-            .and_then(|v| v.model.lock().ok().map(|md| md.bracketed_paste()))
-            .unwrap_or(false);
-        let data = crate::paneio::wrap_paste(&text, bracketed);
-        // 여러 줄 붙여넣기는 설정 시 확인 대화상자로 미룬다(붙여넣기 안전).
-        if self.config.terminal.warn_paste_newline && multiline {
-            self.pending_paste = Some((pane, data));
-            return;
-        }
-        self.orch.send(nabi_proto::Command::WriteInput {
-            pane,
-            data: bytes::Bytes::from(data),
-        });
+        self.paste_text_to_focused(text);
     }
 
     /// 키보드 직접 붙여넣기(Event::Paste, 예: Ctrl+V)도 여러 줄이고 경고 설정이 켜져 있으면
