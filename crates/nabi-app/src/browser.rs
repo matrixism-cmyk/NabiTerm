@@ -135,7 +135,7 @@ fn render_inner(
         }
     });
     ui.horizontal(|ui| {
-        if ui.button("\u{1f3e0}").on_hover_text("Home").clicked() {
+        if ui.button("\u{1f3e0}").on_hover_text(nabi_i18n::tr(lang, "sftp.home")).clicked() {
             a.nav = Some(home_dir());
         }
         // 내 컴퓨터(드라이브 목록) — 빈 경로로 이동.
@@ -159,7 +159,9 @@ fn render_inner(
         })
         .response
         .on_hover_text(nabi_i18n::tr(lang, "browser.places"));
-        if ui.button("..  (상위/up)").clicked() {
+        // 아이콘 + 번역된 툴팁 — 옆 버튼들·SFTP 툴바와 같은 방식(한국어를 라벨에 박아 두면
+        // 일본어·영어 사용자에게 그대로 보인다).
+        if ui.button("\u{2b06}").on_hover_text(nabi_i18n::tr(lang, "browser.up")).clicked() {
             // 드라이브 루트에서 위로 가면 부모가 없으니 "내 컴퓨터"로.
             a.nav = Some(path.parent().map(|p| p.to_path_buf()).unwrap_or_default());
         }
