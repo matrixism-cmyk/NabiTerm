@@ -165,7 +165,7 @@ impl NabiApp {
             ssh_alert_on: HashMap::new(), ctx_alert_on: HashMap::new(),
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),
-            quick_select_open: false, editor_close_ask: None, file_preview: None,
+            quick_select_open: false, editor_close_ask: None, session_delete_ask: None, file_preview: None,
             clip_history: Vec::new(), find_count_cache: None, session_logs: HashMap::new(),
             editor_mtimes: HashMap::new(), editor_extcheck: std::time::Instant::now(),
             autosave_at: std::time::Instant::now(), note_edit: None,

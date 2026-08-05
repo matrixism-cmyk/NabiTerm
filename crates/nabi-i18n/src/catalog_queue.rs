@@ -10,6 +10,12 @@ pub const CATALOG_QUEUE: &[(&str, &str, &str, &str)] = &[
     ("sftp.q.clear", "Clear finished items", "끝난 항목 비우기", "完了項目をクリア"),
     ("sftp.q.cancelall", "Stop all running transfers", "진행 중 전송 모두 중단", "実行中の転送を全て中止"),
     (
+        "sessions.delete.warn",
+        "The session's pin and note are removed together. This cannot be undone.",
+        "고정과 메모도 함께 지워집니다. 되돌릴 수 없습니다.",
+        "ピン留めとメモも一緒に削除されます。元に戻せません。",
+    ),
+    (
         "settings.maxparallel",
         "Parallel transfers per connection",
         "연결당 동시 전송 수",

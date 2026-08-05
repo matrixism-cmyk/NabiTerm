@@ -65,6 +65,14 @@ pub(crate) enum MenuAction {
     Exit,
 }
 
+/// 단축키가 있는 메뉴 항목 — 오른쪽에 흐린 글씨로 키를 보여 준다.
+///
+/// 단축키는 shortcuts.rs에 16개나 있는데 메뉴에는 F11만 적혀 있었다. 쓰는 사람이
+/// 알 방법이 없으면 없는 기능이나 마찬가지다.
+pub(crate) fn item_keys(ui: &mut egui::Ui, label: &str, keys: &str) -> bool {
+    ui.add(egui::Button::new(label).shortcut_text(keys)).clicked()
+}
+
 impl NabiApp {
     pub(crate) fn menu_bar(&mut self, ctx: &egui::Context) {
         let mut action: Option<MenuAction> = None;
@@ -115,7 +123,7 @@ impl NabiApp {
                         ui.close_menu();
                     }
                     ui.separator();
-                    if ui.button(tr(lang, "menu.exit")).clicked() {
+                    if item_keys(ui, tr(lang, "menu.exit"), "Ctrl+Shift+Q") {
                         action = Some(MenuAction::Exit);
                     }
                 });
@@ -126,23 +134,23 @@ impl NabiApp {
                     }
                 });
                 ui.menu_button(tr(lang, "menu.edit"), |ui| {
-                    if ui.button(tr(lang, "menu.copy")).clicked() {
+                    if item_keys(ui, tr(lang, "menu.copy"), "Ctrl+Shift+C") {
                         action = Some(MenuAction::Copy);
                         ui.close_menu();
                     }
-                    if ui.button(tr(lang, "menu.paste")).clicked() {
+                    if item_keys(ui, tr(lang, "menu.paste"), "Ctrl+Shift+V") {
                         action = Some(MenuAction::Paste);
                         ui.close_menu();
                     }
-                    if ui.button(tr(lang, "menu.selectall")).clicked() {
+                    if item_keys(ui, tr(lang, "menu.selectall"), "Ctrl+Shift+A") {
                         action = Some(MenuAction::SelectAll);
                         ui.close_menu();
                     }
-                    if ui.button(tr(lang, "menu.find")).clicked() {
+                    if item_keys(ui, tr(lang, "menu.find"), "Ctrl+F") {
                         action = Some(MenuAction::Find);
                         ui.close_menu();
                     }
-                    if ui.button(tr(lang, "term.reset")).clicked() {
+                    if item_keys(ui, tr(lang, "term.reset"), "Ctrl+Shift+K") {
                         action = Some(MenuAction::ResetTerm);
                         ui.close_menu();
                     }

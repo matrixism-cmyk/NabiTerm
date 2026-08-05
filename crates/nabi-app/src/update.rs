@@ -117,6 +117,7 @@ impl eframe::App for NabiApp {
         self.ai_dashboard(ctx);
         self.file_preview_modal(ctx);
         self.editor_close_modal(ctx);
+        self.session_delete_modal(ctx);
         self.quick_select_popup(ctx);
         self.snippet_prompt_modal(ctx);
         self.show_toast(ctx);

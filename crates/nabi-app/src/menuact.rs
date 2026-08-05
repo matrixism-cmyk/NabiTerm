@@ -124,13 +124,8 @@ impl NabiApp {
             MenuAction::DuplicateSession(s) => { let mut dup = s.clone(); dup.name = self.sessions.unique_copy_name(&s.name); self.sessions.add(dup); self.save_sessions(); }
             MenuAction::EditSession(s) => self.edit_session(&s),
             MenuAction::NewSshConnection => self.new_ssh_connection(),
-            MenuAction::DeleteSession(name) => {
-                self.sessions.remove(&name);
-                // 삭제된 세션의 고정·메모도 함께 제거(고아 방지).
-                let ap = &mut self.config.appearance; let hit = ap.pinned_sessions.iter().any(|p| p == &name) | ap.session_notes.remove(&name).is_some(); ap.pinned_sessions.retain(|p| p != &name);
-                if hit { let _ = nabi_config::save(&self.config_path, &self.config); }
-                self.save_sessions();
-            }
+            // 즉시 지우지 않고 한 번 묻는다 — ✕가 ✏ 옆이라 오클릭이 쉽고 되돌릴 수 없다(sessiondel).
+            MenuAction::DeleteSession(name) => self.session_delete_ask = Some(name),
             MenuAction::ExportSessions => {
                 if let (Ok(json), Some(dir)) =
                     (nabi_session::export::to_json(&self.sessions), self.config_path.parent())

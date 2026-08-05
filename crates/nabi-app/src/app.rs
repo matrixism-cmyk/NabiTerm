@@ -1,4 +1,4 @@
-﻿//! eframe 앱 상태 + 업데이트 루프.
+//! eframe 앱 상태 + 업데이트 루프.
 
 use nabi_orchestrator::OrchestratorHandle;
 use nabi_types::{GridSize, PaneId};
@@ -162,6 +162,8 @@ pub struct NabiApp {
     pub blocked_alert: HashMap<PaneId, bool>, pub ai_dash_open: bool, pub floating_on_top: bool,
     pub snippet_prompt: Option<SnippetPrompt>, pub dir_save_at: std::time::Instant,
     pub quick_select_open: bool, pub editor_close_ask: Option<PaneId>,
+    /// 삭제 확인 대기 중인 저장 세션 이름(sessiondel).
+    pub session_delete_ask: Option<String>,
     pub file_preview: Option<(String, String)>, pub clip_history: Vec<String>,
     pub find_count_cache: Option<(String, bool, usize)>,
     pub session_logs: HashMap<PaneId, crate::sessionlog::SessionLog>,

@@ -115,7 +115,7 @@ mod reconnect;
 mod renameui;
 mod scrollbar;
 mod selection;
-mod sessionsmenu;
+mod sessionsmenu; mod sessiondel;
 mod snippetvars;
 mod recent;
 mod sftpact;

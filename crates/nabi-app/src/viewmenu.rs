@@ -23,6 +23,15 @@ pub(crate) fn check(on: bool, label: &str) -> String {
     format!("{} {label}", if on { "\u{2713}" } else { "\u{2007}" })
 }
 
+/// 체크 표시 + 뒤에 단축키(selectable_label은 shortcut_text를 못 써서 라벨에 붙인다).
+/// keys가 비면 단축키 칸 없이 그린다.
+fn check_keys(on: bool, label: &str, keys: &str) -> String {
+    match keys.is_empty() {
+        true => check(on, label),
+        false => format!("{}   {keys}", check(on, label)),
+    }
+}
+
 /// 보기 메뉴 항목들을 그리고 선택된 액션을 돌려준다.
 pub(crate) fn view_menu(
     ui: &mut egui::Ui,
@@ -34,17 +43,17 @@ pub(crate) fn view_menu(
     let mut action = None;
     // 토글 항목은 앞에 ✓를 붙여 켜짐/꺼짐을 분명히 한다. selectable_label의 옅은 배경만으로는
     // 메뉴 안에서 상태를 읽기 어렵다(Windows 메뉴 관례도 체크 표시).
-    let mut sel = |ui: &mut egui::Ui, on: bool, key: &str, a: MenuAction| {
-        if ui.selectable_label(on, check(on, tr(lang, key))).clicked() {
+    let mut sel = |ui: &mut egui::Ui, on: bool, key: &str, keys: &str, a: MenuAction| {
+        if ui.selectable_label(on, check_keys(on, tr(lang, key), keys)).clicked() {
             action = Some(a);
             ui.close_menu();
         }
     };
     // ── 패널 표시 토글 ──
-    sel(ui, st.browser, "menu.browser", MenuAction::ToggleBrowser);
-    sel(ui, st.sessions_panel, "menu.sessionspanel", MenuAction::ToggleSessionsPanel);
-    sel(ui, st.qcbar, "menu.qcbar", MenuAction::ToggleQcBar);
-    sel(ui, st.ai_dash, "ai.dashboard", MenuAction::ToggleAiDashboard);
+    sel(ui, st.browser, "menu.browser", "Ctrl+Shift+E", MenuAction::ToggleBrowser);
+    sel(ui, st.sessions_panel, "menu.sessionspanel", "", MenuAction::ToggleSessionsPanel);
+    sel(ui, st.qcbar, "menu.qcbar", "", MenuAction::ToggleQcBar);
+    sel(ui, st.ai_dash, "ai.dashboard", "", MenuAction::ToggleAiDashboard);
     ui.separator();
     // ── 창/탭 배열 ── 분할·분리·배열·탭배열을 한 "배열" 서브메뉴로 묶어 최상위를 간결화(F11).
     ui.menu_button(tr(lang, "menu.layout"), |ui| {
@@ -73,7 +82,7 @@ pub(crate) fn view_menu(
     ui.separator();
     // ── 모드 토글 ──
     if ui
-        .selectable_label(broadcast, check(broadcast, tr(lang, "menu.broadcast")))
+        .selectable_label(broadcast, check_keys(broadcast, tr(lang, "menu.broadcast"), "Ctrl+Shift+M"))
         .clicked()
     {
         action = Some(MenuAction::ToggleBroadcast);
@@ -84,7 +93,7 @@ pub(crate) fn view_menu(
         ui.close_menu();
     }
     if ui
-        .selectable_label(fullscreen, check(fullscreen, tr(lang, "menu.fullscreen")))
+        .selectable_label(fullscreen, check_keys(fullscreen, tr(lang, "menu.fullscreen"), "F11"))
         .clicked()
     {
         action = Some(MenuAction::ToggleFullscreen);
