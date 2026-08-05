@@ -88,7 +88,9 @@ pub(crate) fn show_queue(ui: &mut egui::Ui, transfers: &[Transfer], lang: Lang) 
         .max_height(QUEUE_MAX_H)
         .auto_shrink([false, true])
         .show(ui, |ui| {
-            for t in transfers {
+            // 성공한 항목은 줄로 남기지 않는다 — 쌓이면서 정작 보고 싶은 진행 중 항목을
+            // 아래로 밀어낸다. 개수는 위 머리글에 이미 있고, 실패만 손댈 일이 남는다.
+            for t in transfers.iter().filter(|t| t.state != XferState::Done) {
                 row(ui, t, lang, &mut act);
             }
         });
