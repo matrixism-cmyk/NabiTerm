@@ -48,8 +48,11 @@ pub fn paint(
         let mut m: Vec<Vec<bool>> = rows_v.iter().map(|row| vec![false; row.len()]).collect();
         for su in crate::screenurls::screen_urls(&rows_v, &wrapped) {
             for (gr, s, e) in su.segs {
-                if let Some(mm) = m.get_mut(gr) {
-                    for c in s..=e.min(mm.len().saturating_sub(1)) { mm[c] = true; }
+                // 빈 행이면 `len-1`이 0으로 포화해 `0..=0`이 되고, 그 인덱싱이 패닉한다.
+                // 렌더러 패닉은 UI 스레드를 통째로 죽인다(v0.1.41 사례) — 폭을 먼저 본다.
+                if let Some(mm) = m.get_mut(gr).filter(|mm| s < mm.len()) {
+                    let hi = e.min(mm.len() - 1);
+                    mm[s..=hi].fill(true);
                 }
             }
         }

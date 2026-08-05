@@ -42,6 +42,48 @@ async fn realserver_legacy_sftp_connects() {
     println!("옛 서버 홈 항목 {}개", entries.len());
 }
 
+/// 옛 서버(SFTP v3)에서 **다운로드 파이프라인**이 실제로 도는지 — 읽기 전용.
+///
+/// OpenSSH 4.x의 sftp-server는 `limits@openssh.com`도 `statvfs`도 없다. 우리 파이프라인은
+/// 그 확장이 있을 때를 기준으로 만들어졌고, 없을 때의 기본값 경로는 실서버로 확인한 적이
+/// 없었다. 남의 운영 서버라 **쓰기는 하지 않는다** — 있는 파일을 받아 크기만 대조한다.
+#[tokio::test]
+#[ignore = "옛 SSH 서버 필요(NABI_OLD_HOST/USER/PASS)"]
+async fn realserver_legacy_download_pipeline() {
+    let (Ok(host), Ok(user), Ok(pass)) = (
+        std::env::var("NABI_OLD_HOST"),
+        std::env::var("NABI_OLD_USER"),
+        std::env::var("NABI_OLD_PASS"),
+    ) else {
+        return;
+    };
+    let port: u16 = std::env::var("NABI_OLD_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(22);
+    let p = SshParams::password(host, port, user, pass);
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("연결");
+    // 파도를 여러 번 돌 만큼은 크되 **너무 크지 않은** 파일을 고른다.
+    // 남의 운영 서버에서 수백 MB짜리 업무 데이터를 끌어올 이유가 없다(처음에 193MB짜리
+    // SQL 덤프를 받아 버렸다). 상한 안에서 가장 큰 것을 쓴다.
+    const MAX: u64 = 20 * 1024 * 1024;
+    let mut files: Vec<_> = fs
+        .list_dir(".")
+        .await
+        .expect("목록")
+        .into_iter()
+        .filter(|e| matches!(e.kind, nabi_fs::FileKind::File) && e.size > 0 && e.size <= MAX)
+        .collect();
+    files.sort_by_key(|e| std::cmp::Reverse(e.size));
+    let Some(target) = files.first().cloned() else { return };
+    println!("옛 서버 대상: {} ({} 바이트)", target.name, target.size);
+    let local = std::env::temp_dir().join(format!("nabi-legacy-dl-{}.bin", std::process::id()));
+    let lp = local.to_string_lossy().into_owned();
+    let mut seen = 0u64;
+    fs.download(&target.name, &lp, 0, |b| seen = b).await.expect("다운로드");
+    let got = std::fs::metadata(&local).map(|m| m.len()).unwrap_or(0);
+    let _ = std::fs::remove_file(&local);
+    assert_eq!(got, target.size, "받은 크기가 원격 크기와 달라졌다");
+    assert_eq!(seen, target.size, "진행률 합계가 파일 크기와 달라졌다");
+}
+
 /// ssh-agent 인증으로 실제 서버에 붙는다(NABI_RT_AGENT=1일 때만).
 ///
 /// 준비: 에이전트를 켜고(`Set-Service ssh-agent -StartupType Manual; Start-Service ssh-agent`)

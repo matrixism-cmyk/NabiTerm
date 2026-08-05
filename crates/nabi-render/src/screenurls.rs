@@ -41,8 +41,9 @@ pub fn screen_urls(rows: &[Vec<RenderCell>], wrapped: &[bool]) -> Vec<ScreenUrl>
             }
             for sp in row_urls(&cells) {
                 let mut segs: Vec<(usize, usize, usize)> = Vec::new();
+                // map이 비면 `len-1`이 0으로 포화해 `0..=0`이 되고 인덱싱이 패닉한다.
                 for k in sp.start..=sp.end.min(map.len().saturating_sub(1)) {
-                    let (gr, gc) = map[k];
+                    let Some(&(gr, gc)) = map.get(k) else { break };
                     match segs.last_mut() {
                         Some(s) if s.0 == gr && s.2 + 1 == gc => s.2 = gc,
                         _ => segs.push((gr, gc, gc)),
@@ -100,5 +101,16 @@ mod tests {
         // 두 행 이상에 세그먼트가 걸쳐야 한다(밑줄이 이어짐).
         let row_count = urls[0].segs.iter().map(|&(r, _, _)| r).collect::<std::collections::BTreeSet<_>>().len();
         assert!(row_count >= 2, "링크가 여러 행에 걸쳐야 함: {:?}", urls[0].segs);
+    }
+
+    /// 폭 0인 행이 섞여도 죽지 않는다 — 렌더러 패닉은 UI 스레드를 통째로 죽인다.
+    #[test]
+    fn empty_rows_do_not_panic() {
+        let rows: Vec<Vec<RenderCell>> = vec![Vec::new(), Vec::new()];
+        assert!(screen_urls(&rows, &[false, false]).is_empty());
+        // wrapped가 행 수보다 길거나 짧아도(리사이즈 도중 어긋남) 버텨야 한다.
+        assert!(screen_urls(&rows, &[true, true, true]).is_empty());
+        assert!(screen_urls(&rows, &[]).is_empty());
+        assert!(screen_urls(&[], &[true]).is_empty());
     }
 }
