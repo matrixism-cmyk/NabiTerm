@@ -74,15 +74,33 @@ impl Conn {
             }
         }
     }
-    pub(crate) async fn download_dir(&mut self, remote: &str, local: &Path) -> Result<(), String> {
+    /// 폴더 재귀 다운로드. `p`는 누적 바이트를 받는다(큐 진행 막대용).
+    pub(crate) async fn download_dir(
+        &mut self,
+        remote: &str,
+        local: &Path,
+        p: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<(), String> {
         match self {
-            Conn::Sftp(f) => f.download_dir(remote, local).await,
+            Conn::Sftp(f) => {
+                let mut prog = nabi_sftp::DirProgress { done: 0, cb: p };
+                f.download_dir_progress(remote, local, &mut prog).await
+            }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 다운로드 미지원".to_string()),
         }
     }
-    pub(crate) async fn upload_dir(&mut self, local: &Path, remote: &str) -> Result<(), String> {
+    /// 폴더 재귀 업로드. `p`는 누적 바이트를 받는다(큐 진행 막대용).
+    pub(crate) async fn upload_dir(
+        &mut self,
+        local: &Path,
+        remote: &str,
+        p: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<(), String> {
         match self {
-            Conn::Sftp(f) => f.upload_dir(local, remote).await,
+            Conn::Sftp(f) => {
+                let mut prog = nabi_sftp::DirProgress { done: 0, cb: p };
+                f.upload_dir_progress(local, remote, &mut prog).await
+            }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 업로드 미지원".to_string()),
         }
     }

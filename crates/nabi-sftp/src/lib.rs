@@ -12,6 +12,7 @@ pub mod session;
 mod xfer;
 
 pub use fs::SftpFs;
+pub use recurse::DirProgress;
 pub use session::connect_sftp;
 
 #[cfg(test)]

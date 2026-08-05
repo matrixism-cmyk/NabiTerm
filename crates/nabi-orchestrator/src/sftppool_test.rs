@@ -76,6 +76,46 @@ async fn two_uploads_actually_overlap() {
     assert!(overlapped, "직렬로 돌았다 — 워커 풀이 동시에 보내지 못하고 있다");
 }
 
+/// 폴더 업로드도 **끝나기 전에** 진행률을 보고해야 한다.
+///
+/// 예전에는 폴더 전송에 진행 콜백이 아예 연결되지 않아(`|_| {}`), 큐 줄이 완료될 때까지
+/// 한 번도 움직이지 않았다 — 큰 폴더에서는 멈춘 것과 구별할 수 없었다.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+#[ignore = "실 서버 필요(NABI_RT_USER/NABI_RT_PASS)"]
+async fn folder_upload_reports_progress_before_finishing() {
+    let Some(p) = params() else { return };
+    let (tx, rx) = crossbeam_channel::unbounded::<Event>();
+    let mut pool = Pool::new(1, p, 0, 1, tx, new_flags());
+    // 진행 이벤트 임계(256KB)를 여러 번 넘도록 여러 파일을 만든다.
+    let dir = std::env::temp_dir().join(format!("nabi-pool-dir-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&dir);
+    for i in 0..6 {
+        std::fs::write(dir.join(format!("f{i}.bin")), vec![b'z'; 2 * 1024 * 1024]).unwrap();
+    }
+    pool.dispatch(Job::UploadDir {
+        xfer: 9,
+        local: dir.to_string_lossy().into_owned(),
+        remote: "nabi_pool_dir".into(),
+    });
+
+    let (mut progressed, mut done) = (false, false);
+    while !done {
+        let Ok(e) = rx.recv_timeout(std::time::Duration::from_secs(60)) else { break };
+        match e {
+            // 완료 전에 온 진행 이벤트만 인정한다.
+            Event::SftpProgress { xfer: 9, .. } => progressed = true,
+            Event::SftpTransferDone { xfer: 9, ok, message, .. } => {
+                assert!(ok, "폴더 업로드 실패: {message}");
+                done = true;
+            }
+            _ => {}
+        }
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+    assert!(done, "폴더 업로드가 끝나야 한다");
+    assert!(progressed, "완료 전에 진행률이 한 번도 오지 않았다");
+}
+
 /// 하나만 취소하면 나머지는 끝까지 간다(예전에는 연결째로 끊어 둘 다 죽었다).
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 #[ignore = "실 서버 필요(NABI_RT_USER/NABI_RT_PASS)"]

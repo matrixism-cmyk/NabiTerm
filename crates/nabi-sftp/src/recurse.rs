@@ -4,12 +4,38 @@
 use crate::fs::SftpFs;
 use nabi_fs::{FileKind, RemoteFs};
 
+/// 폴더 전송 진행 상황 — 지금까지 **끝난 파일들의 합**과 보고 콜백.
+///
+/// 폴더 전송은 파일 하나짜리 전송과 달리 진행률을 아무도 보고하지 않았다. 큐에는 줄만
+/// 생기고 끝날 때까지 한 번도 움직이지 않아, 큰 폴더에서는 멈춘 것과 구별되지 않았다.
+pub struct DirProgress<'c> {
+    /// 완료된 파일들의 누적 바이트(진행 중 파일의 부분 진행은 여기에 더해 보고한다).
+    pub done: u64,
+    pub cb: &'c mut (dyn FnMut(u64) + Send),
+}
+
+impl DirProgress<'_> {
+    /// 진행 중 파일의 부분 바이트를 얹어 보고한다.
+    fn report(&mut self, partial: u64) {
+        let total = self.done + partial;
+        (self.cb)(total);
+    }
+}
+
 impl SftpFs {
     /// 원격 디렉터리를 로컬로 재귀 다운로드한다(하위 폴더·파일 전부).
-    pub fn download_dir<'a>(
+    pub async fn download_dir(&mut self, remote: &str, local: &std::path::Path) -> Result<(), String> {
+        let mut noop = |_: u64| {};
+        let mut p = DirProgress { done: 0, cb: &mut noop };
+        self.download_dir_progress(remote, local, &mut p).await
+    }
+
+    /// 진행률을 보고하며 재귀 다운로드한다.
+    pub fn download_dir_progress<'a>(
         &'a mut self,
         remote: &'a str,
         local: &'a std::path::Path,
+        prog: &'a mut DirProgress<'_>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
         Box::pin(async move {
             std::fs::create_dir_all(local).map_err(|e| e.to_string())?;
@@ -20,11 +46,13 @@ impl SftpFs {
                 let rpath = format!("{}/{}", remote.trim_end_matches('/'), e.name);
                 let lpath = local.join(&e.name);
                 if matches!(e.kind, FileKind::Dir) {
-                    self.download_dir(&rpath, &lpath).await?;
+                    self.download_dir_progress(&rpath, &lpath, prog).await?;
                 } else {
-                    // 스트리밍 다운로드(통째 메모리 적재 대신 32KiB 청크 + 원자적 .filepart + 크기검증).
+                    // 스트리밍 다운로드(통째 메모리 적재 대신 청크 + 원자적 .filepart + 크기검증).
                     let lp = lpath.to_string_lossy();
-                    self.download(&rpath, lp.as_ref(), 0, |_| {}).await?;
+                    self.download(&rpath, lp.as_ref(), 0, |b| prog.report(b)).await?;
+                    prog.done += e.size; // 이 파일은 끝났다 — 다음 파일의 기준점이 된다.
+                    prog.report(0);
                 }
             }
             Ok(())
@@ -32,10 +60,18 @@ impl SftpFs {
     }
 
     /// 로컬 디렉터리를 원격으로 재귀 업로드한다(하위 폴더·파일 전부, 원격 폴더 생성).
-    pub fn upload_dir<'a>(
+    pub async fn upload_dir(&mut self, local: &std::path::Path, remote: &str) -> Result<(), String> {
+        let mut noop = |_: u64| {};
+        let mut p = DirProgress { done: 0, cb: &mut noop };
+        self.upload_dir_progress(local, remote, &mut p).await
+    }
+
+    /// 진행률을 보고하며 재귀 업로드한다.
+    pub fn upload_dir_progress<'a>(
         &'a mut self,
         local: &'a std::path::Path,
         remote: &'a str,
+        prog: &'a mut DirProgress<'_>,
     ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
         Box::pin(async move {
             let _ = self.mkdir(remote).await; // 있으면 무시.
@@ -45,11 +81,14 @@ impl SftpFs {
                 let rpath = format!("{}/{}", remote.trim_end_matches('/'), name);
                 let lpath = entry.path();
                 if lpath.is_dir() {
-                    self.upload_dir(&lpath, &rpath).await?;
+                    self.upload_dir_progress(&lpath, &rpath, prog).await?;
                 } else {
-                    // 스트리밍 업로드(통째 메모리 적재 대신 32KiB 청크 + 원자적 교체 + 크기검증).
+                    // 스트리밍 업로드(통째 메모리 적재 대신 청크 + 원자적 교체 + 크기검증).
+                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
                     let lp = lpath.to_string_lossy();
-                    self.upload(lp.as_ref(), &rpath, |_| {}).await?;
+                    self.upload(lp.as_ref(), &rpath, |b| prog.report(b)).await?;
+                    prog.done += size;
+                    prog.report(0);
                 }
             }
             Ok(())

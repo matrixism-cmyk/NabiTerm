@@ -155,16 +155,19 @@ pub fn spawn_sftp(
                     let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::DownloadDir { xfer, remote, local } => {
-                    let res = fs.download_dir(&remote, Path::new(&local)).await;
+                    let mut p = crate::sftppool::progress_sink(id, xfer, &ev);
+                    let res = fs.download_dir(&remote, Path::new(&local), &mut p).await;
                     let _ = ev.send(transfer_done(id, xfer, &local, res));
                 }
                 SftpReq::DownloadDirSync { remote, local, done } => {
                     // 가상 폴더 드래그-아웃: 완료를 done 채널로(UI 이벤트 루프 비경유).
-                    let res = fs.download_dir(&remote, Path::new(&local)).await;
+                    let mut noop = |_: u64| {};
+                    let res = fs.download_dir(&remote, Path::new(&local), &mut noop).await;
                     let _ = done.send(res.is_ok());
                 }
                 SftpReq::UploadDir { xfer, local, remote } => {
-                    let res = fs.upload_dir(Path::new(&local), &remote).await;
+                    let mut p = crate::sftppool::progress_sink(id, xfer, &ev);
+                    let res = fs.upload_dir(Path::new(&local), &remote, &mut p).await;
                     let _ = ev.send(transfer_done(id, xfer, &remote, res));
                 }
                 SftpReq::Chmod { path, mode } => {

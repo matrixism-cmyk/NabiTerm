@@ -45,6 +45,16 @@ fn summary(transfers: &[Transfer]) -> String {
     format!("  \u{2211}{pct}% \u{00b7} {}/s{eta}", crate::browserfs::human(sp))
 }
 
+/// 전체 크기를 모르는 전송(폴더)의 진행 표시 — 보낸 양 + 속도.
+fn running_amount(t: &Transfer) -> String {
+    let sent = crate::browserfs::human(t.bytes);
+    let secs = t.started.elapsed().as_secs_f64();
+    if secs <= 0.3 || t.bytes == 0 {
+        return sent;
+    }
+    format!("{sent} ({}/s)", crate::browserfs::human((t.bytes as f64 / secs) as u64))
+}
+
 /// 진행 중 항목의 라벨(이름 + 속도 + 남은 시간).
 fn running_label(t: &Transfer, dir: &str) -> String {
     let secs = t.started.elapsed().as_secs_f64();
@@ -106,8 +116,10 @@ fn row(ui: &mut egui::Ui, t: &Transfer, lang: Lang, act: &mut QueueAct) {
                 let frac = (t.bytes as f32 / t.size as f32).clamp(0.0, 1.0);
                 ui.add(egui::ProgressBar::new(frac).desired_width(180.0).text(running_label(t, dir)));
             }
+            // 폴더 전송은 전체 크기를 미리 모른다(재귀로 훑어야 안다). 막대 대신 지금까지
+            // 보낸 양과 속도를 보여 준다 — 예전엔 모래시계만 있어서 멈춘 것과 구별이 안 됐다.
             XferState::Running => {
-                ui.label(format!("{dir} {} \u{23f3}", t.name));
+                ui.label(format!("{dir} {} \u{23f3} {}", t.name, running_amount(t)));
             }
             XferState::Waiting => {
                 ui.weak(format!("{dir} {} \u{00b7} {}", t.name, crate::browserfs::human(t.size)));

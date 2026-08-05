@@ -180,6 +180,17 @@ async fn worker_loop(
     }
 }
 
+/// 누적 바이트를 진행 이벤트로 흘려보내는 싱크(파일 전송과 같은 임계로 합친다).
+pub(crate) fn progress_sink(id: SftpId, xfer: u64, ev: &Sender<Event>) -> impl FnMut(u64) + Send + '_ {
+    let mut last = 0u64;
+    move |total| {
+        if total.saturating_sub(last) >= crate::sftpretry::PROGRESS_STEP {
+            last = total;
+            let _ = ev.send(Event::SftpProgress { id, xfer, bytes: total });
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn run_job(
     fs: &mut Conn,
@@ -201,8 +212,15 @@ async fn run_job(
             crate::sftpretry::run_upload(fs, params, limit_kbps, cancel, id, *xfer, local, remote, ev)
                 .await
         }
-        Job::DownloadDir { remote, local, .. } => fs.download_dir(remote, Path::new(local)).await,
-        Job::UploadDir { local, remote, .. } => fs.upload_dir(Path::new(local), remote).await,
+        // 폴더도 파일과 같은 방식으로 진행률을 보낸다 — 큐 줄이 끝날 때까지 멈춰 보이지 않게.
+        Job::DownloadDir { xfer, remote, local } => {
+            let mut p = progress_sink(id, *xfer, ev);
+            fs.download_dir(remote, Path::new(local), &mut p).await
+        }
+        Job::UploadDir { xfer, local, remote } => {
+            let mut p = progress_sink(id, *xfer, ev);
+            fs.upload_dir(Path::new(local), remote, &mut p).await
+        }
     }
 }
 

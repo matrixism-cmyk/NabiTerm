@@ -12,7 +12,7 @@ use std::time::Duration;
 /// 최대 재시도 횟수(초기 시도 제외).
 const MAX_RETRIES: u32 = 3;
 /// 진행 이벤트 합치기 임계(바이트) — 액터 기존값과 동일.
-const PROGRESS_STEP: u64 = 262_144;
+pub(crate) const PROGRESS_STEP: u64 = 262_144;
 
 /// 지수 백오프(ms): 500·2^attempt, 최대 8초. 순수 함수.
 pub(crate) fn backoff_ms(attempt: u32) -> u64 {
