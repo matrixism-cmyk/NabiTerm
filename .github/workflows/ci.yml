@@ -55,6 +55,11 @@ jobs:
       - name: 라인 한도
         run: cargo run -p xtask --locked -- lines
 
+      # 사전배포(alpha/beta/rc) 의존성 게이트 — 허용 목록에 없는 게 새로 생기면 실패.
+      # cargo-deny로는 잡히지 않는다(잠긴 버전이 사전배포인지는 검사 항목이 아니다).
+      - name: 사전배포 의존성
+        run: cargo run -p xtask --locked -- prerelease
+
       # 포맷 검사(cargo fmt --check)는 일부러 넣지 않는다.
       # 이 코드베이스는 파일 크기 규율(250줄) 때문에 짧은 문장을 한 줄에 묶는 관용구를 쓰는데,
       # rustfmt는 그걸 모두 펼쳐 라인 한도를 깨뜨린다(현재 1,300곳 이상 상이).

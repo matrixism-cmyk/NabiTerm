@@ -4,11 +4,13 @@
 //! - `lines` : 소스 파일 라인 수 게이트(소프트 250 경고 / 하드 400 실패).
 //! - `dist`  : 배포 산출물(포터블 zip + Inno Setup 설치본) 생성.
 //! - `icon`  : 빌드된 exe에 나비 아이콘 주입(windres 부재 환경 대응).
+//! - `prerelease` : 잠금 파일에 alpha/beta/rc 의존성이 섞였는지 검사.
 
 mod dist;
 mod icon;
 mod lines;
 mod overrides;
+mod prerelease;
 
 use std::process::ExitCode;
 
@@ -17,6 +19,7 @@ fn main() -> ExitCode {
     match task.as_str() {
         "lines" => lines::run(),
         "dist" => dist::run(),
+        "prerelease" => prerelease::run(),
         "icon" => {
             let p = std::env::args()
                 .nth(2)
@@ -33,7 +36,7 @@ fn main() -> ExitCode {
             }
         }
         other => {
-            eprintln!("알 수 없는 작업: '{other}'. 사용 가능: lines, dist, icon");
+            eprintln!("알 수 없는 작업: '{other}'. 사용 가능: lines, prerelease, dist, icon");
             ExitCode::from(2)
         }
     }
