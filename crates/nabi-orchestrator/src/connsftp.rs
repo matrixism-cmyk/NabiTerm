@@ -16,6 +16,13 @@ impl Conn {
         matches!(self, Conn::Sftp(_))
     }
 
+    /// 취소 플래그를 갈아 끼운다(워커가 작업마다 새 플래그를 쓴다). FTP는 해당 없음.
+    pub(crate) fn set_cancel(&mut self, c: std::sync::Arc<std::sync::atomic::AtomicBool>) {
+        if let Conn::Sftp(f) = self {
+            f.set_cancel(c);
+        }
+    }
+
     pub(crate) async fn list_dir(&mut self, p: &str) -> Result<Vec<FileEntry>, String> {
         match self {
             Conn::Sftp(f) => f.list_dir(p).await,

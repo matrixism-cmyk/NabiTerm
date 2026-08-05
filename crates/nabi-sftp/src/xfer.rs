@@ -51,7 +51,12 @@ impl SftpFs {
             resume_from,
             attrs.as_ref().and_then(|a| a.size),
             |d| out.write_all(d).map_err(|e| e.to_string()),
-            |done| tick(resume_from + done),
+            // 파도마다 진행률을 보고한다. 예전에는 끝나고 한 번만 불러서 큐의 진행 막대가
+            // 0%에 멈춰 있다가 갑자기 100%가 됐다 — 큰 파일일수록 멈춘 것처럼 보였다.
+            |done| {
+                progress(resume_from + done);
+                tick(resume_from + done)
+            },
         )
         .await;
         let _ = raw.close(&handle).await;
@@ -120,6 +125,11 @@ impl SftpFs {
         let mut buf = vec![0u8; chunk];
         let start = std::time::Instant::now();
         let mut tick = self.ticker(start);
+        // 다운로드와 같은 이유로 파도마다 보고한다(끝나고 한 번만 부르면 막대가 안 움직인다).
+        let mut report = |done: u64| {
+            progress(done);
+            tick(done)
+        };
         let sent = upload_stream(
             &raw,
             &handle,
@@ -128,7 +138,7 @@ impl SftpFs {
                 let n = read_full(&mut inp, &mut buf[..want.min(chunk)])?;
                 Ok(buf[..n].to_vec())
             },
-            &mut tick,
+            &mut report,
         )
         .await;
         let acked = match &sent {

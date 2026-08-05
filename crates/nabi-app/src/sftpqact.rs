@@ -76,8 +76,8 @@ impl NabiApp {
             }
         }
         if stop {
-            // 지금 이 연결에서 도는 전송을 멈춘다. 동시 실행이 1이라 곧 이 항목이다.
-            self.orch.send(Command::SftpCancel { id });
+            // 이 항목만 멈춘다 — 같이 도는 다른 전송까지 끊으면 안 된다.
+            self.orch.send(Command::SftpCancelXfer { id, xfer });
         }
     }
 
@@ -89,7 +89,7 @@ impl NabiApp {
             .iter()
             .any(|t| t.xfer == xfer && t.running());
         if running {
-            self.orch.send(Command::SftpCancel { id });
+            self.orch.send(Command::SftpCancelXfer { id, xfer });
         }
         self.sftp.transfers.retain(|t| t.xfer != xfer);
     }

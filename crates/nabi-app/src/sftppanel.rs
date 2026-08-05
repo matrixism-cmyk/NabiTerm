@@ -112,6 +112,7 @@ impl NabiApp {
             params,
             ftp,
             limit_kbps: self.config.terminal.speed_limit_kbps,
+            parallel: self.config.terminal.max_parallel_transfers,
         });
         self.add_pane(pane);
         if let Some(loc) = self.dock.find_tab(&pane) {

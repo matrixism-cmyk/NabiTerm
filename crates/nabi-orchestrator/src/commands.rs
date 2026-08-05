@@ -76,7 +76,8 @@ pub fn handle_command(
             params,
             ftp,
             limit_kbps,
-        } => spawn_sftp(id, params, ftp, limit_kbps, rt, sftp, event_tx, verifier.clone()),
+            parallel,
+        } => spawn_sftp(id, params, ftp, limit_kbps, parallel, rt, sftp, event_tx, verifier.clone()),
         Command::SftpList { id, path } => sftp_request(id, SftpReq::List(path), sftp),
         Command::SftpDownload {
             id,
@@ -95,6 +96,7 @@ pub fn handle_command(
         Command::SftpMkdir { id, path } => sftp_request(id, SftpReq::Mkdir(path), sftp),
         Command::SftpTouch { id, path } => sftp_request(id, SftpReq::Touch(path), sftp),
         Command::SftpCancel { id } => crate::sftp::sftp_cancel(id, sftp),
+        Command::SftpCancelXfer { id, xfer } => crate::sftp::sftp_cancel_xfer(id, xfer, sftp),
         Command::SftpChmod { id, path, mode } => {
             sftp_request(id, SftpReq::Chmod { path, mode }, sftp)
         }

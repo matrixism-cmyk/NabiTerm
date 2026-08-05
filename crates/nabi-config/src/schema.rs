@@ -299,7 +299,7 @@ impl Default for TerminalCfg {
             warn_paste_newline: false,
             snippets: Vec::new(),
             speed_limit_kbps: 0,
-            max_parallel_transfers: 1,
+            max_parallel_transfers: 2,
             download_dir: String::new(),
             download_ask: true,
             recent_hosts: Vec::new(),

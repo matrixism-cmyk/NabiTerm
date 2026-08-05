@@ -47,10 +47,13 @@ async fn read_wave(
     chunk: usize,
     n_req: usize,
     sink: &mut impl FnMut(&[u8]) -> Result<(), String>,
-) -> Result<Wave, String> {
+    tick: &mut impl FnMut(u64) -> Result<Option<std::time::Duration>, String>,
+    base: u64,
+) -> Result<(Wave, Option<std::time::Duration>), String> {
     let reqs = (0..n_req).map(|i| raw.read_at(handle, at + (i * chunk) as u64, chunk));
     let results = futures_util::future::join_all(reqs).await;
     let (mut advanced, mut eof, mut short) = (0usize, false, None);
+    let mut delay = None;
     for r in results {
         match r? {
             None => {
@@ -61,6 +64,9 @@ async fn read_wave(
                 let n = data.len();
                 sink(&data)?;
                 advanced += n;
+                // 조각마다 보고한다. 파도 끝에서 한 번만 부르면 파도가 파일보다 클 때
+                // (16MB까지 간다) 진행률이 0%에 멈춰 있다가 갑자기 끝난다.
+                delay = tick(base + advanced as u64)?.or(delay);
                 if n < chunk {
                     short = (n > 0).then_some(n);
                     break;
@@ -68,12 +74,12 @@ async fn read_wave(
             }
         }
     }
-    Ok(Wave { advanced, eof, short })
+    Ok((Wave { advanced, eof, short }, delay))
 }
 
 /// 원격 파일을 `at`부터 끝까지 읽어 sink로 흘려보낸다. 반환값은 읽은 총 바이트.
 ///
-/// `tick`은 파도마다 누적 바이트로 호출된다 — 진행률 보고와 취소·속도제한을 여기서 한다.
+/// `tick`은 **조각마다** 누적 바이트로 호출된다 — 진행률 보고와 취소·속도제한을 여기서 한다.
 pub(crate) async fn download_stream(
     raw: &RawFs,
     handle: &str,
@@ -104,13 +110,17 @@ pub(crate) async fn download_stream(
             Some(sz) => ((sz.saturating_sub(pos) as usize).div_ceil(chunk)).clamp(1, depth()),
             None => depth(),
         };
-        let w = read_wave(raw, handle, pos, chunk, n_req, &mut sink).await?;
+        let (w, delay) =
+            read_wave(raw, handle, pos, chunk, n_req, &mut sink, &mut tick, total).await?;
         pos += w.advanced as u64;
         total += w.advanced as u64;
         if let Some(n) = w.short.filter(|n| *n < chunk) {
             chunk = n;
         }
-        if let Some(delay) = tick(total)? {
+        // 파도 끝에서도 한 번 부른다. EOF만 온 파도는 조각이 없어 위에서 한 번도 부르지
+        //  않는데, 그러면 그 사이에 들어온 취소를 놓친다(작은 파일에서 실제로 놓쳤다).
+        let delay = tick(total)?.or(delay);
+        if let Some(delay) = delay {
             tokio::time::sleep(delay).await;
         }
         if w.eof || w.advanced == 0 {
@@ -122,6 +132,9 @@ pub(crate) async fn download_stream(
     }
     Ok(total)
 }
+
+/// 한 파도가 담을 수 있는 최대 바이트 — 취소·진행률이 이 단위로 반응한다.
+const WAVE_MAX_BYTES: usize = 4 * 1024 * 1024;
 
 /// 로컬 파일을 `at`부터 원격 핸들에 쓴다. 반환값은 **연속으로 확인된** 총 길이.
 ///
@@ -135,12 +148,16 @@ pub(crate) async fn upload_stream(
     mut tick: impl FnMut(u64) -> Result<Option<std::time::Duration>, String>,
 ) -> Result<u64, (u64, String)> {
     let chunk = raw.write_chunk();
+    // 파도가 크면 그 안에서는 취소도 진행률도 반응할 수 없다(전부 보낸 뒤에야 확인한다).
+    // 서버가 알려준 조각 크기에 따라 파도가 16MB까지 커져, 12MB 파일은 취소 자체가
+    // 불가능했다(실측). 처리량을 지킬 만큼의 깊이는 두되 파도 크기에 상한을 둔다.
+    let n_req = depth().min(WAVE_MAX_BYTES.div_ceil(chunk)).max(1);
     let mut acked = at;
     loop {
         // 한 파도 분량을 미리 읽어 둔다(로컬 읽기는 동기라 순서가 보장된다).
-        let mut parts: Vec<(u64, Vec<u8>)> = Vec::with_capacity(depth());
+        let mut parts: Vec<(u64, Vec<u8>)> = Vec::with_capacity(n_req);
         let mut off = acked;
-        for _ in 0..depth() {
+        for _ in 0..n_req {
             let buf = fill(chunk).map_err(|e| (acked, e))?;
             if buf.is_empty() {
                 break;
@@ -152,16 +169,23 @@ pub(crate) async fn upload_stream(
         if parts.is_empty() {
             break;
         }
-        let sent: u64 = parts.iter().map(|(_, b)| b.len() as u64).sum();
+        let sizes: Vec<u64> = parts.iter().map(|(_, b)| b.len() as u64).collect();
+        let sent: u64 = sizes.iter().sum();
         let reqs = parts.into_iter().map(|(o, b)| raw.write_at(handle, o, b));
-        for r in futures_util::future::join_all(reqs).await {
+        let mut done = 0u64;
+        let mut delay = None;
+        for (i, r) in futures_util::future::join_all(reqs).await.into_iter().enumerate() {
             r.map_err(|e| (acked, e))?; // 하나라도 실패하면 이 파도는 확정하지 않는다.
+            done += sizes[i];
+            // 조각마다 보고해 파도 안에서도 진행률이 움직이게 한다.
+            match tick(acked + done) {
+                Ok(d) => delay = d.or(delay),
+                Err(e) => return Err((acked, e)),
+            }
         }
         acked += sent;
-        match tick(acked) {
-            Ok(Some(delay)) => tokio::time::sleep(delay).await,
-            Ok(None) => {}
-            Err(e) => return Err((acked, e)),
+        if let Some(d) = delay {
+            tokio::time::sleep(d).await;
         }
     }
     Ok(acked)
@@ -173,6 +197,9 @@ pub(crate) async fn upload_stream(
 /// `[확정, 확정+한파도)` 안에만 생긴다. 파일 길이도 `확정+한파도`를 넘지 못한다.
 /// 따라서 길이에서 한 파도를 빼면 반드시 확정 지점 이하로 내려가고, 거기서부터 끝까지
 /// 다시 보내면 구멍이 사라진다 — 파일을 자르지 않아도 된다(자르기를 거부하는 서버가 있다).
+///
+/// 실제 파도는 `WAVE_MAX_BYTES`로 더 작을 수 있다. 여기서는 최대치(`depth()*chunk`)로
+/// 되감으므로 항상 확정 지점 이하다 — 조금 더 다시 보낼 뿐 구멍은 남지 않는다.
 pub(crate) fn resume_offset(part_len: u64, chunk: usize) -> u64 {
     part_len.saturating_sub((depth() * chunk) as u64)
 }

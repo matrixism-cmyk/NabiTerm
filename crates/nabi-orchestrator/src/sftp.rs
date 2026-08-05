@@ -32,14 +32,17 @@ pub enum SftpReq {
     Close,
 }
 
-/// SftpId → (액터 요청 채널, 전송 취소 플래그).
-pub type SftpConns = HashMap<
-    SftpId,
-    (
-        mpsc::UnboundedSender<SftpReq>,
-        std::sync::Arc<std::sync::atomic::AtomicBool>,
-    ),
->;
+/// 한 SFTP 연결의 바깥 손잡이(요청 보내기 + 취소).
+pub struct ConnHandle {
+    tx: mpsc::UnboundedSender<SftpReq>,
+    /// 주 연결의 취소 플래그(목록·삭제 등 액터가 직접 하는 작업용).
+    cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// 워커 풀의 전송별 취소 플래그(xfer → 플래그).
+    flags: crate::sftppool::Flags,
+}
+
+/// SftpId → 연결 손잡이.
+pub type SftpConns = HashMap<SftpId, ConnHandle>;
 
 /// SFTP 연결 액터를 띄운다(connect → 요청 루프).
 #[allow(clippy::too_many_arguments)]
@@ -48,6 +51,7 @@ pub fn spawn_sftp(
     params: SshParams,
     ftp: bool,
     limit_kbps: u32,
+    parallel: u32,
     rt: &Handle,
     conns: &mut SftpConns,
     event_tx: &Sender<Event>,
@@ -55,7 +59,8 @@ pub fn spawn_sftp(
 ) {
     let (tx, mut rx) = mpsc::unbounded_channel::<SftpReq>();
     let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    conns.insert(id, (tx, cancel.clone()));
+    let flags = crate::sftppool::new_flags();
+    conns.insert(id, ConnHandle { tx, cancel: cancel.clone(), flags: flags.clone() });
     let ev = event_tx.clone();
     // SSH 터미널과 같은 known_hosts·확인 모달을 쓴다(SFTP만 무방비이던 문제 해소).
     let known_hosts = nabi_config::StorageLayout::resolve().known_hosts;
@@ -76,6 +81,10 @@ pub fn spawn_sftp(
                     Conn::Sftp(f)
                 })
         };
+        // 동시 전송이 2 이상이면 전송을 별도 연결의 워커로 넘긴다(1이면 예전처럼 이 연결에서).
+        let mut pool = (parallel > 1 && !ftp).then(|| {
+            crate::sftppool::Pool::new(id, params.clone(), limit_kbps, parallel as usize, ev.clone(), flags)
+        });
         let mut fs = match conn {
             Ok(c) => {
                 let _ = ev.send(Event::SftpConnected { id });
@@ -97,6 +106,22 @@ pub fn spawn_sftp(
                         let _ = ev.send(Event::SftpError { id, message });
                     }
                 },
+                SftpReq::Download { xfer, remote, local, resume } if pool.is_some() => {
+                    let p = pool.as_mut().expect("위에서 확인함");
+                    p.dispatch(crate::sftppool::Job::Download { xfer, remote, local, resume });
+                }
+                SftpReq::Upload { xfer, local, remote } if pool.is_some() => {
+                    let p = pool.as_mut().expect("위에서 확인함");
+                    p.dispatch(crate::sftppool::Job::Upload { xfer, local, remote });
+                }
+                SftpReq::DownloadDir { xfer, remote, local } if pool.is_some() => {
+                    let p = pool.as_mut().expect("위에서 확인함");
+                    p.dispatch(crate::sftppool::Job::DownloadDir { xfer, remote, local });
+                }
+                SftpReq::UploadDir { xfer, local, remote } if pool.is_some() => {
+                    let p = pool.as_mut().expect("위에서 확인함");
+                    p.dispatch(crate::sftppool::Job::UploadDir { xfer, local, remote });
+                }
                 SftpReq::Download { xfer, remote, local, resume } => {
                     // 연결 오류 시 재접속+이어받기로 재시도(S2 #14/#15).
                     let res = crate::sftpretry::run_download(
@@ -167,18 +192,28 @@ pub fn spawn_sftp(
 /// 목록/종료 요청을 해당 액터로 전달한다(Close면 맵에서 제거).
 pub fn sftp_request(id: SftpId, req: SftpReq, conns: &mut SftpConns) {
     let closing = matches!(req, SftpReq::Close);
-    if let Some((tx, _)) = conns.get(&id) {
-        let _ = tx.send(req);
+    if let Some(h) = conns.get(&id) {
+        let _ = h.tx.send(req);
     }
     if closing {
         conns.remove(&id);
     }
 }
 
-/// 진행 중인 전송을 취소한다(취소 플래그 set → 다음 청크에서 중단).
+/// 이 연결의 전송을 **모두** 취소한다(주 연결 + 워커 풀).
 pub fn sftp_cancel(id: SftpId, conns: &SftpConns) {
-    if let Some((_, c)) = conns.get(&id) {
-        c.store(true, std::sync::atomic::Ordering::Relaxed);
+    if let Some(h) = conns.get(&id) {
+        h.cancel.store(true, std::sync::atomic::Ordering::Relaxed);
+        crate::sftppool::cancel_all(&h.flags);
+    }
+}
+
+/// 전송 **하나만** 취소한다 — 큐에서 그 줄의 ✕를 눌렀을 때.
+///
+/// 예전에는 이것도 연결 전체를 끊어, 동시 전송 중 하나를 지우면 나머지도 같이 죽었다.
+pub fn sftp_cancel_xfer(id: SftpId, xfer: u64, conns: &SftpConns) {
+    if let Some(h) = conns.get(&id) {
+        crate::sftppool::cancel_one(&h.flags, xfer);
     }
 }
 

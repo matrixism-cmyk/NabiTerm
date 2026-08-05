@@ -55,6 +55,8 @@ pub enum Command {
         ftp: bool,
         /// 전송 속도 제한(KB/s, 0=무제한).
         limit_kbps: u32,
+        /// 동시 전송 개수(2 이상이면 전송마다 별도 연결의 워커를 쓴다).
+        parallel: u32,
     },
     /// 원격 디렉터리 목록 요청.
     SftpList { id: SftpId, path: String },
@@ -90,6 +92,8 @@ pub enum Command {
     SftpTouch { id: SftpId, path: String },
     /// 진행 중인 전송 취소.
     SftpCancel { id: SftpId },
+    /// 전송 하나만 취소(큐의 그 줄 ✕). 같은 연결의 다른 전송은 계속 간다.
+    SftpCancelXfer { id: SftpId, xfer: u64 },
     /// 원격 파일 권한 변경(POSIX mode).
     SftpChmod {
         id: SftpId,
