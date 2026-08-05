@@ -165,10 +165,12 @@ fn render_inner(
         }
         // 편집 가능한 경로 주소창(SFTP와 일관 — 입력/붙여넣기 후 Enter로 이동). 비편집 시 현재 경로 표시.
         let r = ui.add(egui::TextEdit::singleline(&mut b.addr).desired_width(180.0).hint_text(nabi_i18n::tr(lang, "sftp.gotopath")));
-        if !r.has_focus() {
-            b.addr = path.to_string_lossy().into_owned();
-        } else if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && !b.addr.trim().is_empty() {
+        // Enter를 누른 프레임엔 포커스를 잃으므로 확정 여부를 **먼저** 본다(sftptoolbar와 같은 이유).
+        let entered = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if entered && !b.addr.trim().is_empty() {
             a.nav = Some(std::path::PathBuf::from(b.addr.trim()));
+        } else if !r.has_focus() {
+            b.addr = path.to_string_lossy().into_owned();
         }
         // 터미널에서 열기(스마트): 활성 탭이 셸이면 그 터미널을 이 폴더로 cd, 아니면 새 터미널을 연다.
         if ui.button(format!("\u{1f4bb} {}", nabi_i18n::tr(lang, "browser.cdhere"))).clicked() {

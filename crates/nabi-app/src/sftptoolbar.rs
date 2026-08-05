@@ -42,10 +42,14 @@ pub(crate) fn render_toolbar(
                 .desired_width(200.0)
                 .hint_text(tr(lang, "sftp.gotopath")),
         );
-        if !r.has_focus() {
-            sftp.addr = sftp.path.clone();
-        } else if r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) && !sftp.addr.trim().is_empty() {
+        // ⚠️ Enter를 누른 프레임에는 TextEdit가 포커스를 넘겨준다 — 그래서 `has_focus()`로 먼저
+        // 갈라 버리면 되돌리기 갈래로 빠져 입력이 지워지고 이동 갈래는 **도달조차 못 한다**.
+        // 확정 여부를 먼저 읽고, 그 다음에만 현재 경로로 되돌린다.
+        let entered = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if entered && !sftp.addr.trim().is_empty() {
             a.go = Some(sftp.addr.trim().to_string());
+        } else if !r.has_focus() {
+            sftp.addr = sftp.path.clone();
         }
         bookmark_menu(ui, lang, bookmarks, a);
         ui.separator();

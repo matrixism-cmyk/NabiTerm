@@ -160,8 +160,10 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             return format!("\u{270e} {}{star}", e.title).into();
         }
         if let Some(host) = self.remote_host(*tab) {
+            // 원격 패널도 브라우저 탭처럼 UI 전용이라 pane ID 배지를 붙이지 않는다.
+            // 붙이면 내부 채번(u64::MAX-n)이 그대로 새어 "#18446744073709551614"가 보인다.
             let h = if host.is_empty() { "SFTP".to_string() } else { host };
-            return format!("{id}\u{1f5a7} {h}").into();
+            return format!("\u{1f5a7} {h}").into();
         }
         let base =
             crate::tabmenu::tab_title(self.orch, self.tab_names, self.activity, self.cwds, tab);

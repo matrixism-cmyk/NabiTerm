@@ -41,11 +41,14 @@ pub async fn connect_sftp(
         window_size: 16 * 1024 * 1024,
         ..Default::default()
     });
+    // 연결 제한시간에는 **호스트키 확인창을 읽는 시간**도 포함된다(핸드셰이크 안에서 기다린다).
+    // 확인창이 뜰 수 있으면 넉넉히 주고, 자동 재접속(verifier 없음)은 짧게 유지한다.
+    let limit = std::time::Duration::from_secs(if verifier.is_some() { 180 } else { 15 });
     // 점프 호스트(ProxyJump, D2)가 있으면 경유, 아니면 직접 연결. jump 핸들은 터널 유지용.
     // 점프 호스트도 목적지와 똑같이 호스트키를 검증한다(경유지가 MITM 지점이 되지 않게).
     let (handle, jump) = if let Some(j) = &params.jump {
         let jc = client::connect(config.clone(), (j.host.as_str(), j.port), handler(&j.host, j.port));
-        let mut jh = tokio::time::timeout(std::time::Duration::from_secs(15), jc)
+        let mut jh = tokio::time::timeout(limit, jc)
             .await.map_err(|_| "점프 연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
         auth(&mut jh, j).await?;
         let ch = jh.channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
@@ -56,7 +59,7 @@ pub async fn connect_sftp(
         (th, Some(jh))
     } else {
         let connect = client::connect(config, (params.host.as_str(), params.port), handler(&params.host, params.port));
-        let mut handle = tokio::time::timeout(std::time::Duration::from_secs(15), connect)
+        let mut handle = tokio::time::timeout(limit, connect)
             .await.map_err(|_| "연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
         auth(&mut handle, params).await?;
         (handle, None)

@@ -96,7 +96,10 @@ async fn open_authed(
     known_hosts: PathBuf,
     verifier: Option<crate::verify::HostKeyVerifier>,
 ) -> Result<(client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>), russh::Error> {
-    let d15 = std::time::Duration::from_secs(15); // 죽은 호스트 무한대기 방지.
+    // 죽은 호스트에서 무한 대기하지 않도록 제한을 둔다. 다만 이 시간에는 **호스트키 확인창을
+    // 사용자가 읽는 시간**도 포함된다 — 지문을 확인하고 신뢰를 누르면 이미 시간이 지나 있었다.
+    // 확인창이 뜰 수 있는 경우(verifier 있음)에만 넉넉하게 준다.
+    let d15 = std::time::Duration::from_secs(if verifier.is_some() { 180 } else { 15 });
     if let Some(jump) = &params.jump {
         let jh = ClientHandler::new(jump.host.clone(), jump.port, known_hosts.clone(), verifier.clone());
         let jc = client::connect(config.clone(), (jump.host.as_str(), jump.port), jh);
