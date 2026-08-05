@@ -127,6 +127,10 @@ impl NabiApp {
                         );
                         ui.end_row();
                     });
+                    // 둘 다 비어 있으면 ssh-agent로 붙는다(ssh(1)과 같은 규칙) — 눈에 보이게 알린다.
+                    if qc.password.is_empty() && qc.key_path.trim().is_empty() {
+                        ui.weak(tr(lang, "qc.agenthint"));
+                    }
                     ui.horizontal(|ui| {
                         ui.checkbox(&mut qc.save_password, tr(lang, "qc.savepw"));
                         ui.checkbox(&mut qc.with_sftp, tr(lang, "qc.withsftp"));

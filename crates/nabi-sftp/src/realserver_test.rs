@@ -20,6 +20,51 @@ pub(crate) fn params() -> Option<SshParams> {
     Some(SshParams::key_file(host, port, user, key, None))
 }
 
+/// 옛 SSH 서버(OpenSSH 4.x 등)에 SFTP로 붙는지 — **읽기 전용**이라 남의 서버에 써도 안전하다.
+///
+/// 터미널 쪽 폴백은 nabi-ssh에서 검증하지만, SFTP는 연결 코드가 따로라 여기서도 확인한다.
+#[tokio::test]
+#[ignore = "옛 SSH 서버 필요(NABI_OLD_HOST/USER/PASS)"]
+async fn realserver_legacy_sftp_connects() {
+    let (Ok(host), Ok(user), Ok(pass)) = (
+        std::env::var("NABI_OLD_HOST"),
+        std::env::var("NABI_OLD_USER"),
+        std::env::var("NABI_OLD_PASS"),
+    ) else {
+        return;
+    };
+    let port: u16 = std::env::var("NABI_OLD_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(22);
+    let p = SshParams::password(host, port, user, pass);
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None)
+        .await
+        .expect("옛 서버에 SFTP 연결");
+    let entries = fs.list_dir(".").await.expect("홈 목록 조회");
+    println!("옛 서버 홈 항목 {}개", entries.len());
+}
+
+/// ssh-agent 인증으로 실제 서버에 붙는다(NABI_RT_AGENT=1일 때만).
+///
+/// 준비: 에이전트를 켜고(`Set-Service ssh-agent -StartupType Manual; Start-Service ssh-agent`)
+/// `ssh-add`로 키를 올린 뒤, 그 공개키를 서버 사용자의 authorized_keys에 넣는다.
+/// 이 경로는 인프로세스 서버로는 검증할 수 없다 — 에이전트가 실제로 서명해야 한다.
+#[tokio::test]
+#[ignore = "실 서버 + ssh-agent 필요(NABI_RT_AGENT=1)"]
+async fn realserver_agent_auth() {
+    if std::env::var("NABI_RT_AGENT").is_err() {
+        return;
+    }
+    // params()를 쓰지 않는다 — 그쪽은 비밀번호나 키가 있어야 Some을 준다(에이전트는 둘 다 없다).
+    let Ok(user) = std::env::var("NABI_RT_USER") else { return };
+    let host = std::env::var("NABI_RT_HOST").unwrap_or_else(|_| "127.0.0.1".into());
+    let port: u16 = std::env::var("NABI_RT_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(22);
+    let p = SshParams::agent(host, port, user);
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None)
+        .await
+        .expect("에이전트 인증으로 연결");
+    // 붙기만 한 게 아니라 실제로 쓸 수 있는 세션인지 확인한다.
+    fs.list_dir(".").await.expect("목록 조회");
+}
+
 /// 실 OpenSSH 서버에서 업로드 원자적 교체(rename-over-existing) 검증.
 #[tokio::test]
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]

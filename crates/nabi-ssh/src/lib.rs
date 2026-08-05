@@ -10,6 +10,8 @@
 pub mod channel;
 pub mod fingerprint;
 pub mod knownhosts;
+pub mod agent;
+pub mod legacy;
 pub mod handler;
 pub mod params;
 pub mod session;

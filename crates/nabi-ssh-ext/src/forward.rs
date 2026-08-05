@@ -5,6 +5,7 @@
 
 use nabi_proto::{SshAuth, SshParams};
 use nabi_ssh::handler::ClientHandler;
+use nabi_ssh::legacy::ConnOpts;
 use russh::client::{self, AuthResult};
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -18,16 +19,15 @@ pub type Fwd = ClientHandler;
 /// 인증은 비밀번호와 개인키 파일을 모두 지원한다.
 pub(crate) async fn connect_authed(params: &SshParams) -> Result<client::Handle<Fwd>, String> {
     // 유휴 터널이 NAT/서버 타임아웃으로 조용히 끊기지 않게 keepalive를 건다.
-    let config = Arc::new(client::Config {
-        keepalive_interval: Some(std::time::Duration::from_secs(30)),
-        keepalive_max: 3,
-        ..Default::default()
-    });
+    let opts = ConnOpts::default();
     let known_hosts = nabi_config::StorageLayout::resolve().known_hosts;
-    let handler = ClientHandler::new(params.host.clone(), params.port, known_hosts, None);
-    let mut handle = client::connect(config, (params.host.as_str(), params.port), handler)
-        .await
-        .map_err(|e| e.to_string())?;
+    // 옛 서버 대응은 터미널·SFTP와 같은 경로를 쓴다(legacy.rs) — 포워딩만 못 붙으면 안 된다.
+    let (mut handle, _) = nabi_ssh::legacy::connect_compat(&opts, |cfg| {
+        let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), None);
+        async move { client::connect(cfg, (params.host.as_str(), params.port), h).await }
+    })
+    .await
+    .map_err(|e| e.to_string())?;
 
     let result = match &params.auth {
         SshAuth::Password(pw) => handle
@@ -43,6 +43,13 @@ pub(crate) async fn connect_authed(params: &SshParams) -> Result<client::Handle<
                 .authenticate_publickey(&params.user, with_hash)
                 .await
                 .map_err(|e| e.to_string())?
+        }
+        // 에이전트 인증(키가 에이전트에만 있는 사용자도 터널을 쓸 수 있게).
+        SshAuth::Agent => {
+            nabi_ssh::agent::authenticate_agent(&mut handle, &params.user)
+                .await
+                .map_err(|e| format!("포워딩 에이전트 인증: {e}"))?;
+            AuthResult::Success
         }
         SshAuth::None => return Err("포워딩: 인증 정보가 없습니다".into()),
     };

@@ -75,13 +75,7 @@ impl NabiApp {
         let user = self.quick_connect.user.trim().to_string();
         let pw = self.quick_connect.password.clone();
         let key = self.quick_connect.key_path.trim().to_string();
-        // FTP는 비밀번호만, SFTP는 키가 있으면 키 인증.
-        let params = if ftp || key.is_empty() {
-            SshParams::password(host, port, user, pw)
-        } else {
-            let pass = if pw.is_empty() { None } else { Some(pw) };
-            SshParams::key_file(host, port, user, key, pass)
-        };
+        let params = crate::sshauth::params_for(host, port, user, pw, &key, ftp);
         self.start_sftp(params, ftp);
     }
 

@@ -38,6 +38,11 @@ impl SshParams {
         self
     }
 
+    /// 실행 중인 ssh-agent의 키로 인증(키 파일·비밀번호 없이).
+    pub fn agent(host: impl Into<String>, port: u16, user: impl Into<String>) -> Self {
+        Self { host: host.into(), port, user: user.into(), auth: SshAuth::Agent, jump: None }
+    }
+
     /// 개인키 파일 인증(선택적 passphrase).
     pub fn key_file(
         host: impl Into<String>,
@@ -70,4 +75,7 @@ pub enum SshAuth {
         path: String,
         passphrase: Option<String>,
     },
+    /// 실행 중인 ssh-agent(OpenSSH 파이프 또는 Pageant)의 키로 인증.
+    /// 개인키가 우리 프로세스로 넘어오지 않는다 — 서명만 에이전트에 부탁한다.
+    Agent,
 }

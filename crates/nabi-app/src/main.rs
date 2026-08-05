@@ -83,6 +83,7 @@ mod aistatus;
 mod aidash;
 mod encsuggest;
 mod sshkey;
+mod sshauth;
 mod snippetsend;
 mod dirjump;
 mod quickselect;

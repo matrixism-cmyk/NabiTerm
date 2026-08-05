@@ -7,6 +7,7 @@ use crate::fs::SftpFs;
 use crate::raw::{Feat, RawFs, POSIX_RENAME};
 use nabi_proto::{SshAuth, SshParams};
 use nabi_ssh::handler::ClientHandler;
+use nabi_ssh::legacy::{connect_compat, ConnOpts};
 use nabi_ssh::verify::HostKeyVerifier;
 use russh::client::{self, AuthResult};
 use russh_sftp::client::RawSftpSession;
@@ -34,33 +35,51 @@ pub async fn connect_sftp(
     // - nodelay: SFTP는 작은 요청/응답을 주고받는데 Nagle이 켜져 있으면 매 왕복에 지연이 붙는다.
     // - window_size: SSH 채널 창이 곧 처리량 상한이다(창 ÷ RTT). 기본 2MiB는 RTT 50ms에서
     //   약 41MB/s로 묶여, 요청을 아무리 파이프라이닝해도 그 위로 못 올라간다.
-    let config = Arc::new(client::Config {
-        keepalive_interval: Some(std::time::Duration::from_secs(30)),
-        keepalive_max: 3,
-        nodelay: true,
-        window_size: 16 * 1024 * 1024,
-        ..Default::default()
-    });
+    let opts = ConnOpts { keepalive_secs: 30, nodelay: true, window_size: 16 * 1024 * 1024 };
     // 연결 제한시간에는 **호스트키 확인창을 읽는 시간**도 포함된다(핸드셰이크 안에서 기다린다).
     // 확인창이 뜰 수 있으면 넉넉히 주고, 자동 재접속(verifier 없음)은 짧게 유지한다.
     let limit = std::time::Duration::from_secs(if verifier.is_some() { 180 } else { 15 });
     // 점프 호스트(ProxyJump, D2)가 있으면 경유, 아니면 직접 연결. jump 핸들은 터널 유지용.
     // 점프 호스트도 목적지와 똑같이 호스트키를 검증한다(경유지가 MITM 지점이 되지 않게).
+    // 옛 서버(OpenSSH 4.x 등)는 SHA-1 알고리즘만 내놓는다 — 협상이 깨지면 레거시로 한 번 더
+    // 시도한다(nabi-ssh legacy.rs). SSH 터미널과 같은 규칙이라 한쪽만 붙는 일이 없다.
     let (handle, jump) = if let Some(j) = &params.jump {
-        let jc = client::connect(config.clone(), (j.host.as_str(), j.port), handler(&j.host, j.port));
-        let mut jh = tokio::time::timeout(limit, jc)
-            .await.map_err(|_| "점프 연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
+        let (mut jh, _) = connect_compat(&opts, |cfg| {
+            let h = handler(&j.host, j.port);
+            async move {
+                tokio::time::timeout(limit, client::connect(cfg, (j.host.as_str(), j.port), h))
+                    .await
+                    .map_err(|_| russh::Error::ConnectionTimeout)?
+            }
+        })
+        .await
+        .map_err(|e| e.to_string())?;
         auth(&mut jh, j).await?;
-        let ch = jh.channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
-            .await.map_err(|e| e.to_string())?;
-        let mut th = client::connect_stream(config, ch.into_stream(), handler(&params.host, params.port))
-            .await.map_err(|e| e.to_string())?;
+        let (mut th, _) = connect_compat(&opts, |cfg| {
+            let h = handler(&params.host, params.port);
+            let jref = &jh;
+            async move {
+                let ch = jref
+                    .channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
+                    .await?;
+                client::connect_stream(cfg, ch.into_stream(), h).await
+            }
+        })
+        .await
+        .map_err(|e| e.to_string())?;
         auth(&mut th, params).await?;
         (th, Some(jh))
     } else {
-        let connect = client::connect(config, (params.host.as_str(), params.port), handler(&params.host, params.port));
-        let mut handle = tokio::time::timeout(limit, connect)
-            .await.map_err(|_| "연결 시간 초과".to_string())?.map_err(|e| e.to_string())?;
+        let (mut handle, _) = connect_compat(&opts, |cfg| {
+            let h = handler(&params.host, params.port);
+            async move {
+                tokio::time::timeout(limit, client::connect(cfg, (params.host.as_str(), params.port), h))
+                    .await
+                    .map_err(|_| russh::Error::ConnectionTimeout)?
+            }
+        })
+        .await
+        .map_err(|e| e.to_string())?;
         auth(&mut handle, params).await?;
         (handle, None)
     };
@@ -115,6 +134,13 @@ async fn auth(handle: &mut client::Handle<Handler>, params: &SshParams) -> Resul
             let key = russh::keys::load_secret_key(path, passphrase.as_deref()).map_err(|e| e.to_string())?;
             let with_hash = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
             handle.authenticate_publickey(&params.user, with_hash).await.map_err(|e| e.to_string())?
+        }
+        // 에이전트 인증은 서명을 ssh-agent에 맡기므로 개인키가 이 프로세스로 오지 않는다.
+        SshAuth::Agent => {
+            nabi_ssh::agent::authenticate_agent(handle, &params.user)
+                .await
+                .map_err(|e| format!("SFTP 에이전트 인증: {e}"))?;
+            AuthResult::Success
         }
         SshAuth::None => return Err("SFTP: 인증 정보가 없습니다".into()),
     };

@@ -2,6 +2,7 @@
 
 use crate::channel::{SshChannel, SshInput};
 use crate::handler::ClientHandler;
+use crate::legacy::ConnOpts;
 use crate::params::{SshAuth, SshParams};
 use bytes::Bytes;
 use crossbeam_channel::Sender;
@@ -62,13 +63,14 @@ async fn run(
 ) -> Result<(), russh::Error> {
     // 유휴 연결이 서버 타임아웃으로 끊기지 않도록 keepalive(설정값 초, 0=끄기, 3회 실패 시 종료).
     let secs = SSH_KEEPALIVE_SECS.load(std::sync::atomic::Ordering::Relaxed);
-    let config = Arc::new(client::Config {
-        keepalive_interval: (secs > 0).then(|| std::time::Duration::from_secs(secs)),
-        keepalive_max: 3,
-        ..Default::default()
-    });
+    let opts = ConnOpts { keepalive_secs: secs, ..Default::default() };
     // 직접 연결 또는 점프 호스트(ProxyJump) 경유. _jump은 터널 유지를 위해 살려둔다.
-    let (handle, _jump) = open_authed(&params, config, known_hosts, verifier).await?;
+    let (handle, _jump, old) = open_authed(&params, opts, known_hosts, verifier).await?;
+    if old {
+        // 조용히 넘어가면 사용자는 자기가 SHA-1로 붙었는지 알 수 없다.
+        let msg = "\r\n[알림: 서버가 오래되어 레거시 알고리즘(SHA-1)으로 접속했습니다]\r\n";
+        let _ = out_tx.send((pane, Bytes::from_static(msg.as_bytes())));
+    }
 
     let channel = handle.channel_open_session().await?;
     channel
@@ -89,35 +91,60 @@ async fn run(
 
 /// 인증된 target 핸들을 얻는다. params.jump가 있으면 점프 호스트를 경유(direct-tcpip 터널 위
 /// 두 번째 SSH 세션). 반환=(target, jump 유지용 핸들). jump 핸들이 드롭되면 터널이 끊기므로 보관.
+///
+/// 반환의 마지막 `bool`은 레거시(SHA-1) 알고리즘으로 붙었는지.
 #[allow(clippy::type_complexity)]
 async fn open_authed(
     params: &SshParams,
-    config: Arc<client::Config>,
+    opts: ConnOpts,
     known_hosts: PathBuf,
     verifier: Option<crate::verify::HostKeyVerifier>,
-) -> Result<(client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>), russh::Error> {
+) -> Result<
+    (client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>, bool),
+    russh::Error,
+> {
     // 죽은 호스트에서 무한 대기하지 않도록 제한을 둔다. 다만 이 시간에는 **호스트키 확인창을
     // 사용자가 읽는 시간**도 포함된다 — 지문을 확인하고 신뢰를 누르면 이미 시간이 지나 있었다.
     // 확인창이 뜰 수 있는 경우(verifier 있음)에만 넉넉하게 준다.
     let d15 = std::time::Duration::from_secs(if verifier.is_some() { 180 } else { 15 });
     if let Some(jump) = &params.jump {
-        let jh = ClientHandler::new(jump.host.clone(), jump.port, known_hosts.clone(), verifier.clone());
-        let jc = client::connect(config.clone(), (jump.host.as_str(), jump.port), jh);
-        let mut jhandle = tokio::time::timeout(d15, jc).await.map_err(|_| russh::Error::ConnectionTimeout)??;
+        // 옛 서버 대응(legacy.rs): 협상이 안 되면 SHA-1 목록으로 한 번만 다시 붙는다.
+        let (mut jhandle, old_j) = crate::legacy::connect_compat(&opts, |cfg| {
+            let h = ClientHandler::new(jump.host.clone(), jump.port, known_hosts.clone(), verifier.clone());
+            async move {
+                tokio::time::timeout(d15, client::connect(cfg, (jump.host.as_str(), jump.port), h))
+                    .await
+                    .map_err(|_| russh::Error::ConnectionTimeout)?
+            }
+        })
+        .await?;
         authenticate(&mut jhandle, jump).await?;
-        let ch = jhandle
-            .channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
-            .await?;
-        let th = ClientHandler::new(params.host.clone(), params.port, known_hosts, verifier);
-        let mut thandle = client::connect_stream(config, ch.into_stream(), th).await?;
+        // 터널 위의 목적지도 따로 협상한다 — 재시도 때는 채널부터 다시 연다.
+        let (mut thandle, old_t) = crate::legacy::connect_compat(&opts, |cfg| {
+            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone());
+            let jh = &jhandle;
+            async move {
+                let ch = jh
+                    .channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
+                    .await?;
+                client::connect_stream(cfg, ch.into_stream(), h).await
+            }
+        })
+        .await?;
         authenticate(&mut thandle, params).await?;
-        Ok((thandle, Some(jhandle)))
+        Ok((thandle, Some(jhandle), old_j || old_t))
     } else {
-        let h = ClientHandler::new(params.host.clone(), params.port, known_hosts, verifier);
-        let c = client::connect(config, (params.host.as_str(), params.port), h);
-        let mut handle = tokio::time::timeout(d15, c).await.map_err(|_| russh::Error::ConnectionTimeout)??;
+        let (mut handle, old) = crate::legacy::connect_compat(&opts, |cfg| {
+            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone());
+            async move {
+                tokio::time::timeout(d15, client::connect(cfg, (params.host.as_str(), params.port), h))
+                    .await
+                    .map_err(|_| russh::Error::ConnectionTimeout)?
+            }
+        })
+        .await?;
         authenticate(&mut handle, params).await?;
-        Ok((handle, None))
+        Ok((handle, None, old))
     }
 }
 
@@ -186,6 +213,12 @@ async fn authenticate(
             let key = russh::keys::load_secret_key(path, passphrase.as_deref())?;
             let with_hash = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
             handle.authenticate_publickey(&params.user, with_hash).await?
+        }
+        SshAuth::Agent => {
+            crate::agent::authenticate_agent(handle, &params.user)
+                .await
+                .map_err(|_| russh::Error::NotAuthenticated)?;
+            AuthResult::Success
         }
     };
     if matches!(result, AuthResult::Success) {

@@ -190,12 +190,7 @@ impl NabiApp {
         self.config.terminal.last_port = port.to_string();
         let _ = nabi_config::save(&self.config_path, &self.config);
         let key_origin = (!key.is_empty()).then(|| key.clone());
-        let params = if key.is_empty() {
-            SshParams::password(host.clone(), port, user.clone(), pw)
-        } else {
-            let pass = if pw.is_empty() { None } else { Some(pw) };
-            SshParams::key_file(host.clone(), port, user.clone(), key, pass)
-        };
+        let params = crate::sshauth::params_for(host.clone(), port, user.clone(), pw, &key, false);
         // ProxyJump(B4): 콤마 구분 멀티홉 지원, 같은 인증으로 경유(베스천 동일 자격 가정).
         let jump_str = self.quick_connect.jump.trim().to_string();
         let params = match crate::sshjump::build_jumps(&jump_str, &params.auth, &user) {
