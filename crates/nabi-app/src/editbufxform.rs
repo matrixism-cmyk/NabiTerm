@@ -125,3 +125,36 @@ mod tests {
         assert_eq!(target_range(Some((3, 3)), 10), Some((0, 10)), "빈 선택은 선택 아님");
     }
 }
+
+#[cfg(test)]
+mod replace_on_rope {
+    use crate::editbuf::EditBuf;
+    use crate::editorfind::FindState;
+    use crate::editorreplace::replaced;
+
+    fn buf(s: &str) -> EditBuf {
+        EditBuf::new_buf(s, "UTF-8".into(), "\n")
+    }
+
+    /// 대용량(rope) 문서에서도 전체 바꾸기가 되고, 되돌리기 한 번으로 원래대로 온다.
+    #[test]
+    fn replace_all_on_rope_is_one_undo() {
+        let mut b = buf("cat\ncat\ndog");
+        let f = FindState { query: "cat".into(), replace: "fox".into(), ..Default::default() };
+        assert!(b.apply_transform(|s| replaced(s, &f)));
+        assert_eq!(b.rope.to_string(), "fox\nfox\ndog");
+        b.undo();
+        assert_eq!(b.rope.to_string(), "cat\ncat\ndog", "한 번의 취소로 되돌아와야 한다");
+    }
+
+    /// 선택이 있으면 그 구간만 바뀐다(문서 전체를 건드리지 않는다).
+    #[test]
+    fn replace_respects_selection() {
+        let mut b = buf("cat cat cat");
+        b.set_cursor(0);
+        b.move_head(7); // 앞의 두 개만.
+        let f = FindState { query: "cat".into(), replace: "fox".into(), ..Default::default() };
+        b.apply_transform(|s| replaced(s, &f));
+        assert_eq!(b.rope.to_string(), "fox fox cat");
+    }
+}

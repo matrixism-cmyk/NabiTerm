@@ -111,19 +111,36 @@ fn pattern(f: &FindState) -> String {
 }
 
 /// 정규식/전체단어/대소문자무시가 필요한 경우의 컴파일된 정규식(plain 검색은 None으로 빠른 경로).
-fn compiled(f: &FindState) -> Option<regex::Regex> {
+pub(crate) fn compiled(f: &FindState) -> Option<regex::Regex> {
     regex::RegexBuilder::new(&pattern(f)).case_insensitive(f.ci).build().ok()
 }
 
+impl FindState {
+    /// 검색 조건만 담은 사본. 통째로 복제하지 않는 이유는 `filter_backup`이 **문서 전체**를
+    /// 들고 있을 수 있어서다 — 바꾸기 한 번에 파일을 통째로 한 벌 더 복사하게 된다.
+    pub(crate) fn search_only(&self) -> FindState {
+        FindState {
+            query: self.query.clone(),
+            replace: self.replace.clone(),
+            ci: self.ci,
+            whole: self.whole,
+            regex: self.regex,
+            ..Default::default()
+        }
+    }
+}
+
 /// 이 찾기가 정규식 엔진을 써야 하는지(정규식·전체단어 모드).
-fn needs_regex(f: &FindState) -> bool {
+pub(crate) fn needs_regex(f: &FindState) -> bool {
     f.regex || f.whole
 }
 
 /// 찾기 바를 그린다(에디터 본문 위). 일치 줄로 scroll_to를 설정한다.
 pub(crate) fn find_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
-    // 바꾸기는 일반 텍스트 편집기에서만(대용량 뷰어/rope 편집기는 줄 단위 찾기·이동만).
-    let big = doc.big.is_some() || doc.edit.is_some();
+    // 바꾸기는 편집 가능한 문서에서만 — 읽기 전용 뷰어(big)는 제외하고 rope는 포함한다.
+    let viewer = doc.big.is_some();
+    // 필터(일치 줄만 보기)는 아직 String 경로 전용이다(문서를 통째로 갈아 끼우는 방식이라).
+    let plain_only = doc.big.is_some() || doc.edit.is_some();
     ui.horizontal_wrapped(|ui| {
         ui.label("\u{1f50d}");
         let q = ui.add(egui::TextEdit::singleline(&mut doc.find.query).desired_width(160.0).hint_text(tr(lang, "find.placeholder")));
@@ -153,19 +170,21 @@ pub(crate) fn find_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
         if needs_regex(&doc.find) && !doc.find.query.is_empty() && compiled(&doc.find).is_none() {
             ui.colored_label(egui::Color32::from_rgb(240, 120, 120), "\u{26a0}").on_hover_text(tr(lang, "find.badregex"));
         }
-        if !big {
+        if !viewer {
             ui.separator();
             ui.add(egui::TextEdit::singleline(&mut doc.find.replace).desired_width(140.0).hint_text(tr(lang, "find.replace")));
             if ui.button(tr(lang, "find.replaceall")).clicked() {
-                replace_all(doc);
+                crate::editorreplace::replace_all(doc);
             }
+        }
+        if !plain_only {
             // 필터 토글: 켜면 일치 줄만, 다시 누르면 원본 복원(filter_backup 보관).
             if ui.selectable_label(doc.find.filter_backup.is_some(), tr(lang, "find.filter")).on_hover_text(tr(lang, "find.filterhint")).clicked() {
                 if let Some(orig) = doc.find.filter_backup.take() {
                     doc.text = orig;
                 } else {
                     doc.find.filter_backup = Some(doc.text.clone());
-                    doc.text = filter_lines(&doc.text, &doc.find);
+                    doc.text = crate::editorreplace::filter_lines(&doc.text, &doc.find);
                 }
                 doc.dirty = true;
             }
@@ -197,43 +216,7 @@ fn find_line(doc: &mut EditorDoc, forward: bool) {
     doc.jump_to_line(ms[pos]); // 일치 줄로 이동(스크롤+커서) — goto·북마크와 동일.
 }
 
-/// 전체 바꾸기(일반 편집기만). 정규식·전체단어·대소문자무시면 정규식 엔진, 평문이면 빠른 replace.
-/// 정규식 모드의 바꿀 내용은 `$1` 등 캡처 참조를 지원한다.
-fn replace_all(doc: &mut EditorDoc) {
-    if doc.find.query.is_empty() {
-        return;
-    }
-    if !needs_regex(&doc.find) && !doc.find.ci {
-        doc.text = doc.text.replace(&doc.find.query, &doc.find.replace);
-        doc.dirty = true;
-        return;
-    }
-    if let Some(re) = compiled(&doc.find) {
-        doc.text = re.replace_all(&doc.text, doc.find.replace.as_str()).into_owned();
-        doc.dirty = true;
-    }
-}
-
-/// query·옵션에 일치하는 줄만 남긴 텍스트(필터/grep). 잘못된 정규식·빈 query면 원문 유지.
-pub(crate) fn filter_lines(text: &str, f: &FindState) -> String {
-    if f.query.is_empty() {
-        return text.to_string();
-    }
-    let re = if needs_regex(f) { compiled(f) } else { None };
-    if needs_regex(f) && re.is_none() {
-        return text.to_string(); // 잘못된 정규식 → 변경 안 함.
-    }
-    let needle = if f.ci { f.query.to_lowercase() } else { f.query.clone() };
-    let hit = |line: &str| -> bool {
-        match &re {
-            Some(re) => re.is_match(line),
-            None if f.ci => line.to_lowercase().contains(&needle),
-            None => line.contains(&needle),
-        }
-    };
-    text.split('\n').filter(|l| hit(l)).collect::<Vec<_>>().join("\n")
-}
-
+/// 찾기 설정대로 바꾼 결과 텍스트(순수). 정규식·전체단어·대소문자무시면 정규식 엔진,
 fn line_count(doc: &EditorDoc) -> usize {
     if let Some(e) = &doc.edit {
         return e.rope.len_lines();
@@ -286,7 +269,7 @@ mod tests {
 
     #[test]
     fn filter_keeps_matching_lines() {
-        use super::filter_lines;
+        use crate::editorreplace::filter_lines;
         let t = "error: boom\ninfo: ok\nERROR: bad\nwarn: hmm";
         assert_eq!(filter_lines(t, &fs("error", false, false, false)), "error: boom");
         assert_eq!(filter_lines(t, &fs("error", false, false, true)), "error: boom\nERROR: bad"); // 대소문자 무시.

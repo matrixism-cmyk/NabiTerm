@@ -71,6 +71,7 @@ mod encodings;
 mod editorhl; mod editorhlinc; mod editorhlspans; mod editorsyntax;
 mod editbig; mod editbuf; mod editbufcol; mod editbufedit; mod editbufkeys; mod editbufmove; mod editbufpaint; mod editbufview;
 mod editorfind;
+mod editorreplace;
 mod floatpanels;
 mod floatterm;
 mod linkmenu;
