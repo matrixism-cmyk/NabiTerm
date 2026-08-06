@@ -193,6 +193,10 @@ pub struct TerminalCfg {
     /// SFTP 보기 모드(0=자세히,1=목록,2=큰,3=작은,4=타일).
     #[serde(default)]
     pub sftp_view: u8,
+    /// 원격이 로컬 클립보드에 쓰는 것(OSC 52) 허용 범위.
+    /// 0=차단, 1=허용하되 알림(기본), 2=조용히 허용.
+    #[serde(default = "default_osc52")]
+    pub osc52_mode: u8,
     /// 숨김 파일(.) 표시.
     #[serde(default)]
     pub browser_show_hidden: bool,
@@ -305,6 +309,7 @@ impl Default for TerminalCfg {
             recent_hosts: Vec::new(),
             browser_sort: 0,
             sftp_view: 0,
+            osc52_mode: default_osc52(),
             browser_show_hidden: false,
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
@@ -317,4 +322,10 @@ impl Default for TerminalCfg {
             update_remind_after: 0,
         }
     }
+}
+
+/// OSC 52 기본값 = 1(허용하되 알림). 통째로 막으면 SSH 너머 nvim/tmux yank가 죽고,
+/// 조용히 허용하면 원격이 클립보드를 바꿔치기해도 사용자가 알 길이 없다.
+fn default_osc52() -> u8 {
+    1
 }

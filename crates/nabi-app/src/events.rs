@@ -121,7 +121,25 @@ impl NabiApp {
                     self.hostkey_prompt = Some((id, host, port, algorithm, fingerprint));
                     ctx.request_repaint();
                 }
-                Event::ClipboardCopy { text } => { self.record_clip(&text); ctx.copy_text(text); }
+                // 원격(OSC 52)이 로컬 클립보드에 쓰려 한다 — 설정대로 처리한다.
+                // 예전에는 제약도 알림도 없이 그대로 덮어썼다.
+                Event::ClipboardCopy { text } => {
+                    let mode =
+                        crate::osc52policy::Osc52Mode::from_u8(self.config.terminal.osc52_mode);
+                    let (apply, tell) = crate::osc52policy::decide(mode);
+                    if apply {
+                        self.record_clip(&text);
+                        if tell {
+                            let p = crate::osc52policy::preview(&text, 40);
+                            let head = nabi_i18n::tr(self.lang, "osc52.wrote");
+                            self.notify = Some((
+                                format!("\u{1f4cb} {head} \u{2014} {p}"),
+                                std::time::Instant::now(),
+                            ));
+                        }
+                        ctx.copy_text(text);
+                    }
+                }
                 Event::CwdChanged { pane, path } => {
                     let dir = crate::workspace::strip_uri_slash(&path); // E1 zoxide 디렉터리 기록(20s 디바운스 저장)
                     crate::dirjump::record(&mut self.config.terminal.dir_visits, &dir, chrono::Local::now().timestamp(), 500);

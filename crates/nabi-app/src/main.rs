@@ -113,6 +113,7 @@ mod quake;
 mod qcparse;
 mod paneio;
 mod paneurl;
+mod osc52policy;
 mod paste;
 mod qcbar;
 mod reconnect;
