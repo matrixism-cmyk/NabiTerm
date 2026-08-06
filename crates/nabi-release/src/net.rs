@@ -99,11 +99,24 @@ pub(super) fn download_plain(url: &str, dest: &str) -> Result<(), String> {
 }
 
 /// TLS 스트림 생성(native-tls = Windows Schannel).
+///
+/// 오류에 **호스트를 반드시 넣는다.** 다운로드는 GitHub에서 자산 호스트로 리다이렉트되므로
+/// 실제로 실패한 곳이 둘 중 어디인지 모르면 진단이 불가능하다(사용자 보고 2026-08-06:
+/// "TLS 연결 실패: 인증서의 CN 이름이…" — 어느 호스트인지 알 수 없어 원인을 좁히지 못했다).
 fn tls_connect(host: &str, port: u16) -> Result<native_tls::TlsStream<TcpStream>, String> {
-    let tcp = TcpStream::connect((host, port)).map_err(|e| format!("TCP 연결 실패: {e}"))?;
+    let tcp = TcpStream::connect((host, port))
+        .map_err(|e| format!("TCP 연결 실패({host}:{port}): {e}"))?;
     tcp.set_read_timeout(Some(Duration::from_secs(30))).ok();
     let connector = native_tls::TlsConnector::new().map_err(|e| format!("TLS 초기화 실패: {e}"))?;
-    connector.connect(host, tcp).map_err(|e| format!("TLS 연결 실패: {e}"))
+    connector.connect(host, tcp).map_err(|e| {
+        // 인증서 이름 불일치는 거의 항상 중간에 낀 것(사내 프록시·백신 HTTPS 검사)이다.
+        // 우리 쪽에서 고칠 수 있는 게 아니므로, 무엇을 의심해야 하는지까지 적어 준다.
+        let hint = match e.to_string().contains("CN") {
+            true => " — HTTPS를 가로채는 백신·사내 프록시일 수 있습니다. 릴리스 페이지에서 직접 받으세요",
+            false => "",
+        };
+        format!("TLS 연결 실패({host}): {e}{hint}")
+    })
 }
 
 /// HTTPS GET → 텍스트(GitHub API용, 리다이렉트 미지원, chunked 디코드).
@@ -233,3 +246,29 @@ fn write_body(
     Ok(())
 }
 
+
+#[cfg(test)]
+mod live {
+    /// 진단용: 실제 릴리스 자산을 **우리 코드로** 받아 본다(네트워크 필요).
+    ///
+    /// 사용자가 다운로드 실패를 보고하면 먼저 이걸 돌려 우리 쪽 문제인지 가른다.
+    /// 2026-08-06 보고 때 이 테스트가 통과해서(9.5MB 정상 수신) 코드가 아니라 환경
+    /// 문제로 좁힐 수 있었다.
+    /// `cargo test -p nabi-release live_ -- --ignored --nocapture`
+    #[test]
+    #[ignore = "네트워크 필요"]
+    fn live_download_real_asset() {
+        let url = "https://github.com/matrixism-cmyk/NabiTermPub/releases/download/v0.1.410/nabiTerm-setup.exe";
+        let status = std::sync::Arc::new(std::sync::Mutex::new(crate::UpdateStatus::Idle));
+        let dest = std::env::temp_dir().join("nabi-live-dl.exe");
+        match super::https_download_file(url, dest.to_str().unwrap(), &status) {
+            Ok(()) => {
+                let n = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
+                println!("OK {n} 바이트");
+                let _ = std::fs::remove_file(&dest);
+                assert!(n > 1_000_000, "받은 크기가 너무 작다: {n}");
+            }
+            Err(e) => panic!("다운로드 실패: {e}"),
+        }
+    }
+}

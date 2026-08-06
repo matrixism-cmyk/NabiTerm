@@ -14,6 +14,11 @@ use tokio::io::{AsyncRead, AsyncWrite};
 /// Windows OpenSSH ssh-agent의 기본 파이프 이름.
 const OPENSSH_PIPE: &str = r"\\.\pipe\openssh-ssh-agent";
 
+/// 한 연결에서 시도할 최대 키 수. 키 하나가 곧 인증 시도 한 번이고, 서버의
+/// `MaxAuthTries`(OpenSSH 기본 6)를 넘기면 **서버가 연결을 끊는다**. 에이전트에 키를
+/// 여러 개 올려 둔 사람이 많아서, 상한 없이 돌면 맞는 키에 닿기 전에 끊길 수 있다.
+const MAX_KEYS: usize = 6;
+
 /// 에이전트에 담긴 키들로 차례로 인증을 시도한다. 하나라도 통과하면 `Ok(())`.
 ///
 /// OpenSSH 에이전트를 먼저 보고, 없으면 Pageant를 본다. 둘 다 없거나 키가 하나도
@@ -25,35 +30,41 @@ pub async fn authenticate_agent<H: russh::client::Handler>(
     // 열려 있는 파이프가 곧 쓸 수 있는 에이전트라는 뜻은 아니다 — 서비스를 내려도 연결
     // 자체는 되고 목록 요청에서 "early eof"가 났다. 그래서 **키를 실제로 받아온 것**만
     // 시도로 친다. 앞 에이전트가 답을 못 줘도 다음 에이전트를 계속 본다.
-    let mut had_keys = false;
+    let mut tried = 0usize;
     if let Ok(a) = AgentClient::connect_named_pipe(OPENSSH_PIPE).await {
         match try_identities(handle, user, a).await {
-            Ok(true) => return Ok(()),
-            Ok(false) => had_keys = true,
+            Ok(Ok(())) => return Ok(()),
+            Ok(Err(n)) => tried = tried.max(n),
             Err(()) => {}
         }
     }
     if let Ok(a) = AgentClient::connect_pageant().await {
         match try_identities(handle, user, a).await {
-            Ok(true) => return Ok(()),
-            Ok(false) => had_keys = true,
+            Ok(Ok(())) => return Ok(()),
+            Ok(Err(n)) => tried = tried.max(n),
             Err(()) => {}
         }
     }
-    Err(match had_keys {
-        true => "에이전트의 키를 서버가 모두 거부했습니다".to_string(),
-        false => "쓸 수 있는 ssh-agent가 없습니다(에이전트 미실행 또는 등록된 키 없음)".to_string(),
+    Err(match tried {
+        0 => "쓸 수 있는 ssh-agent가 없습니다(에이전트 미실행 또는 등록된 키 없음)".to_string(),
+        // 상한까지 갔다면 뒤에 남은 키를 못 써 본 것이다 — 그 사실을 알려 준다.
+        n if n >= MAX_KEYS => format!(
+            "에이전트 키 {n}개가 모두 거부됐습니다(서버 MaxAuthTries 때문에 더 시도하지 않습니다). 쓰지 않는 키를 에이전트에서 빼거나 키 파일을 직접 지정하세요"
+        ),
+        n => format!("에이전트의 키 {n}개를 서버가 모두 거부했습니다"),
     })
 }
 
 /// 에이전트가 가진 공개키를 순서대로 시도한다. 서명은 에이전트가 한다.
 ///
-/// `Ok(true)`=인증 성공, `Ok(false)`=키는 있었지만 전부 거부, `Err(())`=이 에이전트는 못 쓴다.
+/// `Ok(Ok(()))`=인증 성공, `Ok(Err(n))`=키 n개를 써 봤지만 전부 거부,
+/// `Err(())`=이 에이전트는 못 쓴다(연결은 됐지만 키 목록을 못 받았거나 비어 있다).
+#[allow(clippy::result_unit_err)]
 async fn try_identities<H, R>(
     handle: &mut Handle<H>,
     user: &str,
     mut agent: AgentClient<R>,
-) -> Result<bool, ()>
+) -> Result<Result<(), usize>, ()>
 where
     H: russh::client::Handler,
     R: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -62,21 +73,21 @@ where
     if ids.is_empty() {
         return Err(());
     }
-    let mut usable = false;
-    for id in ids {
+    let mut used = 0usize;
+    for id in ids.iter().take(MAX_KEYS) {
         // 인증서(OpenSSH certificate)는 별도 경로라 여기서는 평범한 공개키만 쓴다.
-        let AgentIdentity::PublicKey { key, .. } = &id else { continue };
+        let AgentIdentity::PublicKey { key, .. } = id else { continue };
         let key = key.clone();
-        usable = true;
+        used += 1;
         // 실패는 그 키가 서버에 없다는 뜻일 뿐이므로 다음 키로 넘어간다.
         if let Ok(AuthResult::Success) =
             handle.authenticate_publickey_with(user, key, None, &mut agent).await
         {
-            return Ok(true);
+            return Ok(Ok(()));
         }
     }
-    if usable {
-        Ok(false)
+    if used > 0 {
+        Ok(Err(used))
     } else {
         Err(())
     }

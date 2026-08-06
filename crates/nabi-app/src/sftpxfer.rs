@@ -212,6 +212,15 @@ pub(crate) fn human_secs(s: u64) -> String {
     }
 }
 
+/// 큐가 **지금은 더 움직이지 않는가** — 진행 중도 대기도 없다(일시정지는 있어도 된다).
+///
+/// 목록 갱신 판단에 "전부 끝났나"를 쓰면 안 된다. 일시정지 항목 하나가 남으면 그 상태가
+/// 영원히 유지돼 목록이 끝내 갱신되지 않는다 — 사용자가 올린 파일이 보이지 않는다.
+/// 정지한 항목은 재개될 때 다시 낡음 표시가 붙으므로 여기서 기다릴 이유가 없다.
+pub(crate) fn settled(transfers: &[Transfer]) -> bool {
+    !transfers.iter().any(|t| t.running() || t.state == XferState::Waiting)
+}
+
 /// 원격 목록을 다시 받아야 하는가 — **큐가 다 빈 순간에 한 번만**.
 ///
 /// 업로드마다 받으면 동시 전송 중에 목록이 계속 갈아엎힌다(24개를 올리면 24번).
@@ -222,7 +231,7 @@ pub(crate) fn take_refresh(drained: bool, stale: &mut bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{eta_secs, human_secs, take_refresh, xfer_totals, Transfer, XferState, XFER_NONE};
+    use super::{eta_secs, human_secs, settled, take_refresh, xfer_totals, Transfer, XferState, XFER_NONE};
 
     /// 큐 항목은 id로 지목해야 한다 — 위치로 찾으면 다른 파일 작업이 끼어들거나
     /// 재시도로 순서가 바뀔 때 엉뚱한 행이 갱신된다(과거 "첫 미완료 항목" 방식의 버그).
@@ -292,5 +301,19 @@ mod tests {
         assert!(stale, "표시는 그대로 남아 있어야 한다");
         assert!(take_refresh(true, &mut stale), "다 끝나면 한 번 받는다");
         assert!(!take_refresh(true, &mut stale), "두 번은 받지 않는다");
+    }
+
+    /// 일시정지 항목이 남아도 목록은 갱신돼야 한다(정지는 "끝남"이 아니지만 "멈춤"이다).
+    #[test]
+    fn paused_item_does_not_block_refresh() {
+        let mut v = vec![Transfer::new(1, "a".into(), true, 10), Transfer::new(2, "b".into(), true, 10)];
+        v[0].state = XferState::Done;
+        v[1].state = XferState::Paused;
+        assert!(settled(&v), "정지만 남았으면 더 움직이지 않는다");
+        assert!(!v.iter().all(|t| t.state.finished()), "전부 끝난 것은 아니다");
+        v[1].state = XferState::Waiting;
+        assert!(!settled(&v), "대기가 있으면 아직 움직일 것이 남았다");
+        v[1].state = XferState::Running;
+        assert!(!settled(&v));
     }
 }

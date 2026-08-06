@@ -78,3 +78,21 @@ mod tests {
         assert!(parse_url("ftp://x").is_err());
     }
 }
+
+#[cfg(test)]
+mod repro {
+    use super::parse_url;
+
+    /// 사용자 보고(2026-08-06): 업데이트 다운로드가 "TLS 연결 실패: 인증서의 CN 이름이
+    /// 전달된 값과 일치하지 않습니다"로 끝났다. GitHub 자산은 다른 호스트로 302되므로
+    /// 리다이렉트 URL을 우리가 어떻게 쪼개는지부터 확인한다.
+    #[test]
+    fn github_asset_redirect_host_is_parsed_cleanly() {
+        let loc = "https://release-assets.githubusercontent.com/github-production-release-asset/\
+                   1268364400/7e12?sp=r&sv=2018-11-09&rscd=attachment%3B+filename%3Dx.exe";
+        let (host, path, port) = parse_url(loc).unwrap();
+        assert_eq!(host, "release-assets.githubusercontent.com", "호스트에 군더더기가 붙으면 CN이 어긋난다");
+        assert_eq!(port, 443);
+        assert!(path.starts_with("/github-production-release-asset/"));
+    }
+}

@@ -76,7 +76,14 @@ pub(crate) fn update_section(
             }
             UpdateStatus::Error(msg) => {
                 ui.colored_label(RED, format!("\u{2715} {msg}"));
-                draw_check_button(ui, lang, updater);
+                // 자동 업데이트가 막히는 환경(HTTPS 검사 프록시·백신)이 실제로 있다.
+                // 다시 확인만 제공하면 막다른 길이 되므로 직접 받을 길을 함께 연다.
+                ui.horizontal(|ui| {
+                    draw_check_button(ui, lang, updater);
+                    if ui.button(tr(lang, "update.page")).clicked() {
+                        open_url(nabi_release::RELEASES_URL);
+                    }
+                });
             }
         }
     });

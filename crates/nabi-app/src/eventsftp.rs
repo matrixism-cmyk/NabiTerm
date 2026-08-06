@@ -119,7 +119,10 @@ impl NabiApp {
             }
             // 큐가 다 비었는가(대기·정지 항목이 남아 있으면 아직 진행 중인 큐다).
             let drained = !p.transfers.iter().any(|t| !t.state.finished());
-            let refresh = crate::sftpxfer::take_refresh(drained, &mut p.dir_stale);
+            // 갱신 판단은 `drained`가 아니라 `settled` — 일시정지 항목 하나가 목록 갱신을
+            // 영영 막으면 안 된다(완료 토스트는 여전히 "전부 끝남" 기준이다).
+            let quiet = crate::sftpxfer::settled(&p.transfers);
+            let refresh = crate::sftpxfer::take_refresh(quiet, &mut p.dir_stale);
             (refresh, p.path.clone(), drained)
         });
         let Some((refresh, path, drained)) = res else { return };
