@@ -134,8 +134,12 @@ impl UpdateChecker {
                 }
             }
             Err(e) => {
+                // 실패한 **URL을 함께 남긴다.** 자동 업데이트가 막히는 환경(HTTPS 검사
+                // 백신·사내 프록시)에서는 이 주소를 브라우저에 넣으면 대개 받아진다.
+                // 어디서 막혔는지 알려 주지 않으면 사용자도 우리도 원인을 좁힐 수 없다.
+                let url = release.download_url.clone();
                 *status.lock().unwrap_or_else(|e| e.into_inner()) =
-                    UpdateStatus::Error(format!("다운로드 실패: {e}"));
+                    UpdateStatus::Error(format!("다운로드 실패: {e}\n{url}"));
             }
         });
     }
