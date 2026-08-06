@@ -38,7 +38,8 @@ fn make_file(tag: &str) -> String {
 async fn two_uploads_actually_overlap() {
     let Some(p) = params() else { return };
     let (tx, rx) = crossbeam_channel::unbounded::<Event>();
-    let mut pool = Pool::new(1, p, 0, 2, tx, new_flags());
+    let (back, _br) = tokio::sync::mpsc::unbounded_channel();
+    let mut pool = Pool::new(1, p, 0, 2, tx, new_flags(), back);
     let (a, b) = (make_file("a"), make_file("b"));
     let (ra, rb) = ("nabi_pool_a.bin".to_string(), "nabi_pool_b.bin".to_string());
     pool.dispatch(Job::Upload { xfer: 1, local: a.clone(), remote: ra.clone() });
@@ -85,7 +86,8 @@ async fn two_uploads_actually_overlap() {
 async fn folder_upload_reports_progress_before_finishing() {
     let Some(p) = params() else { return };
     let (tx, rx) = crossbeam_channel::unbounded::<Event>();
-    let mut pool = Pool::new(1, p, 0, 1, tx, new_flags());
+    let (back, _br) = tokio::sync::mpsc::unbounded_channel();
+    let mut pool = Pool::new(1, p, 0, 1, tx, new_flags(), back);
     // 진행 이벤트 임계(256KB)를 여러 번 넘도록 여러 파일을 만든다.
     let dir = std::env::temp_dir().join(format!("nabi-pool-dir-{}", std::process::id()));
     let _ = std::fs::create_dir_all(&dir);
@@ -125,7 +127,8 @@ async fn cancel_one_leaves_the_other_running() {
     let flags = new_flags();
     // 속도를 묶는다. 안 그러면 로컬에서 12MB가 1초대에 끝나 취소가 도착하기 전에 완료된다
     // (실제로 그래서 처음엔 이 테스트가 헛돌았다). 2MB/s면 6초쯤 걸려 확실히 중간에 걸린다.
-    let mut pool = Pool::new(1, p, 2000, 2, tx, flags.clone());
+    let (back, _br) = tokio::sync::mpsc::unbounded_channel();
+    let mut pool = Pool::new(1, p, 2000, 2, tx, flags.clone(), back);
     let (a, b) = (make_file("c"), make_file("d"));
     pool.dispatch(Job::Upload { xfer: 1, local: a.clone(), remote: "nabi_pool_c.bin".into() });
     pool.dispatch(Job::Upload { xfer: 2, local: b.clone(), remote: "nabi_pool_d.bin".into() });
@@ -158,4 +161,31 @@ async fn cancel_one_leaves_the_other_running() {
     assert!(cancelled, "취소를 걸 만큼 진행되지 않았다");
     assert!(fail1, "취소한 전송은 실패로 끝나야 한다");
     assert!(ok2, "취소하지 않은 전송은 끝까지 가야 한다");
+}
+
+/// 추가 연결을 열 수 없는 서버에서는 **실패시키지 말고** 주 연결로 돌려보내야 한다.
+///
+/// `MaxSessions`가 1~2인 서버나 fail2ban으로 재로그인을 막는 서버가 실제로 있다.
+/// 병렬 전송을 넣은 뒤로 그런 곳에서 예전에는 되던 전송이 실패하면 그건 회귀다.
+/// 여기서는 아무도 듣지 않는 포트를 줘서 추가 연결을 확실히 실패시킨다.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn unreachable_server_hands_job_back_instead_of_failing() {
+    // 포트 0으로 바인드했다가 바로 닫으면 그 포트는 거의 확실히 비어 있다.
+    let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = l.local_addr().unwrap().port();
+    drop(l);
+    let p = SshParams::password("127.0.0.1", port, "u", "p");
+    let (tx, rx) = crossbeam_channel::unbounded::<Event>();
+    let (back, mut br) = tokio::sync::mpsc::unbounded_channel();
+    let mut pool = Pool::new(1, p, 0, 2, tx, new_flags(), back);
+    assert!(!pool.degraded(), "처음에는 정상으로 본다");
+    pool.dispatch(Job::Upload { xfer: 5, local: "x".into(), remote: "y".into() });
+
+    // 작업이 실패 이벤트가 아니라 **되돌아온 요청**으로 나와야 한다.
+    let got = tokio::time::timeout(std::time::Duration::from_secs(30), br.recv()).await;
+    let req = got.expect("돌아오기를 기다리다 시간 초과").expect("채널이 닫혔다");
+    assert!(matches!(req, crate::sftp::SftpReq::Upload { xfer: 5, .. }), "같은 작업이 돌아와야 한다");
+    assert!(pool.degraded(), "이 서버는 병렬 불가로 표시돼야 한다");
+    // 사용자에게 실패로 보고하지 않았는지 — 완료 이벤트가 오면 안 된다.
+    assert!(rx.try_recv().is_err(), "실패 이벤트를 보내면 안 된다(주 연결이 아직 처리할 차례)");
 }

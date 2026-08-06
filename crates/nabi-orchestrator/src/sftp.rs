@@ -58,6 +58,8 @@ pub fn spawn_sftp(
     verifier: std::sync::Arc<crate::hostkey::OrchVerifier>,
 ) {
     let (tx, mut rx) = mpsc::unbounded_channel::<SftpReq>();
+    // 워커가 못 맡은 작업을 다시 이 액터로 돌려보낼 통로(주 연결 폴백).
+    let back = tx.clone();
     let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
     let flags = crate::sftppool::new_flags();
     conns.insert(id, ConnHandle { tx, cancel: cancel.clone(), flags: flags.clone() });
@@ -83,7 +85,7 @@ pub fn spawn_sftp(
         };
         // 동시 전송이 2 이상이면 전송을 별도 연결의 워커로 넘긴다(1이면 예전처럼 이 연결에서).
         let mut pool = (parallel > 1 && !ftp).then(|| {
-            crate::sftppool::Pool::new(id, params.clone(), limit_kbps, parallel as usize, ev.clone(), flags)
+            crate::sftppool::Pool::new(id, params.clone(), limit_kbps, parallel as usize, ev.clone(), flags, back)
         });
         let mut fs = match conn {
             Ok(c) => {
@@ -106,19 +108,19 @@ pub fn spawn_sftp(
                         let _ = ev.send(Event::SftpError { id, message });
                     }
                 },
-                SftpReq::Download { xfer, remote, local, resume } if pool.is_some() => {
+                SftpReq::Download { xfer, remote, local, resume } if pool.as_ref().is_some_and(|p| !p.degraded()) => {
                     let p = pool.as_mut().expect("위에서 확인함");
                     p.dispatch(crate::sftppool::Job::Download { xfer, remote, local, resume });
                 }
-                SftpReq::Upload { xfer, local, remote } if pool.is_some() => {
+                SftpReq::Upload { xfer, local, remote } if pool.as_ref().is_some_and(|p| !p.degraded()) => {
                     let p = pool.as_mut().expect("위에서 확인함");
                     p.dispatch(crate::sftppool::Job::Upload { xfer, local, remote });
                 }
-                SftpReq::DownloadDir { xfer, remote, local } if pool.is_some() => {
+                SftpReq::DownloadDir { xfer, remote, local } if pool.as_ref().is_some_and(|p| !p.degraded()) => {
                     let p = pool.as_mut().expect("위에서 확인함");
                     p.dispatch(crate::sftppool::Job::DownloadDir { xfer, remote, local });
                 }
-                SftpReq::UploadDir { xfer, local, remote } if pool.is_some() => {
+                SftpReq::UploadDir { xfer, local, remote } if pool.as_ref().is_some_and(|p| !p.degraded()) => {
                     let p = pool.as_mut().expect("위에서 확인함");
                     p.dispatch(crate::sftppool::Job::UploadDir { xfer, local, remote });
                 }

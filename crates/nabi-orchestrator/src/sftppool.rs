@@ -43,6 +43,19 @@ impl Job {
     }
 }
 
+impl Job {
+    /// 워커가 처리하지 못한 작업을 액터의 단일 연결 경로로 돌려보내기 위한 변환.
+    fn into_req(self) -> crate::sftp::SftpReq {
+        use crate::sftp::SftpReq as R;
+        match self {
+            Job::Download { xfer, remote, local, resume } => R::Download { xfer, remote, local, resume },
+            Job::Upload { xfer, local, remote } => R::Upload { xfer, local, remote },
+            Job::DownloadDir { xfer, remote, local } => R::DownloadDir { xfer, remote, local },
+            Job::UploadDir { xfer, local, remote } => R::UploadDir { xfer, local, remote },
+        }
+    }
+}
+
 /// xfer → 취소 플래그. 액터 밖(`sftp_cancel_xfer`)에서도 건드리므로 공유한다.
 pub type Flags = Arc<Mutex<HashMap<u64, Arc<AtomicBool>>>>;
 
@@ -84,6 +97,13 @@ pub(crate) struct Pool {
     ev: Sender<Event>,
     flags: Flags,
     workers: Vec<Worker>,
+    /// 추가 연결을 열지 못한 서버 — 이후로는 풀을 쓰지 않고 주 연결로만 보낸다.
+    ///
+    /// `MaxSessions`가 1~2인 서버, fail2ban/`MaxStartups`로 재로그인을 막는 서버가 실제로
+    /// 있다. 그런 곳에서 병렬 전송을 넣은 뒤로 **예전에는 되던 전송이 실패**하면 안 된다.
+    degraded: Arc<AtomicBool>,
+    /// 워커가 못 맡은 작업을 액터에게 돌려보내는 통로(주 연결로 재실행).
+    back: mpsc::UnboundedSender<crate::sftp::SftpReq>,
 }
 
 impl Pool {
@@ -94,9 +114,18 @@ impl Pool {
         max: usize,
         ev: Sender<Event>,
         flags: Flags,
+        back: mpsc::UnboundedSender<crate::sftp::SftpReq>,
     ) -> Self {
         // 서버 세션 한도(OpenSSH 기본 MaxSessions 10)를 넘지 않게 넉넉히 자른다.
-        Self { id, params, limit_kbps, max: max.clamp(1, 4), ev, flags, workers: Vec::new() }
+        Self {
+            id, params, limit_kbps, max: max.clamp(1, 4), ev, flags,
+            workers: Vec::new(), degraded: Arc::new(AtomicBool::new(false)), back,
+        }
+    }
+
+    /// 추가 연결이 안 되는 서버로 판명됐는가 — 그렇다면 액터가 주 연결로 처리해야 한다.
+    pub(crate) fn degraded(&self) -> bool {
+        self.degraded.load(Ordering::Relaxed)
     }
 
     /// 작업을 놀고 있는 워커에게 준다. 없으면 상한까지 새 워커를 만들고,
@@ -124,30 +153,39 @@ impl Pool {
     fn spawn_worker(&mut self) -> usize {
         let (tx, rx) = mpsc::unbounded_channel::<Job>();
         let load = Arc::new(AtomicUsize::new(0));
-        tokio::spawn(worker_loop(
-            rx,
-            self.id,
-            self.params.clone(),
-            self.limit_kbps,
-            self.ev.clone(),
-            self.flags.clone(),
-            load.clone(),
-        ));
+        let ctx = WorkerCtx {
+            id: self.id,
+            params: self.params.clone(),
+            limit_kbps: self.limit_kbps,
+            ev: self.ev.clone(),
+            flags: self.flags.clone(),
+            degraded: self.degraded.clone(),
+            back: self.back.clone(),
+        };
+        tokio::spawn(worker_loop(rx, ctx, load.clone()));
         self.workers.push(Worker { tx, load });
         self.workers.len() - 1
     }
 }
 
-/// 워커 한 개: 첫 작업에서 연결을 만들고, 이후 작업을 순서대로 처리한다.
-async fn worker_loop(
-    mut rx: mpsc::UnboundedReceiver<Job>,
+/// 워커가 공유하는 것들(인자 수를 줄이려고 묶는다 — 전부 풀 수명 동안 고정).
+struct WorkerCtx {
     id: SftpId,
     params: SshParams,
     limit_kbps: u32,
     ev: Sender<Event>,
     flags: Flags,
+    degraded: Arc<AtomicBool>,
+    back: mpsc::UnboundedSender<crate::sftp::SftpReq>,
+}
+
+/// 워커 한 개: 첫 작업에서 연결을 만들고, 이후 작업을 순서대로 처리한다.
+async fn worker_loop(
+    mut rx: mpsc::UnboundedReceiver<Job>,
+    w: WorkerCtx,
     load: Arc<AtomicUsize>,
 ) {
+    let WorkerCtx { id, params, limit_kbps, ev, flags, degraded, back } = w;
     let mut fs: Option<Conn> = None;
     while let Some(job) = rx.recv().await {
         let xfer = job.xfer();
@@ -159,13 +197,19 @@ async fn worker_loop(
         if fs.is_none() {
             fs = crate::sftpretry::reconnect_sftp(&params, limit_kbps, cancel.clone()).await;
         }
-        let res = match fs.as_mut() {
-            Some(c) => {
-                c.set_cancel(cancel.clone());
-                run_job(c, &job, &params, limit_kbps, &cancel, id, &ev).await
+        let Some(c) = fs.as_mut() else {
+            // 추가 연결 실패 = 이 서버에서는 병렬을 못 쓴다. 실패로 끝내지 말고
+            // 주 연결로 돌려보낸다(예전에는 되던 전송이니 사용자에겐 그대로 성공해야 한다).
+            degraded.store(true, Ordering::Relaxed);
+            if let Ok(mut m) = flags.lock() {
+                m.remove(&xfer);
             }
-            None => Err("전송용 추가 연결을 열지 못했습니다".to_string()),
+            load.fetch_sub(1, Ordering::Relaxed);
+            let _ = back.send(job.into_req());
+            continue;
         };
+        c.set_cancel(cancel.clone());
+        let res = run_job(c, &job, &params, limit_kbps, &cancel, id, &ev).await;
         if let Ok(mut m) = flags.lock() {
             m.remove(&xfer);
         }
@@ -230,7 +274,8 @@ mod tests {
 
     fn pool(max: usize) -> Pool {
         let (tx, _rx) = crossbeam_channel::unbounded();
-        Pool::new(7, SshParams::password("h", 22, "u", "p"), 0, max, tx, new_flags())
+        let (back, _br) = tokio::sync::mpsc::unbounded_channel();
+        Pool::new(7, SshParams::password("h", 22, "u", "p"), 0, max, tx, new_flags(), back)
     }
 
     /// 상한을 넘겨 연결을 만들지 않는다 — 서버 세션 한도를 넘기면 접속 자체가 거부된다.
