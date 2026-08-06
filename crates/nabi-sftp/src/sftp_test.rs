@@ -55,7 +55,7 @@ async fn sftp_download_cancels() {
     fs.write_file("/cbig.bin", b"some streamed content").await.unwrap();
     fs.cancel_flag()
         .store(true, std::sync::atomic::Ordering::Relaxed);
-    let tmp = std::env::temp_dir().join(format!("nabi-cancel-{}.bin", std::process::id()));
+    let tmp = crate::sftp_boot::tmp_path("cancel.bin");
     let r = fs.download("/cbig.bin", tmp.to_str().unwrap(), 0, |_| {}).await;
     assert!(r.is_err(), "취소 시 Err 기대: {r:?}");
     assert!(!tmp.exists(), "중단 시 최종 파일은 없어야(부분은 .filepart)");
@@ -109,7 +109,7 @@ async fn sftp_chmod_roundtrip() {
 #[tokio::test]
 async fn sftp_upload_dir_recurses() {
     let mut fs = connect_fs().await;
-    let base = std::env::temp_dir().join(format!("nabi-sftp-uldir-{}", std::process::id()));
+    let base = crate::sftp_boot::tmp_path("sftp-uldir");
     let _ = std::fs::remove_dir_all(&base);
     std::fs::create_dir_all(base.join("sub")).unwrap();
     std::fs::write(base.join("a.txt"), b"AA").unwrap();
@@ -123,7 +123,7 @@ async fn sftp_upload_dir_recurses() {
 #[tokio::test]
 async fn sftp_download_dir_recurses() {
     let mut fs = connect_fs().await;
-    let dst = std::env::temp_dir().join(format!("nabi-sftp-dldir-{}", std::process::id()));
+    let dst = crate::sftp_boot::tmp_path("sftp-dldir");
     let _ = std::fs::remove_dir_all(&dst);
     fs.download_dir("/", &dst).await.expect("download_dir");
     assert_eq!(std::fs::read(dst.join("foo.txt")).expect("foo"), b"foo");
@@ -149,7 +149,7 @@ async fn sftp_download_streamed_reports_progress() {
 async fn sftp_download_resumes_partial() {
     let mut fs = connect_fs().await;
     // /foo.txt = "foo". 부분 .filepart("fo")가 있으면 오프셋 2부터 이어받아 "foo" 완성 후 rename.
-    let tmp = std::env::temp_dir().join(format!("nabi-resume-{}.txt", std::process::id()));
+    let tmp = crate::sftp_boot::tmp_path("resume.txt");
     let part = format!("{}.filepart", tmp.to_str().unwrap());
     std::fs::write(&part, b"fo").unwrap();
     fs.download("/foo.txt", tmp.to_str().unwrap(), 2, |_| {})
@@ -164,7 +164,7 @@ async fn sftp_download_resumes_partial() {
 async fn sftp_download_atomic_rename() {
     // 새 다운로드는 .filepart에 쓴 뒤 원자적으로 최종 파일로 rename하고 임시 파일은 남기지 않는다.
     let mut fs = connect_fs().await;
-    let tmp = std::env::temp_dir().join(format!("nabi-atomic-{}.txt", std::process::id()));
+    let tmp = crate::sftp_boot::tmp_path("atomic.txt");
     let part = format!("{}.filepart", tmp.to_str().unwrap());
     fs.download("/foo.txt", tmp.to_str().unwrap(), 0, |_| {})
         .await
@@ -195,7 +195,7 @@ async fn sftp_dir_stats_counts_and_sums() {
 async fn sftp_upload_atomic_replaces_existing() {
     // 업로드는 .filepart에 올린 뒤 기존 대상을 원자적으로 교체하고 임시 파일을 남기지 않는다.
     let mut fs = connect_fs().await;
-    let tmp = std::env::temp_dir().join(format!("nabi-upatom-{}.txt", std::process::id()));
+    let tmp = crate::sftp_boot::tmp_path("upatom.txt");
     std::fs::write(&tmp, b"NEWDATA").unwrap();
     fs.upload(tmp.to_str().unwrap(), "/foo.txt", |_| {})
         .await
@@ -217,4 +217,51 @@ async fn sftp_upload_streamed_reports_progress() {
     assert_eq!(fs.read_file("/up.bin").await.expect("read back"), b"upload streamed");
     assert!(last > 0, "progress reported");
     let _ = std::fs::remove_file(&tmp);
+}
+
+/// 확장이 하나도 없는 옛 서버(순정 SFTP v3)에서도 전송이 온전히 도는가.
+///
+/// 사용자 서버가 OpenSSH 4.3이라 이 갈래가 실제로 쓰인다. 그런데 우리 테스트 서버는
+/// 늘 확장을 광고해서, **확장이 없을 때의 기본값 경로는 어디에서도 검증된 적이 없었다.**
+/// 실서버로는 다운로드만 확인했다(남의 운영 서버에 쓸 수 없어서). 여기서 업로드까지 본다.
+#[tokio::test]
+async fn bare_server_upload_download_roundtrip() {
+    let mut fs = crate::sftp_boot::connect_bare_fs().await;
+    // 정말 확장 없는 서버에 붙었는지 먼저 못 박는다 — 아니면 이 테스트는 일반 서버를
+    // 한 번 더 도는 것일 뿐이고, 검증하려던 갈래는 그대로 미검증으로 남는다.
+    let feat = fs.raw.feat();
+    assert!(!feat.posix_rename && !feat.statvfs && !feat.fsync, "확장 없는 서버여야 한다: {feat:?}");
+    assert!(feat.read_len.is_none() && feat.write_len.is_none(), "limits도 없어야 한다");
+    // 여러 파도를 돌도록 넉넉히(확장이 없으면 청크 크기는 기본값으로 정해진다).
+    let data = vec![b'q'; 300 * 1024];
+    let local = crate::sftp_boot::tmp_path("bare.bin");
+    std::fs::write(&local, &data).unwrap();
+    let lp = local.to_string_lossy().into_owned();
+
+    // posix-rename 없이도 원자적 교체(.filepart → 대상)가 끝까지 가야 한다.
+    let mut seen = 0u64;
+    fs.upload(&lp, "/bare.bin", |b| seen = b).await.expect("업로드");
+    assert_eq!(seen, data.len() as u64, "진행률 합계가 파일 크기와 같아야 한다");
+    assert_eq!(fs.read_file("/bare.bin").await.expect("읽기"), data, "내용이 같아야 한다");
+    assert!(fs.read_file("/bare.bin.filepart").await.is_err(), ".filepart 잔여 없어야");
+
+    // 되받아서 크기·내용 확인(다운로드 파이프라인의 확장 없는 경로).
+    let back = crate::sftp_boot::tmp_path("bare-back.bin");
+    fs.download("/bare.bin", back.to_str().unwrap(), 0, |_| {}).await.expect("다운로드");
+    assert_eq!(std::fs::read(&back).unwrap(), data);
+    let _ = std::fs::remove_file(&local);
+    let _ = std::fs::remove_file(&back);
+}
+
+/// statvfs가 없으면 여유 공간 확인을 **건너뛰고** 전송이 진행돼야 한다.
+/// (확인 못 했다고 막아 버리면 옛 서버에는 아무것도 못 올린다.)
+#[tokio::test]
+async fn bare_server_skips_free_space_check() {
+    let mut fs = crate::sftp_boot::connect_bare_fs().await;
+    assert!(!fs.raw.feat().statvfs, "statvfs 없는 서버여야 의미가 있다");
+    let local = crate::sftp_boot::tmp_path("bare-sp.bin");
+    std::fs::write(&local, b"small").unwrap();
+    fs.upload(local.to_str().unwrap(), "/sp.bin", |_| {}).await.expect("공간 확인 없이 업로드");
+    assert_eq!(fs.read_file("/sp.bin").await.unwrap(), b"small");
+    let _ = std::fs::remove_file(&local);
 }

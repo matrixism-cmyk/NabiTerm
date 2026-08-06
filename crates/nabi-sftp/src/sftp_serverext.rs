@@ -47,6 +47,10 @@ fn u64s(values: &[u64]) -> Vec<u8> {
 
 /// 확장 요청 처리. 모르는 요청은 OpUnsupported(규격).
 pub(crate) fn handle(s: &mut Sftp, id: u32, request: &str, data: &[u8]) -> Result<Packet, StatusCode> {
+    // 광고하지 않은 서버가 처리까지 해 주면 검증이 무의미하다 — bare면 전부 거절한다.
+    if s.bare {
+        return Err(StatusCode::OpUnsupported);
+    }
     match request {
         "posix-rename@openssh.com" => {
             let (from, to) = two_strings(data).ok_or(StatusCode::BadMessage)?;

@@ -22,6 +22,15 @@ ZfG1KaT0PtFDJ/XFSqtiAAAAEHVzZXJAZXhhbXBsZS5jb20BAgMEBQ==
 #[derive(Default)]
 pub(crate) struct SshSession {
     clients: Arc<Mutex<HashMap<ChannelId, Channel<Msg>>>>,
+    /// true면 OpenSSH 확장을 하나도 광고하지 않는다(옛 서버 = SFTP v3 순정 흉내).
+    pub(crate) bare: bool,
+}
+
+impl SshSession {
+    /// 확장을 광고하지 않는 서버 핸들러(옛 OpenSSH 흉내).
+    pub(crate) fn bare() -> Self {
+        Self { bare: true, ..Default::default() }
+    }
 }
 
 impl server::Handler for SshSession {
@@ -49,7 +58,7 @@ impl server::Handler for SshSession {
         if name == "sftp" {
             let channel = self.clients.lock().await.remove(&id).unwrap();
             session.channel_success(id)?;
-            russh_sftp::server::run(channel.into_stream(), Sftp::new()).await;
+            russh_sftp::server::run(channel.into_stream(), Sftp::new(self.bare)).await;
         } else {
             session.channel_failure(id)?;
         }
@@ -63,11 +72,13 @@ pub(crate) struct Sftp {
     pub(crate) files: HashMap<String, Vec<u8>>,
     /// setstat로 설정된 권한(chmod 라운드트립 검증용).
     pub(crate) perms: HashMap<String, u32>,
+    /// 확장 없는 옛 서버 흉내(광고도 처리도 안 한다).
+    pub(crate) bare: bool,
 }
 
 impl Sftp {
     /// readdir가 돌려주는 foo.txt/bar를 읽을 수 있게 내용을 미리 채운다.
-    fn new() -> Self {
+    fn new(bare: bool) -> Self {
         let mut files = HashMap::new();
         files.insert("/foo.txt".to_string(), b"foo".to_vec());
         files.insert("/bar".to_string(), b"bar".to_vec());
@@ -75,6 +86,7 @@ impl Sftp {
             listed: false,
             files,
             perms: HashMap::new(),
+            bare,
         }
     }
 }
@@ -101,10 +113,11 @@ impl russh_sftp::server::Handler for Sftp {
         _ext: std::collections::HashMap<String, String>,
     ) -> Result<russh_sftp::protocol::Version, Self::Error> {
         // OpenSSH 확장을 광고해 클라이언트의 확장 경로가 실제로 돌게 한다.
-        Ok(russh_sftp::protocol::Version {
-            version: 3,
-            extensions: crate::sftp_serverext::advertised(),
-        })
+        // bare 모드에서는 하나도 광고하지 않아 **확장 없는 옛 서버** 경로를 검증한다
+        // (사용자 서버가 OpenSSH 4.3 = 순정 v3라 이 갈래가 실제로 쓰인다).
+        let extensions =
+            if self.bare { Default::default() } else { crate::sftp_serverext::advertised() };
+        Ok(russh_sftp::protocol::Version { version: 3, extensions })
     }
 
     fn unimplemented(&self) -> Self::Error {

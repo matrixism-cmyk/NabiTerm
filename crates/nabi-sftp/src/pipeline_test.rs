@@ -19,7 +19,7 @@ fn pattern(len: usize) -> Vec<u8> {
 }
 
 fn tmp_path(tag: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("nabi-pipe-{tag}-{}.bin", std::process::id()))
+    crate::sftp_boot::tmp_path(&format!("pipe-{tag}.bin"))
 }
 
 #[tokio::test]
