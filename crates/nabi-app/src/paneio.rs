@@ -157,6 +157,15 @@ pub(crate) fn grab_term_focus(ui: &mut egui::Ui, active: bool) {
     });
 }
 
+/// 포인터가 이 pane 위에 있고 **가려지지 않았는가**.
+///
+/// `rect.contains(p)`만 보면 위에 뜬 창(설정·도움말·분리 창)을 **뚫고** 뒤쪽 터미널이
+/// 반응한다 — 설정 창에서 글자를 드래그하면 뒤 터미널이 선택되고, 링크를 누르면 뒤 pane의
+/// 링크가 열린다. 포인터 위치의 최상위 레이어가 이 pane의 레이어여야 진짜 이 pane 위다.
+pub(crate) fn pointer_on_pane(ui: &egui::Ui, rect: egui::Rect, p: egui::Pos2) -> bool {
+    rect.contains(p) && ui.ctx().layer_id_at(p) == Some(ui.layer_id())
+}
+
 /// 터미널로 입력을 보낼 수 없는 상태(싱크 외 위젯에 포커스가 있거나 팝업이 열림).
 pub(crate) fn term_input_blocked(ctx: &egui::Context) -> bool {
     let sink = term_focus_sink();

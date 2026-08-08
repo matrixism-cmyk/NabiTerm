@@ -206,18 +206,29 @@ fn side_row(
     let mut action = None;
     let is_ssh = matches!(s.kind, SessionKind::Ssh { .. }) && !s.is_ftp;
     let selected = cur_sel == Some(s.name.as_str());
+    // 행 전체 사각형을 **먼저** 잡는다. 배경을 이름 영역에만 칠하면 강조 막대가 오른쪽
+    // 아이콘 자리에서 뚝 끊겨 지저분해 보이고, 호버 판정도 이름 위에서만 되어
+    // 아이콘 쪽으로 마우스를 옮기면 강조가 꺼진다.
+    let row_h = (ui.spacing().interact_size.y + 4.0).max(22.0);
+    let full = egui::Rect::from_min_size(ui.cursor().min, egui::vec2(ui.available_width(), row_h));
+    let row_hot = ui.rect_contains_pointer(full);
+    // 동작 아이콘은 **가리키거나 선택했을 때만** 보여 준다. 늘 띄워 두면 세션 10개에
+    // 아이콘이 40개라 목록이 아이콘 밭이 된다(오클릭 위험도 있다 — 특히 ✕ 삭제).
+    // 평소엔 이름만 보이고, 우클릭 메뉴는 행 어디서나 그대로 열린다.
+    let show_icons = row_hot || selected;
+    let rounding = egui::Rounding::same(4.0);
+    if selected {
+        ui.painter().rect_filled(full, rounding, ui.visuals().selection.bg_fill);
+    } else if row_hot {
+        ui.painter().rect_filled(full, rounding, ui.visuals().widgets.hovered.weak_bg_fill);
+    }
     let resp = ui.horizontal(|ui| {
-        // 이름 영역을 전폭 할당(우측 아이콘 공간만 남김) — 클릭=연결·드래그=이동·우클릭=메뉴·호버=라인 강조.
-        let icon_w = if is_ssh { 90.0 } else { 68.0 };
-        let bw = (ui.available_width() - icon_w).max(48.0);
-        let (rect, r) = ui.allocate_exact_size(egui::vec2(bw, ui.spacing().interact_size.y), egui::Sense::click_and_drag());
+        // 아이콘 자리는 **행마다 같은 폭**으로 예약한다. 예전엔 SSH 여부로 90/68을 갈라서
+        // 종류가 섞이면 이름 끝나는 위치가 22px씩 어긋나 목록이 들쭉날쭉해 보였다.
+        const ICON_W: f32 = 92.0;
+        let bw = (ui.available_width() - ICON_W).max(48.0);
+        let (rect, r) = ui.allocate_exact_size(egui::vec2(bw, row_h), egui::Sense::click_and_drag());
         let vis = ui.style().interact_selectable(&r, selected);
-        // 선택/호버 시 라인 전체 배경 강조(어느 줄을 다루는지 식별).
-        if selected {
-            ui.painter().rect_filled(rect, vis.rounding, vis.bg_fill);
-        } else if r.hovered() {
-            ui.painter().rect_filled(rect, vis.rounding, ui.visuals().widgets.hovered.weak_bg_fill);
-        }
         let font = egui::TextStyle::Button.resolve(ui.style());
         // 연결 중이면 종류 아이콘을 강조색(초록)으로 — 🟢 점 대신 선두 아이콘 색으로 표시.
         let kcolor = if live { crate::theme_ui::OK } else { crate::theme_ui::session_color(s.is_ftp, is_ssh) };
@@ -236,9 +247,16 @@ fn side_row(
                     .show(ui.ctx(), |ui| { egui::Frame::popup(ui.style()).show(ui, |ui| ui.label(format!("\u{1f5a5} {}", s.name))); });
             }
         }
-        // 인라인 동작 아이콘(우측) — 간격 좁힘: ⋯더보기 · 🖧SFTP(SSH) · ✎편집 · ✕삭제.
+        // 인라인 동작 아이콘(우측): ⋯더보기 · 🖧SFTP(SSH) · ✎편집 · ✕삭제.
+        //
+        // 간격이 1px이었다. 버튼의 둥근 호버 배경은 글자보다 패딩만큼 넓어서, 한 아이콘에
+        // 마우스를 올리면 그 배경이 **옆 아이콘 자리까지 겹쳐** 보였다. 글자 간격이 아니라
+        // 배경끼리 부딪히지 않을 만큼 띄워야 한다.
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            ui.spacing_mut().item_spacing.x = 1.0;
+            ui.spacing_mut().item_spacing.x = 4.0;
+            if !show_icons {
+                return; // 가리키지 않은 행은 이름만 — 자리는 위에서 이미 비워 뒀다.
+            }
             let icon = |ui: &mut egui::Ui, g: &str, key: &str| ui.small_button(g).on_hover_text(tr(lang, key)).clicked();
             if icon(ui, "\u{2715}", "sessions.delete") { action = Some(MenuAction::DeleteSession(s.name.clone())); }
             if icon(ui, "\u{270e}", "sessions.edit") { action = Some(MenuAction::EditSession(s.clone())); }

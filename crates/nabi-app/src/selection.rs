@@ -67,7 +67,14 @@ pub(crate) fn track_selection(
             i.modifiers.alt,
         )
     });
-    if let Some(p) = ppos.filter(|p| rect.contains(*p)) {
+    // 드래그를 **시작**할 때만 가림을 따진다. 이미 이 pane에서 끌고 있는 선택은 포인터가
+    // 잠깐 다른 레이어 위를 지나도 이어져야 한다(창 가장자리를 스치며 긋는 경우).
+    let dragging_here = down && selection.as_ref().is_some_and(|s| s.pane == pane);
+    let on_pane = |p: &egui::Pos2| match dragging_here {
+        true => rect.contains(*p),
+        false => crate::paneio::pointer_on_pane(ui, rect, *p),
+    };
+    if let Some(p) = ppos.filter(on_pane) {
         let r = ((p.y - rect.top()) / ch).floor().max(0.0) as usize;
         // 시각 열 → render 셀 인덱스(와이드 문자 보정). 선택/렌더/추출 모두 render 인덱스로 일치.
         let vcol = ((p.x - rect.left()) / cw).floor().max(0.0) as usize;

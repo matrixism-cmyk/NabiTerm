@@ -39,6 +39,10 @@ pub(crate) fn hover_url_cursor(
     let Some(pos) = ui.input(|i| i.pointer.hover_pos()) else {
         return;
     };
+    // 위에 창이 떠 있으면 그 창 위에서도 링크 커서가 떠 뒤 pane이 반응하는 것처럼 보인다.
+    if !crate::paneio::pointer_on_pane(ui, rect, pos) {
+        return;
+    }
     if screen_url_at(model, theme, rect, cw, ch, pos).is_some() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
@@ -77,6 +81,10 @@ pub(crate) fn ctrl_click_url(
     ch: f32,
 ) -> Option<String> {
     let pos = ctrl_click_pos(ui)?;
+    // 설정·도움말 창 위에서 Ctrl+클릭했는데 뒤 터미널의 링크가 열리면 안 된다.
+    if !crate::paneio::pointer_on_pane(ui, rect, pos) {
+        return None;
+    }
     url_at(model, theme, rect, cw, ch, pos)
 }
 
@@ -100,7 +108,7 @@ pub(crate) fn link_longpress(
     let mut lp: Option<(f64, egui::Pos2, bool)> =
         ui.data(|d| d.get_temp::<Option<(f64, egui::Pos2, bool)>>(lp_id)).flatten();
     let mut result = None;
-    match (down, ppos.filter(|p| rect.contains(*p))) {
+    match (down, ppos.filter(|p| crate::paneio::pointer_on_pane(ui, rect, *p))) {
         (true, Some(p)) => match lp {
             None => {
                 lp = Some((time, p, false));
