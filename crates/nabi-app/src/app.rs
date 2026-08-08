@@ -150,6 +150,8 @@ pub struct NabiApp {
     /// 탭 바 "+" 클릭 신호 + 눌린 (surface,node); 비활성 pane 우클릭 포커스 요청; 탭 메뉴 열림 여부.
     pub add_requested: bool, pub add_target: Option<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>,
     pub focus_req: Option<PaneId>, pub tab_ctx_open: bool,
+    /// 마우스/분리 창 붙여넣기 요청 — 프레임 끝에서 확인 경로로 보낸다.
+    pub paste_req: Option<(PaneId, String)>,
     pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_target: Option<PaneId>,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,

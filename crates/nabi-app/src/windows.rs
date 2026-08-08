@@ -79,6 +79,11 @@ impl NabiApp {
                     if self.editor_close_ask == Some(pane) {
                         self.render_editor_close_confirm(vctx, pane);
                     }
+                    // 이 창에서 시작된 붙여넣기 확인도 여기서 그린다. 메인 창에만 그리면
+                    // 분리 창을 보고 있는 사용자에게는 아무 일도 안 일어난 것처럼 보인다.
+                    if self.pending_paste.as_ref().is_some_and(|(p, _)| *p == pane) {
+                        self.show_paste_confirm(vctx);
+                    }
                 },
             );
         }
@@ -137,6 +142,8 @@ impl NabiApp {
             &mut self.floating_link,
             &mut zoom,
             &mut self.pending_link,
+            &mut self.paste_req,
+            self.config.terminal.warn_paste_newline,
         );
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
@@ -195,6 +202,8 @@ impl NabiApp {
                         &mut self.floating_link,
                         &mut zoom,
                         &mut self.pending_link,
+                        &mut self.paste_req,
+                        self.config.terminal.warn_paste_newline,
                     );
                 });
             if let Some((p, d)) = zoom {
@@ -228,10 +237,13 @@ fn render_floating(
     link: &mut Option<(String, egui::Pos2)>,
     zoom: &mut Option<(PaneId, f32)>,
     link_click: &mut Option<(PaneId, String)>,
+    paste_req: &mut Option<(PaneId, String)>,
+    warn_paste: bool,
 ) {
     egui::CentralPanel::default().show(ctx, |ui| {
         crate::floatterm::paint_floating_term(
-            ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom, link_click,
+            ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
+            link_click, paste_req, warn_paste,
         );
     });
     // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.

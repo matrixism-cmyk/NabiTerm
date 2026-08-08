@@ -59,6 +59,8 @@ pub struct TermTabViewer<'a> {
     pub focused: Option<PaneId>,
     /// 비활성 pane을 우클릭하면 그 pane으로 포커스 이동 요청(첫 클릭=활성화만, dock.show 뒤 적용).
     pub focus_req: &'a mut Option<PaneId>,
+    /// 마우스 붙여넣기 요청 (pane, 원문). 확인 여부는 app이 한곳에서 정한다.
+    pub paste_req: &'a mut Option<(PaneId, String)>,
     /// 이번 프레임 탭 컨텍스트 메뉴가 열려 있는지(빈 탭바 우클릭 메뉴 중복 표시 방지).
     pub tab_ctx_open: &'a mut bool,
     pub pane_font: &'a std::collections::HashMap<PaneId, f32>,

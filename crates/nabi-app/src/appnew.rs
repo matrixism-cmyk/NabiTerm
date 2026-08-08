@@ -157,7 +157,7 @@ impl NabiApp {
                 (format!("\u{26a0} {msg} \u{2192} {}", b.display()), std::time::Instant::now())
             }),
             resize_badge: None,
-            add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false,
+            add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_target: None,
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),

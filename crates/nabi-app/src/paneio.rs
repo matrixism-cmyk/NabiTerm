@@ -163,8 +163,13 @@ pub(crate) fn term_input_blocked(ctx: &egui::Context) -> bool {
     ctx.memory(|m| m.any_popup_open() || m.focused().is_some_and(|f| f != sink))
 }
 
-/// 우클릭/중간클릭 붙여넣기 바이트(필요 시 bracketed paste 래핑).
-pub(crate) fn right_click_paste(ui: &egui::Ui, rect: egui::Rect, bracketed: bool) -> Option<Vec<u8>> {
+/// 우클릭/중간클릭 붙여넣기로 들어온 **원문 텍스트**(바이트로 만들지 않는다).
+///
+/// 예전에는 여기서 바로 바이트로 바꿔 PTY로 보냈다. 그 바람에 여러 줄 붙여넣기 확인이
+/// Ctrl+Shift+V에만 걸리고 **우클릭 붙여넣기는 그냥 통과**했다 — 터미널에서 제일 많이
+/// 쓰는 붙여넣기가 안전장치를 비껴간 셈이다. 이제 원문만 돌려주고, 확인 여부는
+/// 붙여넣기 한 길(`NabiApp::paste_text_to_pane`)에서 정한다.
+pub(crate) fn right_click_paste_text(ui: &egui::Ui, rect: egui::Rect) -> Option<String> {
     // rect_contains_pointer는 레이어 가림을 반영 — 위에 떠 있는 분리 창("창 안에 띄우기")이
     // 가린 경우 뒤쪽 pane이 우클릭을 가로채지 않게 한다(#5).
     let clicked = ui.input(|i| {
@@ -174,11 +179,25 @@ pub(crate) fn right_click_paste(ui: &egui::Ui, rect: egui::Rect, bracketed: bool
     if !clicked {
         return None;
     }
-    let text = clipboard_text()?;
-    if text.is_empty() {
+    clipboard_text().filter(|t| !t.is_empty())
+}
+
+/// 분리 창의 키보드 붙여넣기(Ctrl+V)를 가로챈다 — 여러 줄이면 이벤트를 걷어내고 원문을 준다.
+///
+/// 메인 창은 `intercept_keyboard_paste`가 같은 일을 하는데, 그건 메인 ctx에서만 돌아서
+/// 분리 창에서는 확인 없이 셸로 곧장 들어갔다.
+pub(crate) fn take_multiline_paste(ui: &egui::Ui, warn: bool) -> Option<String> {
+    if !warn {
         return None;
     }
-    Some(wrap_paste(&text, bracketed))
+    let text = ui.input(|i| {
+        i.events.iter().find_map(|e| match e {
+            egui::Event::Paste(s) if s.contains(['\n', '\r']) => Some(s.clone()),
+            _ => None,
+        })
+    })?;
+    ui.ctx().input_mut(|i| i.events.retain(|e| !matches!(e, egui::Event::Paste(_))));
+    Some(text)
 }
 
 /// 클립보드 텍스트를 붙여넣기 바이트로 만든다(bracketed면 200~/201~ 래핑,

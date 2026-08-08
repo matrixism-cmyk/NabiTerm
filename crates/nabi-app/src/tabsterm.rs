@@ -128,11 +128,9 @@ impl TermTabViewer<'_> {
             let sec_here = ui.rect_contains_pointer(rect) && ui.input(|i| i.pointer.secondary_clicked());
             if sec_here && !is_focused {
                 *self.focus_req = Some(pane);
-            } else if let Some(data) = crate::paneio::right_click_paste(ui, rect, bracketed) {
-                self.orch.send(Command::WriteInput {
-                    pane,
-                    data: Bytes::from(data),
-                });
+            } else if let Some(t) = crate::paneio::right_click_paste_text(ui, rect) {
+                // 곧장 보내지 않는다 — 여러 줄 확인을 거치도록 app으로 넘긴다.
+                *self.paste_req = Some((pane, t));
             }
         }
 

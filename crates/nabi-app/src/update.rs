@@ -107,6 +107,10 @@ impl eframe::App for NabiApp {
                 }
             }
         }
+        // 마우스/분리 창에서 들어온 붙여넣기 요청을 확인 경로로 보낸다(입구는 달라도 규칙은 하나).
+        if let Some((pane, text)) = self.paste_req.take() {
+            self.paste_text_to_pane(pane, text);
+        }
         self.show_paste_confirm(ctx);
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);

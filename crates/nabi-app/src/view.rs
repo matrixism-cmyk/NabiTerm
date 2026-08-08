@@ -130,6 +130,7 @@ impl NabiApp {
                 link_click: &mut self.pending_link,
                 focused,
                 focus_req: &mut self.focus_req,
+                paste_req: &mut self.paste_req,
                 tab_ctx_open: &mut self.tab_ctx_open,
                 pane_font: &self.pane_font,
                 cwds: &self.cwds,

@@ -43,6 +43,23 @@ impl NabiApp {
         self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
     }
 
+    /// **지정한 pane**에 텍스트를 붙여넣는다 — 마우스 붙여넣기·분리 창이 쓰는 입구.
+    ///
+    /// 포커스가 아니라 pane을 직접 받는다. 분리 창이나 분할에서 우클릭한 pane은 "포커스된
+    /// pane"과 다를 수 있어서다. 확인 판단은 여기서도 같은 규칙을 쓴다 — 안전장치가
+    /// 입구마다 다르면 없는 것과 같다(우클릭 붙여넣기가 그렇게 비껴가고 있었다).
+    pub(crate) fn paste_text_to_pane(&mut self, pane: nabi_types::PaneId, text: String) {
+        if text.is_empty() {
+            return;
+        }
+        let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
+        if nabi_render::paste::needs_paste_confirm(self.config.terminal.warn_paste_newline, &text) {
+            self.pending_paste = Some((pane, data));
+            return;
+        }
+        self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
+    }
+
     /// 클립보드를 포커스된 pane에 붙여넣는다(Ctrl+Shift+V; bracketed 모드면 래핑).
     pub(crate) fn paste_to_focused(&mut self) {
         let Some(text) = crate::paneio::clipboard_text() else {

@@ -25,6 +25,10 @@ pub(crate) fn paint_floating_term(
     link: &mut Option<(String, egui::Pos2)>,
     zoom: &mut Option<(PaneId, f32)>,
     link_click: &mut Option<(PaneId, String)>,
+    // paste_req: 붙여넣기 요청(pane, 원문) — 분리 창도 메인과 같은 확인을 거치게 app으로 넘긴다.
+    // warn_paste: 여러 줄 붙여넣기 확인 설정(꺼져 있으면 가로채지 않는다).
+    paste_req: &mut Option<(PaneId, String)>,
+    warn_paste: bool,
 ) {
     let font = egui::FontId::monospace(font_size);
     let (cw, ch) = nabi_render::cell_size(ui, &font);
@@ -61,6 +65,11 @@ pub(crate) fn paint_floating_term(
         scroll -= 10;
     }
 
+    // 여러 줄 Ctrl+V는 바이트로 바뀌기 **전에** 걷어내 확인 경로로 보낸다.
+    // 이 처리가 메인 ctx에만 있어서, 분리 창에서는 확인 없이 셸로 곧장 들어갔다.
+    if let Some(t) = crate::paneio::take_multiline_paste(ui, warn_paste) {
+        *paste_req = Some((pane, t));
+    }
     let events = ui.input(|i| i.events.clone());
     let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion) = panes
         .read()
@@ -112,8 +121,8 @@ pub(crate) fn paint_floating_term(
 
     // 우클릭 붙여넣기(앱 마우스 모드가 아닐 때).
     if !mouse_on {
-        if let Some(data) = crate::paneio::right_click_paste(ui, rect, bracketed) {
-            let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
+        if let Some(t) = crate::paneio::right_click_paste_text(ui, rect) {
+            *paste_req = Some((pane, t)); // 곧장 보내지 않는다(확인 경로).
         }
     }
 
