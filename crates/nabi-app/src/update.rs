@@ -111,6 +111,15 @@ impl eframe::App for NabiApp {
         if let Some((pane, text)) = self.paste_req.take() {
             self.paste_text_to_pane(pane, text);
         }
+        // 차단형 프롬프트는 메인 창에서만 그려진다. 분리 창에서 일하는 중에 뜨면
+        // 사용자는 못 보고 연결은 대답을 기다리며 멈춘다 — 메인 창을 앞으로 부른다.
+        let pending = self.hostkey_prompt.is_some()
+            || self.control_pending.is_some()
+            || self.reconnect_ask.is_some();
+        if crate::promptfocus::should_raise(pending, self.prompt_raised, !self.floating.is_empty()) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+        self.prompt_raised = pending;
         self.show_paste_confirm(ctx);
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);

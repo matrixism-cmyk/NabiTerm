@@ -152,6 +152,8 @@ pub struct NabiApp {
     pub focus_req: Option<PaneId>, pub tab_ctx_open: bool,
     /// 마우스/분리 창 붙여넣기 요청 — 프레임 끝에서 확인 경로로 보낸다.
     pub paste_req: Option<(PaneId, String)>,
+    /// 차단형 프롬프트 때문에 메인 창을 이미 앞으로 불렀는지(뜨는 순간 한 번만).
+    pub prompt_raised: bool,
     pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_target: Option<PaneId>,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,

@@ -115,6 +115,7 @@ mod paneio;
 mod paneurl;
 mod osc52policy;
 mod paste;
+mod promptfocus;
 mod qcbar;
 mod reconnect;
 mod renameui;
