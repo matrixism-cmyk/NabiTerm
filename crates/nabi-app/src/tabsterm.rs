@@ -95,10 +95,13 @@ impl TermTabViewer<'_> {
         // 주류 에뮬레이터(Windows Terminal·iTerm2)처럼 에뮬레이터 레벨에서 가로채 앱엔 보내지
         // 않는다 — 휠을 소비해 아래 마우스 보고/스크롤백 경로로 새지 않게 한다.
         let over = ui.rect_contains_pointer(rect);
-        let ctrl_wheel = over && ui.input(|i| i.modifiers.command && i.raw_scroll_delta.y != 0.0);
+        let (wheel, ctrl_wheel, shift_wheel) = ui.input(|i| {
+            let wheel = i.raw_scroll_delta.y;
+            (wheel, over && i.modifiers.command && wheel != 0.0,
+             over && i.modifiers.shift && !i.modifiers.command && wheel != 0.0)
+        });
         if ctrl_wheel {
             // 포커스 여부와 무관하게 포인터가 올라간 이 pane을 확대/축소(+포커스).
-            let wheel = ui.input(|i| i.raw_scroll_delta.y);
             *self.zoom_req = Some((pane, wheel));
             ui.input_mut(|i| {
                 i.raw_scroll_delta = egui::Vec2::ZERO;
@@ -107,20 +110,21 @@ impl TermTabViewer<'_> {
         }
 
         if mouse_on {
-            let rep = mouse_reports(ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion);
+            // 기본 휠은 nabiTerm 스크롤백, Shift+휠만 TUI에 전달한다.
+            let rep = mouse_reports(
+                ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion, shift_wheel,
+            );
             if !rep.is_empty() {
                 self.orch.send(Command::WriteInput {
                     pane,
                     data: Bytes::from(rep),
                 });
             }
-        } else if over {
-            let wheel = ui.input(|i| i.raw_scroll_delta.y);
-            if wheel != 0.0 {
-                // 스크롤백 휠 속도 ×3(기본 1줄/notch는 너무 느림). 최소 1줄은 움직이게.
-                let lines = (wheel / ch * 3.0).round() as i32;
-                scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
-            }
+        }
+        if over && wheel != 0.0 && !ctrl_wheel && !shift_wheel {
+            // 마우스 추적/TUI 모드에서도 기본 휠은 스크롤백을 강제한다.
+            let lines = (wheel / ch * 3.0).round() as i32;
+            scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
         }
 
         if !mouse_on {
@@ -141,7 +145,7 @@ impl TermTabViewer<'_> {
                     model.scroll_to_bottom();
                 } else if to_top {
                     model.scroll_to_top();
-                } else if !mouse_on && scroll != 0 && !model.alt_screen() {
+                } else if scroll != 0 {
                     model.scroll_by(scroll);
                 }
                 // 텍스트 선택 추적(track_selection 내부에서 시각열→render 인덱스 변환=와이드 보정).

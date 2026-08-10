@@ -105,18 +105,24 @@ pub(crate) fn paint_floating_term(
         let _ = cmd_tx.send(cmd);
     }
 
+    let over = ui.rect_contains_pointer(rect);
+    let (ctrl, shift, wheel) = ui.input(|i| {
+        (i.modifiers.command, i.modifiers.shift, i.raw_scroll_delta.y)
+    });
+    let ctrl_wheel = over && ctrl && wheel != 0.0;
+    let shift_wheel = over && shift && !ctrl && wheel != 0.0;
     if mouse_on {
-        let rep = crate::paneio::mouse_reports(ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion);
+        let rep = crate::paneio::mouse_reports(
+            ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion, shift_wheel,
+        );
         if !rep.is_empty() {
             let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(rep) });
         }
-    } else if ui.rect_contains_pointer(rect) {
-        let (ctrl, wheel) = ui.input(|i| (i.modifiers.command, i.raw_scroll_delta.y));
-        if ctrl && wheel != 0.0 {
-            *zoom = Some((pane, wheel.signum())); // Ctrl+휠=이 창만 확대/축소(뒤 창으로 안 샘).
-        } else if wheel != 0.0 {
-            scroll += (wheel / ch).round() as i32;
-        }
+    }
+    if ctrl_wheel {
+        *zoom = Some((pane, wheel.signum())); // Ctrl+휠=이 창만 확대/축소(뒤 창으로 안 샘).
+    } else if over && wheel != 0.0 && !shift_wheel {
+        scroll += (wheel / ch).round() as i32;
     }
 
     // 우클릭 붙여넣기(앱 마우스 모드가 아닐 때).
@@ -131,7 +137,7 @@ pub(crate) fn paint_floating_term(
         if let Ok(mut model) = v.model.lock() {
             if typed {
                 model.scroll_to_bottom();
-            } else if !mouse_on && scroll != 0 && !model.alt_screen() {
+            } else if scroll != 0 {
                 model.scroll_by(scroll);
             }
             let focused = ui.ctx().input(|i| i.focused);

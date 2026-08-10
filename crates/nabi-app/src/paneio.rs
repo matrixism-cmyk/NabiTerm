@@ -9,6 +9,7 @@ pub(crate) fn mouse_reports(
     sgr: bool,
     wants_release: bool,
     wants_motion: bool,
+    report_wheel: bool,
 ) -> Vec<u8> {
     use nabi_render::{mouse_report, MouseBtn};
     let mut out = Vec::new();
@@ -35,7 +36,7 @@ pub(crate) fn mouse_reports(
                 out.extend(mouse_report(sgr, mb, col, row, false, mods));
             }
         }
-        let wy = i.raw_scroll_delta.y;
+        let wy = if report_wheel { i.raw_scroll_delta.y } else { 0.0 };
         if wy != 0.0 {
             let mb = if wy > 0.0 {
                 MouseBtn::WheelUp
@@ -44,7 +45,7 @@ pub(crate) fn mouse_reports(
             };
             out.extend(mouse_report(sgr, mb, col, row, true, mods));
         }
-        let wx = i.raw_scroll_delta.x;
+        let wx = if report_wheel { i.raw_scroll_delta.x } else { 0.0 };
         if wx != 0.0 {
             let mb = if wx > 0.0 {
                 MouseBtn::WheelRight

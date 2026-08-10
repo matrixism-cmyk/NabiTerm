@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.413"
+version = "0.1.414"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["aeo <the@aeokorea.com>"]
