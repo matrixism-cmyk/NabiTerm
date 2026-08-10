@@ -35,7 +35,7 @@ impl TermTabViewer<'_> {
         };
 
         let events = ui.input(|i| i.events.clone());
-        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = self
+        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen) = self
             .orch
             .panes
             .read()
@@ -51,11 +51,10 @@ impl TermTabViewer<'_> {
                         md.mouse_sgr(),
                         md.mouse_wants_motion(),
                         md.alt_screen(),
-                        md.alternate_scroll(),
                     )
                 })
             })
-            .unwrap_or((false, false, false, false, false, false, false, false));
+            .unwrap_or((false, false, false, false, false, false, false));
         // 조합 초기 상태 = 직전 프레임 조합 유지 여부. 이번 프레임의 Preedit/Commit은
         // events_to_bytes가 '순서대로' 반영한다(Commit 직후 같은 프레임의 Enter는 PTY로 감).
         let composing = is_focused && !self.ime_preedit.is_empty();
@@ -124,8 +123,8 @@ impl TermTabViewer<'_> {
                 });
             }
         }
-        if over && wheel != 0.0 && !ctrl_wheel && alt_screen && alt_scroll && !mouse_on {
-            let data = crate::paneio::alternate_scroll_bytes(wheel, ch, 3.0, app_cursor);
+        if over && wheel != 0.0 && !ctrl_wheel && alt_screen && !mouse_on {
+            let data = crate::paneio::tui_scroll_bytes(wheel);
             self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
         } else if over && wheel != 0.0 && !ctrl_wheel && !shift_wheel && !alt_screen {
             // 마우스 추적/TUI 모드에서도 기본 휠은 스크롤백을 강제한다.

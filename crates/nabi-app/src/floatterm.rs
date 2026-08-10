@@ -71,7 +71,7 @@ pub(crate) fn paint_floating_term(
         *paste_req = Some((pane, t));
     }
     let events = ui.input(|i| i.events.clone());
-    let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = panes
+    let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen) = panes
         .read()
         .ok()
         .and_then(|m| m.get(&pane).cloned())
@@ -85,11 +85,10 @@ pub(crate) fn paint_floating_term(
                     md.mouse_sgr(),
                     md.mouse_wants_motion(),
                     md.alt_screen(),
-                    md.alternate_scroll(),
                 )
             })
         })
-        .unwrap_or((false, false, false, false, false, false, false, false));
+        .unwrap_or((false, false, false, false, false, false, false));
     let composing = events
         .iter()
         .any(|e| matches!(e, egui::Event::Ime(egui::ImeEvent::Preedit(s)) if !s.is_empty()));
@@ -124,8 +123,8 @@ pub(crate) fn paint_floating_term(
     }
     if ctrl_wheel {
         *zoom = Some((pane, wheel.signum())); // Ctrl+휠=이 창만 확대/축소(뒤 창으로 안 샘).
-    } else if over && wheel != 0.0 && alt_screen && alt_scroll && !mouse_on {
-        let data = crate::paneio::alternate_scroll_bytes(wheel, ch, 1.0, app_cursor);
+    } else if over && wheel != 0.0 && alt_screen && !mouse_on {
+        let data = crate::paneio::tui_scroll_bytes(wheel);
         let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
     } else if over && wheel != 0.0 && !shift_wheel && !alt_screen {
         scroll += (wheel / ch).round() as i32;

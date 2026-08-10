@@ -93,19 +93,12 @@ pub(crate) fn read_scroll_keys(ui: &egui::Ui, page: i32) -> (i32, bool, bool) {
     (scroll, to_top, to_bottom)
 }
 
-/// 대체 화면(DECSET 1007)에서 휠을 방향키 반복으로 바꾼다.
-pub(crate) fn alternate_scroll_bytes(wheel: f32, cell_h: f32, speed: f32, app_cursor: bool) -> Vec<u8> {
-    if wheel == 0.0 || cell_h <= 0.0 {
+/// 마우스를 받지 않는 대체 화면 TUI에서 휠을 PageUp/PageDown으로 바꾼다.
+pub(crate) fn tui_scroll_bytes(wheel: f32) -> Vec<u8> {
+    if wheel == 0.0 {
         return Vec::new();
     }
-    let count = (wheel.abs() / cell_h * speed).round().clamp(1.0, 100.0) as usize;
-    let seq: &[u8] = match (wheel.is_sign_positive(), app_cursor) {
-        (true, true) => b"\x1bOA",
-        (true, false) => b"\x1b[A",
-        (false, true) => b"\x1bOB",
-        (false, false) => b"\x1b[B",
-    };
-    seq.repeat(count)
+    if wheel.is_sign_positive() { b"\x1b[5~".to_vec() } else { b"\x1b[6~".to_vec() }
 }
 
 /// 스크롤백을 보고 있을 때 우상단에 "▲ N" 배지를 그린다(클릭하면 맨 아래로 → true).
@@ -241,13 +234,12 @@ pub(crate) fn wrap_paste(text: &str, bracketed: bool) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{alternate_scroll_bytes, wrap_paste};
+    use super::{tui_scroll_bytes, wrap_paste};
 
     #[test]
-    fn alternate_scroll_uses_cursor_mode_and_direction() {
-        assert_eq!(alternate_scroll_bytes(10.0, 10.0, 1.0, false), b"\x1b[A");
-        assert_eq!(alternate_scroll_bytes(-10.0, 10.0, 1.0, true), b"\x1bOB");
-        assert_eq!(alternate_scroll_bytes(10.0, 10.0, 3.0, false), b"\x1b[A\x1b[A\x1b[A");
+    fn tui_scroll_uses_page_keys() {
+        assert_eq!(tui_scroll_bytes(1.0), b"\x1b[5~");
+        assert_eq!(tui_scroll_bytes(-1.0), b"\x1b[6~");
     }
 
     #[test]

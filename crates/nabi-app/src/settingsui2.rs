@@ -25,8 +25,17 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         ui.checkbox(v, "");
         ui.end_row();
     };
-    chk(ui, tr(lang, "settings.restorews"), &mut cfg.terminal.restore_workspace);
-    chk(ui, tr(lang, "settings.restorecmd"), &mut cfg.terminal.restore_running_command);
+    chk_help(
+        ui, tr(lang, "settings.restorews"), tr(lang, "settings.restorews.help"),
+        &mut cfg.terminal.restore_workspace, true,
+    );
+    chk_help(
+        ui, tr(lang, "settings.restorecmd"), tr(lang, "settings.restorecmd.help"),
+        &mut cfg.terminal.restore_running_command, cfg.terminal.restore_workspace,
+    );
+    ui.label(tr(lang, "settings.restoreai"));
+    ui.add(egui::Label::new(egui::RichText::new(tr(lang, "settings.restoreai.help")).weak()).wrap());
+    ui.end_row();
     chk(ui, tr(lang, "settings.builtineditor"), &mut cfg.terminal.editor_builtin);
     chk(ui, tr(lang, "update.autocheck"), &mut cfg.terminal.auto_check_update);
     chk(ui, tr(lang, "settings.confirmclose"), &mut cfg.terminal.confirm_close); chk(ui, tr(lang, "settings.autoreconnect"), &mut cfg.terminal.auto_reconnect);
@@ -68,6 +77,15 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     ui.label("OSC 7771");
     ui.label(tr(lang, "settings.control.osc"));
     ui.checkbox(&mut cfg.terminal.control_allow_osc, "");
+    ui.end_row();
+}
+
+fn chk_help(ui: &mut egui::Ui, label: &str, help: &str, value: &mut bool, enabled: bool) {
+    ui.vertical(|ui| {
+        ui.label(label);
+        ui.add(egui::Label::new(egui::RichText::new(help).weak().small()).wrap());
+    });
+    ui.add_enabled(enabled, egui::Checkbox::without_text(value));
     ui.end_row();
 }
 

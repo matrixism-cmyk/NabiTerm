@@ -6,6 +6,7 @@
 pub mod catalog;
 mod catalog2;
 mod catalog3;
+mod catalog_agent;
 mod catalog_editor;
 mod catalog_editor2;
 mod catalog_sftp;

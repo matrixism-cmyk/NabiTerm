@@ -208,6 +208,7 @@ pub fn tr(lang: Lang, key: &str) -> &'static str {
         .iter()
         .chain(crate::catalog2::CATALOG2)
         .chain(crate::catalog3::CATALOG3)
+        .chain(crate::catalog_agent::CATALOG_AGENT)
         .chain(crate::catalog_editor::CATALOG_EDITOR)
         .chain(crate::catalog_editor2::CATALOG_EDITOR2)
         .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN).chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM)
@@ -239,7 +240,9 @@ mod tests {
     fn catalog_integrity() {
         use std::collections::HashSet;
         let mut seen = HashSet::new();
-        for (k, en, ko, ja) in CATALOG.iter().chain(crate::catalog2::CATALOG2).chain(crate::catalog3::CATALOG3).chain(crate::catalog_editor::CATALOG_EDITOR).chain(crate::catalog_editor2::CATALOG_EDITOR2)
+        for (k, en, ko, ja) in CATALOG.iter().chain(crate::catalog2::CATALOG2)
+            .chain(crate::catalog3::CATALOG3).chain(crate::catalog_agent::CATALOG_AGENT)
+            .chain(crate::catalog_editor::CATALOG_EDITOR).chain(crate::catalog_editor2::CATALOG_EDITOR2)
         .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN).chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM) {
             assert!(seen.insert(*k), "중복 키: {k}");
             assert!(
