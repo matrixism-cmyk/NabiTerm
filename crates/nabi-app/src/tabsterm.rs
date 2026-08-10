@@ -35,7 +35,7 @@ impl TermTabViewer<'_> {
         };
 
         let events = ui.input(|i| i.events.clone());
-        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion) = self
+        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = self
             .orch
             .panes
             .read()
@@ -50,10 +50,12 @@ impl TermTabViewer<'_> {
                         md.mouse_wants_release(),
                         md.mouse_sgr(),
                         md.mouse_wants_motion(),
+                        md.alt_screen(),
+                        md.alternate_scroll(),
                     )
                 })
             })
-            .unwrap_or((false, false, false, false, false, false));
+            .unwrap_or((false, false, false, false, false, false, false, false));
         // 조합 초기 상태 = 직전 프레임 조합 유지 여부. 이번 프레임의 Preedit/Commit은
         // events_to_bytes가 '순서대로' 반영한다(Commit 직후 같은 프레임의 Enter는 PTY로 감).
         let composing = is_focused && !self.ime_preedit.is_empty();
@@ -110,9 +112,10 @@ impl TermTabViewer<'_> {
         }
 
         if mouse_on {
-            // 기본 휠은 nabiTerm 스크롤백, Shift+휠만 TUI에 전달한다.
+            // 기본 휠은 스크롤백 우선. 대체 화면에는 스크롤백이 없으므로 TUI로 폴백한다.
             let rep = mouse_reports(
-                ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion, shift_wheel,
+                ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
+                shift_wheel || (over && alt_screen && wheel != 0.0 && !ctrl_wheel),
             );
             if !rep.is_empty() {
                 self.orch.send(Command::WriteInput {
@@ -121,7 +124,10 @@ impl TermTabViewer<'_> {
                 });
             }
         }
-        if over && wheel != 0.0 && !ctrl_wheel && !shift_wheel {
+        if over && wheel != 0.0 && !ctrl_wheel && alt_screen && alt_scroll && !mouse_on {
+            let data = crate::paneio::alternate_scroll_bytes(wheel, ch, 3.0, app_cursor);
+            self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
+        } else if over && wheel != 0.0 && !ctrl_wheel && !shift_wheel && !alt_screen {
             // 마우스 추적/TUI 모드에서도 기본 휠은 스크롤백을 강제한다.
             let lines = (wheel / ch * 3.0).round() as i32;
             scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
@@ -145,7 +151,7 @@ impl TermTabViewer<'_> {
                     model.scroll_to_bottom();
                 } else if to_top {
                     model.scroll_to_top();
-                } else if scroll != 0 {
+                } else if scroll != 0 && !alt_screen {
                     model.scroll_by(scroll);
                 }
                 // 텍스트 선택 추적(track_selection 내부에서 시각열→render 인덱스 변환=와이드 보정).

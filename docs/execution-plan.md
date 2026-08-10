@@ -11,7 +11,7 @@
 
 | # | 항목 | 상태 | 내용 |
 |---|------|------|------|
-| 0-1 | installer 산출물 | **구현됨** | `cargo run -p xtask -- dist`: release 빌드 → `dist/stage/nabiTerm.exe` 스테이징 → `dist/nabiTerm-portable.zip`(portable.toml 동봉) → Inno Setup(ISCC) 있으면 `dist/nabiTerm-setup.exe` 컴파일(`installer/nabiTerm.iss`) |
+| 0-1 | installer 산출물 | **구현됨** | 정기 `cargo run -p xtask -- dist`는 setup만 생성. standalone은 `dist-standalone`, 고정 Mesa 런타임은 `dist-mesa`로 수동 생성 |
 | 0-2 | 개발본/설치본 구별 | **구현됨** | 설치본은 **nabiTerm.exe**, 개발본은 nabi.exe — 프로세스명이 달라 개발 중 정리가 설치본을 죽이지 않음. 개발 측 정리는 경로 필터(`$_.Path -like "*Desktop\nabi\target*"`)를 병행 |
 | 0-3 | 콘솔(로그) 창 숨김 | **구현됨** | release는 `windows_subsystem="windows"`(GUI) — 파워셸 로그 창 없음. `nabi cli`는 AttachConsole(부모 콘솔)로 출력 유지. 디버그 빌드는 콘솔 유지(NABI_LOG 관찰) |
 | 0-4 | 잔여 | 대기 | Inno Setup 6 설치(또는 포터블 zip만 배포), VERSIONINFO 사후 주입(xtask icon 확장 — ProductName "nabiTerm"), 버전 번호 체계(0.1.0~) 확정, 코드서명(후순위) |

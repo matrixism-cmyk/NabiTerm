@@ -44,7 +44,7 @@ nabiTerm은 로컬 셸과 원격 서버를 하나의 창에서 다루기 위한 
 [**Releases**](https://github.com/matrixism-cmyk/NabiTermPub/releases)에서 받으세요.
 
 - `nabiTerm-setup.exe` — 설치본(관리자 권한 불필요, per-user 설치)
-- `nabiTerm-standalone.zip` — 포터블(압축 해제 후 실행, 설정을 exe 옆에 저장)
+- `nabiTerm-standalone.zip` — 포터블(필요할 때 수동 배포, 압축 해제 후 실행)
 
 설치 후 **자동 업데이트**가 새 버전을 알리고 한 번에 적용합니다(도움말 ▸ 정보에서 수동 확인 가능).
 
@@ -53,7 +53,7 @@ nabiTerm은 로컬 셸과 원격 서버를 하나의 창에서 다루기 위한 
 nabiTerm은 GPU(wgpu: DX12→Vulkan→GL)로 그립니다. **GPU가 전혀 없는 VM·헤드리스 서버**에서는 시작 시 렌더 가능 여부를 자동 점검합니다:
 
 - **인터넷 연결 시**: "GPU가 감지되지 않습니다. 소프트웨어 렌더링 구성요소(약 22MB)를 받을까요?" 확인창이 뜨고, 동의하면 자동으로 받아(무결성 SHA256 검증) `nabiTerm.exe` 옆에 설치한 뒤 소프트웨어로 실행합니다. 한 번 받으면 다음부터는 바로 실행됩니다.
-- **오프라인(폐쇄망) 시**: 별도 자산 **`nabiTerm-mesa-software-gl.zip`**(Mesa llvmpipe, ~22MB)을 받아 두 DLL을 `nabiTerm.exe` 옆에 직접 풀어 주세요.
+- **오프라인(폐쇄망) 시**: 고정 [Mesa 런타임 자산](https://github.com/matrixism-cmyk/NabiTermPub/releases/download/mesa-runtime/nabiTerm-mesa-software-gl.zip)(~22MB)을 받아 두 DLL을 `nabiTerm.exe` 옆에 직접 풀어 주세요. 동일 파일을 버전별 릴리스에 중복 게시하지 않습니다.
 - 환경변수 `NABI_RENDERER=software`로 소프트웨어 렌더를 강제, `NABI_RENDERER=hardware`로 자동 점검을 건너뛸 수 있습니다.
 
 ## 기술 스택

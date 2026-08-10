@@ -31,7 +31,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\stage\nabiTerm.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; 소프트웨어 OpenGL 폴백(Mesa llvmpipe)은 메인 설치본에 넣지 않는다. GPU 없는 VM 사용자는
-; 릴리스의 별도 자산 nabiTerm-mesa-software-gl.zip을 받아 이 폴더(nabiTerm.exe 옆)에 푼다.
+; mesa-runtime 고정 릴리스의 별도 자산을 받아 이 폴더(nabiTerm.exe 옆)에 푼다.
 
 [Icons]
 Name: "{group}\nabiTerm"; Filename: "{app}\nabiTerm.exe"

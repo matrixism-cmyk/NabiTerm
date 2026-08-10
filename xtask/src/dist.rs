@@ -1,30 +1,50 @@
-//! `cargo xtask dist` — 배포 산출물 생성.
+//! `cargo xtask dist` — 정기 배포용 설치본만 생성.
 //!
 //! 1) `cargo build --release`
 //! 2) `dist/stage/nabiTerm.exe` 스테이징 — 설치본 프로세스명을 개발본(nabi.exe)과
 //!    구별해, 개발 중 프로세스 정리가 설치본을 죽이지 않게 한다.
-//! 3) `dist/nabiTerm-standalone.zip` (portable.toml 마커 동봉 — exe 옆 저장 모드).
-//!    이름이 setup보다 알파벳상 뒤라, GitHub 자산 정렬에서 setup.exe가 첫 자산이 된다.
-//! 4) Inno Setup(ISCC.exe)이 있으면 `dist/nabiTerm-setup.exe` 컴파일
+//!
+//! 포터블과 고정 Mesa 런타임은 각각 `dist-standalone`, `dist-mesa`로 수동 생성한다.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 pub fn run() -> ExitCode {
     let root = workspace_root();
+    if stage_release(&root, false).is_err() {
+        return ExitCode::FAILURE;
+    }
+    build_setup(&root)
+}
+
+pub fn standalone() -> ExitCode {
+    let root = workspace_root();
+    if stage_release(&root, true).is_err() {
+        return ExitCode::FAILURE;
+    }
+    build_standalone(&root)
+}
+
+pub fn mesa() -> ExitCode {
+    let root = workspace_root();
+    build_mesa_zip(&root);
+    ExitCode::SUCCESS
+}
+
+fn stage_release(root: &Path, portable: bool) -> Result<(), ()> {
     let ok = Command::new("cargo")
         .args(["build", "--release"])
-        .current_dir(&root)
+        .current_dir(root)
         .status()
         .is_ok_and(|s| s.success());
     if !ok {
         eprintln!("release 빌드 실패");
-        return ExitCode::FAILURE;
+        return Err(());
     }
     let stage = root.join("dist").join("stage");
     if std::fs::create_dir_all(&stage).is_err() {
         eprintln!("dist/stage 생성 실패");
-        return ExitCode::FAILURE;
+        return Err(());
     }
     let exe = root.join("target").join("release").join("nabi.exe");
     // windres 부재 환경: 빌드 산출물에 아이콘을 사후 주입(개발본·스테이징본 공통).
@@ -33,13 +53,19 @@ pub fn run() -> ExitCode {
     }
     if let Err(e) = std::fs::copy(&exe, stage.join("nabiTerm.exe")) {
         eprintln!("스테이징 실패: {e}");
-        return ExitCode::FAILURE;
+        return Err(());
     }
-    // 포터블 zip: portable.toml 마커 동봉(모든 데이터를 exe 옆에 저장 — USB 운용).
-    let _ = std::fs::write(
-        stage.join("portable.toml"),
-        "# nabiTerm 포터블 모드 마커 — 설정/세션을 exe 옆에 저장한다.\n",
-    );
+    let marker = stage.join("portable.toml");
+    if portable {
+        let _ = std::fs::write(&marker, "# nabiTerm 포터블 모드 마커 — 설정/세션을 exe 옆에 저장한다.\n");
+    } else {
+        let _ = std::fs::remove_file(marker);
+    }
+    Ok(())
+}
+
+fn build_standalone(root: &Path) -> ExitCode {
+    let stage = root.join("dist").join("stage");
     let zip = root.join("dist").join("nabiTerm-standalone.zip");
     let _ = std::fs::remove_file(&zip);
     let ps = format!(
@@ -53,22 +79,26 @@ pub fn run() -> ExitCode {
         .is_ok_and(|s| s.success());
     if zipped {
         println!("생성: {}", zip.display());
+        ExitCode::SUCCESS
     } else {
-        eprintln!("portable zip 생성 실패(계속 진행)");
+        eprintln!("standalone zip 생성 실패");
+        ExitCode::FAILURE
     }
-    build_mesa_zip(&root); // 소프트웨어 GL 폴백(별도 옵션 자산) — GPU 없는 VM용.
+}
+
+fn build_setup(root: &Path) -> ExitCode {
     // Inno Setup이 설치돼 있으면 설치본(setup.exe)까지 컴파일.
     let Some(iscc) = find_iscc() else {
-        println!("ISCC.exe 없음 — 포터블 zip만 생성. Inno Setup 6 설치 후 다시 실행하면 setup.exe도 빌드.");
-        return ExitCode::SUCCESS;
+        eprintln!("ISCC.exe 없음 — 정기 배포에는 설치본이 필수입니다. Inno Setup 6을 설치하세요.");
+        return ExitCode::FAILURE;
     };
     let iss = root.join("installer").join("nabiTerm.iss");
     // 워크스페이스 버전을 인스톨러에 전달(자동 업데이트 버전 비교의 기준).
-    let ver = workspace_version(&root).unwrap_or_else(|| "0.1.0".into());
+    let ver = workspace_version(root).unwrap_or_else(|| "0.1.0".into());
     let ok = Command::new(&iscc)
         .arg(format!("/DAppVer={ver}"))
         .arg(&iss)
-        .current_dir(&root)
+        .current_dir(root)
         .status()
         .is_ok_and(|s| s.success());
     if !ok {

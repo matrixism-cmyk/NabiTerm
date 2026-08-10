@@ -174,6 +174,11 @@ impl TermModel {
         self.term.mode().contains(TermMode::ALT_SCREEN)
     }
 
+    /// 대체 화면에서 휠을 위/아래 키로 변환하는 DECSET 1007 모드.
+    pub fn alternate_scroll(&self) -> bool {
+        self.term.mode().contains(TermMode::ALTERNATE_SCROLL)
+    }
+
     /// 터미널이 설정한 제목(OSC 0/2). 없으면 빈 문자열.
     pub fn title(&self) -> &str {
         &self.title
