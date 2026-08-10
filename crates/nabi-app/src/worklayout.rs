@@ -45,13 +45,19 @@ impl NabiApp {
             .filter_map(|(i, p)| {
                 let kind = self.pane_origins.get(p).cloned()?;
                 let geom = self.floating_geom.get(p).copied()?;
-                let (cwd, on_connect) = if matches!(kind, SessionKind::Local { .. }) {
-                    self.save_float_backlog(dir, *p, i); // 로컬 스크롤백 백로그.
-                    self.saved_local_state(*p)
-                } else {
-                    (None, None)
+                let (cwd, on_connect) = match kind {
+                    SessionKind::Local { .. } => {
+                        self.save_float_backlog(dir, *p, i); // 로컬 스크롤백 백로그.
+                        self.saved_local_state(*p)
+                    }
+                    SessionKind::Ssh { .. } => (None, self.saved_ssh_ai_command(*p)),
                 };
-                Some(FloatSave { kind, on_connect, cwd, geom })
+                Some(FloatSave {
+                    kind,
+                    on_connect,
+                    cwd,
+                    geom,
+                })
             })
             .collect();
         if saves.is_empty() {
@@ -64,7 +70,13 @@ impl NabiApp {
     /// 분리 로컬 pane의 마지막 2000줄을 fscroll_{i}.txt로 저장한다(복원 시 inject_restore_backlog).
     fn save_float_backlog(&self, dir: Option<&std::path::Path>, pane: PaneId, idx: usize) {
         let Some(d) = dir else { return };
-        if let Some(v) = self.orch.panes.read().ok().and_then(|m| m.get(&pane).cloned()) {
+        if let Some(v) = self
+            .orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&pane).cloned())
+        {
             if let Ok(md) = v.model.lock() {
                 let txt = md.dump_text(2000);
                 if !txt.is_empty() {
@@ -110,8 +122,16 @@ impl NabiApp {
         let (ordinal, backlog, float_geom) = self.spawn_ctx.take().unwrap_or((None, None, None));
         self.next_spawn_seq += 1;
         let seq = self.next_spawn_seq;
-        self.pending_spawns
-            .insert(seq, PendingSpawn { origin, oncmd, backlog, ordinal, float_geom });
+        self.pending_spawns.insert(
+            seq,
+            PendingSpawn {
+                origin,
+                oncmd,
+                backlog,
+                ordinal,
+                float_geom,
+            },
+        );
         seq
     }
 
@@ -120,7 +140,13 @@ impl NabiApp {
         if b.is_empty() {
             return;
         }
-        if let Some(v) = self.orch.panes.read().ok().and_then(|m| m.get(&pane).cloned()) {
+        if let Some(v) = self
+            .orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&pane).cloned())
+        {
             if let Ok(mut md) = v.model.lock() {
                 md.process(b);
                 md.process("\r\n\u{1b}[90m\u{2500}\u{2500} 이전 세션 기록(위로 스크롤) \u{2500}\u{2500}\u{1b}[0m".as_bytes());
@@ -133,7 +159,9 @@ impl NabiApp {
 
     /// 도착한 pane을 ordinal로 레이아웃에 등록하고, 모두 도착하면 분할 트리·사이드카(글꼴/이름/색)를 적용한다.
     pub(crate) fn layout_arrive(&mut self, ordinal: usize, pane: PaneId) {
-        let Some(pl) = self.pending_layout.as_mut() else { return };
+        let Some(pl) = self.pending_layout.as_mut() else {
+            return;
+        };
         pl.arrived.insert(ordinal, pane);
         if pl.arrived.len() < pl.expected {
             return;
@@ -157,8 +185,10 @@ impl NabiApp {
                 self.tab_names.insert(*p, n.clone());
             }
             if let Some(c) = pl.colors.get(ord).filter(|c| c[3] != 0) {
-                self.tab_colors
-                    .insert(*p, egui::Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]));
+                self.tab_colors.insert(
+                    *p,
+                    egui::Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3]),
+                );
             }
         }
     }
@@ -178,8 +208,11 @@ impl NabiApp {
             }
             return;
         }
-        let mut index: std::collections::HashMap<PaneId, usize> =
-            term_ordered.iter().enumerate().map(|(i, p)| (*p, i)).collect();
+        let mut index: std::collections::HashMap<PaneId, usize> = term_ordered
+            .iter()
+            .enumerate()
+            .map(|(i, p)| (*p, i))
+            .collect();
         let mut bi = 0usize;
         for p in ordered {
             if self.browser_tabs.contains_key(p) {
@@ -201,7 +234,12 @@ impl NabiApp {
         self.write_sidecar("names", &names);
         let colors: Vec<[u8; 4]> = term_ordered
             .iter()
-            .map(|p| self.tab_colors.get(p).map(|c| c.to_array()).unwrap_or([0; 4]))
+            .map(|p| {
+                self.tab_colors
+                    .get(p)
+                    .map(|c| c.to_array())
+                    .unwrap_or([0; 4])
+            })
             .collect();
         self.write_sidecar("colors", &colors);
     }

@@ -35,10 +35,16 @@ pub struct TelegramCfg {
 
 impl Default for TelegramCfg {
     fn default() -> Self {
-        Self { enabled: false, allowed_chats: Vec::new(), grant_all: false, reply_lines: 40, idle_timeout_ms: 8000, poll_secs: 30 }
+        Self {
+            enabled: false,
+            allowed_chats: Vec::new(),
+            grant_all: false,
+            reply_lines: 40,
+            idle_timeout_ms: 8000,
+            poll_secs: 30,
+        }
     }
 }
-
 
 /// 외형/언어 설정.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,6 +167,9 @@ pub struct TerminalCfg {
     /// 복원 시 종료 직전 실행 중이던 명령(claude 등)을 마지막 cwd에서 재실행.
     #[serde(default = "default_true")]
     pub restore_running_command: bool,
+    /// SSH 복원 시 허용 목록 AI CLI만 고정 resume 명령으로 재실행(opt-in).
+    #[serde(default)]
+    pub restore_ssh_ai_command: bool,
     /// 여러 탭이 열려 있을 때 닫기 전 확인 대화상자.
     pub confirm_close: bool,
     /// 최근 Quick Connect 호스트/사용자/포트(프리필용, 비밀 아님).
@@ -285,6 +294,7 @@ impl Default for TerminalCfg {
             encoding: "UTF-8".into(),
             restore_workspace: true, // 재시작 시 작업 복구가 기본(스크롤백 백로그 포함).
             restore_running_command: true, // 종료 직전 실행 중이던 명령도 복원 재실행.
+            restore_ssh_ai_command: false, // 원격 자동 실행은 명시적으로 켠 경우만.
             shellinteg_dismissed: false,
             editor_builtin: true,
             vault_remember: false,

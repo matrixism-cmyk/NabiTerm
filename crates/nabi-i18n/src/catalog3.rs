@@ -223,6 +223,13 @@ pub(crate) const CATALOG3: &[(&str, &str, &str, &str)] = &[
         "「起動時にタブ復元」とシェル統合も必要です。検出したコマンドを最後のフォルダーで再実行し、AI会話の継続は各CLIのresume機能を使います。",
     ),
     ("settings.restoreai", "AI CLI resume tips", "AI CLI 작업 복귀 안내", "AI CLI 作業再開ガイド"),
+    ("settings.restoreshaai", "Resume allowlisted AI CLI after SSH restore", "SSH 복원 후 허용된 AI CLI 작업 재개", "SSH復元後に許可AI CLIを再開"),
+    (
+        "settings.restoreshaai.help",
+        "Opt-in. Only Claude, Codex and Antigravity are mapped to fixed resume commands; arbitrary remote commands and their arguments are never replayed.",
+        "선택 기능입니다. Claude·Codex·Antigravity만 고정 재개 명령으로 변환하며, 다른 원격 명령이나 기존 인자는 절대 재실행하지 않습니다.",
+        "任意機能です。Claude・Codex・Antigravityのみ固定再開コマンドに変換し、他のリモートコマンドや元の引数は再実行しません。",
+    ),
     (
         "settings.restoreai.help",
         "Codex: `codex resume --last` (or `codex --no-alt-screen` to keep native terminal scrollback). Claude: `claude --continue`. Install shell integration below so nabiTerm can remember the working folder and running command.",

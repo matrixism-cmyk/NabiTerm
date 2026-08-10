@@ -16,10 +16,9 @@ impl NabiApp {
             .filter_map(|p| {
                 self.pane_origins.get(p).cloned().map(|kind| {
                     // 로컬 셸은 마지막 cwd + 종료 직전 실행 중이던 명령(설정 시)을 저장.
-                    let (cwd, on_connect) = if matches!(kind, SessionKind::Local { .. }) {
-                        self.saved_local_state(*p)
-                    } else {
-                        (None, None)
+                    let (cwd, on_connect) = match kind {
+                        SessionKind::Local { .. } => self.saved_local_state(*p),
+                        SessionKind::Ssh { .. } => (None, self.saved_ssh_ai_command(*p)),
                     };
                     (
                         SavedSession {

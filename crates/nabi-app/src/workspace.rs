@@ -11,8 +11,8 @@ use nabi_session::SessionKind;
 pub(crate) struct PendingSpawn {
     pub origin: SessionKind,
     pub oncmd: Option<String>,
-    pub backlog: Option<Vec<u8>>, // 로컬 복원 스크롤백(표시 전용)
-    pub ordinal: Option<usize>,   // 워크스페이스 레이아웃 매핑용 ordinal(복원만)
+    pub backlog: Option<Vec<u8>>,     // 로컬 복원 스크롤백(표시 전용)
+    pub ordinal: Option<usize>,       // 워크스페이스 레이아웃 매핑용 ordinal(복원만)
     pub float_geom: Option<[f32; 4]>, // Some이면 도크가 아닌 분리 OS 창으로 복원([x,y,w,h], P10)
 }
 
@@ -29,7 +29,6 @@ pub(crate) struct PendingLayout {
     /// 먼저 생성된 브라우저 탭 pane들(레이아웃 서수 1000+i 매핑).
     pub browser_panes: Vec<nabi_types::PaneId>,
 }
-
 
 /// OSC 7 file URI 디코드가 "/C:/.." 형태면 앞 슬래시를 제거(Windows 경로화).
 pub(crate) fn strip_uri_slash(raw: &str) -> String {
@@ -85,7 +84,10 @@ impl NabiApp {
             .map(|(_, n)| n)
             .or_else(|| {
                 let first = self.dock.iter_all_tabs().next().map(|(_, t)| *t)?;
-                self.dock.find_tab(&first).filter(|loc| loc.0 == main).map(|loc| loc.1)
+                self.dock
+                    .find_tab(&first)
+                    .filter(|loc| loc.0 == main)
+                    .map(|loc| loc.1)
             });
         if let Some(node) = target {
             let tree = self.dock.main_surface_mut();
@@ -118,15 +120,42 @@ impl NabiApp {
 
     /// 워크스페이스 저장용: 로컬 pane의 마지막 cwd(실재 디렉터리) + 실행 중 명령(설정 시).
     /// 명령은 종료(OSC 133;D) 시 run_cmd에서 지워지므로, 남아 있으면 "아직 실행 중"이다.
-    pub(crate) fn saved_local_state(&self, p: nabi_types::PaneId) -> (Option<String>, Option<String>) {
+    pub(crate) fn saved_local_state(
+        &self,
+        p: nabi_types::PaneId,
+    ) -> (Option<String>, Option<String>) {
         let cwd = self
             .cwds
             .get(&p)
             .map(|c| strip_uri_slash(c))
             .filter(|d| std::path::Path::new(d).is_dir());
         let live = self.config.terminal.restore_running_command;
-        let cmd = live.then(|| self.run_cmd.get(&p).cloned().filter(|c| !c.trim().is_empty())).flatten();
+        let cmd = live
+            .then(|| {
+                self.run_cmd
+                    .get(&p)
+                    .cloned()
+                    .filter(|c| !c.trim().is_empty())
+            })
+            .flatten();
         (cwd, cmd)
+    }
+
+    /// SSH에서는 임의 명령을 저장하지 않고 AI CLI 허용 목록만 고정 재개 명령으로 바꾼다.
+    pub(crate) fn saved_ssh_ai_command(&self, p: nabi_types::PaneId) -> Option<String> {
+        if !self.config.terminal.restore_ssh_ai_command {
+            return None;
+        }
+        if let Some(cmd) = self.run_cmd.get(&p).and_then(|s| ai_resume_command(s)) {
+            return Some(cmd);
+        }
+        let title = self
+            .orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&p).map(|v| v.title.clone()))?;
+        ai_resume_from_title(&title)
     }
 
     /// 현재 열린 탭들의 출처(+분할 레이아웃)를 워크스페이스 파일로 저장한다.
@@ -138,9 +167,15 @@ impl NabiApp {
     pub(crate) fn session_will_spawn(&self, kind: &SessionKind) -> bool {
         match kind {
             SessionKind::Local { .. } => true,
-            SessionKind::Ssh { credential_ref, key_path, .. } => {
+            SessionKind::Ssh {
+                credential_ref,
+                key_path,
+                ..
+            } => {
                 key_path.is_some()
-                    || credential_ref.as_ref().is_some_and(|k| self.vault_get(k).is_some())
+                    || credential_ref
+                        .as_ref()
+                        .is_some_and(|k| self.vault_get(k).is_some())
             }
         }
     }
@@ -154,7 +189,15 @@ impl NabiApp {
         nabi_session::load_tree(&self.workspace_path)
             .sessions
             .iter()
-            .any(|s| matches!(&s.kind, SessionKind::Ssh { credential_ref: Some(_), .. }))
+            .any(|s| {
+                matches!(
+                    &s.kind,
+                    SessionKind::Ssh {
+                        credential_ref: Some(_),
+                        ..
+                    }
+                )
+            })
     }
 
     pub(crate) fn restore_workspace(&mut self, browser_panes: Vec<nabi_types::PaneId>) -> bool {
@@ -173,9 +216,10 @@ impl NabiApp {
             .map(|(i, _)| i)
             .collect();
         if !spawn_ords.is_empty() {
-            if let Some(saved) = std::fs::read_to_string(self.workspace_path.with_extension("layout"))
-                .ok()
-                .and_then(|s| ron::from_str::<DockState<usize>>(&s).ok())
+            if let Some(saved) =
+                std::fs::read_to_string(self.workspace_path.with_extension("layout"))
+                    .ok()
+                    .and_then(|s| ron::from_str::<DockState<usize>>(&s).ok())
             {
                 let fonts = std::fs::read_to_string(self.workspace_path.with_extension("fonts"))
                     .ok()
@@ -202,14 +246,13 @@ impl NabiApp {
         }
         for (i, s) in tree.sessions.into_iter().enumerate() {
             // 이 스폰의 레이아웃 ordinal(=i)과 로컬 백로그를 spawn_ctx로 전달 → register_spawn이 seq에 묶는다.
-            let backlog = matches!(s.kind, SessionKind::Local { .. })
-                .then(|| {
-                    self.workspace_path
-                        .parent()
-                        .map(|d| d.join(format!("scroll_{i}.txt")))
-                        .and_then(|p| std::fs::read(p).ok())
-                        .unwrap_or_default()
-                });
+            let backlog = matches!(s.kind, SessionKind::Local { .. }).then(|| {
+                self.workspace_path
+                    .parent()
+                    .map(|d| d.join(format!("scroll_{i}.txt")))
+                    .and_then(|p| std::fs::read(p).ok())
+                    .unwrap_or_default()
+            });
             self.spawn_ctx = Some((Some(i), backlog, None));
             self.connect_saved(s);
         }
@@ -219,9 +262,58 @@ impl NabiApp {
     }
 }
 
+fn ai_resume_command(command: &str) -> Option<String> {
+    let first = command
+        .split_whitespace()
+        .next()?
+        .rsplit(['/', '\\'])
+        .next()?;
+    let base = first
+        .trim_end_matches(".exe")
+        .trim_end_matches(".cmd")
+        .trim_end_matches(".bat")
+        .to_ascii_lowercase();
+    match base.as_str() {
+        "claude" => Some("claude --continue".into()),
+        "codex" => Some("codex resume --last".into()),
+        "agy" => Some("agy".into()),
+        _ => None,
+    }
+}
+
+fn ai_resume_from_title(title: &str) -> Option<String> {
+    let t = title.to_ascii_lowercase();
+    if t.contains("claude") {
+        Some("claude --continue".into())
+    } else if t.contains("codex") {
+        Some("codex resume --last".into())
+    } else if t.contains("antigravity") || t.split_whitespace().any(|s| s == "agy") {
+        Some("agy".into())
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{shell_from_str, shell_to_str};
+    use super::{ai_resume_command, ai_resume_from_title, shell_from_str, shell_to_str};
+
+    #[test]
+    fn remote_ai_resume_is_strictly_allowlisted() {
+        assert_eq!(
+            ai_resume_command("codex --model x").as_deref(),
+            Some("codex resume --last")
+        );
+        assert_eq!(
+            ai_resume_command("/usr/bin/claude").as_deref(),
+            Some("claude --continue")
+        );
+        assert_eq!(ai_resume_command("rm -rf x"), None);
+        assert_eq!(
+            ai_resume_from_title("Codex CLI").as_deref(),
+            Some("codex resume --last")
+        );
+    }
 
     #[test]
     fn strip_uri_slash_windows() {

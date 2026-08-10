@@ -26,24 +26,81 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         ui.end_row();
     };
     chk_help(
-        ui, tr(lang, "settings.restorews"), tr(lang, "settings.restorews.help"),
-        &mut cfg.terminal.restore_workspace, true,
+        ui,
+        tr(lang, "settings.restorews"),
+        tr(lang, "settings.restorews.help"),
+        &mut cfg.terminal.restore_workspace,
+        true,
     );
     chk_help(
-        ui, tr(lang, "settings.restorecmd"), tr(lang, "settings.restorecmd.help"),
-        &mut cfg.terminal.restore_running_command, cfg.terminal.restore_workspace,
+        ui,
+        tr(lang, "settings.restorecmd"),
+        tr(lang, "settings.restorecmd.help"),
+        &mut cfg.terminal.restore_running_command,
+        cfg.terminal.restore_workspace,
+    );
+    chk_help(
+        ui,
+        tr(lang, "settings.restoreshaai"),
+        tr(lang, "settings.restoreshaai.help"),
+        &mut cfg.terminal.restore_ssh_ai_command,
+        cfg.terminal.restore_workspace,
     );
     ui.label(tr(lang, "settings.restoreai"));
-    ui.add(egui::Label::new(egui::RichText::new(tr(lang, "settings.restoreai.help")).weak()).wrap());
+    ui.add(
+        egui::Label::new(egui::RichText::new(tr(lang, "settings.restoreai.help")).weak()).wrap(),
+    );
     ui.end_row();
-    chk(ui, tr(lang, "settings.builtineditor"), &mut cfg.terminal.editor_builtin);
-    chk(ui, tr(lang, "update.autocheck"), &mut cfg.terminal.auto_check_update);
-    chk(ui, tr(lang, "settings.confirmclose"), &mut cfg.terminal.confirm_close); chk(ui, tr(lang, "settings.autoreconnect"), &mut cfg.terminal.auto_reconnect);
-    chk(ui, tr(lang, "settings.copyonselect"), &mut cfg.appearance.copy_on_select);
-    chk(ui, tr(lang, "settings.visualbell"), &mut cfg.appearance.visual_bell);
-    chk(ui, tr(lang, "menu.ontop"), &mut cfg.appearance.always_on_top);
-    chk(ui, tr(lang, "settings.statusbar"), &mut cfg.appearance.show_statusbar); chk(ui, tr(lang, "settings.clock"), &mut cfg.appearance.show_clock);
-    chk(ui, tr(lang, "settings.warnpaste"), &mut cfg.terminal.warn_paste_newline);
+    chk(
+        ui,
+        tr(lang, "settings.builtineditor"),
+        &mut cfg.terminal.editor_builtin,
+    );
+    chk(
+        ui,
+        tr(lang, "update.autocheck"),
+        &mut cfg.terminal.auto_check_update,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.confirmclose"),
+        &mut cfg.terminal.confirm_close,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.autoreconnect"),
+        &mut cfg.terminal.auto_reconnect,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.copyonselect"),
+        &mut cfg.appearance.copy_on_select,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.visualbell"),
+        &mut cfg.appearance.visual_bell,
+    );
+    chk(
+        ui,
+        tr(lang, "menu.ontop"),
+        &mut cfg.appearance.always_on_top,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.statusbar"),
+        &mut cfg.appearance.show_statusbar,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.clock"),
+        &mut cfg.appearance.show_clock,
+    );
+    chk(
+        ui,
+        tr(lang, "settings.warnpaste"),
+        &mut cfg.terminal.warn_paste_newline,
+    );
 
     // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
     ui.label(tr(lang, "settings.shellinteg"));
@@ -70,7 +127,11 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
             ("ask", "settings.control.ask"),
             ("on", "settings.control.on"),
         ] {
-            ui.radio_value(&mut cfg.terminal.control_mode, val.to_string(), tr(lang, key));
+            ui.radio_value(
+                &mut cfg.terminal.control_mode,
+                val.to_string(),
+                tr(lang, key),
+            );
         }
     });
     ui.end_row();
@@ -90,5 +151,10 @@ fn chk_help(ui: &mut egui::Ui, label: &str, help: &str, value: &mut bool, enable
 }
 
 fn lang_choices() -> [(&'static str, &'static str); 4] {
-    [("system", "System"), ("en", "English"), ("ko", "한국어"), ("ja", "日本語")]
+    [
+        ("system", "System"),
+        ("en", "English"),
+        ("ko", "한국어"),
+        ("ja", "日本語"),
+    ]
 }

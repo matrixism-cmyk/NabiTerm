@@ -4,15 +4,27 @@ use nabi_i18n::{tr, Lang};
 use std::path::Path;
 
 /// 좌측 내비 카테고리(i18n 키). 인덱스가 페이지 번호.
-pub(crate) const HELP_CATS: [&str; 5] =
-    ["help.cat.about", "help.cat.keys", "help.cat.features", "help.cat.agent", "help.cat.licenses"];
+pub(crate) const HELP_CATS: [&str; 5] = [
+    "help.cat.about",
+    "help.cat.keys",
+    "help.cat.features",
+    "help.cat.agent",
+    "help.cat.licenses",
+];
 
 /// 기능 안내 — 우클릭 컨텍스트 메뉴·팔레트에 숨은 주요 기능을 발견하도록 요약.
 pub(crate) fn features_page(ui: &mut egui::Ui, lang: Lang) {
     ui.heading(tr(lang, "help.cat.features"));
     ui.label(tr(lang, "help.feat.intro"));
     ui.add_space(6.0);
-    for key in ["help.feat.editor", "help.feat.browser", "help.feat.sftp", "help.feat.terminal", "help.feat.sessions", "help.feat.palette"] {
+    for key in [
+        "help.feat.editor",
+        "help.feat.browser",
+        "help.feat.sftp",
+        "help.feat.terminal",
+        "help.feat.sessions",
+        "help.feat.palette",
+    ] {
         ui.label(tr(lang, key));
         ui.add_space(2.0);
     }
@@ -21,25 +33,49 @@ pub(crate) fn features_page(ui: &mut egui::Ui, lang: Lang) {
 /// 사용한 주요 오픈소스 (이름, 용도, 라이선스). 전이 의존성 660여 개는 대부분 MIT/Apache-2.0.
 const LICENSES: [(&str, &str, &str); 22] = [
     ("alacritty_terminal", "terminal core / VT", "Apache-2.0"),
-    ("egui · eframe · epaint", "GUI framework", "MIT OR Apache-2.0"),
+    (
+        "egui · eframe · epaint",
+        "GUI framework",
+        "MIT OR Apache-2.0",
+    ),
     ("wgpu", "GPU rendering backend", "MIT OR Apache-2.0"),
-    ("Mesa 3D (llvmpipe, 동봉)", "software OpenGL fallback", "MIT"),
+    (
+        "Mesa 3D (llvmpipe, 동봉)",
+        "software OpenGL fallback",
+        "MIT",
+    ),
     ("egui_extras", "table widgets", "MIT OR Apache-2.0"),
     ("egui_dock", "docking tabs", "MIT"),
-    ("epaint_default_fonts", "bundled UI fonts", "OFL-1.1, UFL-1.0"),
+    (
+        "epaint_default_fonts",
+        "bundled UI fonts",
+        "OFL-1.1, UFL-1.0",
+    ),
     ("image", "PNG/JPEG/GIF decode", "MIT OR Apache-2.0"),
     ("portable-pty", "local PTY (ConPTY)", "MIT"),
     ("russh · russh-sftp", "SSH / SFTP", "Apache-2.0"),
     ("suppaftp", "FTP client", "MIT OR Apache-2.0"),
     ("tokio", "async runtime", "MIT"),
-    ("encoding_rs · chardetng", "text encoding", "Apache-2.0/MIT, BSD-3"),
+    (
+        "encoding_rs · chardetng",
+        "text encoding",
+        "Apache-2.0/MIT, BSD-3",
+    ),
     ("syntect · fancy-regex", "syntax highlight", "MIT"),
     ("ttf-parser", "font enumeration", "MIT OR Apache-2.0"),
     ("memmap2", "large-file viewer", "MIT OR Apache-2.0"),
     ("arboard", "clipboard", "MIT OR Apache-2.0"),
     ("rfd", "native file dialog", "MIT"),
-    ("argon2 · aes-gcm · zeroize", "vault crypto", "MIT OR Apache-2.0"),
-    ("serde · serde_json · toml", "config/serialize", "MIT OR Apache-2.0"),
+    (
+        "argon2 · aes-gcm · zeroize",
+        "vault crypto",
+        "MIT OR Apache-2.0",
+    ),
+    (
+        "serde · serde_json · toml",
+        "config/serialize",
+        "MIT OR Apache-2.0",
+    ),
     ("chrono · directories", "time / paths", "MIT OR Apache-2.0"),
     ("option-ext (via directories)", "transitive", "MPL-2.0"),
 ];
@@ -119,7 +155,12 @@ pub(crate) fn shortcut_page(ui: &mut egui::Ui, lang: Lang) {
         });
     ui.add_space(10.0);
     ui.strong(tr(lang, "help.mousetips"));
-    for k in ["help.tip.urlopen", "help.tip.pathjump", "help.tip.runterm", "help.tip.mpaste"] {
+    for k in [
+        "help.tip.urlopen",
+        "help.tip.pathjump",
+        "help.tip.runterm",
+        "help.tip.mpaste",
+    ] {
         ui.label(format!("\u{2022} {}", tr(lang, k)));
     }
 }
@@ -147,24 +188,31 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
     ui.strong(tr(lang, "help.agent.examples"));
     ui.add_space(2.0);
     // 명령 ↔ 설명 2열 표(가로로 뻗지 않게 짧은 표기 사용 — 전체 문법은 복사본 MD에).
-    egui::Grid::new("help_agent_cmds").num_columns(2).spacing([14.0, 6.0]).striped(true).show(
-        ui,
-        |ui| {
+    egui::Grid::new("help_agent_cmds")
+        .num_columns(2)
+        .spacing([14.0, 6.0])
+        .striped(true)
+        .show(ui, |ui| {
             for (cmd, key) in CMDS {
                 ui.monospace(cmd);
                 ui.label(tr(lang, key));
                 ui.end_row();
             }
-        },
-    );
+        });
     ui.add_space(8.0);
     ui.label(tr(lang, "help.agent.perm"));
     ui.add_space(12.0);
     ui.horizontal(|ui| {
-        if ui.button(format!("\u{1f4cb} {}", tr(lang, "help.agent.copy"))).clicked() {
+        if ui
+            .button(format!("\u{1f4cb} {}", tr(lang, "help.agent.copy")))
+            .clicked()
+        {
             *copy = true;
         }
-        if ui.button(format!("\u{1f4be} {}", tr(lang, "help.agent.save"))).clicked() {
+        if ui
+            .button(format!("\u{1f4be} {}", tr(lang, "help.agent.save")))
+            .clicked()
+        {
             *save = true;
         }
     });
@@ -176,35 +224,115 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
 fn ai_cli_manager(ui: &mut egui::Ui, lang: Lang) {
     let words = match lang {
         Lang::Ko => ("AI CLI 관리", "미설치", "새로고침", "설치", "제거"),
-        Lang::Ja => ("AI CLI 管理", "未インストール", "更新", "インストール", "削除"),
-        Lang::En => ("AI CLI manager", "Not installed", "Refresh", "Install", "Remove"),
+        Lang::Ja => (
+            "AI CLI 管理",
+            "未インストール",
+            "更新",
+            "インストール",
+            "削除",
+        ),
+        Lang::En => (
+            "AI CLI manager",
+            "Not installed",
+            "Refresh",
+            "Install",
+            "Remove",
+        ),
     };
     let key = egui::Id::new("ai_cli_status");
-    let mut statuses = ui.ctx().data(|d| d.get_temp::<Vec<crate::aicli::CliStatus>>(key));
+    let job_key = egui::Id::new("ai_cli_job");
+    let mut statuses = ui
+        .ctx()
+        .data(|d| d.get_temp::<Vec<crate::aicli::CliStatus>>(key));
+    let job = ui
+        .ctx()
+        .data(|d| d.get_temp::<crate::aicli::ActionJob>(job_key));
+    let busy = job
+        .as_ref()
+        .and_then(|j| j.lock().ok())
+        .is_some_and(|p| !p.done);
     ui.horizontal(|ui| {
         ui.strong(words.0);
-        if ui.small_button(format!("↻ {}", words.2)).clicked() { statuses = None; }
+        if ui.small_button(format!("↻ {}", words.2)).clicked() {
+            statuses = None;
+        }
     });
     let statuses = statuses.unwrap_or_else(|| {
         let v = crate::aicli::detect_all();
         ui.ctx().data_mut(|d| d.insert_temp(key, v.clone()));
         v
     });
-    egui::Grid::new("ai_cli_manager").num_columns(4).spacing([12.0, 5.0]).striped(true).show(ui, |ui| {
-        for cli in statuses {
-            ui.strong(cli.name);
-            if cli.installed() {
-                ui.colored_label(crate::theme_ui::OK, cli.version.as_deref().unwrap_or("Installed"))
-                    .on_hover_text(cli.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default());
-                ui.monospace(cli.command);
-                if ui.small_button(words.4).clicked() { let _ = crate::aicli::launch_action(cli.id, true); }
-            } else {
-                ui.weak(words.1); ui.monospace(cli.command);
-                if ui.small_button(words.3).clicked() { let _ = crate::aicli::launch_action(cli.id, false); }
+    egui::Grid::new("ai_cli_manager")
+        .num_columns(4)
+        .spacing([12.0, 5.0])
+        .striped(true)
+        .show(ui, |ui| {
+            for cli in statuses {
+                ui.strong(cli.name);
+                if cli.installed() {
+                    ui.colored_label(
+                        crate::theme_ui::OK,
+                        cli.version.as_deref().unwrap_or("Installed"),
+                    )
+                    .on_hover_text(
+                        cli.path
+                            .as_ref()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_default(),
+                    );
+                    ui.monospace(cli.command);
+                    if ui
+                        .add_enabled(!busy, egui::Button::new(words.4).small())
+                        .clicked()
+                    {
+                        if let Ok(j) = crate::aicli::start_action(cli.id, true) {
+                            ui.ctx().data_mut(|d| d.insert_temp(job_key, j));
+                        }
+                    }
+                } else {
+                    ui.weak(words.1);
+                    ui.monospace(cli.command);
+                    if ui
+                        .add_enabled(!busy, egui::Button::new(words.3).small())
+                        .clicked()
+                    {
+                        if let Ok(j) = crate::aicli::start_action(cli.id, false) {
+                            ui.ctx().data_mut(|d| d.insert_temp(job_key, j));
+                        }
+                    }
+                }
+                ui.end_row();
             }
-            ui.end_row();
+        });
+    if let Some(job) = job {
+        let mut refresh = false;
+        if let Ok(mut p) = job.lock() {
+            ui.add(
+                egui::ProgressBar::new(p.fraction)
+                    .show_percentage()
+                    .text(&p.message),
+            );
+            if p.done {
+                let color = if p.success {
+                    crate::theme_ui::OK
+                } else {
+                    crate::theme_ui::ERR
+                };
+                ui.colored_label(color, &p.message);
+                if !p.refresh_done {
+                    p.refresh_done = true;
+                    refresh = true;
+                }
+            } else {
+                ui.ctx()
+                    .request_repaint_after(std::time::Duration::from_millis(100));
+            }
         }
-    });
+        if refresh {
+            ui.ctx()
+                .data_mut(|d| d.remove::<Vec<crate::aicli::CliStatus>>(key));
+        }
+    }
 }
 
 /// 오픈소스 라이선스 페이지: 주요 구성요소(이름·용도·라이선스) 표 + 안내.
@@ -212,17 +340,18 @@ pub(crate) fn licenses_page(ui: &mut egui::Ui, lang: Lang) {
     ui.heading(tr(lang, "help.cat.licenses"));
     ui.label(tr(lang, "help.lic.intro"));
     ui.add_space(8.0);
-    egui::Grid::new("help_licenses").num_columns(3).spacing([14.0, 5.0]).striped(true).show(
-        ui,
-        |ui| {
+    egui::Grid::new("help_licenses")
+        .num_columns(3)
+        .spacing([14.0, 5.0])
+        .striped(true)
+        .show(ui, |ui| {
             for (name, use_, lic) in LICENSES {
                 ui.strong(name);
                 ui.label(use_);
                 ui.monospace(lic);
                 ui.end_row();
             }
-        },
-    );
+        });
     ui.add_space(8.0);
     ui.weak(tr(lang, "help.lic.note"));
 }
