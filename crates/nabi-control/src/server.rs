@@ -23,34 +23,37 @@ pub struct ServerCtx {
 
 /// 서버 스레드를 띄운다(실패는 로그만 — 제어 평면은 옵션 기능).
 pub fn start(pipe: String, token: String, ctx: ServerCtx) {
-    let _ = std::thread::Builder::new().name("nabi-control".into()).spawn(move || {
-        let rt = match tokio::runtime::Builder::new_current_thread().enable_all().build() {
-            Ok(rt) => rt,
-            Err(e) => {
-                tracing::error!(target: "control", %e, "제어 런타임 생성 실패");
-                return;
-            }
-        };
-        let local = tokio::task::LocalSet::new();
-        local.block_on(&rt, serve(pipe, token, ctx));
-    });
+    let _ = std::thread::Builder::new()
+        .name("nabi-control".into())
+        .spawn(move || {
+            let rt = match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(rt) => rt,
+                Err(e) => {
+                    tracing::error!(target: "control", %e, "제어 런타임 생성 실패");
+                    return;
+                }
+            };
+            let local = tokio::task::LocalSet::new();
+            local.block_on(&rt, serve(pipe, token, ctx));
+        });
 }
 
 /// 수락 루프: 인스턴스를 만들고 접속을 기다렸다가 연결별 태스크로 넘긴다.
-/// 파이프는 현재 사용자 SID 전용 DACL로 만든다(CP-5 G5; 실패 시 기본 기술자 폴백).
+/// 파이프는 현재 사용자 SID 전용 DACL로 만든다. 보안 기술자를 만들 수 없으면
+/// 기본 DACL로 약화하지 않고 서버를 중단한다.
 async fn serve(pipe: String, token: String, ctx: ServerCtx) {
     use tokio::net::windows::named_pipe::ServerOptions;
     tracing::info!(target: "control", %pipe, "제어 서버 시작");
-    let mut sec = crate::pipe_acl::PipeSecurity::current_user_only();
-    if sec.is_none() {
-        tracing::warn!(target: "control", "사용자 전용 DACL 생성 실패 — 기본 보안 기술자 사용");
-    }
+    let Some(mut sec) = crate::pipe_acl::PipeSecurity::current_user_only() else {
+        tracing::error!(target: "control", "사용자 전용 DACL 생성 실패 — 제어 서버를 시작하지 않음");
+        return;
+    };
     loop {
-        let made = match sec.as_mut() {
-            Some(s) => unsafe {
-                ServerOptions::new().create_with_security_attributes_raw(&pipe, s.attrs_ptr())
-            },
-            None => ServerOptions::new().create(&pipe),
+        let made = unsafe {
+            ServerOptions::new().create_with_security_attributes_raw(&pipe, sec.attrs_ptr())
         };
         let server = match made {
             Ok(s) => s,
@@ -78,11 +81,10 @@ async fn handle_conn(
     let (r, mut w) = tokio::io::split(stream);
     let mut lines = BufReader::new(r).lines();
     // 인증: 첫 줄은 Hello여야 하고 토큰이 일치해야 한다.
-    let from = match lines.next_line().await {
+    match lines.next_line().await {
         Ok(Some(first)) => match serde_json::from_str::<ControlRequest>(&first) {
-            Ok(ControlRequest::Hello { token: t, from }) if t == token => {
+            Ok(ControlRequest::Hello { token: t, .. }) if t == token => {
                 let _ = write_resp(&mut w, &ControlResponse::Ok).await;
-                from
             }
             _ => {
                 tracing::warn!(target: "control", "인증 실패 접속 거부");
@@ -91,14 +93,22 @@ async fn handle_conn(
             }
         },
         _ => return,
-    };
+    }
+    // 모든 pane이 프로세스 환경에서 같은 인스턴스 토큰을 상속한다. 클라이언트가 보낸
+    // `from`은 인증된 신원이 아니므로 권한 판단에 사용하지 않는다(다른 pane 가장 방지).
+    let from = None;
     while let Ok(Some(line)) = lines.next_line().await {
         match serde_json::from_str::<ControlRequest>(&line) {
             // Wait/Tail은 읽기 전용 구독(read 그룹) — capture와 동급, 승인 불필요(G4).
-            Ok(ControlRequest::Wait { pane, until, timeout_ms }) => {
+            Ok(ControlRequest::Wait {
+                pane,
+                until,
+                timeout_ms,
+            }) => {
                 let cond = crate::subscribe::WaitCond::parse(&until);
                 let resp =
-                    crate::subscribe::run_wait(&ctx.events, &ctx.panes, pane, cond, timeout_ms).await;
+                    crate::subscribe::run_wait(&ctx.events, &ctx.panes, pane, cond, timeout_ms)
+                        .await;
                 if write_resp(&mut w, &resp).await.is_err() {
                     return;
                 }
@@ -110,8 +120,14 @@ async fn handle_conn(
             }
             Ok(req) => {
                 let resp = crate::dispatch::dispatch(
-                    req, &ctx.panes, &ctx.cmd_tx, &ctx.app_tx, &ctx.policy, &ctx.cfg,
-                    &ctx.events, from,
+                    req,
+                    &ctx.panes,
+                    &ctx.cmd_tx,
+                    &ctx.app_tx,
+                    &ctx.policy,
+                    &ctx.cfg,
+                    &ctx.events,
+                    from,
                 );
                 if write_resp(&mut w, &resp).await.is_err() {
                     return;
@@ -152,15 +168,26 @@ async fn stream_tail(
                 changed = true;
             }
             if matches!(ev, Event::PaneExited { pane: p, .. } if p.get() == pane) {
-                let bye = ControlResponse::Event { pane, kind: "exit".into(), data: String::new() };
+                let bye = ControlResponse::Event {
+                    pane,
+                    kind: "exit".into(),
+                    data: String::new(),
+                };
                 write_resp(w, &bye).await?;
                 return Ok(());
             }
         }
         if changed {
-            let delta = model.lock().ok().and_then(|m| crate::tail_delta::delta(&m, &mut last));
+            let delta = model
+                .lock()
+                .ok()
+                .and_then(|m| crate::tail_delta::delta(&m, &mut last));
             if let Some(text) = delta {
-                let resp = ControlResponse::Event { pane, kind: "output".into(), data: text };
+                let resp = ControlResponse::Event {
+                    pane,
+                    kind: "output".into(),
+                    data: text,
+                };
                 write_resp(w, &resp).await?;
             }
         }
@@ -178,5 +205,7 @@ async fn write_resp(
 }
 
 fn err(m: &str) -> ControlResponse {
-    ControlResponse::Err { message: m.to_string() }
+    ControlResponse::Err {
+        message: m.to_string(),
+    }
 }

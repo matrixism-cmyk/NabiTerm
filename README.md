@@ -36,6 +36,7 @@ nabiTerm은 로컬 셸과 원격 서버를 하나의 창에서 다루기 위한 
 ### AI 에이전트 제어 평면
 - pane 안의 프로세스가 `nabi cli`(named pipe) 또는 MCP로 nabiTerm을 제어 — `list`·`spawn`·`send`·`capture`·`wait`·`notify` 등
 - 권한 정책 **끔 / 물어봄 / 켬**(그룹별 1회 승인)
+- 도움말 ▸ AI 제어에서 Claude Code·OpenAI Codex·Google Antigravity CLI의 설치 여부와 버전을 확인하고 설치·제거 관리
 - 도움말 ▸ AI 제어에서 사용 가이드 복사/저장
 
 ## 설치

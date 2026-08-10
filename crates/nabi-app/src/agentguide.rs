@@ -97,7 +97,7 @@ Control mode lives in nabiTerm ▸ Settings ▸ Behavior ▸ Agent control: off 
 
 - off  — all control is refused.
 - ask  — (default) Inspect verbs always work. The first Act and the first Inject
-         from your pane pop an approval dialog; the user clicks Allow once
+         in this nabiTerm instance pop an approval dialog; the user clicks Allow once
          (Act and Inject are approved separately).
 - on   — everything is allowed without prompting.
 

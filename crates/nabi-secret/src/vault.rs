@@ -6,14 +6,32 @@ use crate::kdf::derive_key;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use zeroize::Zeroize;
 
 const SALT_LEN: usize = 16;
 const NONCE_LEN: usize = 12;
 
 /// 비밀 저장소(키→비밀). 평문은 메모리에만 존재한다.
-#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Vault {
     pub entries: BTreeMap<String, String>,
+}
+
+impl Drop for Vault {
+    fn drop(&mut self) {
+        for value in self.entries.values_mut() {
+            value.zeroize();
+        }
+        self.entries.clear();
+    }
+}
+
+impl std::fmt::Debug for Vault {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Vault")
+            .field("entries", &"<redacted>")
+            .finish()
+    }
 }
 
 impl Vault {
@@ -36,7 +54,9 @@ pub fn seal_vault(vault: &Vault, password: &str) -> Result<Vec<u8>, VaultError> 
     rand::rngs::OsRng.fill_bytes(&mut nonce);
 
     let key = derive_key(password.as_bytes(), &salt)?;
-    let plaintext = serde_json::to_vec(vault).map_err(|e| VaultError::Serde(e.to_string()))?;
+    let plaintext = zeroize::Zeroizing::new(
+        serde_json::to_vec(vault).map_err(|e| VaultError::Serde(e.to_string()))?,
+    );
     let ct = seal(&key, &nonce, &plaintext)?;
 
     let mut out = Vec::with_capacity(SALT_LEN + NONCE_LEN + ct.len());
@@ -58,7 +78,7 @@ pub fn open_vault(bytes: &[u8], password: &str) -> Result<Vault, VaultError> {
     let ct = &bytes[SALT_LEN + NONCE_LEN..];
 
     let key = derive_key(password.as_bytes(), salt)?;
-    let plaintext = open(&key, &nonce, ct)?;
+    let plaintext = zeroize::Zeroizing::new(open(&key, &nonce, ct)?);
     serde_json::from_slice(&plaintext).map_err(|e| VaultError::Serde(e.to_string()))
 }
 

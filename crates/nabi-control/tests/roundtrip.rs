@@ -166,11 +166,12 @@ fn ask_mode_groups_and_approval() {
     let (policy, ask_rx) = ControlPolicy::new(Mode::Ask);
     // read 그룹은 ask 모드에서도 무승인(G4).
     assert!(policy.allow(Group::Read, Some(9)));
-    // 미승인 inject: 거부 + (pane, 그룹) 승인 요청 발생.
+    // 미승인 inject: 거부 + (인스턴스=0, 그룹) 승인 요청 발생. 클라이언트가 주장한
+    // pane ID는 인증된 신원이 아니므로 승인 키로 사용하지 않는다.
     assert!(!policy.allow(Group::Inject, Some(5)));
     assert_eq!(
         ask_rx.recv_timeout(std::time::Duration::from_millis(200)).unwrap(),
-        (5, Group::Inject)
+        (0, Group::Inject)
     );
     // act 승인이 inject를 풀지 않음(별도 집합 — CP-7).
     policy.approve(5, Group::Act);
@@ -181,6 +182,6 @@ fn ask_mode_groups_and_approval() {
     assert!(policy.allow(Group::Inject, Some(5)));
     policy.revoke(5, Group::Inject);
     assert!(!policy.allow(Group::Inject, Some(5)));
-    // 다른 pane은 여전히 거부.
+    // revoke 뒤에는 어떤 주장 pane에서도 거부.
     assert!(!policy.allow(Group::Inject, Some(6)));
 }

@@ -80,6 +80,7 @@ mod worklayout;
 mod updatemodal;
 mod shellintegprompt;
 mod agentguide;
+mod aicli;
 mod aistatus;
 mod aidash;
 mod encsuggest;

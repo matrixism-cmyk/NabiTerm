@@ -90,16 +90,16 @@ impl ControlPolicy {
     }
 
     /// 앱이 사용자 승인 시 호출 — 이후 그 pane의 해당 그룹 동작 허용.
-    pub fn approve(&self, pane: u64, g: Group) {
+    pub fn approve(&self, _pane: u64, g: Group) {
         if let Ok(mut s) = self.set_of(g).write() {
-            s.insert(pane);
+            s.insert(0);
         }
     }
 
     /// 승인 취소(설정 UI revoke).
-    pub fn revoke(&self, pane: u64, g: Group) {
+    pub fn revoke(&self, _pane: u64, g: Group) {
         if let Ok(mut s) = self.set_of(g).write() {
-            s.remove(&pane);
+            s.remove(&0);
         }
     }
 
@@ -118,7 +118,7 @@ impl ControlPolicy {
 
     /// 그룹 동작 허용 여부. ask면 read는 항상 허용, act/inject는 pane별 승인,
     /// 미승인이면 앱에 (pane, 그룹) 승인 요청을 보내고 false.
-    pub fn allow(&self, g: Group, from: Option<u64>) -> bool {
+    pub fn allow(&self, g: Group, _from: Option<u64>) -> bool {
         match self.mode() {
             Mode::Off => false,
             Mode::On => true,
@@ -126,8 +126,15 @@ impl ControlPolicy {
                 if g == Group::Read {
                     return true; // 관찰은 무승인(G4 — capture와 동급).
                 }
-                let p = from.unwrap_or(0);
-                if self.set_of(g).read().map(|s| s.contains(&p)).unwrap_or(false) {
+                // 현재 인증 단위는 pane이 아니라 nabiTerm 인스턴스 토큰이다. from은 클라이언트가
+                // 제시하는 힌트라 신뢰하지 않고 승인도 인스턴스(0)에 묶는다.
+                let p = 0;
+                if self
+                    .set_of(g)
+                    .read()
+                    .map(|s| s.contains(&p))
+                    .unwrap_or(false)
+                {
                     true
                 } else {
                     let _ = self.ask_tx.send((p, g)); // 앱이 다이얼로그로 승인 유도.

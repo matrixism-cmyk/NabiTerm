@@ -140,6 +140,10 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
     ui.heading(tr(lang, "help.agent.title"));
     ui.label(tr(lang, "help.agent.intro")); // 폭 제한된 본문이라 자동 줄바꿈.
     ui.add_space(8.0);
+    ai_cli_manager(ui, lang);
+    ui.add_space(8.0);
+    ui.separator();
+    ui.add_space(8.0);
     ui.strong(tr(lang, "help.agent.examples"));
     ui.add_space(2.0);
     // 명령 ↔ 설명 2열 표(가로로 뻗지 않게 짧은 표기 사용 — 전체 문법은 복사본 MD에).
@@ -166,6 +170,41 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
     });
     ui.add_space(4.0);
     ui.weak(tr(lang, "help.agent.hint"));
+}
+
+/// 설치된 AI CLI와 버전을 보여주고 공식 설치 관리자를 연다.
+fn ai_cli_manager(ui: &mut egui::Ui, lang: Lang) {
+    let words = match lang {
+        Lang::Ko => ("AI CLI 관리", "미설치", "새로고침", "설치", "제거"),
+        Lang::Ja => ("AI CLI 管理", "未インストール", "更新", "インストール", "削除"),
+        Lang::En => ("AI CLI manager", "Not installed", "Refresh", "Install", "Remove"),
+    };
+    let key = egui::Id::new("ai_cli_status");
+    let mut statuses = ui.ctx().data(|d| d.get_temp::<Vec<crate::aicli::CliStatus>>(key));
+    ui.horizontal(|ui| {
+        ui.strong(words.0);
+        if ui.small_button(format!("↻ {}", words.2)).clicked() { statuses = None; }
+    });
+    let statuses = statuses.unwrap_or_else(|| {
+        let v = crate::aicli::detect_all();
+        ui.ctx().data_mut(|d| d.insert_temp(key, v.clone()));
+        v
+    });
+    egui::Grid::new("ai_cli_manager").num_columns(4).spacing([12.0, 5.0]).striped(true).show(ui, |ui| {
+        for cli in statuses {
+            ui.strong(cli.name);
+            if cli.installed() {
+                ui.colored_label(crate::theme_ui::OK, cli.version.as_deref().unwrap_or("Installed"))
+                    .on_hover_text(cli.path.as_ref().map(|p| p.display().to_string()).unwrap_or_default());
+                ui.monospace(cli.command);
+                if ui.small_button(words.4).clicked() { let _ = crate::aicli::launch_action(cli.id, true); }
+            } else {
+                ui.weak(words.1); ui.monospace(cli.command);
+                if ui.small_button(words.3).clicked() { let _ = crate::aicli::launch_action(cli.id, false); }
+            }
+            ui.end_row();
+        }
+    });
 }
 
 /// 오픈소스 라이선스 페이지: 주요 구성요소(이름·용도·라이선스) 표 + 안내.

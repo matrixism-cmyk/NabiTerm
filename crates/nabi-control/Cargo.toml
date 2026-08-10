@@ -16,3 +16,4 @@ crossbeam-channel = { workspace = true }
 bytes = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+rand = { workspace = true }

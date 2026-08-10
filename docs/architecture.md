@@ -20,17 +20,14 @@ nabi/
    ├─ nabi-ssh  nabi-ssh-ext  nabi-sftp                 # 도메인(원격)
    ├─ nabi-orchestrator                                  # 제어 평면(핵심)
    ├─ nabi-render                                        # GPU 렌더
-   ├─ nabi-ui-tab  nabi-ui-window  nabi-ui-menu  nabi-ui-panels  # UI
-   └─ nabi-app (bin)                                     # 진입점/와이어링
+   └─ nabi-app (bin + UI 모듈)                           # 진입점/와이어링/egui UI
 ```
 
 ## 2. 의존성 계층 (위가 아래에 의존)
 
 ```
-nabi-app
-  └─ nabi-ui-window → nabi-ui-tab → nabi-render → nabi-vt
-       └─ nabi-ui-panels → nabi-sftp/nabi-ssh-ext
-  └─ nabi-ui-menu
+nabi-app(UI/window/tab/menu/panels) → nabi-render → nabi-vt
+  └─ nabi-sftp/nabi-ssh-ext
   └─ nabi-orchestrator → { nabi-vt, nabi-osc, nabi-pty, nabi-ssh, nabi-config, nabi-secret, nabi-log }
        └─ nabi-ssh → { nabi-pty(ByteChannel trait), nabi-secret }
 nabi-types ← (거의 모든 크레이트)      nabi-proto ← (UI·오케스트레이터·도메인)
@@ -114,5 +111,5 @@ nabi-types ← (거의 모든 크레이트)      nabi-proto ← (UI·오케스�
 - **2026-06 핀:** egui/eframe/egui-wgpu 0.34.x · egui_dock 0.19.1 · russh **0.61.2(정확)** · russh-sftp 2.3.0 · russh-config 0.58.x · keyring 4.0.1 · portable-pty 0.9.x.
 - **크립토 백엔드(초기 결정, CI 영향):** russh는 `aws-lc-rs` 또는 `ring` 중 **정확히 하나** 필수(둘 다 끄면 컴파일 실패). aws-lc-rs는 빠르고 FIPS 가능하나 빌드에 C/CMake/NASM 필요(Windows CI 복잡). **권장: CI 기본 ring(깨끗한 Windows 빌드), aws-lc-rs는 cargo feature gate(FIPS/PQ 사용자).** PQ KEX(mlkem768x25519-sha256) 지원 백엔드는 약속 전 확인.
 - **에러/로그 규약:** 라이브러리 크레이트마다 thiserror enum 1개(`#[from]/#[source]`로 원인 보존, 에러 파일 작게). anyhow는 `nabi-app`/main·글루에만(lib 경계로 누출 금지). tracing+subscriber는 `nabi-log` 통해 워크스페이스 전역.
-- **CI 매트릭스:** 주 타깃 `x86_64-pc-windows-msvc`. 단계: `fmt --check` → `xtask lines` → `clippy -D warnings` → `cargo test`(portable-pty/expectrl PTY 통합 테스트, insta/expect-test로 VT 화면 스냅샷; SSH는 로컬 russh 서버/컨테이너 sshd 대상). 보안 민감 크레이트(secret/ssh)는 cargo-deny/cargo-audit. 다중 크레이트 컴파일 가속 위해 sccache + 공유 target 고려.
+- **CI 매트릭스:** 주 타깃 `x86_64-pc-windows-gnu`. 단계: `xtask lines` → `xtask prerelease` → `clippy -D warnings` → `cargo test`. 현재 소스의 압축형 레이아웃과 400줄 게이트가 충돌하므로 전체 `fmt --check`는 적용하지 않으며, 변경 파일은 개별 포맷/Clippy로 검증한다. 보안·라이선스는 cargo-deny로 별도 검사한다.
 - **플러그인 페이징:** `nabi-plugin-api`는 지금 트레잇 계약만, WASM 런타임(Extism/wasmtime)은 연기. ⚠️ Extism은 wasmtime 기반, Zellij는 wasmi 사용 — 둘 중 선택은 M4에서.
