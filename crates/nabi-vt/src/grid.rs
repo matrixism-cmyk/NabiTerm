@@ -34,6 +34,8 @@ pub struct TermModel {
     pub(crate) ul_cache: std::cell::RefCell<crate::cache::UlCache>,
     /// 인코딩 자동 감지용 raw(디코드 전) 바이트 표본(앞 8KB까지). chardetng 입력(B9).
     detect_sample: Vec<u8>,
+    /// DEC 1007(alternate scroll) 추적 — 코어가 모르는 모드라 따로 관찰한다(altscroll.rs).
+    alt_scroll: crate::altscroll::AltScroll,
 }
 
 impl TermModel {
@@ -65,6 +67,7 @@ impl TermModel {
             rows_cache: std::cell::RefCell::default(),
             ul_cache: std::cell::RefCell::default(),
             detect_sample: Vec::new(),
+            alt_scroll: crate::altscroll::AltScroll::default(),
         }
     }
 
@@ -96,6 +99,7 @@ impl TermModel {
         for &b in bytes {
             self.parser.advance(&mut self.term, b);
             self.esc_observe(b); // 인라인 이미지(Sixel/iTerm/Kitty) 병렬 관찰.
+            self.alt_scroll.observe(b); // DEC 1007(휠→커서 키) 요청 관찰.
         }
         let t = self.sink.title();
         if t != self.title {
@@ -108,6 +112,7 @@ impl TermModel {
     /// 터미널 전체 리셋(RIS, ESC c) — 화면·속성·모드를 초기화한다(`reset` 명령 대용).
     pub fn reset(&mut self) {
         self.process(b"\x1bc");
+        self.alt_scroll.clear(); // RIS는 사설 모드도 초기화한다(코어가 모르는 1007은 우리가).
     }
 
     /// 스크롤백(히스토리)만 비운다 — 현재 화면은 유지(xterm ED 3, "Clear Buffer").
@@ -169,15 +174,17 @@ impl TermModel {
         }
     }
 
+    /// 앱이 alternate scroll(DEC 1007)을 요청했는가 — 휠을 커서 키로 바꿔 보내라는 뜻.
+    ///
+    /// 대체 화면을 쓰지 않고 주 화면을 통째로 다시 그리는 TUI는 스크롤백에 아무것도 남기지
+    /// 않아 휠이 무용지물이 된다. 그 앱들이 이 모드로 "휠을 키로 달라"고 요청한다.
+    pub fn alt_scroll(&self) -> bool { self.alt_scroll.enabled() }
+
     /// 대체 화면 모드(vim/less 등)면 스크롤백을 비활성화해야 한다.
-    pub fn alt_screen(&self) -> bool {
-        self.term.mode().contains(TermMode::ALT_SCREEN)
-    }
+    pub fn alt_screen(&self) -> bool { self.term.mode().contains(TermMode::ALT_SCREEN) }
 
     /// 터미널이 설정한 제목(OSC 0/2). 없으면 빈 문자열.
-    pub fn title(&self) -> &str {
-        &self.title
-    }
+    pub fn title(&self) -> &str { &self.title }
 
     /// 애플리케이션 커서 키 모드(DECCKM). 방향키 시퀀스에 영향.
     pub fn app_cursor(&self) -> bool {
@@ -190,9 +197,7 @@ impl TermModel {
     }
 
     /// 벨 누적 횟수(시각 벨 트리거용).
-    pub fn bell_count(&self) -> usize {
-        self.sink.bells()
-    }
+    pub fn bell_count(&self) -> usize { self.sink.bells() }
 
     /// 터미널 질의 응답을 꺼낸다(호출측이 PTY로 써야 함). 없으면 빈 Vec.
     ///

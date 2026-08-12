@@ -101,6 +101,23 @@ pub(crate) fn tui_scroll_bytes(wheel: f32) -> Vec<u8> {
     if wheel.is_sign_positive() { b"\x1b[5~".to_vec() } else { b"\x1b[6~".to_vec() }
 }
 
+/// alternate scroll(DEC 1007): 휠을 커서 위/아래 키로 바꾼다. 한 눈금에 3줄(xterm 관례).
+///
+/// 앱 커서 키 모드(DECCKM)면 `ESC O A/B`, 아니면 `ESC [ A/B`다 — 모드를 무시하면 TUI가
+/// 키를 못 알아듣는다.
+pub(crate) fn alt_scroll_bytes(wheel: f32, app_cursor: bool) -> Vec<u8> {
+    if wheel == 0.0 {
+        return Vec::new();
+    }
+    let key: &[u8] = match (wheel.is_sign_positive(), app_cursor) {
+        (true, true) => b"\x1bOA",
+        (true, false) => b"\x1b[A",
+        (false, true) => b"\x1bOB",
+        (false, false) => b"\x1b[B",
+    };
+    key.repeat(3)
+}
+
 /// 스크롤백을 보고 있을 때 우상단에 "▲ N" 배지를 그린다(클릭하면 맨 아래로 → true).
 pub(crate) fn draw_scroll_badge(ui: &egui::Ui, rect: egui::Rect, offset: usize) -> bool {
     if offset == 0 {
@@ -234,12 +251,21 @@ pub(crate) fn wrap_paste(text: &str, bracketed: bool) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{tui_scroll_bytes, wrap_paste};
+    use super::{alt_scroll_bytes, tui_scroll_bytes, wrap_paste};
 
     #[test]
     fn tui_scroll_uses_page_keys() {
         assert_eq!(tui_scroll_bytes(1.0), b"\x1b[5~");
         assert_eq!(tui_scroll_bytes(-1.0), b"\x1b[6~");
+    }
+
+    /// DEC 1007은 커서 키로 보낸다 — 앱 커서 모드(DECCKM)면 `ESC O`, 아니면 `ESC [`.
+    #[test]
+    fn alt_scroll_uses_cursor_keys() {
+        assert_eq!(alt_scroll_bytes(1.0, false), b"\x1b[A\x1b[A\x1b[A".to_vec());
+        assert_eq!(alt_scroll_bytes(-1.0, false), b"\x1b[B\x1b[B\x1b[B".to_vec());
+        assert_eq!(alt_scroll_bytes(1.0, true), b"\x1bOA\x1bOA\x1bOA".to_vec());
+        assert!(alt_scroll_bytes(0.0, false).is_empty());
     }
 
     #[test]

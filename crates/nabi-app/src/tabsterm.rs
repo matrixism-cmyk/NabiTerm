@@ -35,7 +35,7 @@ impl TermTabViewer<'_> {
         };
 
         let events = ui.input(|i| i.events.clone());
-        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen) = self
+        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = self
             .orch
             .panes
             .read()
@@ -51,10 +51,11 @@ impl TermTabViewer<'_> {
                         md.mouse_sgr(),
                         md.mouse_wants_motion(),
                         md.alt_screen(),
+                        md.alt_scroll(),
                     )
                 })
             })
-            .unwrap_or((false, false, false, false, false, false, false));
+            .unwrap_or((false, false, false, false, false, false, false, false));
         // 조합 초기 상태 = 직전 프레임 조합 유지 여부. 이번 프레임의 Preedit/Commit은
         // events_to_bytes가 '순서대로' 반영한다(Commit 직후 같은 프레임의 Enter는 PTY로 감).
         let composing = is_focused && !self.ime_preedit.is_empty();
@@ -110,11 +111,16 @@ impl TermTabViewer<'_> {
             });
         }
 
+        // 휠을 앱에 넘겨야 하는 상황: 대체 화면(스크롤백 없음)이거나 앱이 DEC 1007로 요청.
+        let to_app = alt_screen || alt_scroll;
+        // Shift+휠은 앱을 건너뛰고 스크롤백을 본다. 대체 화면은 스크롤백이 아예 없으니
+        // 빠져나갈 곳도 없다 — 주 화면에서 1007을 켠 경우에만 뜻이 있다.
+        let bypass = shift_wheel && alt_scroll && !alt_screen;
         if mouse_on {
             // 기본 휠은 스크롤백 우선. 대체 화면에는 스크롤백이 없으므로 TUI로 폴백한다.
             let rep = mouse_reports(
                 ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
-                shift_wheel || (over && alt_screen && wheel != 0.0 && !ctrl_wheel),
+                shift_wheel || (over && to_app && wheel != 0.0 && !ctrl_wheel),
             );
             if !rep.is_empty() {
                 self.orch.send(Command::WriteInput {
@@ -123,10 +129,16 @@ impl TermTabViewer<'_> {
                 });
             }
         }
-        if over && wheel != 0.0 && !ctrl_wheel && alt_screen && !mouse_on {
-            let data = crate::paneio::tui_scroll_bytes(wheel);
+        if over && wheel != 0.0 && !ctrl_wheel && to_app && !mouse_on && !bypass {
+            // 대체 화면은 PageUp/Down이 관례, DEC 1007은 규격대로 커서 키.
+            let data = match alt_screen {
+                true => crate::paneio::tui_scroll_bytes(wheel),
+                false => crate::paneio::alt_scroll_bytes(wheel, app_cursor),
+            };
             self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
-        } else if over && wheel != 0.0 && !ctrl_wheel && !shift_wheel && !alt_screen {
+        } else if over && wheel != 0.0 && !ctrl_wheel && !alt_screen
+            && (bypass || (!to_app && !shift_wheel))
+        {
             // 마우스 추적/TUI 모드에서도 기본 휠은 스크롤백을 강제한다.
             let lines = (wheel / ch * 3.0).round() as i32;
             scroll += if lines == 0 { wheel.signum() as i32 } else { lines };

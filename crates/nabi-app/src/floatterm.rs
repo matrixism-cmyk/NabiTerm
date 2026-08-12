@@ -71,7 +71,7 @@ pub(crate) fn paint_floating_term(
         *paste_req = Some((pane, t));
     }
     let events = ui.input(|i| i.events.clone());
-    let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen) = panes
+    let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = panes
         .read()
         .ok()
         .and_then(|m| m.get(&pane).cloned())
@@ -85,10 +85,11 @@ pub(crate) fn paint_floating_term(
                     md.mouse_sgr(),
                     md.mouse_wants_motion(),
                     md.alt_screen(),
+                    md.alt_scroll(),
                 )
             })
         })
-        .unwrap_or((false, false, false, false, false, false, false));
+        .unwrap_or((false, false, false, false, false, false, false, false));
     let composing = events
         .iter()
         .any(|e| matches!(e, egui::Event::Ime(egui::ImeEvent::Preedit(s)) if !s.is_empty()));
@@ -112,10 +113,13 @@ pub(crate) fn paint_floating_term(
     });
     let ctrl_wheel = over && ctrl && wheel != 0.0;
     let shift_wheel = over && shift && !ctrl && wheel != 0.0;
+    // 탭 쪽(tabsterm.rs)과 같은 규칙: 대체 화면이거나 앱이 DEC 1007을 켰으면 휠은 앱으로.
+    let to_app = alt_screen || alt_scroll;
+    let bypass = shift_wheel && alt_scroll && !alt_screen; // Shift+휠=스크롤백으로 빠져나가기.
     if mouse_on {
         let rep = crate::paneio::mouse_reports(
             ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
-            shift_wheel || (over && alt_screen && wheel != 0.0 && !ctrl_wheel),
+            shift_wheel || (over && to_app && wheel != 0.0 && !ctrl_wheel),
         );
         if !rep.is_empty() {
             let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(rep) });
@@ -123,10 +127,13 @@ pub(crate) fn paint_floating_term(
     }
     if ctrl_wheel {
         *zoom = Some((pane, wheel.signum())); // Ctrl+휠=이 창만 확대/축소(뒤 창으로 안 샘).
-    } else if over && wheel != 0.0 && alt_screen && !mouse_on {
-        let data = crate::paneio::tui_scroll_bytes(wheel);
+    } else if over && wheel != 0.0 && to_app && !mouse_on && !bypass {
+        let data = match alt_screen {
+            true => crate::paneio::tui_scroll_bytes(wheel),
+            false => crate::paneio::alt_scroll_bytes(wheel, app_cursor),
+        };
         let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
-    } else if over && wheel != 0.0 && !shift_wheel && !alt_screen {
+    } else if over && wheel != 0.0 && !alt_screen && (bypass || (!to_app && !shift_wheel)) {
         scroll += (wheel / ch).round() as i32;
     }
 

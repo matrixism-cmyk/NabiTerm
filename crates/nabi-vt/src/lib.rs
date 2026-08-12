@@ -5,6 +5,7 @@
 //!
 //! 코어는 alacritty_terminal(T1 교체 완료). 렌더러는 `TermModel` 경계만 본다.
 
+mod altscroll;
 mod cache;
 pub mod cell;
 pub mod cursor;
