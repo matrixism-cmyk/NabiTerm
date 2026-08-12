@@ -111,13 +111,13 @@ impl TermTabViewer<'_> {
             });
         }
 
-        // 휠을 앱에 넘겨야 하는 상황: 대체 화면(스크롤백 없음)이거나 앱이 DEC 1007로 요청.
-        let to_app = alt_screen || alt_scroll;
-        // Shift+휠은 앱을 건너뛰고 스크롤백을 본다. 대체 화면은 스크롤백이 아예 없으니
-        // 빠져나갈 곳도 없다 — 주 화면에서 1007을 켠 경우에만 뜻이 있다.
-        let bypass = shift_wheel && alt_scroll && !alt_screen;
+        // 휠의 목적지는 한 규칙(panewheel::wheel_target)으로 정한다 — 탭과 분리 창이 같아야 한다.
+        let target = crate::panewheel::wheel_target(crate::panewheel::WheelCtx {
+            alt_screen, alt_scroll, mouse_on,
+            force_keys: self.wheel_keys.contains(&pane), shift: shift_wheel,
+        });
         if mouse_on {
-            // 기본 휠은 스크롤백 우선. 대체 화면에는 스크롤백이 없으므로 TUI로 폴백한다.
+            let to_app = target == crate::panewheel::WheelTo::Nothing;
             let rep = mouse_reports(
                 ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
                 shift_wheel || (over && to_app && wheel != 0.0 && !ctrl_wheel),
@@ -129,19 +129,16 @@ impl TermTabViewer<'_> {
                 });
             }
         }
-        if over && wheel != 0.0 && !ctrl_wheel && to_app && !mouse_on && !bypass {
-            // 대체 화면은 PageUp/Down이 관례, DEC 1007은 규격대로 커서 키.
-            let data = match alt_screen {
-                true => crate::paneio::tui_scroll_bytes(wheel),
-                false => crate::paneio::alt_scroll_bytes(wheel, app_cursor),
-            };
-            self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
-        } else if over && wheel != 0.0 && !ctrl_wheel && !alt_screen
-            && (bypass || (!to_app && !shift_wheel))
-        {
-            // 마우스 추적/TUI 모드에서도 기본 휠은 스크롤백을 강제한다.
-            let lines = (wheel / ch * 3.0).round() as i32;
-            scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
+        if over && wheel != 0.0 && !ctrl_wheel {
+            match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
+                Some(data) => self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) }),
+                // 스크롤백은 한 눈금에 3줄(주류 에뮬레이터 관례).
+                None if target == crate::panewheel::WheelTo::Scrollback => {
+                    let lines = (wheel / ch * 3.0).round() as i32;
+                    scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
+                }
+                None => {}
+            }
         }
 
         if !mouse_on {

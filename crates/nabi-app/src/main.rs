@@ -112,7 +112,7 @@ mod menuact; mod menuactio;
 mod palette; mod palettecmds; mod palettedispatch; mod pathline;
 mod quake;
 mod qcparse;
-mod paneio;
+mod paneio; mod panewheel;
 mod paneurl;
 mod osc52policy;
 mod paste;

@@ -12,4 +12,11 @@ pub const CATALOG_TERM: &[(&str, &str, &str, &str)] = &[
         "A remote host can replace your clipboard via OSC 52. Useful for yanking over SSH, but anything that can write to the terminal can do it.",
         "원격 호스트는 OSC 52로 내 클립보드를 바꿀 수 있습니다. SSH 너머 복사에 유용하지만, 터미널에 글자를 쓸 수 있는 쪽이면 누구나 할 수 있습니다.",
         "リモートホストはOSC 52でクリップボードを書き換えられます。SSH越しのコピーに便利ですが、端末に出力できる相手なら誰でも実行できます。"),
+    ("tab.wheelkeys", "Send wheel as page keys", "휠을 페이지 키로 보내기", "ホイールをページキーとして送る"),
+    (
+        "tab.wheelkeys.hint",
+        "For full-screen TUIs that keep their own history and leave the terminal scrollback empty (e.g. codex CLI): the wheel sends PageUp/PageDown to the app instead. Shift+wheel still scrolls the terminal.",
+        "자체 화면만 다시 그려 터미널 스크롤백을 비워 두는 TUI(예: codex CLI)용입니다. 휠이 앱에 PageUp/PageDown을 보냅니다. Shift+휠은 그대로 터미널 스크롤백을 봅니다.",
+        "自前の画面を描き直して端末のスクロールバックを残さない TUI(例: codex CLI)向けです。ホイールがアプリに PageUp/PageDown を送ります。Shift+ホイールは端末側をスクロールします。",
+    ),
 ];

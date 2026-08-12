@@ -29,6 +29,8 @@ pub(crate) fn paint_floating_term(
     // warn_paste: 여러 줄 붙여넣기 확인 설정(꺼져 있으면 가로채지 않는다).
     paste_req: &mut Option<(PaneId, String)>,
     warn_paste: bool,
+    // force_keys: 이 pane에 "휠을 페이지 키로"가 켜져 있는가(탭 컨텍스트 메뉴 설정).
+    force_keys: bool,
 ) {
     let font = egui::FontId::monospace(font_size);
     let (cw, ch) = nabi_render::cell_size(ui, &font);
@@ -113,10 +115,12 @@ pub(crate) fn paint_floating_term(
     });
     let ctrl_wheel = over && ctrl && wheel != 0.0;
     let shift_wheel = over && shift && !ctrl && wheel != 0.0;
-    // 탭 쪽(tabsterm.rs)과 같은 규칙: 대체 화면이거나 앱이 DEC 1007을 켰으면 휠은 앱으로.
-    let to_app = alt_screen || alt_scroll;
-    let bypass = shift_wheel && alt_scroll && !alt_screen; // Shift+휠=스크롤백으로 빠져나가기.
+    // 휠의 목적지는 탭 쪽과 같은 규칙(panewheel::wheel_target)으로 정한다.
+    let target = crate::panewheel::wheel_target(crate::panewheel::WheelCtx {
+        alt_screen, alt_scroll, mouse_on, force_keys, shift: shift_wheel,
+    });
     if mouse_on {
+        let to_app = target == crate::panewheel::WheelTo::Nothing;
         let rep = crate::paneio::mouse_reports(
             ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
             shift_wheel || (over && to_app && wheel != 0.0 && !ctrl_wheel),
@@ -127,14 +131,12 @@ pub(crate) fn paint_floating_term(
     }
     if ctrl_wheel {
         *zoom = Some((pane, wheel.signum())); // Ctrl+휠=이 창만 확대/축소(뒤 창으로 안 샘).
-    } else if over && wheel != 0.0 && to_app && !mouse_on && !bypass {
-        let data = match alt_screen {
-            true => crate::paneio::tui_scroll_bytes(wheel),
-            false => crate::paneio::alt_scroll_bytes(wheel, app_cursor),
-        };
-        let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
-    } else if over && wheel != 0.0 && !alt_screen && (bypass || (!to_app && !shift_wheel)) {
-        scroll += (wheel / ch).round() as i32;
+    } else if over && wheel != 0.0 {
+        match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
+            Some(data) => { let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) }); }
+            None if target == crate::panewheel::WheelTo::Scrollback => scroll += (wheel / ch).round() as i32,
+            None => {}
+        }
     }
 
     // 우클릭 붙여넣기(앱 마우스 모드가 아닐 때).

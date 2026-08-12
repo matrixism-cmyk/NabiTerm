@@ -28,6 +28,8 @@ pub struct TermTabViewer<'a> {
     pub lang: nabi_i18n::Lang,
     /// 브로드캐스트 대상 그룹(비어 있으면 이 창의 터미널 전체). context_menu에서 토글.
     pub broadcast_group: &'a mut std::collections::HashSet<PaneId>,
+    /// 휠을 키로 보낼 pane 집합(탭 컨텍스트 메뉴에서 켠다).
+    pub wheel_keys: &'a mut std::collections::HashSet<PaneId>,
     /// 이 창(dock)에 속한 터미널 pane 전체 — 그룹 미지정 브로드캐스트의 대상 범위.
     pub window_panes: &'a std::collections::HashSet<PaneId>,
     /// 마우스 텍스트 선택 상태(드래그→릴리스 자동 복사).
@@ -201,7 +203,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             && self.remote_host(*tab).is_none();
         crate::tabmenu::tab_context_menu(
             ui, tab, self.orch, self.lang,
-            self.tab_names, self.broadcast_group, self.tab_colors,
+            self.tab_names, self.broadcast_group, self.wheel_keys, self.tab_colors,
             is_ssh, self.tear_off, self.sftp_open,
             if is_term { Some(&mut *self.dock_float) } else { None },
         );
