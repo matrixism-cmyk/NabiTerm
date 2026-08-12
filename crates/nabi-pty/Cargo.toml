@@ -11,3 +11,7 @@ nabi-proto = { workspace = true }
 portable-pty = { workspace = true }
 crossbeam-channel = { workspace = true }
 bytes = { workspace = true }
+
+[dev-dependencies]
+# 진단 예제(modeprobe)가 실제 화면 모델로 스크롤백 생성 여부를 확인한다.
+nabi-vt = { path = "../nabi-vt" }

@@ -59,10 +59,16 @@ fn main() {
         eprintln!("사용법: modeprobe <명령> [인자...]");
         std::process::exit(2);
     }
-    let size = nabi_types::GridSize::new(120, 30);
+    // 크기는 조절할 수 있어야 한다 — 화면보다 긴 출력이라야 스크롤 동작을 볼 수 있다.
+    let rows: u16 = std::env::var("NABI_PROBE_ROWS").ok().and_then(|v| v.parse().ok()).unwrap_or(30);
+    let size = nabi_types::GridSize::new(120, rows);
     let mut cmd = portable_pty::CommandBuilder::new(&args[0]);
     for a in &args[1..] {
         cmd.arg(a);
+    }
+    // 현재 디렉터리를 물려준다 — `codex resume`처럼 프로젝트별로 상태가 다른 앱이 있다.
+    if let Ok(cwd) = std::env::current_dir() {
+        cmd.cwd(cwd);
     }
     let pty = portable_pty::native_pty_system();
     let pair = pty
@@ -143,8 +149,12 @@ fn main() {
         }
         i += 1;
     }
+    // 같은 바이트를 실제 화면 모델에 먹여 본다 — "휠로 볼 게 남는가"의 답은 스크롤백 크기다.
+    let mut model = nabi_vt::TermModel::new(size, 5000);
+    model.process(&buf);
     println!("=== {} 이 켠 터미널 모드(최종 상태) ===", args.join(" "));
-    println!("받은 바이트: {}", buf.len());
+    println!("받은 바이트: {}  화면: {}x{}", buf.len(), size.cols(), size.rows());
+    println!("스크롤백에 쌓인 줄: {}", model.history_size());
     if seen.is_empty() {
         println!("  (DEC private mode 설정 없음)");
     }
