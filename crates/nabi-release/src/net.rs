@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 
 /// 최신 릴리스를 조회한다. 새 버전이 있으면 Some(ReleaseInfo).
 pub(super) fn check_github_release() -> Result<Option<ReleaseInfo>, String> {
-    let body = https_get_text("api.github.com", REPO_PATH)?;
+    let body = https_get_text("api.github.com", REPO_PATH, GITHUB_ACCEPT)?;
     let release: serde_json::Value =
         serde_json::from_str(&body).map_err(|e| format!("JSON 파싱 실패: {e}"))?;
 
@@ -88,9 +88,12 @@ pub(super) fn download_installer(
     Ok(dest)
 }
 
-/// 범용 HTTPS GET → 텍스트(폰트 설치기의 GitHub 릴리스 조회용).
-pub(super) fn get_text(host: &str, path: &str) -> Result<String, String> {
-    https_get_text(host, path)
+/// GitHub API가 기대하는 Accept. 호스트마다 다르다 — npm 레지스트리는 이 값을 주면 406으로 막는다.
+pub(super) const GITHUB_ACCEPT: &str = "application/vnd.github+json";
+
+/// 범용 HTTPS GET → 텍스트. `accept`는 호스트에 맞춰 호출부가 정한다.
+pub(super) fn get_text(host: &str, path: &str, accept: &str) -> Result<String, String> {
+    https_get_text(host, path, accept)
 }
 
 /// 범용 HTTPS 파일 다운로드(진행률 미보고 — 폰트 등 소형 파일용, 리다이렉트 추적).
@@ -120,11 +123,11 @@ fn tls_connect(host: &str, port: u16) -> Result<native_tls::TlsStream<TcpStream>
 }
 
 /// HTTPS GET → 텍스트(GitHub API용, 리다이렉트 미지원, chunked 디코드).
-fn https_get_text(host: &str, path: &str) -> Result<String, String> {
+fn https_get_text(host: &str, path: &str, accept: &str) -> Result<String, String> {
     let mut stream = tls_connect(host, 443)?;
     let req = format!(
         "GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: nabiTerm/{CURRENT_VERSION}\r\n\
-         Accept: application/vnd.github+json\r\nConnection: close\r\n\r\n"
+         Accept: {accept}\r\nConnection: close\r\n\r\n"
     );
     stream.write_all(req.as_bytes()).map_err(|e| e.to_string())?;
     let mut response = Vec::new();

@@ -145,6 +145,8 @@ pub struct NabiApp {
     pub quake: Option<crate::quake::QuakeState>,
     /// 최근 데스크톱 알림(OSC 9) — 토스트로 잠시 표시.
     pub notify: Option<(String, std::time::Instant)>,
+    /// AI CLI 자동 업데이트 작업(시작 시 1회). 끝나면 무엇을 올렸는지 토스트로 알린다.
+    pub ai_cli_auto: Option<crate::aicliupd::AutoJob>,
     /// 포커스 pane 리사이즈 직후 잠시 표시할 크기 배지(열×행, 시각).
     pub resize_badge: Option<(GridSize, std::time::Instant)>,
     /// 탭 바 "+" 클릭 신호 + 눌린 (surface,node); 비활성 pane 우클릭 포커스 요청; 탭 메뉴 열림 여부.

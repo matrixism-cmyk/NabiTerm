@@ -268,22 +268,19 @@ pub struct TerminalCfg {
     /// SFTP 원격 경로 북마크(FileZilla식 즐겨찾기).
     #[serde(default)]
     pub sftp_bookmarks: Vec<String>,
+    /// AI CLI(Claude Code·Codex)를 시작 시 자동으로 최신으로 올린다. 기본 false —
+    /// 남의 프로그램을 말없이 갈아 끼우는 일이라 사용자가 켠 경우에만 한다.
+    #[serde(default)]
+    pub ai_cli_auto_update: bool,
+    /// AI CLI 최신 버전을 마지막으로 확인한 unix초(하루 1회로 제한).
+    #[serde(default)]
+    pub ai_cli_checked_at: i64,
 }
 
-fn default_alert_pct() -> u32 {
-    90
-}
-
-fn default_control_mode() -> String {
-    "ask".into()
-}
-
-fn default_stats_secs() -> u64 {
-    3
-}
-fn default_keepalive() -> u64 {
-    30
-}
+fn default_alert_pct() -> u32 { 90 }
+fn default_control_mode() -> String { "ask".into() }
+fn default_stats_secs() -> u64 { 3 }
+fn default_keepalive() -> u64 { 30 }
 
 impl Default for TerminalCfg {
     fn default() -> Self {
@@ -305,6 +302,8 @@ impl Default for TerminalCfg {
             dir_visits: std::collections::BTreeMap::new(),
             cmd_history: Vec::new(),
             sftp_bookmarks: Vec::new(),
+            ai_cli_auto_update: false,
+            ai_cli_checked_at: 0,
             confirm_close: true,
             last_host: String::new(),
             last_user: String::new(),

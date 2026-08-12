@@ -156,6 +156,7 @@ impl NabiApp {
                 let msg = nabi_i18n::tr(lang, "sessions.corrupt");
                 (format!("\u{26a0} {msg} \u{2192} {}", b.display()), std::time::Instant::now())
             }),
+            ai_cli_auto: None,
             resize_badge: None,
             add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None, prompt_raised: false,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_target: None,

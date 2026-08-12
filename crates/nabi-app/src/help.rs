@@ -28,6 +28,9 @@ impl NabiApp {
             }
         }
         let (mut open, mut copy, mut save) = (true, false, false);
+        // AI CLI 자동 업데이트 설정은 이 창에서 바꿀 수 있다 — 바뀌면 즉시 저장한다.
+        let mut auto_cli = self.config.terminal.ai_cli_auto_update;
+        let mut cfg_changed = false;
         egui::Window::new(tr(lang, "help.title"))
             .open(&mut open)
             .collapsible(false)
@@ -58,13 +61,20 @@ impl NabiApp {
                                 ),
                                 1 => crate::helppages::shortcut_page(ui, lang),
                                 2 => crate::helppages::features_page(ui, lang),
-                                3 => crate::helppages::agent_page(ui, lang, &mut copy, &mut save),
+                                3 => crate::helppages::agent_page(
+                                    ui, lang, &mut copy, &mut save, &mut auto_cli,
+                                    &mut cfg_changed,
+                                ),
                                 _ => crate::helppages::licenses_page(ui, lang),
                             });
                     });
                 });
             });
         ctx.data_mut(|d| d.insert_temp(cat_id, cat));
+        if cfg_changed {
+            self.config.terminal.ai_cli_auto_update = auto_cli;
+            let _ = nabi_config::save(&self.config_path, &self.config);
+        }
         if copy {
             ctx.copy_text(crate::agentguide::agent_guide_md(&Self::exe_path()));
             self.notify = Some((tr(lang, "help.agent.copied").to_string(), std::time::Instant::now()));

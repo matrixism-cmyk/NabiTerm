@@ -5,7 +5,18 @@
 //! 화면에 뭐가 그려지는지가 아니라 **무엇을 켰는지**가 휠 동작을 가른다.
 
 use std::io::Read;
-use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
+
+/// 자식이 `cmd /c ...`이면 실제 TUI는 손자다 — 트리째 정리해야 PTY가 풀린다.
+fn kill_tree(pid: Option<u32>) {
+    let Some(pid) = pid else { return };
+    let _ = std::process::Command::new("taskkill")
+        .args(["/T", "/F", "/PID", &pid.to_string()])
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+}
 
 fn label(n: &str) -> &'static str {
     match n {
@@ -20,6 +31,26 @@ fn label(n: &str) -> &'static str {
         "25" => "커서 표시",
         _ => "",
     }
+}
+
+/// 환경변수로 받은 문자열의 역슬래시 표기를 실제 제어문자로 바꾼다(`\r` `\n` `\e`).
+fn unescape(s: &str) -> String {
+    let mut out = String::new();
+    let mut it = s.chars();
+    while let Some(c) = it.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match it.next() {
+            Some('r') => out.push('\r'),
+            Some('n') => out.push('\n'),
+            Some('e') => out.push('\u{1b}'),
+            Some(o) => out.push(o),
+            None => out.push('\\'),
+        }
+    }
+    out
 }
 
 fn main() {
@@ -46,20 +77,46 @@ fn main() {
     let mut reader = pair.master.try_clone_reader().expect("reader");
     drop(pair.slave);
 
-    let mut buf = Vec::new();
-    let mut chunk = [0u8; 8192];
-    let deadline = Instant::now() + Duration::from_secs(4);
-    while Instant::now() < deadline {
-        match reader.read(&mut chunk) {
-            Ok(0) => break,
-            Ok(n) => buf.extend_from_slice(&chunk[..n]),
-            Err(_) => break,
-        }
-        if buf.len() > 512 * 1024 {
-            break;
+    // 시작 화면에서 입력을 기다리는 앱(신뢰 확인 등)은 답을 줘야 본 TUI로 넘어간다.
+    // `NABI_PROBE_KEYS`에 보낼 문자열을 넣는다(`\r`=엔터, `\n`=줄바꿈).
+    if let Ok(keys) = std::env::var("NABI_PROBE_KEYS") {
+        if let Ok(mut w) = pair.master.take_writer() {
+            std::thread::spawn(move || {
+                std::thread::sleep(Duration::from_secs(3));
+                let _ = std::io::Write::write_all(&mut w, unescape(&keys).as_bytes());
+                let _ = std::io::Write::flush(&mut w);
+            });
         }
     }
+
+    // 읽기는 별도 스레드에서 한다 — `read`는 데이터가 없으면 그대로 막혀서, 마감 시각만으로는
+    // 루프를 빠져나올 수 없다(TUI는 첫 화면을 그린 뒤 입력만 기다리며 조용해진다).
+    let buf = Arc::new(Mutex::new(Vec::<u8>::new()));
+    let sink = buf.clone();
+    std::thread::spawn(move || {
+        let mut chunk = [0u8; 8192];
+        while let Ok(n) = reader.read(&mut chunk) {
+            if n == 0 {
+                break;
+            }
+            let mut b = sink.lock().unwrap();
+            b.extend_from_slice(&chunk[..n]);
+            if b.len() > 512 * 1024 {
+                break;
+            }
+        }
+    });
+    // 기다리는 시간 — TUI는 뜨는 데 몇 초 걸리고, 모드는 첫 화면을 다 그린 뒤에 켜기도 한다.
+    let secs: u64 =
+        std::env::var("NABI_PROBE_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(4);
+    std::thread::sleep(Duration::from_secs(secs));
+    kill_tree(child.process_id());
     let _ = child.kill();
+    let buf = buf.lock().unwrap().clone();
+    // 원본이 필요할 때가 있다(모드 말고 무엇을 보냈는지 눈으로 봐야 하는 경우).
+    if let Ok(p) = std::env::var("NABI_PROBE_RAW") {
+        let _ = std::fs::write(p, &buf);
+    }
     let text = String::from_utf8_lossy(&buf);
 
     // CSI ? <숫자;숫자...> h|l 만 추린다.

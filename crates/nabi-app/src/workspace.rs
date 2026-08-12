@@ -141,23 +141,6 @@ impl NabiApp {
         (cwd, cmd)
     }
 
-    /// SSH에서는 임의 명령을 저장하지 않고 AI CLI 허용 목록만 고정 재개 명령으로 바꾼다.
-    pub(crate) fn saved_ssh_ai_command(&self, p: nabi_types::PaneId) -> Option<String> {
-        if !self.config.terminal.restore_ssh_ai_command {
-            return None;
-        }
-        if let Some(cmd) = self.run_cmd.get(&p).and_then(|s| ai_resume_command(s)) {
-            return Some(cmd);
-        }
-        let title = self
-            .orch
-            .panes
-            .read()
-            .ok()
-            .and_then(|m| m.get(&p).map(|v| v.title.clone()))?;
-        ai_resume_from_title(&title)
-    }
-
     /// 현재 열린 탭들의 출처(+분할 레이아웃)를 워크스페이스 파일로 저장한다.
     /// 워크스페이스 파일을 읽어 각 세션을 다시 열고, 가능하면 분할 레이아웃을 복원한다.
     /// 저장된 워크스페이스를 복원한다. 복원할 세션이 하나라도 있으면 true.
@@ -262,58 +245,9 @@ impl NabiApp {
     }
 }
 
-fn ai_resume_command(command: &str) -> Option<String> {
-    let first = command
-        .split_whitespace()
-        .next()?
-        .rsplit(['/', '\\'])
-        .next()?;
-    let base = first
-        .trim_end_matches(".exe")
-        .trim_end_matches(".cmd")
-        .trim_end_matches(".bat")
-        .to_ascii_lowercase();
-    match base.as_str() {
-        "claude" => Some("claude --continue".into()),
-        "codex" => Some("codex resume --last".into()),
-        "agy" => Some("agy".into()),
-        _ => None,
-    }
-}
-
-fn ai_resume_from_title(title: &str) -> Option<String> {
-    let t = title.to_ascii_lowercase();
-    if t.contains("claude") {
-        Some("claude --continue".into())
-    } else if t.contains("codex") {
-        Some("codex resume --last".into())
-    } else if t.contains("antigravity") || t.split_whitespace().any(|s| s == "agy") {
-        Some("agy".into())
-    } else {
-        None
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::{ai_resume_command, ai_resume_from_title, shell_from_str, shell_to_str};
-
-    #[test]
-    fn remote_ai_resume_is_strictly_allowlisted() {
-        assert_eq!(
-            ai_resume_command("codex --model x").as_deref(),
-            Some("codex resume --last")
-        );
-        assert_eq!(
-            ai_resume_command("/usr/bin/claude").as_deref(),
-            Some("claude --continue")
-        );
-        assert_eq!(ai_resume_command("rm -rf x"), None);
-        assert_eq!(
-            ai_resume_from_title("Codex CLI").as_deref(),
-            Some("codex resume --last")
-        );
-    }
+    use super::{shell_from_str, shell_to_str};
 
     #[test]
     fn strip_uri_slash_windows() {

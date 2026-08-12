@@ -105,7 +105,7 @@ fn hidden(program: impl AsRef<std::ffi::OsStr>) -> Command {
     c
 }
 
-fn run_ps(script: &str) -> std::io::Result<Output> {
+pub(crate) fn run_ps(script: &str) -> std::io::Result<Output> {
     hidden("powershell.exe")
         .args([
             "-NoLogo",
@@ -119,14 +119,14 @@ fn run_ps(script: &str) -> std::io::Result<Output> {
         .output()
 }
 
-fn set(job: &ActionJob, fraction: f32, message: impl Into<String>) {
+pub(crate) fn set_progress(job: &ActionJob, fraction: f32, message: impl Into<String>) {
     if let Ok(mut p) = job.lock() {
         p.fraction = fraction;
         p.message = message.into();
     }
 }
 
-fn finish(job: &ActionJob, out: std::io::Result<Output>) {
+pub(crate) fn finish(job: &ActionJob, out: std::io::Result<Output>) {
     let (success, msg) = match out {
         Ok(o) if o.status.success() => (true, "완료".to_string()),
         Ok(o) => (
@@ -163,16 +163,16 @@ pub(crate) fn start_action(id: &str, remove: bool) -> std::io::Result<ActionJob>
                 install_npm_cli(&worker, "Claude Code", "@anthropic-ai/claude-code@latest")
             }
             ("claude", true) => {
-                set(&worker, 0.4, "Claude Code 제거 중…");
+                set_progress(&worker, 0.4, "Claude Code 제거 중…");
                 run_ps(&npm_script("uninstall -g @anthropic-ai/claude-code"))
             }
             ("codex", false) => install_codex(&worker),
             ("codex", true) => {
-                set(&worker, 0.4, "Codex 제거 중…");
+                set_progress(&worker, 0.4, "Codex 제거 중…");
                 run_ps(&npm_script("uninstall -g @openai/codex"))
             }
             ("antigravity", false) => {
-                set(&worker, 0.3, "Antigravity 다운로드 및 설치 중…");
+                set_progress(&worker, 0.3, "Antigravity 다운로드 및 설치 중…");
                 run_ps("$p=Join-Path $env:TEMP 'antigravity-install.ps1'; Invoke-WebRequest https://antigravity.google/cli/install.ps1 -OutFile $p; & $p")
             }
             ("antigravity", true) => run_ps("Start-Process 'https://antigravity.google/download'"),
@@ -201,16 +201,16 @@ fn install_codex(job: &ActionJob) -> std::io::Result<Output> {
     install_npm_cli(job, "OpenAI Codex", "@openai/codex@latest")
 }
 
-fn install_npm_cli(job: &ActionJob, name: &str, package: &str) -> std::io::Result<Output> {
+pub(crate) fn install_npm_cli(job: &ActionJob, name: &str, package: &str) -> std::io::Result<Output> {
     if resolve("node").is_none() || resolve("npm").is_none() {
-        set(job, 0.15, "Node.js LTS 설치 중…");
+        set_progress(job, 0.15, "Node.js LTS 설치 중…");
         let node = install_portable_node()?;
         if !node.status.success() {
             return Ok(node);
         }
         expose_local_tools();
     }
-    set(job, 0.65, format!("{name} 설치 중…"));
+    set_progress(job, 0.65, format!("{name} 설치 중…"));
     let out = run_ps(&npm_script(&format!("install -g {package}")))?;
     if out.status.success() {
         expose_local_tools();

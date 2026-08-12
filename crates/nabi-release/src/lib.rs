@@ -199,7 +199,15 @@ mod verify_tests {
 
 /// 범용 HTTPS GET → 텍스트(폰트 설치기 등 — GitHub API/raw). host 예: "api.github.com".
 pub fn http_get_text(host: &str, path: &str) -> Result<String, String> {
-    net::get_text(host, path)
+    net::get_text(host, path, net::GITHUB_ACCEPT)
+}
+
+/// Accept 헤더를 지정하는 HTTPS GET.
+///
+/// GitHub용 Accept를 그대로 쓰면 다른 호스트가 거절한다 — npm 레지스트리는 실제로 **406**을
+/// 돌려준다(2026-08-12 확인). 호스트가 늘 때마다 여기서 Accept를 맞춘다.
+pub fn http_get_text_accept(host: &str, path: &str, accept: &str) -> Result<String, String> {
+    net::get_text(host, path, accept)
 }
 
 /// 범용 HTTPS 파일 다운로드(폰트 등 소형 파일 — 진행률 미보고, 리다이렉트 추적).

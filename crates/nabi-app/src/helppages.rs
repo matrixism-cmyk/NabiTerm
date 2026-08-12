@@ -177,11 +177,20 @@ const CMDS: [(&str, &str); 7] = [
 ];
 
 /// AI 제어 페이지: 요약 + 주요 명령(설명 포함) + 사용설명 복사/저장 버튼(out 플래그로 신호).
-pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &mut bool) {
+///
+/// `auto_update`는 AI CLI 자동 업데이트 설정 — 바뀌면 `saved`를 세워 호출부가 저장하게 한다.
+pub(crate) fn agent_page(
+    ui: &mut egui::Ui,
+    lang: Lang,
+    copy: &mut bool,
+    save: &mut bool,
+    auto_update: &mut bool,
+    saved: &mut bool,
+) {
     ui.heading(tr(lang, "help.agent.title"));
     ui.label(tr(lang, "help.agent.intro")); // 폭 제한된 본문이라 자동 줄바꿈.
     ui.add_space(8.0);
-    ai_cli_manager(ui, lang);
+    *saved |= crate::aiclipage::ai_cli_manager(ui, lang, auto_update);
     ui.add_space(8.0);
     ui.separator();
     ui.add_space(8.0);
@@ -218,121 +227,6 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
     });
     ui.add_space(4.0);
     ui.weak(tr(lang, "help.agent.hint"));
-}
-
-/// 설치된 AI CLI와 버전을 보여주고 공식 설치 관리자를 연다.
-fn ai_cli_manager(ui: &mut egui::Ui, lang: Lang) {
-    let words = match lang {
-        Lang::Ko => ("AI CLI 관리", "미설치", "새로고침", "설치", "제거"),
-        Lang::Ja => (
-            "AI CLI 管理",
-            "未インストール",
-            "更新",
-            "インストール",
-            "削除",
-        ),
-        Lang::En => (
-            "AI CLI manager",
-            "Not installed",
-            "Refresh",
-            "Install",
-            "Remove",
-        ),
-    };
-    let key = egui::Id::new("ai_cli_status");
-    let job_key = egui::Id::new("ai_cli_job");
-    let mut statuses = ui
-        .ctx()
-        .data(|d| d.get_temp::<Vec<crate::aicli::CliStatus>>(key));
-    let job = ui
-        .ctx()
-        .data(|d| d.get_temp::<crate::aicli::ActionJob>(job_key));
-    let busy = job
-        .as_ref()
-        .and_then(|j| j.lock().ok())
-        .is_some_and(|p| !p.done);
-    ui.horizontal(|ui| {
-        ui.strong(words.0);
-        if ui.small_button(format!("↻ {}", words.2)).clicked() {
-            statuses = None;
-        }
-    });
-    let statuses = statuses.unwrap_or_else(|| {
-        let v = crate::aicli::detect_all();
-        ui.ctx().data_mut(|d| d.insert_temp(key, v.clone()));
-        v
-    });
-    egui::Grid::new("ai_cli_manager")
-        .num_columns(4)
-        .spacing([12.0, 5.0])
-        .striped(true)
-        .show(ui, |ui| {
-            for cli in statuses {
-                ui.strong(cli.name);
-                if cli.installed() {
-                    ui.colored_label(
-                        crate::theme_ui::OK,
-                        cli.version.as_deref().unwrap_or("Installed"),
-                    )
-                    .on_hover_text(
-                        cli.path
-                            .as_ref()
-                            .map(|p| p.display().to_string())
-                            .unwrap_or_default(),
-                    );
-                    ui.monospace(cli.command);
-                    if ui
-                        .add_enabled(!busy, egui::Button::new(words.4).small())
-                        .clicked()
-                    {
-                        if let Ok(j) = crate::aicli::start_action(cli.id, true) {
-                            ui.ctx().data_mut(|d| d.insert_temp(job_key, j));
-                        }
-                    }
-                } else {
-                    ui.weak(words.1);
-                    ui.monospace(cli.command);
-                    if ui
-                        .add_enabled(!busy, egui::Button::new(words.3).small())
-                        .clicked()
-                    {
-                        if let Ok(j) = crate::aicli::start_action(cli.id, false) {
-                            ui.ctx().data_mut(|d| d.insert_temp(job_key, j));
-                        }
-                    }
-                }
-                ui.end_row();
-            }
-        });
-    if let Some(job) = job {
-        let mut refresh = false;
-        if let Ok(mut p) = job.lock() {
-            ui.add(
-                egui::ProgressBar::new(p.fraction)
-                    .show_percentage()
-                    .text(&p.message),
-            );
-            if p.done {
-                let color = if p.success {
-                    crate::theme_ui::OK
-                } else {
-                    crate::theme_ui::ERR
-                };
-                ui.colored_label(color, &p.message);
-                if !p.refresh_done {
-                    p.refresh_done = true;
-                    refresh = true;
-                }
-            } else {
-                ui.ctx()
-                    .request_repaint_after(std::time::Duration::from_millis(100));
-            }
-        }
-        if refresh {
-            ui.ctx()
-                .data_mut(|d| d.remove::<Vec<crate::aicli::CliStatus>>(key));
-        }
-    }
 }
 
 /// 오픈소스 라이선스 페이지: 주요 구성요소(이름·용도·라이선스) 표 + 안내.
