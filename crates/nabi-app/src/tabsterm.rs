@@ -207,6 +207,7 @@ impl TermTabViewer<'_> {
                     self.highlights, sel_norm, sel_rect, focused, self.blink_on, preedit,
                 );
                 model.set_cell_px(ch); // 이미지 높이→줄 변환 기준(폰트 줌 반영).
+                model.set_query_colors(&self.theme); // OSC 10/11 색 질의에 현재 테마로 답하도록.
                 self.draw_inline_images(ui, rect, ch, &model);
                 crate::scrollbar::draw(ui, rect, pane, &mut model); // 우측 스크롤바(스크롤백 있을 때).
                 if crate::paneio::draw_scroll_badge(ui, rect, model.scrollback_offset()) {

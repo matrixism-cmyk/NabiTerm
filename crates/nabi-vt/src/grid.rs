@@ -174,6 +174,12 @@ impl TermModel {
         }
     }
 
+    /// OSC 10/11 색 질의에 답할 색을 현재 테마로 맞춘다(렌더마다 호출해도 싸다).
+    pub fn set_query_colors(&self, theme: &crate::cell::Theme) {
+        let (f, b) = (theme.fg, theme.bg);
+        self.sink.set_colors((f.r, f.g, f.b), (b.r, b.g, b.b));
+    }
+
     /// 앱이 alternate scroll(DEC 1007)을 요청했는가 — 휠을 커서 키로 바꿔 보내라는 뜻.
     ///
     /// 대체 화면을 쓰지 않고 주 화면을 통째로 다시 그리는 TUI는 스크롤백에 아무것도 남기지

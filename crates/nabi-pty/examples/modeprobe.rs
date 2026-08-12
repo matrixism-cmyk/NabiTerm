@@ -88,9 +88,12 @@ fn main() {
     if let Ok(keys) = std::env::var("NABI_PROBE_KEYS") {
         if let Ok(mut w) = pair.master.take_writer() {
             std::thread::spawn(move || {
-                std::thread::sleep(Duration::from_secs(3));
-                let _ = std::io::Write::write_all(&mut w, unescape(&keys).as_bytes());
-                let _ = std::io::Write::flush(&mut w);
+                // `|`로 나눈 단계를 4초 간격으로 보낸다(신뢰 확인 → 명령 입력처럼 두 번 필요할 때).
+                for part in keys.split('|') {
+                    std::thread::sleep(Duration::from_secs(4));
+                    let _ = std::io::Write::write_all(&mut w, unescape(part).as_bytes());
+                    let _ = std::io::Write::flush(&mut w);
+                }
             });
         }
     }
