@@ -16,6 +16,10 @@ pub(crate) struct WheelCtx {
     pub force_keys: bool,
     /// Shift를 누른 채 굴렸다.
     pub shift: bool,
+    /// TUI 기록 오버레이(codex Ctrl+T)가 열려 있다고 우리가 추적 중인가.
+    pub overlay: bool,
+    /// 휠 방향이 위쪽인가(과거를 보려는 것).
+    pub up: bool,
 }
 
 /// 휠 한 번이 무엇을 움직이는가.
@@ -27,6 +31,8 @@ pub(crate) enum WheelTo {
     PageKeys,
     /// 앱에 커서 키(DEC 1007 규격).
     CursorKeys,
+    /// TUI 기록 오버레이를 연다(codex Ctrl+T) — 열린 뒤의 휠은 PageKeys로 흐른다.
+    OpenTui,
     /// 아무것도 하지 않는다(앱이 이미 마우스 보고로 받았다).
     Nothing,
 }
@@ -54,8 +60,43 @@ pub(crate) fn wheel_target(c: WheelCtx) -> WheelTo {
     }
     match (c.alt_scroll, c.force_keys) {
         (true, _) => WheelTo::CursorKeys,
-        (false, true) => WheelTo::PageKeys,
+        // 기록을 자기 오버레이에만 두는 TUI(codex): 오버레이가 닫혀 있으면 위로 굴릴 때
+        // 먼저 열어 준다(Ctrl+T). 이미 열려 있으면 페이지 키가 그 안에서 스크롤한다.
+        // 아래로 굴리는데 오버레이도 없다면 볼 과거가 없다 — 보내지 않는다.
+        (false, true) if c.overlay => WheelTo::PageKeys,
+        (false, true) if c.up => WheelTo::OpenTui,
+        (false, true) => WheelTo::Nothing,
         (false, false) => WheelTo::Scrollback,
+    }
+}
+
+/// TUI 기록 오버레이 토글 키(codex Ctrl+T).
+pub(crate) const TUI_OVERLAY_KEY: u8 = 0x14;
+
+/// 사용자가 직접 친 키에서 오버레이 상태 변화를 읽는다. `Some(새 상태)` 또는 None(변화 없음).
+///
+/// 우리는 오버레이를 열 수만 있고 화면을 파싱해 상태를 알 수는 없다. 대신 오버레이를
+/// 여닫는 키(Ctrl+T 토글, Esc·q 닫기)가 **모두 우리를 거쳐 가므로** 그걸 보고 따라간다.
+/// 어긋나도 자가 복구된다 — 다음 휠-업이 보낸 Ctrl+T가 상태를 다시 일치시킨다.
+pub(crate) fn observe_typed(bytes: &[u8], overlay: bool) -> Option<bool> {
+    if bytes.contains(&TUI_OVERLAY_KEY) {
+        return Some(!overlay);
+    }
+    // Esc 단독(화살표 등 ESC 시퀀스가 아닌)이나 q는 오버레이를 닫는다.
+    if overlay && (bytes == b"\x1b" || bytes.eq_ignore_ascii_case(b"q")) {
+        return Some(false);
+    }
+    None
+}
+
+/// 친 키를 보고 pane의 오버레이 추적 집합을 갱신한다(탭·분리 창 공용).
+pub(crate) fn track_overlay(
+    set: &mut std::collections::HashSet<nabi_types::PaneId>,
+    pane: nabi_types::PaneId,
+    bytes: &[u8],
+) {
+    if let Some(open) = observe_typed(bytes, set.contains(&pane)) {
+        if open { set.insert(pane); } else { set.remove(&pane); }
     }
 }
 
@@ -81,6 +122,7 @@ pub(crate) fn wheel_bytes(target: WheelTo, wheel: f32, app_cursor: bool) -> Opti
     match target {
         WheelTo::CursorKeys => Some(alt_scroll_bytes(wheel, app_cursor)),
         WheelTo::PageKeys => Some(tui_scroll_bytes(wheel)),
+        WheelTo::OpenTui => Some(vec![TUI_OVERLAY_KEY]),
         WheelTo::Scrollback | WheelTo::Nothing => None,
     }
 }
@@ -119,12 +161,36 @@ mod tests {
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Scrollback);
     }
 
-    /// 사용자가 켠 pane은 PageUp/PageDown으로, Shift면 스크롤백으로.
+    /// 사용자가 켠 pane: 오버레이가 닫혀 있으면 위로 굴릴 때 먼저 연다(Ctrl+T).
+    /// 열린 뒤에는 페이지 키, Shift면 언제나 우리 스크롤백.
     #[test]
-    fn user_forced_keys_use_page_keys() {
-        let c = WheelCtx { force_keys: true, ..Default::default() };
-        assert_eq!(wheel_target(c), WheelTo::PageKeys);
+    fn user_forced_keys_open_overlay_then_page() {
+        let c = WheelCtx { force_keys: true, up: true, ..Default::default() };
+        assert_eq!(wheel_target(c), WheelTo::OpenTui);
+        assert_eq!(wheel_target(WheelCtx { overlay: true, ..c }), WheelTo::PageKeys);
+        assert_eq!(wheel_target(WheelCtx { overlay: true, up: false, ..c }), WheelTo::PageKeys);
+        // 오버레이도 없는데 아래로 — 볼 과거가 없으니 아무것도 보내지 않는다.
+        assert_eq!(wheel_target(WheelCtx { up: false, ..c }), WheelTo::Nothing);
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Scrollback);
+    }
+
+    /// 오버레이 상태는 사용자가 친 키를 보고 따라간다(Ctrl+T 토글, Esc·q 닫기).
+    #[test]
+    fn overlay_state_follows_typed_keys() {
+        assert_eq!(observe_typed(b"\x14", false), Some(true), "Ctrl+T는 토글");
+        assert_eq!(observe_typed(b"\x14", true), Some(false));
+        assert_eq!(observe_typed(b"\x1b", true), Some(false), "Esc 단독은 닫기");
+        assert_eq!(observe_typed(b"q", true), Some(false));
+        // 화살표(ESC 시퀀스)나 일반 타이핑은 상태를 바꾸지 않는다.
+        assert_eq!(observe_typed(b"\x1b[A", true), None);
+        assert_eq!(observe_typed(b"hello", true), None);
+        assert_eq!(observe_typed(b"q", false), None, "닫힌 상태의 q는 그냥 글자");
+    }
+
+    /// OpenTui는 Ctrl+T 한 번만 보낸다(스크롤 키를 겹쳐 보내면 열리자마자 튄다).
+    #[test]
+    fn open_tui_sends_only_the_toggle() {
+        assert_eq!(wheel_bytes(WheelTo::OpenTui, 1.0, false), Some(vec![0x14]));
     }
 
     /// 마우스 보고를 켠 앱에는 우리가 겹쳐 움직이지 않는다(이중 스크롤 방지).

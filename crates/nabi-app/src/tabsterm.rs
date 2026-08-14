@@ -69,6 +69,8 @@ impl TermTabViewer<'_> {
         crate::paneio::grab_term_focus(ui, is_focused);
         let blocked = crate::paneio::term_input_blocked(ui.ctx());
         let typed = is_focused && !bytes.is_empty() && !blocked;
+        // 오버레이 여닫는 키(Ctrl+T·Esc·q)를 관찰해 TUI 기록 오버레이 상태를 따라간다.
+        if typed && self.wheel_keys.contains(&pane) { crate::panewheel::track_overlay(self.tui_overlay, pane, &bytes); }
         if typed {
             if self.broadcast {
                 if self.broadcast_group.is_empty() {
@@ -115,6 +117,7 @@ impl TermTabViewer<'_> {
         let target = crate::panewheel::wheel_target(crate::panewheel::WheelCtx {
             alt_screen, alt_scroll, mouse_on,
             force_keys: self.wheel_keys.contains(&pane), shift: shift_wheel,
+            overlay: self.tui_overlay.contains(&pane), up: wheel > 0.0,
         });
         if mouse_on {
             let to_app = target == crate::panewheel::WheelTo::Nothing;
@@ -122,16 +125,15 @@ impl TermTabViewer<'_> {
                 ui, rect, cw, ch, mouse_sgr, mouse_release, mouse_motion,
                 shift_wheel || (over && to_app && wheel != 0.0 && !ctrl_wheel),
             );
-            if !rep.is_empty() {
-                self.orch.send(Command::WriteInput {
-                    pane,
-                    data: Bytes::from(rep),
-                });
-            }
+            if !rep.is_empty() { self.orch.send(Command::WriteInput { pane, data: Bytes::from(rep) }); }
         }
         if over && wheel != 0.0 && !ctrl_wheel {
             match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
-                Some(data) => self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) }),
+                // 오버레이를 여는 휠이었다면 다음 휠부터 페이지 키가 그 안을 스크롤한다.
+                Some(data) => {
+                    if target == crate::panewheel::WheelTo::OpenTui { self.tui_overlay.insert(pane); }
+                    self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
+                }
                 // 스크롤백은 한 눈금에 3줄(주류 에뮬레이터 관례).
                 None if target == crate::panewheel::WheelTo::Scrollback => {
                     let lines = (wheel / ch * 3.0).round() as i32;

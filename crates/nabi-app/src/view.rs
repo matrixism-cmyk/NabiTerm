@@ -114,6 +114,7 @@ impl NabiApp {
                 lang: self.lang,
                 broadcast_group: &mut self.broadcast_group,
                 wheel_keys: &mut self.wheel_keys,
+                tui_overlay: &mut self.tui_overlay,
                 window_panes: &window_panes,
                 selection: &mut self.selection,
                 tab_colors: &mut self.tab_colors,

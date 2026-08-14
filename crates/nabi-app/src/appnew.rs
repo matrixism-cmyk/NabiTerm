@@ -125,6 +125,7 @@ impl NabiApp {
             last_bell: HashMap::new(),
             broadcast_group: std::collections::HashSet::new(),
             wheel_keys: std::collections::HashSet::new(),
+            tui_overlay: std::collections::HashSet::new(),
             pane_origins: HashMap::new(),
             closed_sessions: Vec::new(),
             workspace_path,

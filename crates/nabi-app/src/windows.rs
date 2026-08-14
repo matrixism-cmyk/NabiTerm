@@ -145,6 +145,7 @@ impl NabiApp {
             &mut self.paste_req,
             self.config.terminal.warn_paste_newline,
             self.wheel_keys.contains(&pane),
+            &mut self.tui_overlay,
         );
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
@@ -206,6 +207,7 @@ impl NabiApp {
                         &mut self.paste_req,
                         self.config.terminal.warn_paste_newline,
                         self.wheel_keys.contains(&pane),
+                        &mut self.tui_overlay,
                     );
                 });
             if let Some((p, d)) = zoom {
@@ -242,11 +244,12 @@ fn render_floating(
     paste_req: &mut Option<(PaneId, String)>,
     warn_paste: bool,
     force_keys: bool,
+    tui_overlay: &mut std::collections::HashSet<PaneId>,
 ) {
     egui::CentralPanel::default().show(ctx, |ui| {
         crate::floatterm::paint_floating_term(
             ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
-            link_click, paste_req, warn_paste, force_keys,
+            link_click, paste_req, warn_paste, force_keys, tui_overlay,
         );
     });
     // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.
