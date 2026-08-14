@@ -53,6 +53,20 @@ fn unescape(s: &str) -> String {
     out
 }
 
+/// `text[i..]`가 `ESC [` 로 시작할 때, 숫자와 `;`만 지난 뒤 나오는 최종 바이트가 `end`인가.
+/// (`CSI 1;40 r` 같은 시퀀스를 종류별로 세기 위한 최소 판별기.)
+fn tail_is(text: &str, i: usize, end: char) -> bool {
+    let rest = &text[i + 2..];
+    let mut it = rest.chars();
+    loop {
+        match it.next() {
+            Some(c) if c.is_ascii_digit() || c == ';' => {}
+            Some(c) => return c == end,
+            None => return false,
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.is_empty() {
@@ -118,7 +132,24 @@ fn main() {
     // 기다리는 시간 — TUI는 뜨는 데 몇 초 걸리고, 모드는 첫 화면을 다 그린 뒤에 켜기도 한다.
     let secs: u64 =
         std::env::var("NABI_PROBE_SECS").ok().and_then(|v| v.parse().ok()).unwrap_or(4);
-    std::thread::sleep(Duration::from_secs(secs));
+    // `NABI_PROBE_RESIZE`가 있으면 마감 6초 전에 창 크기를 바꾼다.
+    // 리사이즈는 앱이 화면을 다시 구성하는 계기라, 이때만 나오는 시퀀스가 있다
+    // (codex의 resize_reflow는 이때 과거 기록을 스크롤백으로 되돌린다고 말한다).
+    let resize: Option<u16> = std::env::var("NABI_PROBE_RESIZE").ok().and_then(|v| v.parse().ok());
+    match resize.filter(|_| secs > 6) {
+        Some(r) => {
+            std::thread::sleep(Duration::from_secs(secs - 6));
+            let _ = pair.master.resize(portable_pty::PtySize {
+                rows: r,
+                cols: size.cols(),
+                pixel_width: 0,
+                pixel_height: 0,
+            });
+            println!("[리사이즈: {}행 → {r}행]", size.rows());
+            std::thread::sleep(Duration::from_secs(6));
+        }
+        None => std::thread::sleep(Duration::from_secs(secs)),
+    }
     kill_tree(child.process_id());
     let _ = child.kill();
     let buf = buf.lock().unwrap().clone();
@@ -158,6 +189,14 @@ fn main() {
     println!("=== {} 이 켠 터미널 모드(최종 상태) ===", args.join(" "));
     println!("받은 바이트: {}  화면: {}x{}", buf.len(), size.cols(), size.rows());
     println!("스크롤백에 쌓인 줄: {}", model.history_size());
+    // 스크롤백을 만드는 수단은 셋뿐이다 — 어느 것도 안 쓰면 앱이 과거를 터미널에 안 넘긴다.
+    let count = |re: &str| text.matches(re).count();
+    println!(
+        "스크롤 영역(DECSTBM): {}  ·  SU(CSI S): {}  ·  RI(ESC M): {}",
+        text.match_indices("\u{1b}[").filter(|(i, _)| tail_is(&text, *i, 'r')).count(),
+        text.match_indices("\u{1b}[").filter(|(i, _)| tail_is(&text, *i, 'S')).count(),
+        count("\u{1b}M"),
+    );
     if seen.is_empty() {
         println!("  (DEC private mode 설정 없음)");
     }
