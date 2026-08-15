@@ -124,6 +124,22 @@ async fn handle_conn(
                     return;
                 }
             }
+            // B3: 이벤트 구독 — 필터에 맞는 이벤트를 줄 단위로 스트림(재생 없음, 연결 동안만).
+            Ok(ControlRequest::Subscribe { pane, kinds }) => {
+                let rx = ctx.events.subscribe();
+                loop {
+                    while let Ok(ev) = rx.try_recv() {
+                        let Some((kind, p, data)) = crate::subscribe::stream_item(&ev) else { continue };
+                        if pane.is_some_and(|want| want != p) { continue; }
+                        if !kinds.is_empty() && !kinds.iter().any(|k| k == kind) { continue; }
+                        let item = ControlResponse::Event { pane: p, kind: kind.into(), data };
+                        if write_resp(&mut w, &item).await.is_err() {
+                            return;
+                        }
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                }
+            }
             Ok(req) => {
                 let resp = crate::dispatch::dispatch(
                     req,

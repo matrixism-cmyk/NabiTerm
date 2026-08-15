@@ -209,3 +209,26 @@ fn cond_kind(c: &WaitCond) -> &'static str {
         WaitCond::Agent(_) => "agent-state",
     }
 }
+
+/// 구독 스트림용: 이벤트를 (kind, pane, data JSON)으로 편다(B3). 구독 어휘에 없는
+/// 이벤트는 None(내부 이벤트를 전부 노출하지 않는다 — 표면 최소화).
+pub fn stream_item(ev: &Event) -> Option<(&'static str, u64, String)> {
+    match ev {
+        Event::PaneSpawned { pane, .. } => Some(("spawned", pane.get(), String::new())),
+        Event::PaneExited { pane, code } => {
+            Some(("exit", pane.get(), serde_json::json!({ "code": code }).to_string()))
+        }
+        Event::PaneOutput { pane } => Some(("output", pane.get(), String::new())),
+        Event::CommandBlock { pane, block } => {
+            Some(("command-done", pane.get(), serde_json::to_string(block).unwrap_or_default()))
+        }
+        Event::AgentStatus { pane, state } => {
+            Some(("agent-status", pane.get(), serde_json::json!({ "state": state }).to_string()))
+        }
+        Event::CwdChanged { pane, path } => {
+            Some(("cwd", pane.get(), serde_json::json!({ "path": path }).to_string()))
+        }
+        _ => None,
+    }
+}
+

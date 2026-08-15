@@ -12,7 +12,7 @@ mod app; mod appnew; mod appicon; mod gpu; mod softgl;
 mod arrange; mod bell;
 mod browser; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
 mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell;
-mod controlui;
+mod controlui; mod controlapp;
 mod filetype;
 mod humanfmt;
 mod clicks;
@@ -176,7 +176,7 @@ mod windndvirt;
 mod windndfolder;
 mod viewportcmd;
 mod windows;
-mod workspace; mod workspace2; mod worktree; mod worktreeui;
+mod workspace; mod workspace2; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
 

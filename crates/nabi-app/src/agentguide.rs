@@ -65,6 +65,10 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli agent prompt --pane <id> --data <text> [--wait [--until <state>]] [--timeout <ms>]`
   Type a prompt into another agent pane (Enter included) and optionally wait for its state.
 - `nabi cli agent explain --pane <id>` — why the state detector classified a pane as it did.
+- `nabi cli events [--pane <id>] [--kind spawned,exit,output,command-done,agent-status,cwd]`
+  Stream events as they happen (no replay). `nabi cli api schema` prints the full protocol doc.
+- `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
+  Register a recurring job (runs inside nabiTerm; survives restarts).
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
 - `nabi cli tail --pane <id>`
   Stream a pane's output continuously.

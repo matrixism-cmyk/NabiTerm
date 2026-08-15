@@ -105,6 +105,15 @@ pub(crate) fn human_age(mtime: u64, now: u64) -> String {
     }
 }
 
+/// 앞에서 n자까지만(넘치면 말줄임) — 목록 셀 표시용.
+pub(crate) fn ellipsis(s: &str, n: usize) -> String {
+    if s.chars().count() <= n {
+        s.to_string()
+    } else {
+        format!("{}\u{2026}", s.chars().take(n).collect::<String>())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{human, human_age, human_date, human_datetime, local_crumbs, summarize};
@@ -145,3 +154,4 @@ mod tests {
         );
     }
 }
+

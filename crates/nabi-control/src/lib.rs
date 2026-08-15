@@ -5,6 +5,9 @@
 
 pub mod client;
 mod clientagent;
+mod clientverbs;
+mod dispatchread;
+pub mod apidoc;
 mod explain;
 pub mod dispatch;
 pub mod matcher;

@@ -31,4 +31,6 @@ pub enum AppCtl {
         /// 만료(ms) — 지나면 자동 삭제(B7, herdr 메타데이터 TTL). None=영구.
         ttl_ms: Option<u64>,
     },
+    /// 스케줄 잡 등록(C3): spec="*/5 * * * *"|"every 15m"|"at 09:30", kind=send|command|notify.
+    ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
 }

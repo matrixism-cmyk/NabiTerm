@@ -26,6 +26,9 @@ impl NabiApp {
             .map(|p| p.join("workspace.toml"))
             .unwrap_or_else(|| std::path::PathBuf::from("workspace.toml"));
         let vault_path = layout.vault.clone(); let known_hosts_path = layout.known_hosts.clone();
+        // 내장 스케줄러(C3): 설정 폴더의 schedules.toml에서 로드(재시작 생존).
+        let schedules_path = layout.base.join("schedules.toml");
+        let schedules = crate::scheduler::load(&schedules_path);
         // F1: vault_remember면 OS 자격증명으로 시작 시 자동 잠금 해제 시도.
         let (vault, vault_password) = crate::vault::auto_unlock(&config, &vault_path);
         let session_path = layout.sessions_file.clone();
@@ -166,6 +169,7 @@ impl NabiApp {
             add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None, prompt_raised: false,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_targets: HashMap::new(), telegram_pending: Vec::new(),
             telegram_heartbeat: (None, String::new()), worktree_prompt: None, worktree_list: None,
+            schedules, schedules_path, sched_last_tick: std::time::Instant::now(),
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),
             pane_status: HashMap::new(), ssh_connect_time: HashMap::new(),

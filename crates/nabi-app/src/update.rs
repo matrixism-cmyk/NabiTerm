@@ -137,6 +137,7 @@ impl eframe::App for NabiApp {
         self.quick_select_popup(ctx);
         self.snippet_prompt_modal(ctx);
         self.show_worktree_modals(ctx); // git 워크트리 만들기/목록(B6).
+        self.tick_scheduler(); // 내장 스케줄러(C3, 2초 스로틀).
         self.show_toast(ctx);
         self.show_resize_badge(ctx);
         self.show_command_palette(ctx);

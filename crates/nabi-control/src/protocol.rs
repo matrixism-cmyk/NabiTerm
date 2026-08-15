@@ -61,6 +61,14 @@ pub enum ControlRequest {
     },
     /// U7 변형: pane 출력 실시간 스트림(CP-4).
     Tail { pane: u64 },
+    /// B3: 이벤트 구독 스트림. kinds 비면 전부, pane 없으면 전 pane.
+    /// kind 어휘: spawned|exit|output|command-done|agent-status|cwd.
+    Subscribe {
+        #[serde(default)]
+        pane: Option<u64>,
+        #[serde(default)]
+        kinds: Vec<String>,
+    },
     /// pane 탭 활성화(에이전트가 사용자 주의 유도 — CP-7).
     Focus { pane: u64 },
     /// 탭 제목 변경(CP-7).
@@ -77,6 +85,8 @@ pub enum ControlRequest {
     },
     /// A4: pane 화면을 내장 감지 규칙 전부로 평가해 판정 근거를 회신(디버깅·규칙 작성용).
     AgentExplain { pane: u64 },
+    /// C3: 스케줄 잡 등록(사양 검증은 앱에서 — 실패 시 토스트).
+    ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
 }
 
 /// 서버 → 클라이언트 응답(요청당 한 줄).

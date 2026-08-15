@@ -174,6 +174,10 @@ pub struct NabiApp {
     /// 워크트리 만들기 입력(B6, 브랜치 이름) / 목록 모달((기준 cwd, 항목들)).
     pub worktree_prompt: Option<String>,
     pub worktree_list: Option<(String, Vec<crate::worktree::Wt>)>,
+    /// 내장 스케줄러(C3): 잡 목록·영속 경로·마지막 틱.
+    pub schedules: Vec<crate::scheduler::Job>,
+    pub schedules_path: std::path::PathBuf,
+    pub sched_last_tick: std::time::Instant,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).

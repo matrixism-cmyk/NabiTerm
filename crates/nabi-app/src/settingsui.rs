@@ -5,7 +5,7 @@ use nabi_i18n::{tr, Lang};
 
 /// 좌측 내비게이션 항목(i18n 키). 인덱스가 `page()`의 페이지 번호.
 // 외관 그룹(글꼴·색상·커서·테마)을 앞쪽에 인접 배치 → 그 뒤 터미널·동작·에디터·강조·스니펫.
-pub(crate) const PAGE_KEYS: [&str; 10] = [
+pub(crate) const PAGE_KEYS: [&str; 11] = [
     "settings.sec.font",
     "settings.sec.colors",
     "settings.sec.cursor",
@@ -15,6 +15,7 @@ pub(crate) const PAGE_KEYS: [&str; 10] = [
     "settings.sec.editor",
     "settings.sec.highlights",
     "settings.sec.snippets",
+    "settings.sec.schedule",
     "settings.sec.telegram",
 ];
 
@@ -24,6 +25,9 @@ pub(crate) struct PageCtx<'a> {
     pub font_installer: &'a crate::fontinstall::FontInstaller,
     /// 텔레그램 DM 페어링 대기(chat, 코드, 만료) — 승인/거부 버튼이 직접 편집(C1).
     pub tg_pending: &'a std::cell::RefCell<Vec<(i64, String, std::time::Instant)>>,
+    /// 스케줄 잡 목록(C3) + 영속 경로 — 페이지가 직접 편집·저장.
+    pub sched: &'a std::cell::RefCell<Vec<crate::scheduler::Job>>,
+    pub sched_path: &'a std::path::Path,
 }
 
 /// 선택된 카테고리 페이지 하나를 그린다(cfg 직접 편집; 적용은 apply_settings).
@@ -42,6 +46,7 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, editor: &mut EditorCo
         6 => grid(ui, "sec_editor", |ui| editor_rows(ui, editor, lang)),
         7 => crate::settingslists::highlight_rows(ui, cfg, lang),
         8 => crate::settingslists::snippet_rows(ui, cfg, lang),
+        9 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
         _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending)),
     }
 }
