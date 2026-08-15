@@ -20,4 +20,11 @@ pub const CATALOG_TERM: &[(&str, &str, &str, &str)] = &[
         "履歴を自分だけで持つ TUI(例: codex CLI)向けです。上へ回すとトランスクリプト画面(Ctrl+T)を開き、続くホイールが PageUp/PageDown でスクロールします。Esc か q で閉じます。Shift+ホイールは端末側をスクロールします。",
     ),
     ("settings.resetdefault", "Reset to default", "기본값으로 되돌리기", "既定値に戻す"),
+    ("ai.state.done", "Finished (unseen)", "완료(미확인)", "完了(未確認)"),
+    (
+        "tg.ownerhint",
+        "The first chat ID is the owner - only the owner can type into shells or send Ctrl+C. Others can watch (/panes, /use).",
+        "첫 번째 chat ID가 오너입니다 — 셸 입력·Ctrl+C는 오너만 가능하고, 나머지는 관찰(/panes·/use)만 됩니다.",
+        "先頭の chat ID がオーナーです — シェル入力・Ctrl+C はオーナーのみ、他は閲覧(/panes・/use)のみです。",
+    ),
 ];

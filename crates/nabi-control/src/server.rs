@@ -104,11 +104,17 @@ async fn handle_conn(
                 pane,
                 until,
                 timeout_ms,
+                match_text,
+                match_regex,
             }) => {
                 let cond = crate::subscribe::WaitCond::parse(&until);
-                let resp =
-                    crate::subscribe::run_wait(&ctx.events, &ctx.panes, pane, cond, timeout_ms)
-                        .await;
+                let resp = match crate::subscribe::Matcher::build(match_text, match_regex) {
+                    Err(e) => crate::protocol::ControlResponse::Err { message: e },
+                    Ok(pat) => crate::subscribe::run_wait(
+                        &ctx.events, &ctx.panes, pane, cond, timeout_ms, pat,
+                    )
+                    .await,
+                };
                 if write_resp(&mut w, &resp).await.is_err() {
                     return;
                 }

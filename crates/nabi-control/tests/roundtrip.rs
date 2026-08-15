@@ -125,6 +125,49 @@ fn spawn_returns_seq_matched_pane() {
     assert!(matches!(r, ControlResponse::Spawned { pane: 42 }), "{r:?}");
 }
 
+/// B2: wait --until output --match 는 "아무 출력"이 아니라 패턴 등장을 기다린다.
+#[test]
+fn wait_output_match_finds_pattern_line() {
+    let hub = nabi_control::subscribe::EventHub::new();
+    let panes = new_shared_panes();
+    let model = Arc::new(Mutex::new(nabi_vt::TermModel::new(GridSize::new(30, 4), 10)));
+    panes.write().unwrap().insert(
+        PaneId::new(9),
+        PaneView::new(model.clone(), "t".into(), "local"),
+    );
+    let h2 = hub.clone();
+    let m2 = model.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(80));
+        // 관심 없는 출력 먼저 — 패턴 대기는 이걸로 충족되면 안 된다.
+        m2.lock().unwrap().process(b"compiling...\r\n");
+        h2.publish(&nabi_proto::Event::PaneOutput { pane: PaneId::new(9) });
+        std::thread::sleep(std::time::Duration::from_millis(120));
+        m2.lock().unwrap().process(b"BUILD OK 42\r\n");
+        h2.publish(&nabi_proto::Event::PaneOutput { pane: PaneId::new(9) });
+    });
+    let pat = nabi_control::subscribe::Matcher::build(None, Some(r"BUILD OK \d+".into()))
+        .unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    let resp = rt.block_on(nabi_control::subscribe::run_wait(
+        &hub,
+        &panes,
+        9,
+        nabi_control::subscribe::WaitCond::Output,
+        3000,
+        pat,
+    ));
+    match resp {
+        ControlResponse::Event { kind, data, .. } => {
+            assert_eq!(kind, "output-match");
+            assert!(data.contains("BUILD OK 42"), "{data}");
+        }
+        other => panic!("Event 응답이 아님: {other:?}"),
+    }
+    // 깨진 정규식은 만들 때 바로 거부된다(대기 걸고 나서 조용히 실패하지 않게).
+    assert!(nabi_control::subscribe::Matcher::build(None, Some("([".into())).is_err());
+}
+
 /// G3: wait --until exit가 종료 코드를 JSON으로 회신한다.
 #[test]
 fn wait_exit_returns_code() {
@@ -150,6 +193,7 @@ fn wait_exit_returns_code() {
         3,
         nabi_control::subscribe::WaitCond::Exit,
         3000,
+        None,
     ));
     match resp {
         ControlResponse::Event { kind, data, .. } => {

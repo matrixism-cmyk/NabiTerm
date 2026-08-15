@@ -27,6 +27,7 @@ nabi-i18n = { workspace = true }
 nabi-log = { workspace = true }
 nabi-control = { workspace = true }
 nabi-release = { workspace = true }
+nabi-agentdetect = { workspace = true }
 egui = { workspace = true }
 egui_extras = { workspace = true }
 chrono = { workspace = true }

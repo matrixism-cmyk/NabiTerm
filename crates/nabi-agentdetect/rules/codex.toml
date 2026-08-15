@@ -1,0 +1,20 @@
+# OpenAI Codex CLI 상태 감지 규칙.
+# 근거: modeprobe 실측 캡처(2026-08, v0.147.0). 전사 오버레이(q to quit …)가 열려 있을 때는
+# 화면이 과거 기록이라 상태 판정을 하지 않는다(not 절).
+id = "codex"
+
+# 신뢰/승인 프롬프트.
+[[rules]]
+id = "approval_prompt"
+state = "blocked"
+priority = 200
+contains = ["Press enter to continue", "1. Yes"]
+not = ["q to quit"]
+
+# 작업 중 — "(Ns • esc to interrupt)" 상태줄.
+[[rules]]
+id = "esc_interrupt"
+state = "working"
+priority = 100
+contains = ["esc to interrupt"]
+not = ["q to quit"]

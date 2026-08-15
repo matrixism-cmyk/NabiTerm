@@ -11,6 +11,7 @@ members = [
     "crates/nabi-config",
     "crates/nabi-i18n",
     "crates/nabi-vt",
+    "crates/nabi-agentdetect",
     "crates/nabi-image",
     "crates/nabi-pty",
     "crates/nabi-osc",
@@ -48,6 +49,7 @@ nabi-log = { path = "crates/nabi-log" }
 nabi-config = { path = "crates/nabi-config" }
 nabi-i18n = { path = "crates/nabi-i18n" }
 nabi-vt = { path = "crates/nabi-vt" }
+nabi-agentdetect = { path = "crates/nabi-agentdetect" }
 nabi-image = { path = "crates/nabi-image" }
 nabi-osc = { path = "crates/nabi-osc" }
 nabi-pty = { path = "crates/nabi-pty" }

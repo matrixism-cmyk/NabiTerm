@@ -203,6 +203,8 @@ fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             Ok(ControlRequest::OpenSftp { session: flag(args, "--session").ok_or(usage)? })
         }
         Some("wait") => Ok(ControlRequest::Wait {
+            match_text: flag(args, "--match"),
+            match_regex: flag(args, "--regex"),
             pane: pane(args).ok_or(usage)?,
             until: flag(args, "--until").unwrap_or_else(|| "exit".into()),
             timeout_ms: flag(args, "--timeout").and_then(|s| s.parse().ok()).unwrap_or(60_000),

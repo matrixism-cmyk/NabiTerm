@@ -1,0 +1,14 @@
+[package]
+name = "nabi-agentdetect"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+# AI 에이전트 상태 감지 — 화면 텍스트+타이틀을 TOML 규칙으로 분류하는 순수 엔진.
+# I/O 없음(텍스트 in → 상태 out): herdr의 화면 매니페스트 방식을 벤치마킹하되
+# 규칙은 릴리스에 동봉하고 사용자 폴더로 오버라이드한다(원격 폴링 없음 — 폐쇄망 정체성).
+[dependencies]
+serde = { workspace = true }
+toml = { workspace = true }
+regex = "1"

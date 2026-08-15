@@ -81,7 +81,7 @@ mod updatemodal;
 mod shellintegprompt;
 mod agentguide;
 mod aicli; mod aiclipage; mod aicliupd; mod aicliver; mod wsairesume;
-mod aistatus;
+mod aistatus; mod agentwatch;
 mod aidash;
 mod encsuggest;
 mod editbufmenu;

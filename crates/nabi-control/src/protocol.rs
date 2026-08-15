@@ -48,7 +48,17 @@ pub enum ControlRequest {
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.
-    Wait { pane: u64, until: String, timeout_ms: u64 },
+    Wait {
+        pane: u64,
+        until: String,
+        timeout_ms: u64,
+        /// until=output일 때: 이 부분 문자열이 화면에 나타날 때까지(B2).
+        #[serde(default)]
+        match_text: Option<String>,
+        /// until=output일 때: 이 정규식이 화면에 매치될 때까지(B2).
+        #[serde(default)]
+        match_regex: Option<String>,
+    },
     /// U7 변형: pane 출력 실시간 스트림(CP-4).
     Tail { pane: u64 },
     /// pane 탭 활성화(에이전트가 사용자 주의 유도 — CP-7).

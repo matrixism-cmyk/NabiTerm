@@ -57,7 +57,7 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   List panes: id, title, size, kind (local/ssh), cwd, state, last exit code.
 - `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
   Read a pane's screen/scrollback. `--lines 100` = last 100 lines; `--escapes` keeps ANSI colors.
-- `nabi cli wait --pane <id> --until exit|command-done|idle|output [--timeout <ms>]`
+- `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
 - `nabi cli tail --pane <id>`
   Stream a pane's output continuously.

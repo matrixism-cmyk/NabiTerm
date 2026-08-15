@@ -120,6 +120,8 @@ fn build_request(name: &str, a: &Value) -> Result<ControlRequest, String> {
             pane: need_pane()?,
             until: s("until").unwrap_or_else(|| "exit".into()),
             timeout_ms: n("timeout_ms").unwrap_or(60_000),
+            match_text: s("match"),
+            match_regex: s("regex"),
         },
         "nabi_focus" => ControlRequest::Focus { pane: need_pane()? },
         "nabi_set_title" => ControlRequest::SetTitle {

@@ -49,6 +49,10 @@ pub(crate) fn telegram_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         cfg.telegram.allowed_chats = s.split(',').filter_map(|x| x.trim().parse::<i64>().ok()).collect();
     }
     ui.end_row();
+    // 오너 규칙 안내 — 첫 chat만 셸 제어 가능(C2, OpenClaw 오너 모델).
+    ui.label("");
+    ui.weak(tr(lang, "tg.ownerhint"));
+    ui.end_row();
 
     ui.label(tr(lang, "tg.grantall"));
     ui.checkbox(&mut cfg.telegram.grant_all, "").on_hover_text(tr(lang, "tg.grantall.hint"));

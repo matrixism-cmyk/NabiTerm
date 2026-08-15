@@ -151,6 +151,8 @@ pub struct NabiApp {
     pub quake: Option<crate::quake::QuakeState>,
     /// 최근 데스크톱 알림(OSC 9) — 토스트로 잠시 표시.
     pub notify: Option<(String, std::time::Instant)>,
+    /// 화면 규칙 기반 에이전트 상태 감시(A1 — 훅 미설치 에이전트 폴백).
+    pub agent_watch: crate::agentwatch::AgentWatch,
     /// AI CLI 자동 업데이트 작업(시작 시 1회). 끝나면 무엇을 올렸는지 토스트로 알린다.
     pub ai_cli_auto: Option<crate::aicliupd::AutoJob>,
     /// 포커스 pane 리사이즈 직후 잠시 표시할 크기 배지(열×행, 시각).
@@ -162,7 +164,7 @@ pub struct NabiApp {
     pub paste_req: Option<(PaneId, String)>,
     /// 차단형 프롬프트 때문에 메인 창을 이미 앞으로 불렀는지(뜨는 순간 한 번만).
     pub prompt_raised: bool,
-    pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_target: Option<PaneId>,
+    pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_targets: HashMap<i64, PaneId>,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).

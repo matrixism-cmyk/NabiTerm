@@ -62,6 +62,7 @@ impl eframe::App for NabiApp {
             self.maybe_prompt_shellinteg(); // 셸 통합 미설치면 설치 권장 모달.
         }
         self.poll_ai_cli_auto_update();
+        self.tick_agent_watch(); // 화면 규칙 에이전트 상태 감시(600ms 스로틀).
         // 업데이트 인스톨러가 실행됐으면 이 앱을 즉시 종료(설치 진행).
         // 확인 대화상자를 거치지 않고 바로 quit() — 인스톨러가 파일 교체를 빨리 시작하도록.
         if self.update_quit.load(std::sync::atomic::Ordering::Relaxed) {

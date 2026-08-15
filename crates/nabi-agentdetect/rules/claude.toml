@@ -1,0 +1,27 @@
+# Claude Code 상태 감지 규칙.
+# 근거: 실제 pane 하단 문구 실측(2026-08). blocked는 오탐이 제일 해로우므로
+# "실제로 보이는 승인 다이얼로그"만 잡는다(보수적).
+id = "claude"
+
+# 승인/질문 다이얼로그 — 번호 선택지 프롬프트.
+[[rules]]
+id = "permission_dialog"
+state = "blocked"
+priority = 200
+# "Enter to confirm"은 세션 재개/권한 등 번호 선택 다이얼로그의 공통 하단(실측 pane 1).
+contains = ["Do you want", "❯ 1.", "Enter to confirm"]
+
+# 작업 중 — 하단 상태줄의 중단 힌트.
+[[rules]]
+id = "esc_interrupt"
+state = "working"
+priority = 100
+contains = ["esc to interrupt"]
+
+# 유휴 — 컴포저 하단 힌트.
+[[rules]]
+id = "shortcuts_hint"
+state = "idle"
+priority = 10
+# bypass 모드 하단은 "? for shortcuts" 대신 순환 힌트를 보여준다(실측 pane 3).
+contains = ["? for shortcuts", "shift+tab to cycle"]

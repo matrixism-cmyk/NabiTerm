@@ -161,12 +161,17 @@ impl NabiApp {
             self.handle_telegram_command(m.chat_id, rest);
             return;
         }
-        // 입력 주입(셸 제어)은 "모든 권한 부여"가 켜져야만 허용 — 관찰(/panes)은 무관.
+        // 입력 주입(셸 제어)은 오너(허용 목록 첫 chat) + "모든 권한 부여"가 둘 다 필요.
+        // 화이트리스트의 다른 chat은 설정과 무관하게 관찰만(OpenClaw 오너 모델 벤치마킹, C2).
+        if self.telegram_owner() != Some(m.chat_id) {
+            self.telegram.reply(m.chat_id, "오너 전용 — 셸 입력은 허용 목록의 첫 chat만 가능합니다. (/panes·/use 는 가능)".into());
+            return;
+        }
         if !self.config.telegram.grant_all {
             self.telegram.reply(m.chat_id, "권한 없음 — 설정 ▸ 텔레그램에서 '모든 권한 부여'를 켜세요. (/panes·/use 는 가능)".into());
             return;
         }
-        let Some(pane) = self.telegram_target.or_else(|| self.focused_pane()) else {
+        let Some(pane) = self.telegram_targets.get(&m.chat_id).copied().or_else(|| self.focused_pane()) else {
             self.telegram.reply(m.chat_id, "대상 셸이 없습니다.".into());
             return;
         };
@@ -178,11 +183,16 @@ impl NabiApp {
         self.telegram.push_pending(m.chat_id, pane, deadline);
     }
 
+    /// 오너 chat = 허용 목록의 첫 항목(제어 권한). 나머지는 관찰 전용.
+    pub(crate) fn telegram_owner(&self) -> Option<i64> {
+        self.config.telegram.allowed_chats.first().copied()
+    }
+
     /// 브리지 명령 처리(파싱은 nabi_telegram::parse_command, 순수·테스트됨).
     fn handle_telegram_command(&mut self, chat: i64, rest: &str) {
         let reply = match nabi_telegram::parse_command(rest) {
             nabi_telegram::TgCmd::Panes => {
-                let cur = self.telegram_target.map(|p| p.get());
+                let cur = self.telegram_targets.get(&chat).map(|p| p.get());
                 let mut lines = vec!["\u{1f4cb} panes (/use N 으로 선택):".to_string()];
                 if let Ok(panes) = self.orch.panes.read() {
                     let mut ids: Vec<_> = panes.iter().map(|(id, v)| (id.get(), v.title.clone())).collect();
@@ -196,17 +206,19 @@ impl NabiApp {
             nabi_telegram::TgCmd::Use(n) => {
                 let pid = self.orch.panes.read().ok().and_then(|m| m.keys().find(|p| p.get() == n).copied());
                 if let Some(pid) = pid {
-                    self.telegram_target = Some(pid);
+                    self.telegram_targets.insert(chat, pid); // chat별 대상(다인 접근 시 분리).
                     format!("\u{2713} 대상 pane = {n}")
                 } else {
                     format!("pane {n} 없음 — /panes 로 확인")
                 }
             }
             nabi_telegram::TgCmd::Cancel => {
-                // 대상 셸에 Ctrl+C(중단) — 제어 동작이라 grant_all 필요.
-                if !self.config.telegram.grant_all {
+                // 대상 셸에 Ctrl+C(중단) — 제어 동작이라 오너+grant_all 필요.
+                if self.telegram_owner() != Some(chat) {
+                    "오너 전용 — 허용 목록의 첫 chat만 가능합니다".to_string()
+                } else if !self.config.telegram.grant_all {
                     "권한 없음 — '모든 권한 부여' 필요".to_string()
-                } else if let Some(pane) = self.telegram_target.or_else(|| self.focused_pane()) {
+                } else if let Some(pane) = self.telegram_targets.get(&chat).copied().or_else(|| self.focused_pane()) {
                     self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(vec![0x03u8]) });
                     "\u{2713} Ctrl+C 전송".to_string()
                 } else {
