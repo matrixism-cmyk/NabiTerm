@@ -69,8 +69,11 @@ impl TermTabViewer<'_> {
         crate::paneio::grab_term_focus(ui, is_focused);
         let blocked = crate::paneio::term_input_blocked(ui.ctx());
         let typed = is_focused && !bytes.is_empty() && !blocked;
-        // 오버레이 여닫는 키(Ctrl+T·Esc·q)를 관찰해 TUI 기록 오버레이 상태를 따라간다.
-        if typed && self.wheel_keys.contains(&pane) { crate::panewheel::track_overlay(self.tui_overlay, pane, &bytes); }
+        // 휠 도우미: 명시 켬 ∪ (codex 자동 감지 − 명시 끔). 토글은 메모리 전용이라 재시작에
+        // 날아가므로, codex pane은 감지로 기본 동작해야 한다.
+        let force_keys = self.wheel_keys.contains(&pane)
+            || (!self.wheel_keys_off.contains(&pane)
+                && self.run_cmd.get(&pane).is_some_and(|c| crate::panewheel::is_tui_history_app(c)));
         if typed {
             if self.broadcast {
                 if self.broadcast_group.is_empty() {
@@ -113,11 +116,13 @@ impl TermTabViewer<'_> {
             });
         }
 
+        // 오버레이 열림은 화면 하단 안내줄로 판정(+방금 연 공백기는 래치로 흡수).
+        let overlay = force_keys && wheel != 0.0
+            && crate::panewheel::overlay_open(&self.orch.panes, pane, self.tui_overlay.get(&pane));
         // 휠의 목적지는 한 규칙(panewheel::wheel_target)으로 정한다 — 탭과 분리 창이 같아야 한다.
         let target = crate::panewheel::wheel_target(crate::panewheel::WheelCtx {
-            alt_screen, alt_scroll, mouse_on,
-            force_keys: self.wheel_keys.contains(&pane), shift: shift_wheel,
-            overlay: self.tui_overlay.contains(&pane), up: wheel > 0.0,
+            alt_screen, alt_scroll, mouse_on, force_keys, shift: shift_wheel,
+            overlay, up: wheel > 0.0,
         });
         if mouse_on {
             let to_app = target == crate::panewheel::WheelTo::Nothing;
@@ -131,7 +136,7 @@ impl TermTabViewer<'_> {
             match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
                 // 오버레이를 여는 휠이었다면 다음 휠부터 페이지 키가 그 안을 스크롤한다.
                 Some(data) => {
-                    if target == crate::panewheel::WheelTo::OpenTui { self.tui_overlay.insert(pane); }
+                    if target == crate::panewheel::WheelTo::OpenTui { self.tui_overlay.insert(pane, std::time::Instant::now()); }
                     self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
                 }
                 // 스크롤백은 한 눈금에 3줄(주류 에뮬레이터 관례).

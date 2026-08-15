@@ -128,6 +128,7 @@ impl NabiApp {
             None
         };
         let mut zoom = None;
+        let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산(차용 충돌 회피).
         render_floating(
             vctx,
             &self.orch.panes,
@@ -144,7 +145,7 @@ impl NabiApp {
             &mut self.pending_link,
             &mut self.paste_req,
             self.config.terminal.warn_paste_newline,
-            self.wheel_keys.contains(&pane),
+            fk,
             &mut self.tui_overlay,
         );
         if let Some((p, d)) = zoom {
@@ -180,6 +181,7 @@ impl NabiApp {
                 .unwrap_or_default();
             let font_size = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
             let mut open = true;
+            let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산.
             let mut zoom = None;
             egui::Window::new(format!("\u{2750} {title}"))
                 .id(egui::Id::new(("nabi_docked_float", pane.get())))
@@ -206,7 +208,7 @@ impl NabiApp {
                         &mut self.pending_link,
                         &mut self.paste_req,
                         self.config.terminal.warn_paste_newline,
-                        self.wheel_keys.contains(&pane),
+                        fk,
                         &mut self.tui_overlay,
                     );
                 });
@@ -244,7 +246,7 @@ fn render_floating(
     paste_req: &mut Option<(PaneId, String)>,
     warn_paste: bool,
     force_keys: bool,
-    tui_overlay: &mut std::collections::HashSet<PaneId>,
+    tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
 ) {
     egui::CentralPanel::default().show(ctx, |ui| {
         crate::floatterm::paint_floating_term(

@@ -30,6 +30,15 @@ impl TermModel {
             .join("\n")
     }
 
+    /// 현재 보이는 화면의 **아래쪽** n줄 평문 — TUI 하단 안내줄(키 힌트) 판독용.
+    pub fn visible_bottom_text(&self, n: usize) -> String {
+        let rows = self.size().rows() as usize;
+        (rows.saturating_sub(n)..rows)
+            .map(|r| self.visible_row_text(r as u16))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
     /// 완료된 절대 줄 수 마커(히스토리 + 커서 화면 행). tail 델타 스트림이
     /// 이 값의 증가분만큼 신규 줄을 읽는다(CP-5 G2).
     pub fn line_marker(&self) -> usize {

@@ -101,8 +101,10 @@ pub struct NabiApp {
     pub broadcast_group: std::collections::HashSet<PaneId>, // MultiExec 대상(비면 전체).
     /// "휠을 키로 보내기"를 켠 pane — 스크롤백을 남기지 않는 TUI(codex CLI 등)용 수동 대응.
     pub wheel_keys: std::collections::HashSet<PaneId>,
-    /// TUI 기록 오버레이(codex Ctrl+T)가 열려 있다고 추적 중인 pane(panewheel::observe_typed).
-    pub tui_overlay: std::collections::HashSet<PaneId>,
+    /// pane별 마지막 Ctrl+T(오버레이 열기) 전송 시각 — 화면 반영 전 재전송 방지 래치.
+    pub tui_overlay: HashMap<PaneId, std::time::Instant>,
+    /// 휠 도우미를 명시적으로 끈 pane(자동 감지보다 우선).
+    pub wheel_keys_off: std::collections::HashSet<PaneId>,
     /// pane별 출처(로컬 셸/SSH). 워크스페이스 저장에 사용.
     pub pane_origins: HashMap<PaneId, nabi_session::SessionKind>,
     /// 최근 닫힌 탭의 출처 스택(실수로 닫은 세션 재열기용). 비밀번호 아닌 참조만 보관.

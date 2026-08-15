@@ -68,6 +68,7 @@ impl NabiApp {
                     self.broadcast_group.remove(&pane);
                     self.wheel_keys.remove(&pane);
                     self.tui_overlay.remove(&pane);
+                    self.wheel_keys_off.remove(&pane);
                     // 출처를 "닫힌 세션" 스택에 적재(실수로 닫은 탭 재열기용, 최근 16개).
                     if let Some(kind) = self.pane_origins.remove(&pane) {
                         self.closed_sessions.push(kind);

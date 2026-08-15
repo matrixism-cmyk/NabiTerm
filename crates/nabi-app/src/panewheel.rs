@@ -70,34 +70,58 @@ pub(crate) fn wheel_target(c: WheelCtx) -> WheelTo {
     }
 }
 
+/// 실행 중 명령이 "기록을 자기 오버레이에만 두는 TUI"(현재 codex)인가.
+///
+/// 이런 pane은 토글 없이도 휠 도우미를 기본으로 켠다 — 앱 재시작으로 토글(메모리 전용)이
+/// 초기화되면 사용자는 "그냥 안 된다"고 느낀다(실제 보고). 감지는 셸 통합(OSC 633;E)이
+/// 준 명령의 첫 토큰으로 한다.
+pub(crate) fn is_tui_history_app(cmd: &str) -> bool {
+    let first = cmd.split_whitespace().next().unwrap_or("");
+    let base = first.rsplit(['/', '\\']).next().unwrap_or(first).to_ascii_lowercase();
+    let base = base.trim_end_matches(".exe").trim_end_matches(".cmd").trim_end_matches(".bat");
+    base == "codex"
+}
+
+impl crate::app::NabiApp {
+    /// 이 pane에서 휠 도우미가 켜져 있는가 — 명시 켬 ∪ (codex 자동 감지 − 명시 끔).
+    pub(crate) fn wheel_keys_effective(&self, pane: nabi_types::PaneId) -> bool {
+        self.wheel_keys.contains(&pane)
+            || (!self.wheel_keys_off.contains(&pane)
+                && self.run_cmd.get(&pane).is_some_and(|c| is_tui_history_app(c)))
+    }
+}
+
 /// TUI 기록 오버레이 토글 키(codex Ctrl+T).
 pub(crate) const TUI_OVERLAY_KEY: u8 = 0x14;
 
-/// 사용자가 직접 친 키에서 오버레이 상태 변화를 읽는다. `Some(새 상태)` 또는 None(변화 없음).
+/// 화면 하단 안내줄이 TUI 기록 오버레이(codex 전사 화면)의 것인가.
 ///
-/// 우리는 오버레이를 열 수만 있고 화면을 파싱해 상태를 알 수는 없다. 대신 오버레이를
-/// 여닫는 키(Ctrl+T 토글, Esc·q 닫기)가 **모두 우리를 거쳐 가므로** 그걸 보고 따라간다.
-/// 어긋나도 자가 복구된다 — 다음 휠-업이 보낸 Ctrl+T가 상태를 다시 일치시킨다.
-pub(crate) fn observe_typed(bytes: &[u8], overlay: bool) -> Option<bool> {
-    if bytes.contains(&TUI_OVERLAY_KEY) {
-        return Some(!overlay);
-    }
-    // Esc 단독(화살표 등 ESC 시퀀스가 아닌)이나 q는 오버레이를 닫는다.
-    if overlay && (bytes == b"\x1b" || bytes.eq_ignore_ascii_case(b"q")) {
-        return Some(false);
-    }
-    None
+/// 키 입력으로 상태를 추적하는 방식은 접었다 — codex의 Esc는 닫기가 아니라 "이전 메시지
+/// 편집"이라 추측이 어긋난다(실측). 오버레이는 하단에 키 힌트 줄을 항상 그리므로 그걸
+/// 직접 읽는 쪽이 진실이다.
+pub(crate) fn overlay_marker(bottom_text: &str) -> bool {
+    bottom_text.contains("q to quit") || bottom_text.contains("to scroll")
 }
 
-/// 친 키를 보고 pane의 오버레이 추적 집합을 갱신한다(탭·분리 창 공용).
-pub(crate) fn track_overlay(
-    set: &mut std::collections::HashSet<nabi_types::PaneId>,
+/// 방금 오버레이를 열었는가(화면 반영 전 공백기) — 이 동안 Ctrl+T 재전송을 막는다.
+/// PTY 왕복+재그리기가 보통 수십 ms지만, 느린 원격/무거운 프레임을 넉넉히 본다.
+pub(crate) fn recently_opened(sent: Option<&std::time::Instant>) -> bool {
+    sent.is_some_and(|t| t.elapsed().as_millis() < 700)
+}
+
+/// pane 화면을 읽어 오버레이 열림을 판정한다(래치 우선 — 방금 열었으면 화면 반영 전에도 참).
+pub(crate) fn overlay_open(
+    panes: &nabi_orchestrator::SharedPanes,
     pane: nabi_types::PaneId,
-    bytes: &[u8],
-) {
-    if let Some(open) = observe_typed(bytes, set.contains(&pane)) {
-        if open { set.insert(pane); } else { set.remove(&pane); }
-    }
+    sent: Option<&std::time::Instant>,
+) -> bool {
+    recently_opened(sent)
+        || panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&pane).map(|v| v.model.clone()))
+            .and_then(|mo| mo.lock().ok().map(|md| overlay_marker(&md.visible_bottom_text(2))))
+            .unwrap_or(false)
 }
 
 /// alternate scroll(DEC 1007): 휠을 커서 위/아래 키로 바꾼다. 한 눈금에 3줄(xterm 관례).
@@ -174,17 +198,27 @@ mod tests {
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Scrollback);
     }
 
-    /// 오버레이 상태는 사용자가 친 키를 보고 따라간다(Ctrl+T 토글, Esc·q 닫기).
+    /// 오버레이 판정은 화면 하단 안내줄로 한다(키 추적은 codex Esc=편집 때문에 폐기).
     #[test]
-    fn overlay_state_follows_typed_keys() {
-        assert_eq!(observe_typed(b"\x14", false), Some(true), "Ctrl+T는 토글");
-        assert_eq!(observe_typed(b"\x14", true), Some(false));
-        assert_eq!(observe_typed(b"\x1b", true), Some(false), "Esc 단독은 닫기");
-        assert_eq!(observe_typed(b"q", true), Some(false));
-        // 화살표(ESC 시퀀스)나 일반 타이핑은 상태를 바꾸지 않는다.
-        assert_eq!(observe_typed(b"\x1b[A", true), None);
-        assert_eq!(observe_typed(b"hello", true), None);
-        assert_eq!(observe_typed(b"q", false), None, "닫힌 상태의 q는 그냥 글자");
+    fn overlay_detected_from_footer_text() {
+        assert!(overlay_marker("\u{2191}/\u{2193} to scroll   pgup/pgdn to page\n q to quit   esc to edit prev"));
+        assert!(overlay_marker("q to quit   esc/\u{2190} to edit prev   \u{2192} to edit next"));
+        assert!(!overlay_marker("\u{203a} Implement feature\n  gpt-5.6-sol default \u{b7} ~"));
+        assert!(!overlay_marker(""));
+    }
+
+    /// codex 자동 감지 — 경로·확장자·인자가 붙어도 첫 토큰 basename으로 잡는다.
+    #[test]
+    fn detects_codex_command() {
+        assert!(is_tui_history_app("codex"));
+        assert!(is_tui_history_app("codex resume --last"));
+        assert!(is_tui_history_app(r"C:\Users\u\AppData\Roaming\npm\codex.cmd --model x"));
+        assert!(is_tui_history_app("/usr/local/bin/codex"));
+        assert!(!is_tui_history_app("claude --continue"));
+        assert!(!is_tui_history_app("cargo build"));
+        // 이름에 codex가 '포함'된 다른 명령에 속지 않는다.
+        assert!(!is_tui_history_app("codex-helper run"));
+        assert!(!is_tui_history_app(""));
     }
 
     /// OpenTui는 Ctrl+T 한 번만 보낸다(스크롤 키를 겹쳐 보내면 열리자마자 튄다).

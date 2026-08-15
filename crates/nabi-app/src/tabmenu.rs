@@ -104,6 +104,8 @@ pub(crate) fn tab_context_menu(
     tab_names: &mut HashMap<PaneId, String>,
     broadcast_group: &mut HashSet<PaneId>,
     wheel_keys: &mut HashSet<PaneId>,
+    wheel_keys_off: &mut HashSet<PaneId>,
+    wheel_auto: bool,
     tab_colors: &mut HashMap<PaneId, egui::Color32>,
     is_ssh: bool,
     tear_off: &mut Option<PaneId>,
@@ -175,9 +177,11 @@ pub(crate) fn tab_context_menu(
     if ui.button(tr(lang, "term.scrollbottom")).clicked() { scroll(false); ui.close_menu(); }
     // 스크롤백을 남기지 않는 TUI(codex CLI 등)는 휠로 볼 과거가 터미널에 없다.
     // 그런 pane에서만 사용자가 켜서 휠을 PageUp/PageDown으로 바꿔 보낸다.
-    let mut keys = wheel_keys.contains(tab);
+    let mut keys = wheel_keys.contains(tab) || (wheel_auto && !wheel_keys_off.contains(tab));
     if ui.checkbox(&mut keys, tr(lang, "tab.wheelkeys")).on_hover_text(tr(lang, "tab.wheelkeys.hint")).clicked() {
-        if keys { wheel_keys.insert(*tab); } else { wheel_keys.remove(tab); }
+        // 끄기는 명시 기록으로 남긴다 — 자동 감지(codex)가 다시 켜 버리지 않게.
+        if keys { wheel_keys.insert(*tab); wheel_keys_off.remove(tab); }
+        else { wheel_keys.remove(tab); wheel_keys_off.insert(*tab); }
     }
     ui.separator();
     let mut member = broadcast_group.contains(tab);

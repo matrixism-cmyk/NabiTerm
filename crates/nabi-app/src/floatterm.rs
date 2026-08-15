@@ -31,8 +31,8 @@ pub(crate) fn paint_floating_term(
     warn_paste: bool,
     // force_keys: 이 pane에 "휠을 페이지 키로"가 켜져 있는가(탭 컨텍스트 메뉴 설정).
     force_keys: bool,
-    // TUI 기록 오버레이(Ctrl+T)가 열려 있다고 추적 중인 pane 집합(탭 쪽과 공유).
-    tui_overlay: &mut std::collections::HashSet<PaneId>,
+    // pane별 마지막 Ctrl+T(오버레이 열기) 전송 시각(탭 쪽과 공유하는 래치).
+    tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
 ) {
     let font = egui::FontId::monospace(font_size);
     let (cw, ch) = nabi_render::cell_size(ui, &font);
@@ -101,10 +101,6 @@ pub(crate) fn paint_floating_term(
     // 이 분리 창의 터미널이 입력 대상 — 포커스 싱크를 잡아 Tab/화살표/Esc가 PTY로 가게 한다.
     crate::paneio::grab_term_focus(ui, true);
     let typed = !bytes.is_empty() && !crate::paneio::term_input_blocked(ui.ctx());
-    // 오버레이 여닫는 키(Ctrl+T·Esc·q) 관찰 — 탭 쪽과 같은 상태 추적.
-    if typed && force_keys {
-        crate::panewheel::track_overlay(tui_overlay, pane, &bytes);
-    }
     if typed {
         // 분리 창은 자기 pane만 보여준다 — 브로드캐스트라도 보이지 않는 pane에 쓰지 않는다.
         let cmd = if broadcast {
@@ -121,10 +117,12 @@ pub(crate) fn paint_floating_term(
     });
     let ctrl_wheel = over && ctrl && wheel != 0.0;
     let shift_wheel = over && shift && !ctrl && wheel != 0.0;
-    // 휠의 목적지는 탭 쪽과 같은 규칙(panewheel::wheel_target)으로 정한다.
+    // 오버레이 열림은 화면 하단 안내줄로 판정(+방금 연 공백기는 래치로 흡수) — 탭 쪽과 동일.
+    let overlay = force_keys && wheel != 0.0
+        && crate::panewheel::overlay_open(panes, pane, tui_overlay.get(&pane));
     let target = crate::panewheel::wheel_target(crate::panewheel::WheelCtx {
         alt_screen, alt_scroll, mouse_on, force_keys, shift: shift_wheel,
-        overlay: tui_overlay.contains(&pane), up: wheel > 0.0,
+        overlay, up: wheel > 0.0,
     });
     if mouse_on {
         let to_app = target == crate::panewheel::WheelTo::Nothing;
@@ -141,7 +139,7 @@ pub(crate) fn paint_floating_term(
     } else if over && wheel != 0.0 {
         match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
             Some(data) => {
-                if target == crate::panewheel::WheelTo::OpenTui { tui_overlay.insert(pane); }
+                if target == crate::panewheel::WheelTo::OpenTui { tui_overlay.insert(pane, std::time::Instant::now()); }
                 let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
             }
             None if target == crate::panewheel::WheelTo::Scrollback => scroll += (wheel / ch).round() as i32,
