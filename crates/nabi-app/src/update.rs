@@ -136,6 +136,7 @@ impl eframe::App for NabiApp {
         self.session_delete_modal(ctx);
         self.quick_select_popup(ctx);
         self.snippet_prompt_modal(ctx);
+        self.show_worktree_modals(ctx); // git 워크트리 만들기/목록(B6).
         self.show_toast(ctx);
         self.show_resize_badge(ctx);
         self.show_command_palette(ctx);

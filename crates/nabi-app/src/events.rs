@@ -71,6 +71,7 @@ impl NabiApp {
                     self.wheel_keys_off.remove(&pane);
                     self.agent_watch.forget(pane);
                     self.telegram_targets.retain(|_, p| *p != pane);
+                    self.pane_status_ttl.retain(|(p, _), _| *p != pane);
                     // 출처를 "닫힌 세션" 스택에 적재(실수로 닫은 탭 재열기용, 최근 16개).
                     if let Some(kind) = self.pane_origins.remove(&pane) {
                         self.closed_sessions.push(kind);

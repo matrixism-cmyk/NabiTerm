@@ -187,9 +187,9 @@ fn dispatch_write(
             ControlResponse::Ok
         }
         // 호출 pane(from)의 상태를 설정/삭제 — 자기 자신만 갱신.
-        ControlRequest::PaneStatusSet { key, value } => {
+        ControlRequest::PaneStatusSet { key, value, ttl_ms } => {
             tracing::info!(target: "control", from = ?from, "status-set");
-            app_tx.send(AppCtl::PaneStatus { pane: from.unwrap_or(0), key, value }).ok(); ControlResponse::Ok
+            app_tx.send(AppCtl::PaneStatus { pane: from.unwrap_or(0), key, value, ttl_ms }).ok(); ControlResponse::Ok
         }
         _ => err("알 수 없는 동작"),
     }

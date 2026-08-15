@@ -99,6 +99,9 @@ impl NabiApp {
                 let title = self.orch.panes.read().ok()
                     .and_then(|m| m.get(&pane).map(|v| v.title.clone())).unwrap_or_default();
                 self.notify = Some((format!("\u{23f8} {title}: 입력 대기"), std::time::Instant::now()));
+                if self.config.terminal.agent_sound {
+                    crate::bell::system_beep(); // A7 — 화면 감지 경로와 동일 정책.
+                }
             }
         } else if !blocked {
             self.blocked_alert.insert(pane, false);
@@ -173,8 +176,17 @@ impl NabiApp {
                     };
                     self.notify = Some((text, std::time::Instant::now()));
                 }
-                AppCtl::PaneStatus { pane, key, value } => {
-                    self.set_pane_status(nabi_types::PaneId::new(pane), key, value);
+                AppCtl::PaneStatus { pane, key, value, ttl_ms } => {
+                    let pid = nabi_types::PaneId::new(pane);
+                    // TTL(B7): 만료 시각을 따로 적어 두고 tick에서 걷어낸다.
+                    match ttl_ms.filter(|_| value.is_some()) {
+                        Some(ms) => {
+                            self.pane_status_ttl.insert((pid, key.clone()),
+                                std::time::Instant::now() + std::time::Duration::from_millis(ms));
+                        }
+                        None => { self.pane_status_ttl.remove(&(pid, key.clone())); }
+                    }
+                    self.set_pane_status(pid, key, value);
                 }
             }
         }

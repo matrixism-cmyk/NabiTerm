@@ -228,10 +228,12 @@ fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             Some("set") => Ok(ControlRequest::PaneStatusSet {
                 key: args.get(2).cloned().ok_or(usage)?,
                 value: Some(args.get(3).cloned().unwrap_or_default()),
+                ttl_ms: flag(args, "--ttl").and_then(|s| s.parse().ok()),
             }),
             Some("clear") => Ok(ControlRequest::PaneStatusSet {
                 key: args.get(2).cloned().unwrap_or_default(),
                 value: None,
+                ttl_ms: None,
             }),
             _ => Err(usage.to_string()),
         },

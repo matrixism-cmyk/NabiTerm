@@ -160,10 +160,12 @@ impl NabiApp {
                 (format!("\u{26a0} {msg} \u{2192} {}", b.display()), std::time::Instant::now())
             }),
             agent_watch: crate::agentwatch::AgentWatch::new(Some(&layout.base)),
+            pane_status_ttl: HashMap::new(),
             ai_cli_auto: None,
             resize_badge: None,
             add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None, prompt_raised: false,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_targets: HashMap::new(), telegram_pending: Vec::new(),
+            telegram_heartbeat: (None, String::new()), worktree_prompt: None, worktree_list: None,
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),
             pane_status: HashMap::new(), ssh_connect_time: HashMap::new(),

@@ -80,6 +80,14 @@ impl crate::app::NabiApp {
             return;
         }
         self.agent_watch.last = Instant::now();
+        // 상태 키 TTL(B7): 만료된 키를 삭제(state 키였다면 권위 반납 → 감지가 다시 맡는다).
+        let now = Instant::now();
+        let expired: Vec<_> = self.pane_status_ttl.iter()
+            .filter(|(_, exp)| **exp <= now).map(|(k, _)| k.clone()).collect();
+        for (pid, key) in expired {
+            self.pane_status_ttl.remove(&(pid, key.clone()));
+            self.set_pane_status(pid, key, None);
+        }
         let focused = self.focused_pane();
         let mut newly_blocked: Vec<PaneId> = Vec::new();
         let panes = self.orch.panes.read().ok().map(|m| {
@@ -120,6 +128,9 @@ impl crate::app::NabiApp {
                     .unwrap_or_default();
                 let word = nabi_i18n::tr(self.lang, "ai.state.blocked");
                 self.notify = Some((format!("\u{23f8} {title}: {word}"), Instant::now()));
+                if self.config.terminal.agent_sound {
+                    crate::bell::system_beep(); // 입력 대기 전이음(A7, opt-in).
+                }
             }
         }
     }

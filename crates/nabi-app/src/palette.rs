@@ -8,6 +8,9 @@ use nabi_proto::ShellKind;
 use std::path::PathBuf;
 
 pub(crate) enum PaletteAction {
+    /// git 워크트리 만들기/목록(B6).
+    WorktreeCreate,
+    WorktreeList,
     NewLocal(ShellKind),
     OpenRecentFile(PathBuf),
     ConnectSession(nabi_session::SavedSession),

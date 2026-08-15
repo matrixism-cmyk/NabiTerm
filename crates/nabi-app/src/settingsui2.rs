@@ -83,6 +83,11 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     );
     chk(
         ui,
+        tr(lang, "settings.agentsound"),
+        &mut cfg.terminal.agent_sound,
+    );
+    chk(
+        ui,
         tr(lang, "menu.ontop"),
         &mut cfg.appearance.always_on_top,
     );

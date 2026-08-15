@@ -78,6 +78,8 @@ impl NabiApp {
             PaletteAction::ToggleFloatOnTop => self.floating_on_top = !self.floating_on_top,
             PaletteAction::CopyLastOutput => self.copy_last_output(ctx),
             PaletteAction::JumpDir(d) => self.spawn_local_at(d),
+            PaletteAction::WorktreeCreate => self.open_worktree_prompt(),
+            PaletteAction::WorktreeList => self.open_worktree_list(),
             PaletteAction::QuickSelect => self.quick_select_open = true,
             PaletteAction::RunHistory(cmd) => self.run_history_cmd(cmd),
             PaletteAction::PasteClip(t) => self.paste_text_to_focused(t),

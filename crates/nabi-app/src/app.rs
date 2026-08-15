@@ -153,6 +153,8 @@ pub struct NabiApp {
     pub notify: Option<(String, std::time::Instant)>,
     /// 화면 규칙 기반 에이전트 상태 감시(A1 — 훅 미설치 에이전트 폴백).
     pub agent_watch: crate::agentwatch::AgentWatch,
+    /// pane 상태 키의 만료 시각(B7 TTL) — 지나면 tick이 삭제한다.
+    pub pane_status_ttl: HashMap<(PaneId, String), std::time::Instant>,
     /// AI CLI 자동 업데이트 작업(시작 시 1회). 끝나면 무엇을 올렸는지 토스트로 알린다.
     pub ai_cli_auto: Option<crate::aicliupd::AutoJob>,
     /// 포커스 pane 리사이즈 직후 잠시 표시할 크기 배지(열×행, 시각).
@@ -167,6 +169,11 @@ pub struct NabiApp {
     pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_targets: HashMap<i64, PaneId>,
     /// DM 페어링 대기(chat, 코드, 만료) — dm_policy=pairing일 때 미지 chat의 승인 요청(C1).
     pub telegram_pending: Vec<(i64, String, std::time::Instant)>,
+    /// 하트비트(C5): 마지막 발신 시각·요약(변화 없으면 무발신).
+    pub telegram_heartbeat: (Option<std::time::Instant>, String),
+    /// 워크트리 만들기 입력(B6, 브랜치 이름) / 목록 모달((기준 cwd, 항목들)).
+    pub worktree_prompt: Option<String>,
+    pub worktree_list: Option<(String, Vec<crate::worktree::Wt>)>,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).

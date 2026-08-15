@@ -15,8 +15,9 @@ pub(crate) fn parse_agent(
         Some("report") => Ok(ControlRequest::PaneStatusSet {
             key: "state".into(),
             value: Some(flag(args, "--state").ok_or(usage)?),
+            ttl_ms: flag(args, "--ttl").and_then(|s| s.parse().ok()),
         }),
-        Some("release") => Ok(ControlRequest::PaneStatusSet { key: "state".into(), value: None }),
+        Some("release") => Ok(ControlRequest::PaneStatusSet { key: "state".into(), value: None, ttl_ms: None }),
         Some("explain") => Ok(ControlRequest::AgentExplain { pane: pane(args).ok_or(usage)? }),
         Some("wait") => Ok(ControlRequest::Wait {
             pane: pane(args).ok_or(usage)?,

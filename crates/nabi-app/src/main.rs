@@ -142,7 +142,7 @@ mod sftplist;
 mod viewmode;
 mod sftpview;
 mod syncbrowse;
-mod tabsterm; mod termlink; mod telegrambridge; mod settingstelegram; mod editorloc;
+mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod editorloc;
 mod sftppath;
 mod sftpxfer; mod sftpqueue; mod sftpqact;
 mod sftpdownload;
@@ -176,7 +176,7 @@ mod windndvirt;
 mod windndfolder;
 mod viewportcmd;
 mod windows;
-mod workspace; mod workspace2;
+mod workspace; mod workspace2; mod worktree; mod worktreeui;
 
 use app::NabiApp;
 

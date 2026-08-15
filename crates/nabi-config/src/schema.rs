@@ -34,6 +34,9 @@ pub struct TelegramCfg {
     /// 미지 DM 처리: "allowlist"(무시, 기존 동작) | "pairing"(만료 코드 발급→앱에서 승인).
     /// OpenClaw DM pairing 벤치마킹(C1). open(전체 허용)은 만들지 않는다 — 사고 벡터.
     pub dm_policy: String,
+    /// 하트비트 주기(분, 0=끄기) — 에이전트 상태 요약을 오너 chat에 발신(C5).
+    /// 변화가 없으면 발신하지 않는다(OpenClaw HEARTBEAT_OK 억제 패턴 — 스팸·비용 방지).
+    pub heartbeat_mins: u64,
 }
 
 impl Default for TelegramCfg {
@@ -44,6 +47,7 @@ impl Default for TelegramCfg {
             grant_all: false,
             reply_lines: 40,
             dm_policy: "allowlist".into(),
+            heartbeat_mins: 0,
             idle_timeout_ms: 8000,
             poll_secs: 30,
         }
@@ -116,9 +120,7 @@ pub struct Appearance {
     pub session_notes: std::collections::BTreeMap<String, String>,
 }
 
-fn default_true() -> bool {
-    true
-}
+fn default_true() -> bool { true }
 
 impl Default for Appearance {
     fn default() -> Self {
@@ -279,6 +281,9 @@ pub struct TerminalCfg {
     /// AI CLI 최신 버전을 마지막으로 확인한 unix초(하루 1회로 제한).
     #[serde(default)]
     pub ai_cli_checked_at: i64,
+    /// 에이전트가 입력 대기(blocked)로 전이할 때 시스템 알림음(A7). 기본 false.
+    #[serde(default)]
+    pub agent_sound: bool,
 }
 
 fn default_alert_pct() -> u32 { 90 }
@@ -308,6 +313,7 @@ impl Default for TerminalCfg {
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,
+            agent_sound: false,
             confirm_close: true,
             last_host: String::new(),
             last_user: String::new(),

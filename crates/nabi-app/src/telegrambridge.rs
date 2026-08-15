@@ -103,18 +103,18 @@ impl TelegramBridge {
         self.incoming.as_ref().and_then(|r| r.try_recv().ok())
     }
 
-    fn reply(&self, chat_id: i64, text: String) {
+    pub(crate) fn reply(&self, chat_id: i64, text: String) {
         if let Some(tx) = &self.outgoing {
             let _ = tx.send((chat_id, text));
         }
     }
 
-    fn push_pending(&mut self, chat: i64, pane: PaneId, deadline: Instant) {
+    pub(crate) fn push_pending(&mut self, chat: i64, pane: PaneId, deadline: Instant) {
         self.pending.push(TgPending { chat, pane, deadline });
     }
 
     /// 해당 pane을 기다리던 보류들을 꺼낸다(명령 완료 시 — 정확 경로).
-    fn take_for_pane(&mut self, pane: PaneId) -> Vec<i64> {
+    pub(crate) fn take_for_pane(&mut self, pane: PaneId) -> Vec<i64> {
         let mut out = Vec::new();
         self.pending.retain(|p| if p.pane == pane { out.push(p.chat); false } else { true });
         out
@@ -149,99 +149,14 @@ impl NabiApp {
         for (chat, pane) in self.telegram.take_due(Instant::now()) {
             self.telegram_send_output(chat, pane);
         }
-    }
-
-    /// 명령이 끝난 pane(OSC133 CommandBlock)을 기다리던 보류에 실제 출력을 회신한다(events.rs에서 호출).
-    pub(crate) fn fulfill_telegram(&mut self, pane: PaneId) {
-        for chat in self.telegram.take_for_pane(pane) {
-            self.telegram_send_output(chat, pane);
-        }
-    }
-
-    /// 수신 메시지를 처리: 미지 chat이면 페어링(C1), `/`면 브리지 명령, 아니면 pane 주입.
-    fn handle_telegram_msg(&mut self, m: TgMessage) {
-        if !self.config.telegram.allowed_chats.contains(&m.chat_id) {
-            self.telegram_pair_request(m.chat_id);
-            return;
-        }
-        if let Some(rest) = m.text.trim().strip_prefix('/') {
-            self.handle_telegram_command(m.chat_id, rest);
-            return;
-        }
-        // 입력 주입(셸 제어)은 오너(허용 목록 첫 chat) + "모든 권한 부여"가 둘 다 필요.
-        // 화이트리스트의 다른 chat은 설정과 무관하게 관찰만(OpenClaw 오너 모델 벤치마킹, C2).
-        if self.telegram_owner() != Some(m.chat_id) {
-            self.telegram.reply(m.chat_id, "오너 전용 — 셸 입력은 허용 목록의 첫 chat만 가능합니다. (/panes·/use 는 가능)".into());
-            return;
-        }
-        if !self.config.telegram.grant_all {
-            self.telegram.reply(m.chat_id, "권한 없음 — 설정 ▸ 텔레그램에서 '모든 권한 부여'를 켜세요. (/panes·/use 는 가능)".into());
-            return;
-        }
-        let Some(pane) = self.telegram_targets.get(&m.chat_id).copied().or_else(|| self.focused_pane()) else {
-            self.telegram.reply(m.chat_id, "대상 셸이 없습니다.".into());
-            return;
-        };
-        self.orch.send(nabi_proto::Command::WriteInput {
-            pane,
-            data: bytes::Bytes::from(format!("{}\r", m.text).into_bytes()),
-        });
-        let deadline = Instant::now() + std::time::Duration::from_millis(self.config.telegram.idle_timeout_ms.max(500));
-        self.telegram.push_pending(m.chat_id, pane, deadline);
-    }
-
-    /// 오너 chat = 허용 목록의 첫 항목(제어 권한). 나머지는 관찰 전용.
-    pub(crate) fn telegram_owner(&self) -> Option<i64> {
-        self.config.telegram.allowed_chats.first().copied()
-    }
-
-    /// 브리지 명령 처리(파싱은 nabi_telegram::parse_command, 순수·테스트됨).
-    fn handle_telegram_command(&mut self, chat: i64, rest: &str) {
-        let reply = match nabi_telegram::parse_command(rest) {
-            nabi_telegram::TgCmd::Panes => {
-                let cur = self.telegram_targets.get(&chat).map(|p| p.get());
-                let mut lines = vec!["\u{1f4cb} panes (/use N 으로 선택):".to_string()];
-                if let Ok(panes) = self.orch.panes.read() {
-                    let mut ids: Vec<_> = panes.iter().map(|(id, v)| (id.get(), v.title.clone())).collect();
-                    ids.sort_by_key(|(id, _)| *id);
-                    for (id, title) in ids {
-                        lines.push(format!("{id}: {title}{}", if cur == Some(id) { " \u{25c0}" } else { "" }));
-                    }
-                }
-                lines.join("\n")
-            }
-            nabi_telegram::TgCmd::Use(n) => {
-                let pid = self.orch.panes.read().ok().and_then(|m| m.keys().find(|p| p.get() == n).copied());
-                if let Some(pid) = pid {
-                    self.telegram_targets.insert(chat, pid); // chat별 대상(다인 접근 시 분리).
-                    format!("\u{2713} 대상 pane = {n}")
-                } else {
-                    format!("pane {n} 없음 — /panes 로 확인")
-                }
-            }
-            nabi_telegram::TgCmd::Cancel => {
-                // 대상 셸에 Ctrl+C(중단) — 제어 동작이라 오너+grant_all 필요.
-                if self.telegram_owner() != Some(chat) {
-                    "오너 전용 — 허용 목록의 첫 chat만 가능합니다".to_string()
-                } else if !self.config.telegram.grant_all {
-                    "권한 없음 — '모든 권한 부여' 필요".to_string()
-                } else if let Some(pane) = self.telegram_targets.get(&chat).copied().or_else(|| self.focused_pane()) {
-                    self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(vec![0x03u8]) });
-                    "\u{2713} Ctrl+C 전송".to_string()
-                } else {
-                    "대상 셸 없음".to_string()
-                }
-            }
-            nabi_telegram::TgCmd::Help => "명령: /panes(목록) · /use N(대상 선택) · /cancel(Ctrl+C) · /help. 그 외 텍스트는 대상 셸에 입력됩니다.".to_string(),
-        };
-        self.telegram.reply(chat, reply);
+        self.telegram_heartbeat_tick();
     }
 
     /// 미지 chat의 페어링 요청 처리(C1 — OpenClaw DM pairing 벤치마킹).
     ///
     /// 만료 코드를 만들어 한 번만 회신하고, 승인 대기 목록에 올린다. 스팸 방어:
     /// 이미 대기 중이면 무응답, 대기 상한 3건(ClawJacked 교훈 — 무한 승인 요청 금지).
-    fn telegram_pair_request(&mut self, chat: i64) {
+    pub(crate) fn telegram_pair_request(&mut self, chat: i64) {
         let now = Instant::now();
         self.telegram_pending.retain(|(_, _, exp)| *exp > now); // 만료 청소.
         if self.telegram_pending.iter().any(|(c, _, _)| *c == chat) {
@@ -264,7 +179,7 @@ impl NabiApp {
     }
 
     /// 대상 pane의 출력을 캡처해 텔레그램으로 회신한다(OSC133이면 마지막 명령 출력, 아니면 화면 끝 N줄).
-    fn telegram_send_output(&mut self, chat: i64, pane: PaneId) {
+    pub(crate) fn telegram_send_output(&mut self, chat: i64, pane: PaneId) {
         let lines = self.config.telegram.reply_lines.max(1);
         let raw = self.orch.panes.read().ok().and_then(|m| m.get(&pane).cloned())
             .and_then(|v| v.model.lock().ok().map(|md| md.last_command_output().unwrap_or_else(|| md.visible_text(lines))))

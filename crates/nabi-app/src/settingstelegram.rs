@@ -98,6 +98,11 @@ pub(crate) fn telegram_rows(
     ui.checkbox(&mut cfg.telegram.grant_all, "").on_hover_text(tr(lang, "tg.grantall.hint"));
     ui.end_row();
 
+    ui.label(tr(lang, "tg.heartbeat"));
+    ui.add(egui::DragValue::new(&mut cfg.telegram.heartbeat_mins).range(0..=1440).suffix("m"))
+        .on_hover_text(tr(lang, "tg.heartbeat.hint"));
+    ui.end_row();
+
     ui.label(tr(lang, "tg.replylines"));
     ui.add(egui::DragValue::new(&mut cfg.telegram.reply_lines).range(1..=200));
     ui.end_row();

@@ -139,6 +139,8 @@ Alternatively (more reliable — no terminal rendering needed), publish via the 
     nabi cli status set cost "$1.40"           # → AI dashboard total + per-agent cost
     nabi cli status set state "waiting"        # "waiting"/"input"/"blocked" → input-needed toast
     nabi cli status clear state                 # clear one key (omit key = clear all for this pane)
+    nabi cli status set state working --ttl 60000   # auto-clears after 60s (TTL)
+    nabi cli status set label.working "refactoring auth"   # per-state label shown in AI dashboard
 
 ### Claude Code statusLine integration (recommended)
 

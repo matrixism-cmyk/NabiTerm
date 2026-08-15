@@ -64,6 +64,11 @@ impl crate::app::NabiApp {
                         };
                         ui.colored_label(dot, "\u{25cf}").on_hover_text(nabi_i18n::tr(lang, key));
                         if ui.selectable_label(false, title).clicked() { focus = Some(*p); }
+                        // 상태별 라벨(B7): status set label.working "refactoring auth" 식 발행.
+                        let sname = match state { 2 => "blocked", 1 => "working", 3 => "done", _ => "idle" };
+                        if let Some(lbl) = self.pane_status.get(p).and_then(|m| m.get(&format!("label.{sname}"))) {
+                            ui.weak(lbl);
+                        }
                         if let Some(g) = ctx { ui.weak(format!("{:.0}%", g * 100.0)); }
                         if let Some(c) = cost { ui.weak(format!("\u{1f4b2}{c:.2}")); }
                     });

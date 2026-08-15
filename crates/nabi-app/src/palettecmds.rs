@@ -15,6 +15,8 @@ pub(crate) fn palette_commands(
     clips: &[String],
 ) -> Vec<(String, PaletteAction)> {
     let mut v = vec![
+        (tr(lang, "wt.create").to_string(), PaletteAction::WorktreeCreate),
+        (tr(lang, "wt.list").to_string(), PaletteAction::WorktreeList),
         (tr(lang, "tab.duplicate").to_string(), PaletteAction::DuplicateTab),
         (tr(lang, "tab.reopen").to_string(), PaletteAction::ReopenClosed),
         (tr(lang, "tab.closeothers").to_string(), PaletteAction::CloseOthers),

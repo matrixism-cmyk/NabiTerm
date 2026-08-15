@@ -68,7 +68,13 @@ pub enum ControlRequest {
     /// 사용자 토스트 알림(발신 pane 표기 — CP-7).
     Notify { title: String, body: String },
     /// 호출 pane의 커스텀 상태 키-값 설정/삭제(AI 도구 → 상태바·탭). value=None=삭제, key="" =전체 삭제.
-    PaneStatusSet { key: String, value: Option<String> },
+    PaneStatusSet {
+        key: String,
+        value: Option<String>,
+        /// 만료(ms) — 지나면 자동 삭제(B7). None=영구.
+        #[serde(default)]
+        ttl_ms: Option<u64>,
+    },
     /// A4: pane 화면을 내장 감지 규칙 전부로 평가해 판정 근거를 회신(디버깅·규칙 작성용).
     AgentExplain { pane: u64 },
 }

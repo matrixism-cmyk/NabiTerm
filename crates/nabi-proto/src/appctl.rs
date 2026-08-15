@@ -28,5 +28,7 @@ pub enum AppCtl {
         pane: u64,
         key: String,
         value: Option<String>,
+        /// 만료(ms) — 지나면 자동 삭제(B7, herdr 메타데이터 TTL). None=영구.
+        ttl_ms: Option<u64>,
     },
 }

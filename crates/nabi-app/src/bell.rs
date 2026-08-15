@@ -1,6 +1,17 @@
 //! 비주얼 벨: 터미널이 BEL을 울리면 화면을 잠깐 번쩍인다(소리 대신 시각 피드백).
 
 use crate::app::NabiApp;
+
+/// 시스템 알림음(Windows MessageBeep) — 비동기·논블로킹, 실패해도 무해.
+pub(crate) fn system_beep() {
+    #[link(name = "user32")]
+    extern "system" {
+        fn MessageBeep(u_type: u32) -> i32;
+    }
+    unsafe {
+        let _ = MessageBeep(0x30); // MB_ICONEXCLAMATION — 주의 환기 톤.
+    }
+}
 use nabi_types::PaneId;
 use std::time::{Duration, Instant};
 
