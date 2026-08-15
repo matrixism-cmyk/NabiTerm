@@ -116,6 +116,7 @@ fn build_request(name: &str, a: &Value) -> Result<ControlRequest, String> {
         "nabi_open_sftp" => {
             ControlRequest::OpenSftp { session: s("session").ok_or("session 인자 필요")? }
         }
+        "nabi_agent_explain" => ControlRequest::AgentExplain { pane: need_pane()? },
         "nabi_wait" => ControlRequest::Wait {
             pane: need_pane()?,
             until: s("until").unwrap_or_else(|| "exit".into()),
@@ -181,8 +182,14 @@ fn tool_defs() -> Vec<Value> {
         ),
         t(
             "nabi_wait",
-            "pane 조건 대기(exit|command-done|output|idle). exit는 {code}, command-done은 명령 블록 JSON 회신",
-            json!({ "pane": pane, "until": { "type": "string" }, "timeout_ms": { "type": "integer" } }),
+            "pane 조건 대기(exit|command-done|output|idle|agent:idle|agent:working|agent:blocked|agent:done). output은 match/regex로 화면 패턴 대기 가능",
+            json!({ "pane": pane, "until": { "type": "string" }, "timeout_ms": { "type": "integer" }, "match": { "type": "string" }, "regex": { "type": "string" } }),
+            &["pane"],
+        ),
+        t(
+            "nabi_agent_explain",
+            "pane 화면을 에이전트 상태 감지 규칙으로 평가한 근거 회신(디버깅)",
+            json!({ "pane": pane }),
             &["pane"],
         ),
         t("nabi_focus", "pane 탭 활성화(사용자 주의 유도)", json!({ "pane": pane }), &["pane"]),
@@ -213,7 +220,9 @@ mod tests {
         assert!(matches!(r, ControlRequest::Capture { pane: 1, start: Some(-100), .. }));
         assert!(build_request("nabi_send", &json!({ "pane": 3 })).is_err());
         assert!(build_request("unknown", &json!({})).is_err());
-        // 도구 선언이 전부 유효한 JSON으로 직렬화된다.
-        assert_eq!(tool_defs().len(), 12);
+        // 도구 선언이 전부 유효한 JSON으로 직렬화된다(+A4 agent explain).
+        assert_eq!(tool_defs().len(), 13);
+        let r = build_request("nabi_agent_explain", &json!({ "pane": 2 })).unwrap();
+        assert!(matches!(r, ControlRequest::AgentExplain { pane: 2 }));
     }
 }

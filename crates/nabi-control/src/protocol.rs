@@ -69,6 +69,8 @@ pub enum ControlRequest {
     Notify { title: String, body: String },
     /// 호출 pane의 커스텀 상태 키-값 설정/삭제(AI 도구 → 상태바·탭). value=None=삭제, key="" =전체 삭제.
     PaneStatusSet { key: String, value: Option<String> },
+    /// A4: pane 화면을 내장 감지 규칙 전부로 평가해 판정 근거를 회신(디버깅·규칙 작성용).
+    AgentExplain { pane: u64 },
 }
 
 /// 서버 → 클라이언트 응답(요청당 한 줄).

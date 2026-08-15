@@ -27,4 +27,10 @@ pub const CATALOG_TERM: &[(&str, &str, &str, &str)] = &[
         "첫 번째 chat ID가 오너입니다 — 셸 입력·Ctrl+C는 오너만 가능하고, 나머지는 관찰(/panes·/use)만 됩니다.",
         "先頭の chat ID がオーナーです — シェル入力・Ctrl+C はオーナーのみ、他は閲覧(/panes・/use)のみです。",
     ),
+    ("tg.dmpolicy", "Unknown DMs", "미지 DM 처리", "未知のDM"),
+    ("tg.dmpolicy.allowlist", "Ignore (allowlist only)", "무시(허용 목록만)", "無視(許可リストのみ)"),
+    ("tg.dmpolicy.pairing", "Pairing (code + approval)", "페어링(코드+승인)", "ペアリング(コード+承認)"),
+    ("tg.pending", "Pairing requests", "페어링 대기", "ペアリング待ち"),
+    ("tg.approve", "Approve", "승인", "承認"),
+    ("tg.deny", "Deny", "거부", "拒否"),
 ];

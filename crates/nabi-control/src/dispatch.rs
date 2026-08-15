@@ -40,6 +40,8 @@ pub fn dispatch(
             tracing::info!(target: "control", from = ?from, pane, lines, "capture");
             capture(panes, pane, lines, start, end, escapes)
         }
+        // 읽기 전용(capture 동급): 화면을 규칙으로 평가한 근거를 돌려준다(A4).
+        ControlRequest::AgentExplain { pane } => crate::explain::agent_explain(panes, pane),
         // ── 쓰기 동작: verb 그룹별 정책 게이트(CP-7 — act/inject 별도 승인) ──
         write_verb => {
             let g = group_of(&write_verb);
@@ -184,11 +186,10 @@ fn dispatch_write(
             app_tx.send(AppCtl::Notify { from, title, body }).ok();
             ControlResponse::Ok
         }
+        // 호출 pane(from)의 상태를 설정/삭제 — 자기 자신만 갱신.
         ControlRequest::PaneStatusSet { key, value } => {
             tracing::info!(target: "control", from = ?from, "status-set");
-            // 호출 pane(from)의 상태를 설정/삭제 — 자기 자신만 갱신.
-            app_tx.send(AppCtl::PaneStatus { pane: from.unwrap_or(0), key, value }).ok();
-            ControlResponse::Ok
+            app_tx.send(AppCtl::PaneStatus { pane: from.unwrap_or(0), key, value }).ok(); ControlResponse::Ok
         }
         _ => err("알 수 없는 동작"),
     }

@@ -57,11 +57,14 @@ pub fn run_cli(args: &[String]) -> i32 {
         }
     }) {
         Ok(a) => a,
-        Err(e) => {
-            eprintln!("오류: {e}");
-            return 1;
-        }
+        Err(e) => { eprintln!("오류: {e}"); return 1; }
     };
+    // B1: `agent prompt` = 텍스트 전송(+Enter) 후 선택적으로 상태 도달까지 대기 — 요청 합성.
+    if args.first().map(String::as_str) == Some("agent")
+        && args.get(1).map(String::as_str) == Some("prompt")
+    {
+        return crate::clientagent::agent_prompt(&pipe, &token, &args, json);
+    }
     let req = match parse_verb(&args) {
         Ok(r) => r,
         Err(usage) => {
@@ -173,6 +176,7 @@ fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
         공통: --json(머신 출력), --pane 대신 --match \"title:x,cwd:y,kind:z,state:idle\"";
     let pane = |a: &[String]| flag(a, "--pane").and_then(|s| s.parse::<u64>().ok());
     match args.first().map(String::as_str) {
+        Some("agent") => crate::clientagent::parse_agent(args, usage, &pane),
         Some("list") => Ok(ControlRequest::ListPanes),
         Some("capture") => Ok(ControlRequest::Capture {
             pane: pane(args).ok_or(usage)?,

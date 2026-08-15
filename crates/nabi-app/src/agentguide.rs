@@ -58,6 +58,13 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
   Read a pane's screen/scrollback. `--lines 100` = last 100 lines; `--escapes` keeps ANSI colors.
 - `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
+- `nabi cli agent report --state working|blocked|idle|done` / `agent release`
+  Publish your own state (authoritative — screen detection steps aside). Call from hooks/statusLine.
+- `nabi cli agent wait --pane <id> --until idle|working|blocked|done [--timeout <ms>]`
+  Block until the agent in that pane reaches a state (screen-detected or hook-published).
+- `nabi cli agent prompt --pane <id> --data <text> [--wait [--until <state>]] [--timeout <ms>]`
+  Type a prompt into another agent pane (Enter included) and optionally wait for its state.
+- `nabi cli agent explain --pane <id>` — why the state detector classified a pane as it did.
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
 - `nabi cli tail --pane <id>`
   Stream a pane's output continuously.

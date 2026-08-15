@@ -45,8 +45,8 @@ impl AgentWatch {
         self.cand.remove(&pane);
     }
 
-    /// 새 판독을 디바운스에 통과시켜 확정 상태를 갱신한다. 반환=blocked로 **전이**했는가.
-    fn absorb(&mut self, pane: PaneId, read: AgentState, focused: bool) -> bool {
+    /// 새 판독을 디바운스에 통과시켜 확정 상태를 갱신한다. 반환=새로 **확정된** 상태.
+    fn absorb(&mut self, pane: PaneId, read: AgentState, focused: bool) -> Option<AgentState> {
         let cur = self.state.get(&pane).copied();
         // done은 감지가 아니라 전이 규칙이 만든다: working이었다가 조용해졌는데 아직 안 봤다.
         let read = match (cur, read, focused) {
@@ -57,7 +57,7 @@ impl AgentWatch {
         };
         if Some(read) == cur {
             self.cand.remove(&pane);
-            return false;
+            return None;
         }
         let n = match self.cand.get(&pane) {
             Some((c, n)) if *c == read => n + 1,
@@ -65,11 +65,11 @@ impl AgentWatch {
         };
         if n < CONFIRM {
             self.cand.insert(pane, (read, n));
-            return false;
+            return None;
         }
         self.cand.remove(&pane);
         self.state.insert(pane, read);
-        read == AgentState::Blocked && !focused
+        Some(read)
     }
 }
 
@@ -101,8 +101,15 @@ impl crate::app::NabiApp {
             }) else {
                 continue;
             };
-            if self.agent_watch.absorb(pane, read, focused == Some(pane)) {
-                newly_blocked.push(pane);
+            if let Some(new) = self.agent_watch.absorb(pane, read, focused == Some(pane)) {
+                // 상태 확정 → 제어 평면(agent wait/이벤트 구독)에 합성 이벤트 발행(B1).
+                self.control_events.publish(&nabi_proto::Event::AgentStatus {
+                    pane,
+                    state: state_name(new),
+                });
+                if new == AgentState::Blocked && focused != Some(pane) {
+                    newly_blocked.push(pane);
+                }
             }
         }
         for pane in newly_blocked {
@@ -138,6 +145,17 @@ impl crate::app::NabiApp {
     }
 }
 
+/// 상태 이름(제어 평면 어휘 — agent wait --until 과 일치).
+pub(crate) fn state_name(s: AgentState) -> &'static str {
+    match s {
+        AgentState::Idle => "idle",
+        AgentState::Working => "working",
+        AgentState::Blocked => "blocked",
+        AgentState::Done => "done",
+        AgentState::Unknown => "unknown",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,13 +169,13 @@ mod tests {
     fn debounce_requires_two_consecutive_reads() {
         let mut w = watch();
         let p = PaneId::new(1);
-        assert!(!w.absorb(p, AgentState::Working, false));
+        assert_eq!(w.absorb(p, AgentState::Working, false), None);
         assert_eq!(w.state.get(&p), None, "1회차는 후보일 뿐");
-        assert!(!w.absorb(p, AgentState::Working, false));
+        assert_eq!(w.absorb(p, AgentState::Working, false), Some(AgentState::Working));
         assert_eq!(w.state.get(&p), Some(&AgentState::Working));
         // 다른 상태가 끼어들면 카운트가 리셋된다.
-        assert!(!w.absorb(p, AgentState::Idle, false));
-        assert!(!w.absorb(p, AgentState::Blocked, false));
+        assert_eq!(w.absorb(p, AgentState::Idle, false), None);
+        assert_eq!(w.absorb(p, AgentState::Blocked, false), None);
         assert_eq!(w.state.get(&p), Some(&AgentState::Working), "연속이 아니면 유지");
     }
 
@@ -181,15 +199,13 @@ mod tests {
         assert_eq!(w.state.get(&p), Some(&AgentState::Idle));
     }
 
-    /// blocked 전이는 비포커스일 때만 알림 신호를 낸다.
+    /// 확정 순간에만 새 상태를 돌려준다(같은 상태 반복은 None — 이벤트 중복 방지).
     #[test]
-    fn blocked_signals_only_when_unfocused() {
+    fn confirmation_fires_once() {
         let mut w = watch();
         let p = PaneId::new(3);
-        assert!(!w.absorb(p, AgentState::Blocked, false), "1회차는 신호 없음");
-        assert!(w.absorb(p, AgentState::Blocked, false), "확정 순간 신호");
-        let q = PaneId::new(4);
-        w.absorb(q, AgentState::Blocked, true);
-        assert!(!w.absorb(q, AgentState::Blocked, true), "포커스 중이면 신호 없음");
+        assert_eq!(w.absorb(p, AgentState::Blocked, false), None, "1회차는 후보");
+        assert_eq!(w.absorb(p, AgentState::Blocked, false), Some(AgentState::Blocked));
+        assert_eq!(w.absorb(p, AgentState::Blocked, false), None, "유지 중엔 재발행 없음");
     }
 }

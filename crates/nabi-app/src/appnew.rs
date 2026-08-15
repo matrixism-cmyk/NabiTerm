@@ -163,7 +163,7 @@ impl NabiApp {
             ai_cli_auto: None,
             resize_badge: None,
             add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None, prompt_raised: false,
-            pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_targets: HashMap::new(),
+            pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_targets: HashMap::new(), telegram_pending: Vec::new(),
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),
             pane_status: HashMap::new(), ssh_connect_time: HashMap::new(),

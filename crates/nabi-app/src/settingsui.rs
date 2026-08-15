@@ -22,6 +22,8 @@ pub(crate) const PAGE_KEYS: [&str; 10] = [
 pub(crate) struct PageCtx<'a> {
     pub policy: &'a nabi_control::policy::ControlPolicy,
     pub font_installer: &'a crate::fontinstall::FontInstaller,
+    /// 텔레그램 DM 페어링 대기(chat, 코드, 만료) — 승인/거부 버튼이 직접 편집(C1).
+    pub tg_pending: &'a std::cell::RefCell<Vec<(i64, String, std::time::Instant)>>,
 }
 
 /// 선택된 카테고리 페이지 하나를 그린다(cfg 직접 편집; 적용은 apply_settings).
@@ -40,7 +42,7 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, editor: &mut EditorCo
         6 => grid(ui, "sec_editor", |ui| editor_rows(ui, editor, lang)),
         7 => crate::settingslists::highlight_rows(ui, cfg, lang),
         8 => crate::settingslists::snippet_rows(ui, cfg, lang),
-        _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang)),
+        _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending)),
     }
 }
 

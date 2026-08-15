@@ -4,6 +4,8 @@
 //! CP-1: 읽기 전용(list/capture) + 토큰 검증. 쓰기 동작은 CP-2.
 
 pub mod client;
+mod clientagent;
+mod explain;
 pub mod dispatch;
 pub mod matcher;
 pub mod mcp;

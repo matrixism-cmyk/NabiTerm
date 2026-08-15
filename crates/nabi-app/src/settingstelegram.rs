@@ -4,7 +4,12 @@
 use nabi_config::AppConfig;
 use nabi_i18n::{tr, Lang};
 
-pub(crate) fn telegram_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+pub(crate) fn telegram_rows(
+    ui: &mut egui::Ui,
+    cfg: &mut AppConfig,
+    lang: Lang,
+    pending: &std::cell::RefCell<Vec<(i64, String, std::time::Instant)>>,
+) {
     let have_token = nabi_secret::keyringstore::load_telegram_token().is_some();
 
     ui.label(tr(lang, "tg.enabled"));
@@ -53,6 +58,41 @@ pub(crate) fn telegram_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     ui.label("");
     ui.weak(tr(lang, "tg.ownerhint"));
     ui.end_row();
+
+    // 미지 DM 정책(C1): allowlist=무시(기존) / pairing=만료 코드 발급 후 여기서 승인.
+    ui.label(tr(lang, "tg.dmpolicy"));
+    ui.horizontal(|ui| {
+        for (val, key) in [("allowlist", "tg.dmpolicy.allowlist"), ("pairing", "tg.dmpolicy.pairing")] {
+            if ui.selectable_label(cfg.telegram.dm_policy == val, tr(lang, key)).clicked() {
+                cfg.telegram.dm_policy = val.into();
+            }
+        }
+    });
+    ui.end_row();
+    // 페어링 대기 목록 — 코드가 상대 메시지와 일치하는지 확인하고 승인/거부.
+    let mut list = pending.borrow_mut();
+    if !list.is_empty() {
+        ui.label(tr(lang, "tg.pending"));
+        ui.vertical(|ui| {
+            let now = std::time::Instant::now();
+            let mut act: Option<(usize, bool)> = None;
+            for (i, (chat, code, exp)) in list.iter().enumerate() {
+                ui.horizontal(|ui| {
+                    let mins = exp.saturating_duration_since(now).as_secs() / 60;
+                    ui.monospace(format!("chat {chat} \u{b7} {code} ({mins}m)"));
+                    if ui.small_button(tr(lang, "tg.approve")).clicked() { act = Some((i, true)); }
+                    if ui.small_button(tr(lang, "tg.deny")).clicked() { act = Some((i, false)); }
+                });
+            }
+            if let Some((i, ok)) = act {
+                let (chat, _, _) = list.remove(i);
+                if ok && !cfg.telegram.allowed_chats.contains(&chat) {
+                    cfg.telegram.allowed_chats.push(chat); // 오너는 첫 항목 — 신규는 뒤(관찰 전용).
+                }
+            }
+        });
+        ui.end_row();
+    }
 
     ui.label(tr(lang, "tg.grantall"));
     ui.checkbox(&mut cfg.telegram.grant_all, "").on_hover_text(tr(lang, "tg.grantall.hint"));

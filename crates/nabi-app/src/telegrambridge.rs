@@ -49,7 +49,7 @@ impl TelegramBridge {
     }
 
     /// 폴링·전송 스레드를 시작한다(이미 실행 중이면 먼저 중지). allowed가 비면 호출측에서 막아야 함.
-    pub(crate) fn start(&mut self, token: String, poll_secs: u64, allowed: HashSet<i64>) {
+    pub(crate) fn start(&mut self, token: String, poll_secs: u64, allowed: HashSet<i64>, pairing: bool) {
         self.stop();
         let stop = Arc::new(AtomicBool::new(false));
         let (in_tx, in_rx) = crossbeam_channel::unbounded();
@@ -64,8 +64,10 @@ impl TelegramBridge {
                         perr.store(false, Ordering::Relaxed); // 정상 → 오류 해제.
                         offset = next;
                         for m in msgs {
-                            if allowed.contains(&m.chat_id) {
-                                let _ = in_tx.send(m); // 화이트리스트만 통과(보안).
+                            // 화이트리스트 통과 + (pairing 모드면) 미지 chat도 앱으로 —
+                            // 앱이 페어링 코드 발급/무시를 판단한다(C1). 기본은 종전대로 차단.
+                            if allowed.contains(&m.chat_id) || pairing {
+                                let _ = in_tx.send(m);
                             }
                         }
                     }
@@ -134,7 +136,8 @@ impl NabiApp {
             // 활성화 전환 — 토큰은 keyring에서만(평문 금지). 토큰 없으면 시작 안 함(2초마다만 조회).
             if let Some(token) = nabi_secret::keyringstore::load_telegram_token() {
                 let allowed: HashSet<i64> = self.config.telegram.allowed_chats.iter().copied().collect();
-                self.telegram.start(token, self.config.telegram.poll_secs.max(1), allowed);
+                let pairing = self.config.telegram.dm_policy == "pairing";
+                self.telegram.start(token, self.config.telegram.poll_secs.max(1), allowed, pairing);
             }
         } else if !want && self.telegram.running() {
             self.telegram.stop();
@@ -155,8 +158,12 @@ impl NabiApp {
         }
     }
 
-    /// 수신 메시지를 처리: `/`로 시작하면 브리지 명령, 아니면 대상 pane에 주입.
+    /// 수신 메시지를 처리: 미지 chat이면 페어링(C1), `/`면 브리지 명령, 아니면 pane 주입.
     fn handle_telegram_msg(&mut self, m: TgMessage) {
+        if !self.config.telegram.allowed_chats.contains(&m.chat_id) {
+            self.telegram_pair_request(m.chat_id);
+            return;
+        }
         if let Some(rest) = m.text.trim().strip_prefix('/') {
             self.handle_telegram_command(m.chat_id, rest);
             return;
@@ -228,6 +235,32 @@ impl NabiApp {
             nabi_telegram::TgCmd::Help => "명령: /panes(목록) · /use N(대상 선택) · /cancel(Ctrl+C) · /help. 그 외 텍스트는 대상 셸에 입력됩니다.".to_string(),
         };
         self.telegram.reply(chat, reply);
+    }
+
+    /// 미지 chat의 페어링 요청 처리(C1 — OpenClaw DM pairing 벤치마킹).
+    ///
+    /// 만료 코드를 만들어 한 번만 회신하고, 승인 대기 목록에 올린다. 스팸 방어:
+    /// 이미 대기 중이면 무응답, 대기 상한 3건(ClawJacked 교훈 — 무한 승인 요청 금지).
+    fn telegram_pair_request(&mut self, chat: i64) {
+        let now = Instant::now();
+        self.telegram_pending.retain(|(_, _, exp)| *exp > now); // 만료 청소.
+        if self.telegram_pending.iter().any(|(c, _, _)| *c == chat) {
+            return; // 이미 대기 — 재응답 없음(응답 스팸 방지).
+        }
+        if self.telegram_pending.len() >= 3 {
+            return; // 상한 — 오퍼레이터가 비우기 전까지 무시.
+        }
+        // 코드는 비밀이 아니라 대조용 표식(앱 화면과 상대 메시지의 일치 확인). 6자리 hex.
+        let code = {
+            use std::hash::{Hash, Hasher};
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            (chat, std::time::SystemTime::now()).hash(&mut h);
+            format!("{:06X}", h.finish() & 0xFF_FFFF)
+        };
+        let exp = now + std::time::Duration::from_secs(3600);
+        self.telegram.reply(chat, format!("페어링 코드: {code} — nabiTerm 설정 \u{25b8} 텔레그램에서 이 코드를 확인하고 승인하면 사용할 수 있습니다(1시간 유효)."));
+        self.telegram_pending.push((chat, code.clone(), exp));
+        self.notify = Some((format!("\u{2708} 텔레그램 페어링 요청: chat {chat} \u{b7} 코드 {code}"), now));
     }
 
     /// 대상 pane의 출력을 캡처해 텔레그램으로 회신한다(OSC133이면 마지막 명령 출력, 아니면 화면 끝 N줄).

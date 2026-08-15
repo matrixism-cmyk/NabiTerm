@@ -31,6 +31,9 @@ pub struct TelegramCfg {
     pub idle_timeout_ms: u64,
     /// getUpdates 롱폴링 timeout(초).
     pub poll_secs: u64,
+    /// 미지 DM 처리: "allowlist"(무시, 기존 동작) | "pairing"(만료 코드 발급→앱에서 승인).
+    /// OpenClaw DM pairing 벤치마킹(C1). open(전체 허용)은 만들지 않는다 — 사고 벡터.
+    pub dm_policy: String,
 }
 
 impl Default for TelegramCfg {
@@ -40,6 +43,7 @@ impl Default for TelegramCfg {
             allowed_chats: Vec::new(),
             grant_all: false,
             reply_lines: 40,
+            dm_policy: "allowlist".into(),
             idle_timeout_ms: 8000,
             poll_secs: 30,
         }

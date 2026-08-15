@@ -41,6 +41,9 @@ pub enum Event {
     Progress { pane: PaneId, percent: Option<u8> },
     /// OSC 7771 제어 동작(in-band). 앱이 opt-in·로컬 pane 한정으로 처리.
     ControlOsc { pane: PaneId, verb: String, json: String },
+    /// 에이전트 상태 변화(idle|working|blocked|done) — 앱이 합성 발행(훅 권위 또는 화면
+    /// 감지 확정 시). 제어 평면 `agent wait`/이벤트 구독이 이걸 본다(B1/B3).
+    AgentStatus { pane: PaneId, state: &'static str },
     /// 설정 리로드 완료.
     ConfigReloaded,
     /// SFTP 연결 성공.

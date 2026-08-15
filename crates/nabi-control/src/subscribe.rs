@@ -40,12 +40,14 @@ impl EventHub {
 }
 
 /// Wait 조건. 문자열에서 파싱(미상은 Exit).
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum WaitCond {
     Exit,
     CommandDone,
     Output,
     Idle,
+    /// 에이전트 상태 도달(idle|working|blocked|done) — `agent wait --until <state>`(B1).
+    Agent(String),
 }
 
 impl WaitCond {
@@ -54,14 +56,17 @@ impl WaitCond {
             "command-done" => WaitCond::CommandDone,
             "output" => WaitCond::Output,
             "idle" => WaitCond::Idle,
-            _ => WaitCond::Exit,
+            _ => match s.strip_prefix("agent:") {
+                Some(state) => WaitCond::Agent(state.to_string()),
+                None => WaitCond::Exit,
+            },
         }
     }
 }
 
 /// 이벤트가 대상 pane의 조건을 충족하면 회신 페이로드(JSON)를 돌려준다(G3).
 /// Idle은 여기서 판정 안 함 — 타이머.
-fn payload(ev: &Event, pane: u64, cond: WaitCond) -> Option<String> {
+fn payload(ev: &Event, pane: u64, cond: &WaitCond) -> Option<String> {
     match (cond, ev) {
         (WaitCond::Exit, Event::PaneExited { pane: p, code }) if p.get() == pane => {
             Some(serde_json::json!({ "code": code }).to_string())
@@ -74,6 +79,11 @@ fn payload(ev: &Event, pane: u64, cond: WaitCond) -> Option<String> {
         }
         (WaitCond::Output, Event::PaneOutput { pane: p }) if p.get() == pane => {
             Some(String::new())
+        }
+        (WaitCond::Agent(want), Event::AgentStatus { pane: p, state })
+            if p.get() == pane && state == want =>
+        {
+            Some(serde_json::json!({ "state": state }).to_string())
         }
         _ => None,
     }
@@ -132,7 +142,7 @@ pub async fn run_wait(
 ) -> ControlResponse {
     let rx = hub.subscribe();
     // 패턴 대기는 이미 화면에 있는 경우 즉시 충족(구독 전 출력 레이스 방지).
-    if let (WaitCond::Output, Some(p)) = (cond, pat.as_ref()) {
+    if let (WaitCond::Output, Some(p)) = (&cond, pat.as_ref()) {
         if let Some(line) = screen_match(panes, pane, p) {
             return match_event(pane, line);
         }
@@ -154,9 +164,9 @@ pub async fn run_wait(
         let mut saw_output = false;
         while let Ok(ev) = rx.try_recv() {
             // 패턴 대기 중에는 "아무 출력" 충족을 무시하고 패턴만 본다.
-            if let Some(data) = payload(&ev, pane, cond) {
+            if let Some(data) = payload(&ev, pane, &cond) {
                 if !(cond == WaitCond::Output && pat.is_some()) {
-                    return ControlResponse::Event { pane, kind: cond_kind(cond).into(), data };
+                    return ControlResponse::Event { pane, kind: cond_kind(&cond).into(), data };
                 }
             }
             if is_output(&ev, pane) {
@@ -164,7 +174,7 @@ pub async fn run_wait(
             }
         }
         if saw_output {
-            if let (WaitCond::Output, Some(p)) = (cond, pat.as_ref()) {
+            if let (WaitCond::Output, Some(p)) = (&cond, pat.as_ref()) {
                 if let Some(line) = screen_match(panes, pane, p) {
                     return match_event(pane, line);
                 }
@@ -190,11 +200,12 @@ fn match_event(pane: u64, line: String) -> ControlResponse {
     }
 }
 
-fn cond_kind(c: WaitCond) -> &'static str {
+fn cond_kind(c: &WaitCond) -> &'static str {
     match c {
         WaitCond::Exit => "exit",
         WaitCond::CommandDone => "command-done",
         WaitCond::Output => "output",
         WaitCond::Idle => "idle",
+        WaitCond::Agent(_) => "agent-state",
     }
 }

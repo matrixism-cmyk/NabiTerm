@@ -165,6 +165,8 @@ pub struct NabiApp {
     /// 차단형 프롬프트 때문에 메인 창을 이미 앞으로 불렀는지(뜨는 순간 한 번만).
     pub prompt_raised: bool,
     pub pending_ssh: Option<String>, pub pending_link: Option<(PaneId, String)>, pub telegram: crate::telegrambridge::TelegramBridge, pub telegram_targets: HashMap<i64, PaneId>,
+    /// DM 페어링 대기(chat, 코드, 만료) — dm_policy=pairing일 때 미지 chat의 승인 요청(C1).
+    pub telegram_pending: Vec<(i64, String, std::time::Instant)>,
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).

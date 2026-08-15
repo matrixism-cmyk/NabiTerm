@@ -57,6 +57,7 @@ impl NabiApp {
     /// pane 커스텀 상태를 설정/삭제한다(OSC·제어평면 공용 SSOT). value=None이면 삭제,
     /// key가 빈 문자열이면 그 pane 상태 전체를 비운다.
     pub(crate) fn set_pane_status(&mut self, pane: nabi_types::PaneId, key: String, value: Option<String>) {
+        let state_key = key == "state" || key.is_empty(); // 전체 삭제도 state 제거를 포함.
         match value {
             Some(v) => {
                 self.pane_status.entry(pane).or_default().insert(key, v);
@@ -80,6 +81,15 @@ impl NabiApp {
             self.notify = Some((format!("\u{26a0} 컨텍스트 {pct}% 도달 — 컴팩션 임박"), std::time::Instant::now()));
         } else if !now_alert {
             self.ctx_alert_on.insert(pane, false);
+        }
+        // 훅이 발행한 상태 변화도 제어 평면에 합성 이벤트로 흘린다(agent wait/구독 — B1).
+        // 발행 값(자유 문자열)을 표준 어휘로 접어 넣는다(agent_state와 같은 판정).
+        if state_key {
+            let st = self.pane_status.get(&pane)
+                .map(|m| crate::aistatus::agent_state(m, self.cmd_start.contains_key(&pane)))
+                .unwrap_or(0);
+            let name = match st { 2 => "blocked", 1 => "working", _ => "idle" };
+            self.control_events.publish(&nabi_proto::Event::AgentStatus { pane, state: name });
         }
         // 비포커스 에이전트가 "입력 대기(blocked)"로 전이하면 1회 토스트(멀티에이전트 — 입력 필요 알림).
         let blocked = self.pane_status.get(&pane)

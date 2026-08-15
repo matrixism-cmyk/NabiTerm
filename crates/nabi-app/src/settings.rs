@@ -22,9 +22,12 @@ impl NabiApp {
         {
             let policy = self.control_policy.clone();
             let font_installer = self.font_installer.clone();
+            // 페어링 목록은 페이지 클로저와 cfg 가변 차용이 겹쳐 RefCell로 잠깐 옮겼다 되돌린다.
+            let tg_pending = std::cell::RefCell::new(std::mem::take(&mut self.telegram_pending));
             let page_cx = crate::settingsui::PageCtx {
                 policy: &policy,
                 font_installer: &font_installer,
+                tg_pending: &tg_pending,
             };
             let cfg = &mut self.config;
             let editor_cfg = &mut self.editor_config;
@@ -83,6 +86,7 @@ impl NabiApp {
                     }
                 });
             ctx.data_mut(|d| d.insert_temp(cat_id, cat));
+            self.telegram_pending = tg_pending.into_inner(); // 편집(승인/거부) 반영해 되돌린다.
         }
         if reset {
             // 기본값으로 되돌리되 디스크 저장은 보류 — 미리보기로 보여주고 저장은 Save에서.

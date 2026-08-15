@@ -3112,6 +3112,7 @@ version = "0.1.421"
 dependencies = [
  "bytes",
  "crossbeam-channel",
+ "nabi-agentdetect",
  "nabi-orchestrator",
  "nabi-proto",
  "nabi-types",
