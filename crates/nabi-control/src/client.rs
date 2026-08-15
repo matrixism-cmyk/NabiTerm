@@ -65,6 +65,27 @@ pub fn run_cli(args: &[String]) -> i32 {
     {
         return crate::clientagent::layout_apply(&pipe, &token, &args);
     }
+    // C6: `security audit [--json]` — 디스크의 설정을 읽어 위험 조합 보고(보고 전용).
+    if args.first().map(String::as_str) == Some("security")
+        && args.get(1).map(String::as_str) == Some("audit")
+    {
+        let cfg = nabi_config::load(&nabi_config::StorageLayout::resolve());
+        let findings = nabi_config::audit::audit(&cfg);
+        if json {
+            let items: Vec<_> = findings.iter().map(|f| serde_json::json!({
+                "id": f.id, "severity": format!("{:?}", f.severity), "message": f.message, "fix_at": f.fix_at,
+            })).collect();
+            println!("{}", serde_json::json!({ "findings": items }));
+        } else if findings.is_empty() {
+            println!("특이사항 없음 — 기본 권한 상태입니다.");
+        } else {
+            for f in &findings {
+                let tag = match f.severity { nabi_config::audit::Severity::Warn => "경고", _ => "정보" };
+                println!("[{tag}] {}: {}  (수정: {})", f.id, f.message, f.fix_at);
+            }
+        }
+        return 0;
+    }
     // A5: `integration install|status claude` — 로컬 파일 작업(서버 왕복 없음).
     if args.first().map(String::as_str) == Some("integration") {
         let target = args.get(2).map(String::as_str).unwrap_or("claude");

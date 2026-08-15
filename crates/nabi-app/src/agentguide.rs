@@ -74,6 +74,7 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   Register a recurring job (runs inside nabiTerm; survives restarts).
 - `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
   (panes with cwd/command) and re-create a working set declaratively.
+- `nabi cli security audit [--json]` — report risky permission combinations (report-only).
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
 - `nabi cli tail --pane <id>`
   Stream a pane's output continuously.

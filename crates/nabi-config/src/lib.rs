@@ -8,6 +8,7 @@ pub mod load;
 pub mod paths;
 pub mod persist;
 pub mod schema;
+pub mod audit;
 
 pub use editor::EditorConfig;
 pub use load::{load, load_editor};

@@ -10,6 +10,7 @@ pub(crate) fn highlight_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang)
     ui.separator();
     ui.label(tr(lang, "settings.alertshint")); // 출력 트리거 알림 패턴.
     list_editor(ui, &mut cfg.terminal.alert_patterns, 220.0, tr(lang, "settings.addalert"));
+    ui.weak(tr(lang, "settings.alertactions")); // C4: 접미 액션 문법 안내.
 }
 
 /// 명령 스니펫 편집(추가/수정/삭제). 메뉴에서 클릭하면 포커스 pane에 전송·실행.

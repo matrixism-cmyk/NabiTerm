@@ -61,4 +61,10 @@ pub const CATALOG_TERM: &[(&str, &str, &str, &str)] = &[
     ("sched.pane", "Target pane title", "대상 pane 제목", "対象paneタイトル"),
     ("sched.pane.hint", "substring match; empty = focused pane", "부분 일치 · 비우면 포커스 pane", "部分一致・空欄はフォーカスpane"),
     ("sched.create", "Add schedule", "스케줄 추가", "スケジュール追加"),
+    (
+        "settings.alertactions",
+        "Suffixes: \"pattern -> telegram\" sends to the owner chat, \"pattern -> command:<shell>\" runs hidden. No suffix = toast only.",
+        "접미: \"패턴 -> telegram\"은 오너 chat 발신, \"패턴 -> command:<셸명령>\"은 숨김 실행. 접미 없으면 토스트만.",
+        "接尾: \"パターン -> telegram\"はオーナーchatへ送信、\"パターン -> command:<シェル>\"は非表示実行。接尾なしはトーストのみ。",
+    ),
 ];

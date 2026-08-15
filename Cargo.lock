@@ -3113,6 +3113,7 @@ dependencies = [
  "bytes",
  "crossbeam-channel",
  "nabi-agentdetect",
+ "nabi-config",
  "nabi-orchestrator",
  "nabi-proto",
  "nabi-types",
