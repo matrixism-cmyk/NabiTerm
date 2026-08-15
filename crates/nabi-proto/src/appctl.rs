@@ -33,4 +33,6 @@ pub enum AppCtl {
     },
     /// 스케줄 잡 등록(C3): spec="*/5 * * * *"|"every 15m"|"at 09:30", kind=send|command|notify.
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
+    /// 레이아웃 export 요청(B4) — 앱이 Event::LayoutJson{seq,json}으로 회신.
+    LayoutExport { seq: u64 },
 }

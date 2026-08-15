@@ -13,6 +13,10 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
     let pane = |a: &[String]| flag(a, "--pane").and_then(|s| s.parse::<u64>().ok());
     match args.first().map(String::as_str) {
         Some("agent") => crate::clientagent::parse_agent(args, usage, &pane),
+        // 레이아웃 export(B4). apply는 클라이언트 합성(run_cli).
+        Some("layout") if args.get(1).map(String::as_str) == Some("export") => {
+            Ok(ControlRequest::LayoutExport)
+        }
         // 이벤트 구독 스트림(B3): --pane 필터 + --kind 콤마 목록.
         Some("events") => Ok(ControlRequest::Subscribe {
             pane: pane(args),
@@ -32,6 +36,16 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             dock: flag(args, "--dock"),
             ssh: flag(args, "--ssh"),
         }),
+        // --keys "ctrl+c enter": 키 이름을 시퀀스로 컴파일해 raw 전송(B5).
+        Some("send") if flag(args, "--keys").is_some() => {
+            let spec = flag(args, "--keys").unwrap_or_default();
+            let bytes = crate::keyspec::compile(&spec)?;
+            Ok(ControlRequest::SendInput {
+                pane: pane(args).ok_or(usage)?,
+                data: String::from_utf8_lossy(&bytes).into_owned(),
+                raw: true,
+            })
+        }
         Some("send") => Ok(ControlRequest::SendInput {
             pane: pane(args).ok_or(usage)?,
             data: flag(args, "--data").ok_or(usage)?,

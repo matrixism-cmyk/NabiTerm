@@ -44,6 +44,8 @@ pub enum Event {
     /// 에이전트 상태 변화(idle|working|blocked|done) — 앱이 합성 발행(훅 권위 또는 화면
     /// 감지 확정 시). 제어 평면 `agent wait`/이벤트 구독이 이걸 본다(B1/B3).
     AgentStatus { pane: PaneId, state: &'static str },
+    /// 레이아웃 export 회신(B4) — 제어 평면 요청 seq에 JSON을 되돌려 준다.
+    LayoutJson { seq: u64, json: String },
     /// 설정 리로드 완료.
     ConfigReloaded,
     /// SFTP 연결 성공.

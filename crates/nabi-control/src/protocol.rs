@@ -87,6 +87,8 @@ pub enum ControlRequest {
     AgentExplain { pane: u64 },
     /// C3: 스케줄 잡 등록(사양 검증은 앱에서 — 실패 시 토스트).
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
+    /// B4: 현재 탭·분할 레이아웃을 JSON으로 회신(apply가 소비하는 panes 목록 + 정확한 tree).
+    LayoutExport,
 }
 
 /// 서버 → 클라이언트 응답(요청당 한 줄).

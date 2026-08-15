@@ -188,6 +188,24 @@ fn dispatch_write(
             ControlResponse::Ok
         }
         // 호출 pane(from)의 상태를 설정/삭제 — 자기 자신만 갱신.
+        ControlRequest::LayoutExport => {
+            // 레이아웃은 앱(UI 스레드) 소유 — seq 상관으로 회신을 기다린다(spawn과 같은 패턴).
+            let seq = SPAWN_SEQ.fetch_add(1, Ordering::Relaxed);
+            let rx = events.subscribe();
+            app_tx.send(AppCtl::LayoutExport { seq }).ok();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(3);
+            while std::time::Instant::now() < deadline {
+                while let Ok(ev) = rx.try_recv() {
+                    if let Event::LayoutJson { seq: s, json } = ev {
+                        if s == seq {
+                            return ControlResponse::Event { pane: 0, kind: "layout".into(), data: json };
+                        }
+                    }
+                }
+                std::thread::sleep(std::time::Duration::from_millis(20));
+            }
+            err("레이아웃 회신 시간 초과")
+        }
         ControlRequest::ScheduleCreate { name, spec, kind, payload, pane_title } => {
             tracing::info!(target: "control", from = ?from, %spec, "schedule-create");
             app_tx.send(AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title }).ok(); ControlResponse::Ok

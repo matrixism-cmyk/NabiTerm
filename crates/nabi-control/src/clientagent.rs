@@ -18,6 +18,12 @@ pub(crate) fn parse_agent(
             ttl_ms: flag(args, "--ttl").and_then(|s| s.parse().ok()),
         }),
         Some("release") => Ok(ControlRequest::PaneStatusSet { key: "state".into(), value: None, ttl_ms: None }),
+        // 훅이 자기 세션 ID를 보고 — 복원이 `--resume <id>`로 정확히 이어진다(A6).
+        Some("session") => Ok(ControlRequest::PaneStatusSet {
+            key: "agent_session".into(),
+            value: args.get(2).cloned(),
+            ttl_ms: None,
+        }),
         Some("explain") => Ok(ControlRequest::AgentExplain { pane: pane(args).ok_or(usage)? }),
         Some("wait") => Ok(ControlRequest::Wait {
             pane: pane(args).ok_or(usage)?,
@@ -88,3 +94,46 @@ pub(crate) fn agent_prompt(pipe: &str, token: &str, args: &[String], json: bool)
 fn flag(args: &[String], name: &str) -> Option<String> {
     args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned()
 }
+
+/// `layout apply --file <json>`(B4): {"panes":[{cwd,command,split?}]}를 순서대로 스폰한다.
+/// split: "right"|"down"(직전 pane 기준), 생략=탭. 정확한 트리 재현이 아니라
+/// **선언적 작업환경 부트스트랩**이다(export의 panes를 그대로 소비 가능).
+pub(crate) fn layout_apply(pipe: &str, token: &str, args: &[String]) -> i32 {
+    let Some(file) = flag(args, "--file") else {
+        eprintln!("--file <json> 필요");
+        return 2;
+    };
+    let Ok(text) = std::fs::read_to_string(&file) else {
+        eprintln!("파일 읽기 실패: {file}");
+        return 1;
+    };
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(&text) else {
+        eprintln!("JSON 파싱 실패");
+        return 1;
+    };
+    let Some(panes) = v["panes"].as_array() else {
+        eprintln!("panes 배열 없음");
+        return 1;
+    };
+    for p in panes {
+        let dock = p["split"].as_str().map(|s| format!("split-{s}"));
+        let req = ControlRequest::SpawnTerminal {
+            shell: p["shell"].as_str().unwrap_or("powershell").into(),
+            cwd: p["cwd"].as_str().map(str::to_string),
+            dock,
+            ssh: None,
+        };
+        let pane = match request(pipe, token, &req) {
+            Ok(ControlResponse::Spawned { pane }) => pane,
+            Ok(other) => { eprintln!("스폰 실패: {other:?}"); return 1; }
+            Err(e) => { eprintln!("오류: {e}"); return 1; }
+        };
+        if let Some(cmd) = p["command"].as_str().filter(|c| !c.is_empty()) {
+            let send = ControlRequest::SendInput { pane, data: format!("{cmd}\r"), raw: false };
+            if let Err(e) = request(pipe, token, &send) { eprintln!("입력 실패: {e}"); return 1; }
+        }
+        println!("pane {pane} OK");
+    }
+    0
+}
+

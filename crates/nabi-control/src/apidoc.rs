@@ -27,6 +27,7 @@ pub fn api_doc() -> serde_json::Value {
             "pane-status-set": { "params": ["key", "value?", "ttl_ms?"], "doc": "상태 발행(state 키=권위, label.<state>=라벨)" },
             "agent-explain": { "params": ["pane"], "doc": "상태 감지 근거" },
             "schedule-create": { "params": ["name", "spec", "kind", "payload", "pane_title"], "doc": "스케줄 등록(send|command|notify)" },
+            "layout-export": { "params": [], "doc": "레이아웃 JSON(panes 목록+분할 tree) — layout apply가 panes를 소비" },
         }
     })
 }
@@ -58,6 +59,7 @@ mod tests {
             R::PaneStatusSet { key: String::new(), value: None, ttl_ms: None },
             R::AgentExplain { pane: 1 },
             R::ScheduleCreate { name: String::new(), spec: String::new(), kind: String::new(), payload: String::new(), pane_title: String::new() },
+            R::LayoutExport,
         ];
         let doc = super::api_doc();
         let ops = doc["ops"].as_object().expect("ops");

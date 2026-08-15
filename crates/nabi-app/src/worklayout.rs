@@ -251,3 +251,30 @@ impl NabiApp {
         }
     }
 }
+
+impl NabiApp {
+    /// 현재 레이아웃을 JSON으로(B4). `panes`=apply가 소비하는 순서 목록(cwd·명령·제목),
+    /// `tree`=egui_dock 분할 트리(정확한 토폴로지 — 참고용, apply v1은 순서만 쓴다).
+    pub(crate) fn layout_export_json(&self) -> String {
+        let mut panes = Vec::new();
+        for (_, p) in self.dock.iter_all_tabs() {
+            let kind = self.pane_origins.get(p);
+            let (cwd, cmd) = self.saved_local_state(*p);
+            let title = self.orch.panes.read().ok()
+                .and_then(|m| m.get(p).map(|v| v.title.clone()))
+                .unwrap_or_default();
+            let kind_s = match kind {
+                Some(nabi_session::SessionKind::Ssh { .. }) => "ssh",
+                _ => "local",
+            };
+            panes.push(serde_json::json!({
+                "title": title, "kind": kind_s, "cwd": cwd, "command": cmd,
+            }));
+        }
+        let ordinals: std::collections::HashMap<nabi_types::PaneId, usize> = self
+            .dock.iter_all_tabs().enumerate().map(|(i, (_, p))| (*p, i)).collect();
+        let tree = self.dock.map_tabs(|p| *ordinals.get(p).unwrap_or(&0));
+        serde_json::json!({ "panes": panes, "tree": tree }).to_string()
+    }
+}
+

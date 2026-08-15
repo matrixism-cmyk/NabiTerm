@@ -8,6 +8,8 @@ mod clientagent;
 mod clientverbs;
 mod dispatchread;
 pub mod apidoc;
+pub mod keyspec;
+pub mod integration;
 mod explain;
 pub mod dispatch;
 pub mod matcher;

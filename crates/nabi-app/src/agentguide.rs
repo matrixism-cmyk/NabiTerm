@@ -58,7 +58,10 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
   Read a pane's screen/scrollback. `--lines 100` = last 100 lines; `--escapes` keeps ANSI colors.
 - `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
+- `nabi cli integration install claude` — auto-install a SessionStart hook that reports the
+  session id, so workspace restore resumes the exact session (`claude --resume <id>`).
 - `nabi cli agent report --state working|blocked|idle|done` / `agent release`
+- `nabi cli agent session <id>` — report your session id (hooks call this).
   Publish your own state (authoritative — screen detection steps aside). Call from hooks/statusLine.
 - `nabi cli agent wait --pane <id> --until idle|working|blocked|done [--timeout <ms>]`
   Block until the agent in that pane reaches a state (screen-detected or hook-published).
@@ -69,6 +72,8 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   Stream events as they happen (no replay). `nabi cli api schema` prints the full protocol doc.
 - `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
   Register a recurring job (runs inside nabiTerm; survives restarts).
+- `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
+  (panes with cwd/command) and re-create a working set declaratively.
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
 - `nabi cli tail --pane <id>`
   Stream a pane's output continuously.
@@ -89,6 +94,7 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 ### Inject (separate approval in "ask" mode)
 
 - `nabi cli send --pane <id> --data <text> [--raw]`
+- `nabi cli send --pane <id> --keys "ctrl+c enter esc pgup f1"` — named keys, no escape codes needed.
   Type into a pane. Append a carriage return to press Enter (PowerShell: "cmd`r").
   Default wraps as a bracketed paste; `--raw` sends bytes verbatim (control keys).
 - `nabi cli kill --pane <id>` — close a pane.

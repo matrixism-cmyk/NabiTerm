@@ -71,6 +71,10 @@ impl crate::app::NabiApp {
                     };
                     self.notify = Some((text, std::time::Instant::now()));
                 }
+                AppCtl::LayoutExport { seq } => {
+                    let json = self.layout_export_json();
+                    self.control_events.publish(&nabi_proto::Event::LayoutJson { seq, json });
+                }
                 AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title } => {
                     let label = if name.is_empty() { spec.clone() } else { name.clone() };
                     match self.add_schedule(name, spec, kind, payload, pane_title) {

@@ -137,7 +137,12 @@ impl NabiApp {
                     .cloned()
                     .filter(|c| !c.trim().is_empty())
             })
-            .flatten();
+            .flatten()
+            .map(|c| {
+                // AI CLI는 재실행 대신 재개(세션 ID가 보고돼 있으면 그 세션으로 정확히 — A6).
+                let sid = self.pane_status.get(&p).and_then(|m| m.get("agent_session")).map(String::as_str);
+                crate::wsairesume::local_resume_command(&c, sid)
+            });
         (cwd, cmd)
     }
 

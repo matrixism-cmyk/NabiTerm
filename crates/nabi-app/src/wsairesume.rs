@@ -24,6 +24,21 @@ impl NabiApp {
     }
 }
 
+/// 로컬 pane 복원 명령: 훅이 보고한 세션 ID가 있으면 `--resume <id>`(정확), 없으면
+/// 근사 재개(`--continue`/`resume --last`), AI CLI가 아니면 원문 유지(A6).
+pub(crate) fn local_resume_command(command: &str, session: Option<&str>) -> String {
+    let first = command.split_whitespace().next().unwrap_or("");
+    let base = first.rsplit(['/', '\\']).next().unwrap_or(first).to_ascii_lowercase();
+    let base = base.trim_end_matches(".exe").trim_end_matches(".cmd").trim_end_matches(".bat");
+    match (base, session) {
+        ("claude", Some(id)) => format!("claude --resume {id}"),
+        ("claude", None) => "claude --continue".into(),
+        ("codex", Some(id)) => format!("codex resume {id}"),
+        ("codex", None) => "codex resume --last".into(),
+        _ => command.to_string(),
+    }
+}
+
 fn ai_resume_command(command: &str) -> Option<String> {
     let first = command
         .split_whitespace()
@@ -59,6 +74,17 @@ fn ai_resume_from_title(title: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{ai_resume_command, ai_resume_from_title};
+
+    /// 로컬 복원: 세션 ID가 있으면 정확 재개, 없으면 근사, AI가 아니면 원문(A6).
+    #[test]
+    fn local_resume_prefers_session_id() {
+        use super::local_resume_command as f;
+        assert_eq!(f("claude", Some("abc-123")), "claude --resume abc-123");
+        assert_eq!(f("claude --continue", None), "claude --continue");
+        assert_eq!(f(r"C:\npm\codex.cmd resume --last", Some("s9")), "codex resume s9");
+        assert_eq!(f("codex", None), "codex resume --last");
+        assert_eq!(f("cargo watch", Some("x")), "cargo watch", "AI 아니면 세션 무시·원문 유지");
+    }
 
     #[test]
     fn remote_ai_resume_is_strictly_allowlisted() {

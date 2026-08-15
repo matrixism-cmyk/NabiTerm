@@ -59,6 +59,28 @@ pub fn run_cli(args: &[String]) -> i32 {
         Ok(a) => a,
         Err(e) => { eprintln!("오류: {e}"); return 1; }
     };
+    // B4: `layout apply --file <json>` — panes 목록을 spawn 요청으로 합성(선언적 부트스트랩).
+    if args.first().map(String::as_str) == Some("layout")
+        && args.get(1).map(String::as_str) == Some("apply")
+    {
+        return crate::clientagent::layout_apply(&pipe, &token, &args);
+    }
+    // A5: `integration install|status claude` — 로컬 파일 작업(서버 왕복 없음).
+    if args.first().map(String::as_str) == Some("integration") {
+        let target = args.get(2).map(String::as_str).unwrap_or("claude");
+        if target != "claude" {
+            eprintln!("지원 대상: claude");
+            return 2;
+        }
+        return match args.get(1).map(String::as_str) {
+            Some("install") => match crate::integration::install_claude() {
+                Ok(m) => { println!("{m}"); 0 }
+                Err(e) => { eprintln!("오류: {e}"); 1 }
+            },
+            Some("status") => { println!("{}", crate::integration::status_claude()); 0 }
+            _ => { eprintln!("사용법: nabi cli integration install|status claude"); 2 }
+        };
+    }
     // B3: `api schema` — 프로토콜 자기 문서(서버 왕복 불필요, 로컬 출력).
     if args.first().map(String::as_str) == Some("api")
         && args.get(1).map(String::as_str) == Some("schema")
