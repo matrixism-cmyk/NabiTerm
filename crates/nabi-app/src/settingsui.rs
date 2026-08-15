@@ -72,8 +72,12 @@ fn grid(ui: &mut egui::Ui, id: &str, rows: impl FnOnce(&mut egui::Ui)) {
 /// 글꼴·테마·UI 배율 그룹.
 fn font_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang, cx: &PageCtx) {
     ui.label(tr(lang, "settings.fontsize"));
-    ui.spacing_mut().slider_width = 260.0; ui.add(egui::Slider::new(&mut cfg.appearance.font_size, 8.0..=32.0).step_by(0.5).suffix(" px")); // 길고 0.5px 단위로 미세 조절.
-    ui.end_row();
+    // 슬라이더 0.5px 스냅 + 버튼 0.1px + 직접 입력(6~40px) — 정밀 제어 요청으로 확장.
+    let spec = crate::settingsfont::FineSpec {
+        coarse: 8.0..=32.0, full: 6.0..=40.0, snap: 0.5, fine: 0.1,
+        decimals: 1, suffix: " px", default: nabi_config::DEFAULT_FONT_SIZE,
+    };
+    crate::settingsfont::fine_row(ui, &mut cfg.appearance.font_size, &spec, tr(lang, "settings.resetdefault"));
 
     ui.label(tr(lang, "settings.fontfamily"));
     ui.vertical(|ui| {

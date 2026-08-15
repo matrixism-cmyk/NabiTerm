@@ -19,4 +19,5 @@ pub const CATALOG_TERM: &[(&str, &str, &str, &str)] = &[
         "기록을 자기 안에만 두는 TUI(예: codex CLI)용입니다. 휠을 위로 굴리면 전사 화면(Ctrl+T)을 열고, 이어지는 휠이 PageUp/PageDown으로 그 안을 스크롤합니다. Esc나 q로 닫습니다. Shift+휠은 그대로 터미널 스크롤백을 봅니다.",
         "履歴を自分だけで持つ TUI(例: codex CLI)向けです。上へ回すとトランスクリプト画面(Ctrl+T)を開き、続くホイールが PageUp/PageDown でスクロールします。Esc か q で閉じます。Shift+ホイールは端末側をスクロールします。",
     ),
+    ("settings.resetdefault", "Reset to default", "기본값으로 되돌리기", "既定値に戻す"),
 ];
