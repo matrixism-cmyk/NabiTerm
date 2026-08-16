@@ -68,7 +68,9 @@ impl DispLine {
             Err(i) => {
                 let hi = i.min(self.starts.len() - 1);
                 let lo = hi.saturating_sub(1);
-                if disp.saturating_sub(self.starts[lo]) <= self.starts[hi] - disp { lo } else { hi }
+                // disp가 줄 끝을 넘으면(짧은 줄 박스 선택 등) rhs가 음수가 되므로 포화 —
+                // 그 경우 오른쪽(마지막 원본 char)을 고른다.
+                if disp.saturating_sub(self.starts[lo]) <= self.starts[hi].saturating_sub(disp) { lo } else { hi }
             }
         }
     }

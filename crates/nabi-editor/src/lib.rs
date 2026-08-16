@@ -7,6 +7,7 @@
 
 pub mod editbig;
 pub mod editbuf;
+pub mod editbufboxsel;
 pub mod editbufcol;
 pub mod editbufedit;
 pub mod editbufkeys;

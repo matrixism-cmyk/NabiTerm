@@ -1,6 +1,7 @@
 //! 대용량 편집 버퍼(E6)의 가상화 렌더 + 자작 입력 처리. 보이는 줄만 그리고 키/마우스로 편집한다.
 //! 등폭 가정으로 열↔x를 환산한다(CJK는 약간 어긋날 수 있음 — v1). 키 처리는 editbufkeys로 분리.
 
+use crate::editbuf::EditBuf;
 use crate::editor::{EditorAct, EditorDoc};
 use nabi_i18n::{tr, Lang};
 
@@ -146,19 +147,32 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
         let focused = resp.has_focus();
         // 마우스 → 커서/선택. 명시적 제스처(클릭/드래그)에만 반응한다 —
         // 단순 누름-유지 프레임에서 선택을 확장하던 버그(클릭 시 한 줄 역상) 수정.
+        // Alt+드래그 = 컬럼(박스) 선택(T6-3). 앵커는 (줄, 표시열)로 프레임 간 유지.
+        let box_anchor_id = ui.id().with("box_anchor");
         if let Some(p) = resp.interact_pointer_pos() {
             let pos = crate::editbufpaint::hit(ui, eb, p, top, text_left, row_h, &mono);
-            let shift = ui.input(|i| i.modifiers.shift);
+            let (shift, alt) = ui.input(|i| (i.modifiers.shift, i.modifiers.alt));
+            let line_col = |eb: &EditBuf, pos: usize| {
+                let l = eb.rope.char_to_line(pos.min(eb.rope.len_chars()));
+                let c = pos - eb.rope.line_to_char(l);
+                (l, eb.disp_line(l).to_disp(c.min(eb.line_len(l))))
+            };
             if resp.drag_started() {
-                // Shift+드래그는 기존 고정단 유지, 아니면 여기서 새 선택을 시작한다.
-                if shift {
+                if alt {
+                    let a = line_col(eb, pos);
+                    ui.data_mut(|d| d.insert_temp(box_anchor_id, a));
+                    eb.box_select(a, a);
+                } else if shift {
                     eb.move_head(pos);
                 } else {
                     eb.set_cursor(pos);
                 }
                 eb.undo_open = false;
             } else if resp.dragged() {
-                eb.move_to(pos, true); // 드래그 중 선택 확장.
+                match ui.data(|d| d.get_temp::<(usize, usize)>(box_anchor_id)) {
+                    Some(a) if alt => eb.box_select(a, line_col(eb, pos)),
+                    _ => eb.move_to(pos, true), // 드래그 중 선택 확장.
+                }
             } else if resp.clicked() {
                 if shift {
                     eb.move_to(pos, true); // Shift+클릭 = 현재 위치까지 확장.
@@ -166,6 +180,9 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
                     eb.set_cursor(pos); // 단순 클릭 = 커서 이동(선택 해제).
                     eb.undo_open = false;
                 }
+            }
+            if resp.drag_stopped() {
+                ui.data_mut(|d| d.remove::<(usize, usize)>(box_anchor_id));
             }
         }
         // 키보드(포커스 + 편집 가능).
@@ -183,6 +200,14 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
             ui.scroll_to_rect(caret, None); // 커서가 보이도록 스크롤.
             eb.ensure_visible = false;
         }
+        // 선택 페인트: 박스(멀티범위) 포함 전 범위(캐럿 제외).
+        let sel_ranges: Vec<(usize, usize)> = eb
+            .sel
+            .ranges()
+            .iter()
+            .filter(|r| !r.is_caret())
+            .map(|r| (r.start(), r.end()))
+            .collect();
         let sel = eb.selection();
         let painter = ui.painter().clone();
         let ctx = crate::editbufpaint::RowCtx {
@@ -215,10 +240,22 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
                 }
                 _ => crate::editbufpaint::layout(ui, &d.text, &mono, ctx.text_col),
             };
-            crate::editbufpaint::row(&ctx, &g, &d, i, top + i as f32 * row_h, sel, eb.rope.line_to_char(i));
+            crate::editbufpaint::row(&ctx, &g, &d, i, top + i as f32 * row_h, &sel_ranges, eb.rope.line_to_char(i));
         }
         if focused {
             painter.rect_filled(caret, egui::CornerRadius::ZERO, CARET);
+            // 멀티캐럿(박스 타자 중) — 나머지 캐럿도 표시해 어디에 입력될지 보이게.
+            if eb.sel.len() > 1 {
+                for r in eb.sel.ranges() {
+                    let l = eb.rope.char_to_line(r.head.min(eb.rope.len_chars()));
+                    let c = r.head - eb.rope.line_to_char(l);
+                    let d = eb.disp_line(l);
+                    let g2 = crate::editbufpaint::layout(ui, &d.text, &mono, egui::Color32::WHITE);
+                    let x = text_left + crate::editbufpaint::x_at(&g2, d.to_disp(c.min(eb.line_len(l))));
+                    let rct = egui::Rect::from_min_size(egui::pos2(x, top + l as f32 * row_h), egui::vec2(2.0, row_h));
+                    painter.rect_filled(rct, egui::CornerRadius::ZERO, CARET);
+                }
+            }
         }
     });
     menu_act

@@ -92,9 +92,9 @@ pub fn x_at(g: &Galley, disp: usize) -> f32 {
 }
 
 /// 한 줄(본문 + 선택 배경 + 줄 번호)을 그린다.
-pub fn row(ctx: &RowCtx, g: &Arc<Galley>, d: &DispLine, i: usize, y: f32, sel: Option<(usize, usize)>, ls: usize) {
-    if let Some((s, e)) = sel {
-        paint_sel(ctx, g, d, y, s, e, ls);
+pub fn row(ctx: &RowCtx, g: &Arc<Galley>, d: &DispLine, i: usize, y: f32, sel: &[(usize, usize)], ls: usize) {
+    for (s, e) in sel {
+        paint_sel(ctx, g, d, y, *s, *e, ls);
     }
     ctx.painter.galley(Pos2::new(ctx.text_left, y), g.clone(), ctx.text_col);
     if ctx.show_lineno {

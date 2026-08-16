@@ -13,19 +13,19 @@ pub fn apply_keys(ui: &egui::Ui, eb: &mut EditBuf, page: i64, readonly: bool) {
         match ev {
             Event::Text(t) if !t.is_empty() && !t.chars().any(|c| c.is_control()) => {
                 if !readonly {
-                    eb.insert(&t);
+                    eb.insert_multi(&t); // 박스 선택이면 모든 줄에 입력(<=1이면 기존 경로).
                 }
             }
             Event::Paste(s) => {
                 if !readonly {
-                    eb.insert(&s);
+                    eb.insert_multi(&s);
                 }
             }
             Event::Copy => copy = Some(eb.selected_text()),
             Event::Cut => {
                 copy = Some(eb.selected_text());
-                if !readonly && eb.selection().is_some() {
-                    eb.backspace(); // 선택 삭제.
+                if !readonly && (eb.selection().is_some() || eb.sel.len() > 1) {
+                    eb.delete_multi(true); // 선택 삭제(박스 포함).
                 }
             }
             Event::Key { key, pressed: true, modifiers, .. } => {
@@ -43,6 +43,10 @@ pub fn apply_keys(ui: &egui::Ui, eb: &mut EditBuf, page: i64, readonly: bool) {
 
 /// 단일 키 처리. 이동은 shift로 선택 확장. 편집/붙여넣기는 readonly면 무시.
 fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly: bool, copy: &mut Option<String>) {
+    if key == Key::Escape && eb.sel.len() > 1 {
+        eb.sel.collapse_to_primary(); // 박스/멀티캐럿 해제.
+        return;
+    }
     let sel = m.shift;
     // 편집/클립보드 단축키(command=Ctrl/⌘).
     if m.command {
@@ -51,8 +55,8 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
             Key::C => *copy = Some(eb.selected_text()),
             Key::X => {
                 *copy = Some(eb.selected_text());
-                if !readonly && eb.selection().is_some() {
-                    eb.backspace();
+                if !readonly && (eb.selection().is_some() || eb.sel.len() > 1) {
+                    eb.delete_multi(true);
                 }
             }
             Key::Z if !readonly && !m.shift => eb.undo(),
@@ -75,8 +79,8 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
         Key::End => eb.end(sel),
         Key::PageUp => eb.move_v(-page, sel),
         Key::PageDown => eb.move_v(page, sel),
-        Key::Backspace if !readonly => eb.backspace(),
-        Key::Delete if !readonly => eb.delete(),
+        Key::Backspace if !readonly => eb.delete_multi(true),
+        Key::Delete if !readonly => eb.delete_multi(false),
         Key::Enter if !readonly => eb.insert_newline(), // 자동 들여쓰기.
         Key::Tab if !readonly => eb.insert_indent(), // 설정(탭/공백)에 따라.
         _ => {}

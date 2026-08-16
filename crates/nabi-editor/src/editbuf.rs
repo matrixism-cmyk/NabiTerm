@@ -136,6 +136,17 @@ impl EditBuf {
 
     /// 선택된 텍스트(없으면 빈 문자열).
     pub fn selected_text(&self) -> String {
+        // 멀티범위(박스 선택)는 줄바꿈으로 이어 붙인다(컬럼 복사 관행).
+        if self.sel.len() > 1 {
+            return self
+                .sel
+                .ranges()
+                .iter()
+                .filter(|r| !r.is_caret())
+                .map(|r| self.rope.slice(r.start()..r.end()).to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+        }
         match self.selection() {
             Some((a, b)) => self.rope.slice(a..b).to_string(),
             None => String::new(),
