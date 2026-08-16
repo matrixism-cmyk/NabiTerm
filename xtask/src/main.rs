@@ -8,6 +8,7 @@
 //! - `icon`  : 빌드된 exe에 나비 아이콘 주입(windres 부재 환경 대응).
 //! - `prerelease` : 잠금 파일에 alpha/beta/rc 의존성이 섞였는지 검사.
 //! - `e2e`   : 앱을 실제로 띄워 제어 평면으로 스모크(기동→pane→입력→캡처→종료).
+//! - `soak`  : 앱을 N분 굴리며 생존·응답성·메모리 관찰(수시/야간 점검).
 
 mod dist;
 mod e2e;
@@ -15,6 +16,7 @@ mod icon;
 mod lines;
 mod overrides;
 mod prerelease;
+mod soak;
 
 use std::process::ExitCode;
 
@@ -27,6 +29,7 @@ fn main() -> ExitCode {
         "dist-mesa" => dist::mesa(),
         "prerelease" => prerelease::run(),
         "e2e" => e2e::run(std::env::args().nth(2)),
+        "soak" => soak::run(std::env::args().nth(2)),
         "icon" => {
             let p = std::env::args()
                 .nth(2)
@@ -44,7 +47,7 @@ fn main() -> ExitCode {
         }
         other => {
             eprintln!(
-                "알 수 없는 작업: '{other}'. 사용 가능: lines, prerelease, e2e, dist, dist-standalone, dist-mesa, icon"
+                "알 수 없는 작업: '{other}'. 사용 가능: lines, prerelease, e2e, soak, dist, dist-standalone, dist-mesa, icon"
             );
             ExitCode::from(2)
         }

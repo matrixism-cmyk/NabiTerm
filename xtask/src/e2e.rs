@@ -11,7 +11,7 @@ use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
 /// 파이프에 한 요청을 쓰고 응답 한 줄을 받는다(라인 구분 JSON).
-fn roundtrip(pipe: &mut std::fs::File, rd: &mut impl BufRead, req: &str) -> Result<String, String> {
+pub(crate) fn roundtrip(pipe: &mut std::fs::File, rd: &mut impl BufRead, req: &str) -> Result<String, String> {
     pipe.write_all(req.as_bytes()).and_then(|_| pipe.write_all(b"\n")).map_err(|e| e.to_string())?;
     pipe.flush().map_err(|e| e.to_string())?;
     let mut line = String::new();
@@ -23,7 +23,7 @@ fn roundtrip(pipe: &mut std::fs::File, rd: &mut impl BufRead, req: &str) -> Resu
 }
 
 /// JSON 응답에서 `"key":<숫자>`를 뽑는다(파서 의존성 없이 — 형식은 우리 서버가 고정).
-fn json_u64(s: &str, key: &str) -> Option<u64> {
+pub(crate) fn json_u64(s: &str, key: &str) -> Option<u64> {
     let pat = format!("\"{key}\":");
     let at = s.find(&pat)? + pat.len();
     let rest: String = s[at..].chars().take_while(|c| c.is_ascii_digit()).collect();

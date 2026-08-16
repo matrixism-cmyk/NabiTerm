@@ -63,6 +63,33 @@ async fn realserver_multi_wave_roundtrip() {
     let _ = std::fs::remove_file(&dst);
 }
 
+/// 한글 파일명 왕복(T7-5 한국 1급) — 업로드→목록 확인→다운로드→이름변경→삭제 전 구간에서
+/// 한글(NFC)·공백·괄호가 살아남는지. SFTP는 UTF-8 경로가 규약이지만 서버/로컬 FS 조합에서
+/// 깨지는 사례가 흔해 실서버로 고정한다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_korean_filename_roundtrip() {
+    let Some(mut fs) = open_fs().await else { return };
+    let remote = "나비텀 테스트 (한글).bin";
+    let renamed = "나비텀 개명 후.bin";
+    let data = pattern(64 * 1024 + 3);
+    let src = std::env::temp_dir().join(format!("nabi-rt-한글-{}.bin", std::process::id()));
+    std::fs::write(&src, &data).unwrap();
+    fs.upload(src.to_str().unwrap(), remote, |_| {}).await.expect("한글 이름 업로드");
+    // 목록에 정확한 이름으로 보여야 한다(정규화 깨짐/물음표 치환 감지).
+    let names: Vec<String> = fs.list_dir(".").await.expect("목록").into_iter().map(|e| e.name).collect();
+    assert!(names.iter().any(|n| n == remote), "목록에 한글 이름 그대로: {names:?}");
+    let dst = std::env::temp_dir().join(format!("nabi-rt-한글-dl-{}.bin", std::process::id()));
+    fs.download(remote, dst.to_str().unwrap(), 0, |_| {}).await.expect("한글 이름 다운로드");
+    assert_eq!(std::fs::read(&dst).unwrap(), data, "내용 보존");
+    fs.rename(remote, renamed).await.expect("한글 이름 변경");
+    let names: Vec<String> = fs.list_dir(".").await.expect("목록2").into_iter().map(|e| e.name).collect();
+    assert!(names.iter().any(|n| n == renamed), "개명 후 이름 보존: {names:?}");
+    let _ = fs.remove(renamed).await;
+    let _ = std::fs::remove_file(&src);
+    let _ = std::fs::remove_file(&dst);
+}
+
 /// 해시 검증을 켠 왕복(T2-1) — 원격에 해시 명령이 있으면 대조, 없으면(Windows OpenSSH)
 /// 조용히 건너뛰고 성공해야 한다. 두 경로 모두 "전송이 실패하면 안 된다"가 검증 대상.
 #[tokio::test]
