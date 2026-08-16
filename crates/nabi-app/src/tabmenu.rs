@@ -154,23 +154,22 @@ pub(crate) fn tab_context_menu(
         if let Some(t) = dump() { ui.ctx().copy_text(format!("```\n{}\n```", t.trim_end())); }
         ui.close_menu();
     }
-    // 출력에서 URL/IP만 추출해 클립보드로(로그에서 링크·주소 일괄 수집).
-    if ui.button(tr(lang, "term.exturls")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(crate::editorextract::extract_urls(&t)); }
-        ui.close_menu();
-    }
-    if ui.button(tr(lang, "term.extips")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(crate::editorextract::extract_ips(&t)); }
-        ui.close_menu();
-    }
-    if ui.button(tr(lang, "term.extemails")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(crate::editorextract::extract_emails(&t)); }
-        ui.close_menu();
-    }
-    if ui.button(tr(lang, "term.extnumbers")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(crate::editorextract::extract_numbers(&t)); }
-        ui.close_menu();
-    }
+    // 출력에서 URL/IP/이메일/숫자만 추출해 클립보드로 — 4종을 "추출" 서브메뉴로 묶어
+    // 컨텍스트 평면 비대화를 막는다(T3-1; 에디터 추출 메뉴와 같은 라벨).
+    ui.menu_button(tr(lang, "editor.extractmenu"), |ui| {
+        type Ext = fn(&str) -> String;
+        for (key, f) in [
+            ("term.exturls", crate::editorextract::extract_urls as Ext),
+            ("term.extips", crate::editorextract::extract_ips as Ext),
+            ("term.extemails", crate::editorextract::extract_emails as Ext),
+            ("term.extnumbers", crate::editorextract::extract_numbers as Ext),
+        ] {
+            if ui.button(tr(lang, key)).clicked() {
+                if let Some(t) = dump() { ui.ctx().copy_text(f(&t)); }
+                ui.close_menu();
+            }
+        }
+    });
     // 스크롤백 맨 위/아래로 이동(긴 출력 빠른 탐색).
     let scroll = |top: bool| { if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) { if let Ok(mut md) = v.model.lock() { if top { md.scroll_to_top(); } else { md.scroll_to_bottom(); } } } };
     if ui.button(tr(lang, "term.scrolltop")).clicked() { scroll(true); ui.close_menu(); }

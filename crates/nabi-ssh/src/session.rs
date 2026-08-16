@@ -41,6 +41,7 @@ pub fn connect(
     let out = out_tx.clone();
     rt.spawn(async move {
         let res = run(pane, params, size, out.clone(), in_rx, known_hosts, verifier, stats).await;
+        crate::kexinfo::clear(pane); // 배지 잔상 방지.
         let err = res.err().map(|e| e.to_string());
         if let Some(e) = &err {
             let _ = out.send((pane, Bytes::from(format!("\r\n[ssh 오류: {e}]\r\n"))));
@@ -65,7 +66,12 @@ async fn run(
     let secs = SSH_KEEPALIVE_SECS.load(std::sync::atomic::Ordering::Relaxed);
     let opts = ConnOpts { keepalive_secs: secs, ..Default::default() };
     // 직접 연결 또는 점프 호스트(ProxyJump) 경유. _jump은 터널 유지를 위해 살려둔다.
-    let (handle, _jump, old) = open_authed(&params, opts, known_hosts, verifier).await?;
+    // kex 슬롯: 목적지 연결의 협상 결과(KEX·암호)를 받아 pane 레지스트리에 기록(PQ 배지).
+    let kex_slot = crate::kexinfo::new_slot();
+    let (handle, _jump, old) = open_authed(&params, opts, known_hosts, verifier, kex_slot.clone()).await?;
+    if let Some(info) = kex_slot.lock().ok().and_then(|s| s.clone()) {
+        crate::kexinfo::set(pane, info);
+    }
     if old {
         // 조용히 넘어가면 사용자는 자기가 SHA-1로 붙었는지 알 수 없다.
         let msg = "\r\n[알림: 서버가 오래되어 레거시 알고리즘(SHA-1)으로 접속했습니다]\r\n";
@@ -99,6 +105,7 @@ async fn open_authed(
     opts: ConnOpts,
     known_hosts: PathBuf,
     verifier: Option<crate::verify::HostKeyVerifier>,
+    kex_slot: crate::kexinfo::KexSlot,
 ) -> Result<
     (client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>, bool),
     russh::Error,
@@ -121,7 +128,8 @@ async fn open_authed(
         authenticate(&mut jhandle, jump).await?;
         // 터널 위의 목적지도 따로 협상한다 — 재시도 때는 채널부터 다시 연다.
         let (mut thandle, old_t) = crate::legacy::connect_compat(&opts, |cfg| {
-            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone());
+            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
+                .with_kex_slot(kex_slot.clone());
             let jh = &jhandle;
             async move {
                 let ch = jh
@@ -135,7 +143,8 @@ async fn open_authed(
         Ok((thandle, Some(jhandle), old_j || old_t))
     } else {
         let (mut handle, old) = crate::legacy::connect_compat(&opts, |cfg| {
-            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone());
+            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
+                .with_kex_slot(kex_slot.clone());
             async move {
                 tokio::time::timeout(d15, client::connect(cfg, (params.host.as_str(), params.port), h))
                     .await

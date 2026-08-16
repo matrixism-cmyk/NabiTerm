@@ -51,6 +51,17 @@ impl NabiApp {
                 let tg = crate::settingsui::PAGE_KEYS.len() - 1; // 텔레그램은 마지막 페이지.
                 ctx.data_mut(|d| d.insert_temp(egui::Id::new("settings_cat"), tg));
             }
+            PaletteAction::OpenSchedule => {
+                self.settings_open = true;
+                // 인덱스 하드코딩 대신 키 검색 — 페이지가 늘어도 안 어긋난다.
+                if let Some(i) = crate::settingsui::PAGE_KEYS.iter().position(|k| *k == "settings.sec.schedule") {
+                    ctx.data_mut(|d| d.insert_temp(egui::Id::new("settings_cat"), i));
+                }
+            }
+            PaletteAction::OpenAiCli => {
+                self.about_open = true;
+                ctx.data_mut(|d| d.insert_temp(egui::Id::new("help_cat"), 3usize)); // AI 제어 페이지.
+            }
             PaletteAction::OpenVault => self.vault_unlock_open = true,
             PaletteAction::OpenKnownHosts => self.known_hosts_open = true,
             PaletteAction::SaveOutput => self.save_focused_output(),

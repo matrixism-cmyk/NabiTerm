@@ -53,6 +53,8 @@ pub(crate) enum PaletteAction {
     SyncUpload, SyncDownload, CopyOutputMd, CompareFiles, FindDuplicates, FindLargeFiles,
     CopySshCmd, GenSshKey, InstallPubkey, SelToPad, CopyTabsMd, SaveAllDocs,
     NewPad, OpenFileDialog, ScrollBottom, ScrollTop, ReplaceInFiles, DirTree, DirStats,
+    /// 설정 ▸ 스케줄 페이지 바로 열기 / 도움말 ▸ AI 제어 페이지 바로 열기(T3-1 도구 메뉴).
+    OpenSchedule, OpenAiCli,
 }
 
 impl NabiApp {

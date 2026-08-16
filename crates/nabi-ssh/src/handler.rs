@@ -1,5 +1,6 @@
 //! russh 클라이언트 핸들러(호스트키 검증 — known_hosts TOFU + 사용자 확인).
 
+use crate::kexinfo::{KexInfo, KexSlot};
 use crate::verify::{HostKeyInfo, HostKeyVerifier};
 use russh::client;
 use russh::keys::PublicKey;
@@ -14,6 +15,8 @@ pub struct ClientHandler {
     port: u16,
     known_hosts: PathBuf,
     verifier: Option<HostKeyVerifier>,
+    /// 협상된 KEX·암호를 받아 갈 슬롯(T1-2 PQ 배지). None이면 기록 안 함.
+    kex_slot: Option<KexSlot>,
 }
 
 impl ClientHandler {
@@ -28,7 +31,14 @@ impl ClientHandler {
             port,
             known_hosts,
             verifier,
+            kex_slot: None,
         }
+    }
+
+    /// 협상 결과를 기록할 슬롯을 단다(연결 수립 측이 만들어 넘긴다).
+    pub fn with_kex_slot(mut self, slot: KexSlot) -> Self {
+        self.kex_slot = Some(slot);
+        self
     }
 
     fn learn(&self, key: &PublicKey) {
@@ -67,5 +77,23 @@ impl client::Handler for ClientHandler {
             }
             Err(_) => Ok(false),
         }
+    }
+
+    async fn kex_done(
+        &mut self,
+        _shared_secret: Option<&[u8]>,
+        names: &russh::Names,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        // rekey 때도 불린다 — 항상 최신 협상 결과로 덮는다.
+        if let Some(slot) = &self.kex_slot {
+            if let Ok(mut s) = slot.lock() {
+                *s = Some(KexInfo {
+                    kex: names.kex.as_ref().to_string(),
+                    cipher: names.cipher.as_ref().to_string(),
+                });
+            }
+        }
+        Ok(())
     }
 }

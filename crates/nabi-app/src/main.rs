@@ -133,7 +133,7 @@ mod sftptab;
 mod shellinteg;
 mod sidebar;
 mod tabbar;
-mod tiling;
+mod tiling; mod toolsmenu;
 mod update;
 mod updateui;
 mod viewmenu;

@@ -43,10 +43,13 @@ impl server::Handler for SshSession {
     async fn channel_open_session(
         &mut self,
         channel: Channel<Msg>,
+        reply: server::ChannelOpenHandle,
         _s: &mut Session,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<(), Self::Error> {
         self.clients.lock().await.insert(channel.id(), channel);
-        Ok(true)
+        // 0.62: bool 반환 대신 명시적 accept/reject 핸들.
+        reply.accept().await;
+        Ok(())
     }
 
     async fn subsystem_request(

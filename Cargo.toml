@@ -33,7 +33,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.422"
+version = "0.1.423"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["aeo <the@aeokorea.com>"]
@@ -75,12 +75,12 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
 figment = { version = "0.10", features = ["toml", "env"] }
-directories = "5"          # 6.0.0 권장(계획); 환경에 따라 5/6 — 빌드 시 확인
-notify = "6"               # 8.x 권장(계획); API 안정 위해 6 시작 가능
+directories = "6"
+# notify는 어느 크레이트도 쓰지 않아 제거(2026-08-16, T1-3 — 죽은 의존성 정리).
 once_cell = "1"
 
 # --- terminal / pty ---
-portable-pty = "0.8"       # 0.9 권장(계획); 빌드 시 확인
+portable-pty = "0.9"
 # vt100은 T1에서 alacritty_terminal로 교체 완료(nabi-vt 내부 의존).
 unicode-width = "0.1"
 unicode-segmentation = "1"  # 캐럿을 grapheme cluster 단위로 옮기기 위한 경계 계산(편집기).
@@ -107,7 +107,7 @@ nabi-ftp = { path = "crates/nabi-ftp" }
 async-trait = "0.1"
 # 크립토 백엔드: 기본 aws-lc-rs(C/BoringSSL, CPU별 어셈블리)는 빌드 머신과 다른 CPU에서
 # SSH 연결 시 잘못된 명령어로 즉사하는 사례 → 런타임 CPU 감지로 어디서나 도는 ring으로 교체.
-russh = { version = "0.61", default-features = false, features = ["flate2", "rsa", "ring"] }
+russh = { version = "0.62.6", default-features = false, features = ["flate2", "rsa", "ring"] }  # 0.62.4~6: 원격 패킷 유발 클라이언트 패닉 수정(보안)
 russh-sftp = "2"           # SFTP 서브시스템 클라이언트
 suppaftp = { version = "8", features = ["tokio"] }  # FTP 비동기(tokio). FTPS는 tokio-rustls-ring
 

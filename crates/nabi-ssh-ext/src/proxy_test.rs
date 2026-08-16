@@ -35,9 +35,11 @@ impl server::Handler for Target {
     async fn channel_open_session(
         &mut self,
         _c: Channel<Msg>,
+        reply: server::ChannelOpenHandle,
         _s: &mut Session,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
+    ) -> Result<(), Self::Error> {
+        reply.accept().await;
+        Ok(())
     }
 }
 
@@ -57,16 +59,18 @@ impl server::Handler for Jump {
         port: u32,
         _orig: &str,
         _orig_port: u32,
+        reply: server::ChannelOpenHandle,
         _session: &mut Session,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<(), Self::Error> {
         let host = host.to_string();
+        reply.accept().await;
         tokio::spawn(async move {
             if let Ok(mut tcp) = TcpStream::connect((host.as_str(), port as u16)).await {
                 let mut stream = channel.into_stream();
                 let _ = tokio::io::copy_bidirectional(&mut tcp, &mut stream).await;
             }
         });
-        Ok(true)
+        Ok(())
     }
 }
 

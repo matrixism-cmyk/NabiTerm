@@ -75,6 +75,8 @@ pub(crate) fn palette_commands(
         (tr(lang, "dir.tree").to_string(), PaletteAction::DirTree),
         (tr(lang, "dir.stats").to_string(), PaletteAction::DirStats),
         (tr(lang, "qsel.title").to_string(), PaletteAction::QuickSelect),
+        (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
+        (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),
     ];
     for (label, shell) in crate::menu::installed_shells() {
         v.push((format!("{}: {label}", tr(lang, "menu.newlocal")), PaletteAction::NewLocal(shell)));

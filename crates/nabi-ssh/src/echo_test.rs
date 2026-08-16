@@ -25,9 +25,12 @@ impl server::Handler for Echo {
     async fn channel_open_session(
         &mut self,
         _channel: Channel<Msg>,
+        reply: server::ChannelOpenHandle,
         _session: &mut Session,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
+    ) -> Result<(), Self::Error> {
+        // 0.62: bool 반환 대신 명시적 accept/reject 핸들.
+        reply.accept().await;
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]

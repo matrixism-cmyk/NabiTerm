@@ -39,7 +39,9 @@ pub(crate) fn perms_menu(ui: &mut egui::Ui, name: &str, is_dir: bool, lang: Lang
             ui.weak(mode_to_rwx(m, is_dir, false)); // 유효하면 rwx 미리보기(권한 편집 — 링크 무관).
         }
         if ui.add_enabled(parsed.is_some(), egui::Button::new("\u{2713}")).clicked() {
-            click = Some(EClick::Chmod(name.to_string(), parsed.unwrap()));
+            if let Some(m) = parsed {
+                click = Some(EClick::Chmod(name.to_string(), m));
+            }
             ui.close_menu();
         }
     });

@@ -27,15 +27,17 @@ pub(crate) fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> E
         if ui.button(tr(lang, "editor.saveas")).clicked() {
             act.save_as = true;
         }
-        let eb = doc.edit.as_mut().unwrap();
-        if ui.button("\u{21b6}").on_hover_text(tr(lang, "editor.undo")).clicked() {
-            eb.undo();
-        }
-        if ui.button("\u{21b7}").on_hover_text(tr(lang, "editor.redo")).clicked() {
-            eb.redo();
+        // T4-1 패닉 감사: edit가 없는 프레임이 와도 UI 스레드가 죽지 않게 unwrap 금지.
+        if let Some(eb) = doc.edit.as_mut() {
+            if ui.button("\u{21b6}").on_hover_text(tr(lang, "editor.undo")).clicked() {
+                eb.undo();
+            }
+            if ui.button("\u{21b7}").on_hover_text(tr(lang, "editor.redo")).clicked() {
+                eb.redo();
+            }
         }
         ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
-        if doc.edit.as_ref().unwrap().dirty {
+        if doc.edit.as_ref().is_some_and(|e| e.dirty) {
             ui.colored_label(WARN, "\u{25cf}");
         }
     });
@@ -52,8 +54,10 @@ pub(crate) fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> E
         crate::editorfind::find_bar(ui, doc, lang);
         ui.separator();
     }
-    let cur = doc.edit.as_ref().unwrap().cursor_line_col();
-    let sel = doc.edit.as_ref().unwrap().selected_text().chars().count();
+    let (cur, sel) = match doc.edit.as_ref() {
+        Some(e) => (e.cursor_line_col(), e.selected_text().chars().count()),
+        None => return act, // edit 없는 문서 — 그릴 본문이 없다(패닉 대신 빈 화면).
+    };
     egui::TopBottomPanel::bottom(ui.id().with("eb_status")).show_inside(ui, |ui| {
         eb_status(ui, doc, cur, sel, lang);
     });
@@ -79,7 +83,7 @@ pub(crate) fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> E
 
 /// 하단 상태바: Ln/Col · 선택수 · 줄/바이트 · 인코딩 · EOL · 줌.
 fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize, lang: Lang) {
-    let eb = doc.edit.as_ref().unwrap();
+    let Some(eb) = doc.edit.as_ref() else { return };
     ui.separator();
     ui.horizontal(|ui| {
         ui.label(format!("Ln {}, Col {}", cur.0 + 1, cur.1 + 1));
@@ -108,7 +112,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
     let char_w = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
     let scroll_line = doc.find.scroll_to.take();
     let mut menu_act = crate::editbufmenu::BufMenuAct::default();
-    let eb = doc.edit.as_mut().unwrap();
+    let Some(eb) = doc.edit.as_mut() else { return menu_act };
     let lc = eb.rope.len_lines();
     let gutter_w = char_w * (lc.to_string().len().max(4) as f32) + 12.0;
     let avail_w = ui.available_width(); // 창을 가득 채우도록 콘텐츠 최소 폭 기준.

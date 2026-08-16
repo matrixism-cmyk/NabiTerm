@@ -28,10 +28,13 @@ impl client::Handler for X11Fwd {
         channel: Channel<Msg>,
         _originator_address: &str,
         _originator_port: u32,
+        reply: client::ChannelOpenHandle,
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
         let host = self.x_host.clone();
         let port = self.x_port;
+        // 0.62: 채널 수락이 명시적이 됐다 — accept 없이 드롭되면 자동 거절된다.
+        reply.accept().await;
         tokio::spawn(async move {
             if let Ok(mut tcp) = TcpStream::connect((host.as_str(), port)).await {
                 let mut stream = channel.into_stream();

@@ -35,9 +35,11 @@ impl server::Handler for Srv {
         _port: u32,
         _orig: &str,
         _orig_port: u32,
+        reply: server::ChannelOpenHandle,
         _session: &mut Session,
-    ) -> Result<bool, Self::Error> {
-        Ok(true)
+    ) -> Result<(), Self::Error> {
+        reply.accept().await;
+        Ok(())
     }
 
     async fn data(

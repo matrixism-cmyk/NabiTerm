@@ -98,6 +98,11 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
         action = Some(MenuAction::OpenForward);
         ui.close_menu();
     }
+    // 볼트(자격증명 금고) — 최상위 메뉴에서 세션 관리 영역으로 흡수(T3-1).
+    if ui.button(tr(lang, "menu.vault")).on_hover_text(tr(lang, "vault.about")).clicked() {
+        action = Some(MenuAction::OpenVault);
+        ui.close_menu();
+    }
     action
 }
 

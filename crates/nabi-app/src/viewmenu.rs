@@ -70,14 +70,13 @@ pub(crate) fn view_menu(
             if ui.button(tr(lang, "tab.dockfloat")).on_hover_text(tr(lang, "tab.dockfloat.hint")).clicked() { action = Some(MenuAction::DockFloat); ui.close_menu(); }
             if ui.selectable_label(st.float_on_top, check(st.float_on_top, tr(lang, "float.ontop"))).clicked() { action = Some(MenuAction::ToggleFloatOnTop); ui.close_menu(); }
         });
-        ui.menu_button(tr(lang, "menu.arrange"), |ui| {
-            if ui.button(tr(lang, "arrange.tile")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Tile)); ui.close_menu(); }
-            if ui.button(tr(lang, "arrange.cascade")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Cascade)); ui.close_menu(); }
-        });
-        ui.menu_button(tr(lang, "menu.arrangetabs"), |ui| {
-            if ui.button(tr(lang, "tab.tile")).clicked() { action = Some(MenuAction::TileTabs); ui.close_menu(); }
-            if ui.button(tr(lang, "tab.merge")).clicked() { action = Some(MenuAction::TabifyTabs); ui.close_menu(); }
-        });
+        // 배열 4종은 항목이 2+2뿐이라 서브메뉴 껍데기 없이 인라인(3단계 위반 해소, T3-1).
+        ui.separator();
+        if ui.button(tr(lang, "arrange.tile")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Tile)); ui.close_menu(); }
+        if ui.button(tr(lang, "arrange.cascade")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Cascade)); ui.close_menu(); }
+        ui.separator();
+        if ui.button(tr(lang, "tab.tile")).clicked() { action = Some(MenuAction::TileTabs); ui.close_menu(); }
+        if ui.button(tr(lang, "tab.merge")).clicked() { action = Some(MenuAction::TabifyTabs); ui.close_menu(); }
     });
     ui.separator();
     // ── 모드 토글 ──

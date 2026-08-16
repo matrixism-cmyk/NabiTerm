@@ -58,7 +58,7 @@ fn to_base36(mut n: u64) -> String {
         n /= 36;
     }
     s.reverse();
-    String::from_utf8(s).unwrap()
+    String::from_utf8_lossy(&s).into_owned() // ASCII 표라 무손실 — unwrap 대신(T4-1).
 }
 
 pub(crate) fn dec_to_base36(t: &str) -> String {
@@ -80,7 +80,7 @@ fn to_base62(mut n: u64) -> String {
         n /= 62;
     }
     s.reverse();
-    String::from_utf8(s).unwrap()
+    String::from_utf8_lossy(&s).into_owned() // ASCII 표라 무손실 — unwrap 대신(T4-1).
 }
 
 fn from_base62(s: &str) -> Option<u64> {

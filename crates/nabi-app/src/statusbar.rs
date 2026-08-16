@@ -97,7 +97,22 @@ impl NabiApp {
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
                 ui.colored_label(dc, format!("\u{25cf} {title}"));
                 if is_ssh {
-                    ui.colored_label(crate::theme_ui::ACCENT, "SSH");
+                    // T1-2: 협상된 KEX가 PQ(ML-KEM 하이브리드)면 방패 배지 + 상세 툴팁.
+                    let kex = focused.and_then(nabi_ssh::kexinfo::get);
+                    let (label, tip) = match &kex {
+                        Some(k) => {
+                            let detail = format!("{}: {}\n{}: {}", tr(lang, "status.kex"), k.kex, tr(lang, "status.cipher"), k.cipher);
+                            if k.is_pq() {
+                                ("SSH \u{1f6e1}PQ".to_string(), format!("{}\n{detail}", tr(lang, "status.pq")))
+                            } else {
+                                ("SSH".to_string(), detail)
+                            }
+                        }
+                        None => ("SSH".to_string(), String::new()),
+                    };
+                    let color = if kex.as_ref().is_some_and(|k| k.is_pq()) { crate::theme_ui::OK } else { crate::theme_ui::ACCENT };
+                    let r = ui.colored_label(color, label);
+                    if !tip.is_empty() { r.on_hover_text(tip); }
                 }
                 ui.separator();
                 ui.label(format!("{}: {count}", tr(lang, "status.sessions")));

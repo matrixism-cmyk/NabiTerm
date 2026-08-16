@@ -76,6 +76,7 @@ pub(crate) fn item_keys(ui: &mut egui::Ui, label: &str, keys: &str) -> bool {
 impl NabiApp {
     pub(crate) fn menu_bar(&mut self, ctx: &egui::Context) {
         let mut action: Option<MenuAction> = None;
+        let mut tool: Option<crate::toolsmenu::ToolsPick> = None;
         let lang = self.lang;
         let vstates = crate::viewmenu::ViewStates {
             broadcast: self.broadcast,
@@ -155,40 +156,7 @@ impl NabiApp {
                         ui.close_menu();
                     }
                     if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close_menu(); }
-                    ui.menu_button(tr(lang, "menu.snippets"), |ui| {
-                        ui.weak(tr(lang, "snippets.about")); // 무엇인지 안내(자주 쓰는 명령 저장→클릭 실행).
-                        ui.weak(tr(lang, "snippets.vars")); // 전송 시 치환되는 플레이스홀더 안내.
-                        ui.separator();
-                        if ui.button(tr(lang, "menu.addsnippet")).clicked() {
-                            action = Some(MenuAction::AddSnippet);
-                            ui.close_menu();
-                        }
-                        // 드물게 쓰는 관리 액션(정렬/내보내기/가져오기)은 "관리" 하위로 묶어 비대화 방지(D10).
-                        ui.menu_button(tr(lang, "menu.snippetmanage"), |ui| {
-                            if snippets.len() > 1 && ui.button(tr(lang, "menu.sortsnippets")).clicked() { action = Some(MenuAction::SortSnippets); ui.close_menu(); }
-                            if !snippets.is_empty() && ui.button(tr(lang, "menu.exportsnippets")).clicked() { action = Some(MenuAction::ExportSnippets); ui.close_menu(); }
-                            if ui.button(tr(lang, "menu.importsnippets")).clicked() { action = Some(MenuAction::ImportSnippets); ui.close_menu(); }
-                        });
-                        ui.separator();
-                        if snippets.is_empty() {
-                            ui.label(tr(lang, "snippets.empty"));
-                        }
-                        for (i, snip) in snippets.iter().enumerate() {
-                            ui.horizontal(|ui| {
-                                let short: String = snip.chars().take(36).collect();
-                                if ui.button(short).on_hover_text(snip).clicked() {
-                                    action = Some(MenuAction::SendSnippet(snip.clone()));
-                                    ui.close_menu();
-                                }
-                                if ui.small_button("\u{2715}").clicked() {
-                                    action = Some(MenuAction::RemoveSnippet(i));
-                                    ui.close_menu();
-                                }
-                            });
-                        }
-                    })
-                    .response
-                    .on_hover_text(tr(lang, "snippets.about")); // 메뉴 항목 hover 시 설명.
+                    // 스니펫은 도구 메뉴로 이동(T3-1 — 편집=텍스트 조작, 도구=생산성 도구).
                 });
                 ui.menu_button(tr(lang, "menu.view"), |ui| {
                     if let Some(a) =
@@ -197,18 +165,17 @@ impl NabiApp {
                         action = Some(a);
                     }
                 });
+                // 도구: 팔레트·워크트리·스니펫·포워딩·AI·스케줄 등 생산성 도구 집합(T3-1 신설).
+                ui.menu_button(tr(lang, "menu.tools"), |ui| {
+                    if let Some(p) = crate::toolsmenu::tools_menu(ui, lang, &snippets) {
+                        tool = Some(p);
+                    }
+                });
                 if ui.button(tr(lang, "menu.settings")).clicked() {
                     action = Some(MenuAction::OpenSettings);
                     ui.close_menu();
                 }
-                if ui
-                    .button(tr(lang, "menu.vault"))
-                    .on_hover_text(tr(lang, "vault.about"))
-                    .clicked()
-                {
-                    action = Some(MenuAction::OpenVault);
-                    ui.close_menu();
-                }
+                // 볼트는 세션 메뉴(관리 영역)로 흡수 — 최상위 7→6(T3-1).
                 if ui.button(tr(lang, "menu.help")).clicked() {
                     action = Some(MenuAction::OpenAbout); // 클릭 즉시 도움말(설정과 동일).
                     ui.close_menu();
@@ -217,6 +184,16 @@ impl NabiApp {
         });
         if let Some(a) = action {
             self.apply(ctx, a);
+        }
+        if let Some(p) = tool {
+            match p {
+                crate::toolsmenu::ToolsPick::OpenPalette => {
+                    self.palette_open = true;
+                    self.palette_query.clear();
+                }
+                crate::toolsmenu::ToolsPick::Pal(a) => self.run_palette(ctx, a),
+                crate::toolsmenu::ToolsPick::Menu(a) => self.apply(ctx, a),
+            }
         }
     }
 

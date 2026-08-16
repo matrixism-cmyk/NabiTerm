@@ -166,7 +166,7 @@ impl NabiApp {
         if pl.arrived.len() < pl.expected {
             return;
         }
-        let pl = self.pending_layout.take().unwrap();
+        let Some(pl) = self.pending_layout.take() else { return }; // 위에서 확인했지만 unwrap 금지(T4-1).
         // ordinal → 도착 pane. 로그인 필요 칸은 없으므로 None → filter_map_tabs가 트리에서 제거(분할 보존).
         // 같은 pane이 두 탭으로 배치되지 않도록 dedup 가드(복원 시 동일 #번호 탭 2개 방지, 사용자 보고 #1).
         let mut placed = std::collections::HashSet::new();
