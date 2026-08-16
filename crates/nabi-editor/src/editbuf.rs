@@ -47,6 +47,8 @@ pub struct EditBuf {
     /// ropehl이 읽고 소비한다(체크포인트를 그 줄부터 버림).
     pub hl_gen: u64,
     pub hl_dirty_from: usize,
+    /// 코드 폴딩 상태(시각행 매핑 — editbuffold).
+    pub folds: crate::editbuffold::Folds,
 }
 
 impl EditBuf {
@@ -57,7 +59,7 @@ impl EditBuf {
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None, last_at: 0, last_time: None, saved_depth: Some(0),
-            hl_gen: 0, hl_dirty_from: 0,
+            hl_gen: 0, hl_dirty_from: 0, folds: Default::default(),
         }
     }
 

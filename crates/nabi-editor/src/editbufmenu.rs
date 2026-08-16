@@ -71,6 +71,34 @@ pub fn context_menu(
         act.find = true;
         ui.close();
     }
+    // 코드 폴딩(T6-3): 커서 위치의 들여쓰기 블록 접기/펼치기 + 전체 펼치기.
+    let (cl, _) = eb.cursor_line_col();
+    if eb.folds.header_at(cl).is_some() {
+        if ui.button(tr(lang, "fold.open")).clicked() {
+            eb.folds.unfold_containing(cl);
+            ui.close();
+        }
+    } else {
+        let total = eb.rope.len_lines();
+        let rng = crate::editbuffold::fold_range_at(cl, total, |i| {
+            let s = eb.line_string(i);
+            let t = s.trim_end();
+            if t.trim_start().is_empty() {
+                return None;
+            }
+            Some(t.chars().take_while(|c| *c == ' ' || *c == '\t').map(|c| if c == '\t' { eb.tab } else { 1 }).sum())
+        });
+        if let Some((s, e)) = rng {
+            if ui.button(tr(lang, "fold.close")).clicked() {
+                eb.folds.toggle(s, e);
+                ui.close();
+            }
+        }
+    }
+    if !eb.folds.is_empty() && ui.button(tr(lang, "fold.openall")).clicked() {
+        eb.folds.clear();
+        ui.close();
+    }
     // 변환(정렬·대소문자·인코딩 등)은 editbufxform 덕에 rope 문서에서도 돈다.
     // 선택이 있으면 그 구간만, 없으면 문서 전체(크기 한도 안에서).
     let blocked = crate::editbufxform::target_range(eb.selection(), eb.rope.len_chars()).is_none();

@@ -60,4 +60,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("sync.started", "Sync started — items:", "동기화 시작 — 항목:", "同期を開始 — 項目:"),
     ("lsp.starting", "rust-analyzer starting (indexing)…", "rust-analyzer 시작 중(인덱싱)…", "rust-analyzer 起動中(インデックス作成)…"),
     ("lsp.ready", "rust-analyzer ready", "rust-analyzer 준비됨", "rust-analyzer 準備完了"),
+    ("fold.close", "Fold this block", "이 블록 접기", "このブロックを折りたたむ"),
+    ("fold.open", "Unfold this block", "이 블록 펼치기", "このブロックを展開"),
+    ("fold.openall", "Unfold all", "모두 펼치기", "すべて展開"),
 ];

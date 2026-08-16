@@ -3,9 +3,8 @@
 
 use crate::editbuf::EditBuf;
 use crate::editor::{EditorAct, EditorDoc};
-use nabi_i18n::{tr, Lang};
+use nabi_i18n::Lang;
 
-const WARN: egui::Color32 = egui::Color32::from_rgb(240, 180, 60);
 const GUTTER: egui::Color32 = egui::Color32::from_rgb(120, 130, 145);
 const CARET: egui::Color32 = egui::Color32::from_rgb(220, 225, 245);
 // premultiplied는 RGB ≤ alpha라야 정상 반투명 — RGB>alpha면 가산 혼합되어 줄 배경이 순백이 되며 글자를 덮는다.
@@ -18,31 +17,7 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
     if doc.show_menu {
         crate::editormenu::menu_bar(ui, doc, lang, &mut act, &[]);
     }
-    ui.horizontal(|ui| {
-        if !doc.show_menu && ui.button("\u{2630}").on_hover_text(tr(lang, "nabipad.menu.show")).clicked() {
-            act.toggle_menu_bar = true;
-        }
-        if ui.button(format!("\u{1f4be} {}", tr(lang, "editor.save"))).clicked() {
-            act.save = true;
-        }
-        if ui.button(tr(lang, "editor.saveas")).clicked() {
-            act.save_as = true;
-        }
-        // T4-1 패닉 감사: edit가 없는 프레임이 와도 UI 스레드가 죽지 않게 unwrap 금지.
-        if let Some(eb) = doc.edit.as_mut() {
-            if ui.button("\u{21b6}").on_hover_text(tr(lang, "editor.undo")).clicked() {
-                eb.undo();
-            }
-            if ui.button("\u{21b7}").on_hover_text(tr(lang, "editor.redo")).clicked() {
-                eb.redo();
-            }
-        }
-        ui.toggle_value(&mut doc.highlight, "\u{1f3a8}").on_hover_text(tr(lang, "editor.highlight"));
-        ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
-        if doc.edit.as_ref().is_some_and(|e| e.dirty) {
-            ui.colored_label(WARN, "\u{25cf}");
-        }
-    });
+    crate::editbufbar::toolbar(ui, doc, lang, &mut act);
     ui.separator();
     let over = ui.rect_contains_pointer(ui.max_rect());
     let dz = crate::uiutil::ctrl_wheel_zoom(ui, over);
@@ -61,7 +36,7 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
         None => return act, // edit 없는 문서 — 그릴 본문이 없다(패닉 대신 빈 화면).
     };
     egui::Panel::bottom(ui.id().with("eb_status")).show(ui, |ui| {
-        eb_status(ui, doc, cur, sel, lang);
+        crate::editbufbar::eb_status(ui, doc, cur, sel, lang);
     });
     // 미니맵(보기 메뉴 토글) — 직전 프레임 스크롤 상태로 그리고 클릭 시 목표 오프셋(T6-3).
     let mm_scroll_id = ui.id().with("eb_mm_scroll");
@@ -94,29 +69,6 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
     act
 }
 
-/// 하단 상태바: Ln/Col · 선택수 · 줄/바이트 · 인코딩 · EOL · 줌.
-fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize, lang: Lang) {
-    let Some(eb) = doc.edit.as_ref() else { return };
-    ui.separator();
-    ui.horizontal(|ui| {
-        ui.label(format!("Ln {}, Col {}", cur.0 + 1, cur.1 + 1));
-        if sel > 0 {
-            ui.separator();
-            ui.label(format!("Sel {sel}"));
-        }
-        ui.separator();
-        ui.label(format!("{} lines \u{00b7} {}", eb.rope.len_lines(), crate::humanfmt::human(eb.rope.len_bytes() as u64)));
-        ui.separator();
-        ui.label(&eb.enc);
-        ui.separator();
-        ui.label(eb.eol);
-        ui.separator();
-        ui.label(format!("{}px", doc.font_size as i32));
-        ui.separator();
-        ui.label(tr(lang, "editor.bigedit"));
-    });
-}
-
 /// 가상화 편집 영역 — 보이는 줄만 그리고, 포커스 시 키/마우스로 편집한다.
 fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Option<f32>, mm_scroll_id: egui::Id) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
@@ -128,27 +80,37 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
     let mut menu_act = crate::editbufmenu::BufMenuAct::default();
     let Some(eb) = doc.edit.as_mut() else { return menu_act };
     let lc = eb.rope.len_lines();
+    // 폴딩 하우스키핑(T6-3): 편집으로 줄 수가 바뀌면 폴드를 밀고/펼치고, 커서가 숨김 줄이면 자동 펼침.
+    let (cl0, _) = eb.cursor_line_col();
+    eb.folds.apply_edit(cl0, lc);
+    if eb.folds.hidden(cl0) {
+        eb.folds.unfold_containing(cl0);
+    }
+    let vis_total = eb.folds.visible_count(lc);
     let gutter_w = char_w * (lc.to_string().len().max(4) as f32) + 12.0;
     let avail_w = ui.available_width(); // 창을 가득 채우도록 콘텐츠 최소 폭 기준.
     let mut sa = egui::ScrollArea::both().auto_shrink([false, false]).id_salt("eb_body");
     if let Some(l) = scroll_line {
-        sa = sa.vertical_scroll_offset(l as f32 * row_h);
+        eb.folds.unfold_containing(l); // 찾기/줄이동 대상이 접혀 있으면 펼쳐서 보인다.
+        sa = sa.vertical_scroll_offset(eb.folds.src_to_vis(l) as f32 * row_h);
     }
     if let Some(o) = mm_target {
         sa = sa.vertical_scroll_offset(o); // 미니맵 스크럽 우선 적용.
     }
     sa.show_viewport(ui, |ui, vp| {
         // 미니맵용 스크롤 상태(다음 프레임에 읽음): (오프셋, 콘텐츠 높이, 뷰포트 높이).
-        ui.data_mut(|d| d.insert_temp(mm_scroll_id, (vp.top(), lc as f32 * row_h, vp.height())));
-        let first = (vp.top() / row_h).floor().max(0.0) as usize;
-        let last = ((vp.bottom() / row_h) as usize + 2).min(lc);
+        ui.data_mut(|d| d.insert_temp(mm_scroll_id, (vp.top(), vis_total as f32 * row_h, vp.height())));
+        // first/last는 시각행 범위 — 소스줄은 vis_to_src로 환산(폴딩 간접층).
+        let first_vis = (vp.top() / row_h).floor().max(0.0) as usize;
+        let last_vis = ((vp.bottom() / row_h) as usize + 2).min(vis_total);
+        let (first, last) = (eb.folds.vis_to_src(first_vis), eb.folds.vis_to_src(last_vis.saturating_sub(1)).min(lc.saturating_sub(1)) + 1);
         // 가로 범위는 지금까지 본 최장 줄로 정한다. 보이는 줄만 쓰면 스크롤할 때마다
         // 범위가 늘었다 줄었다 해서 가로 스크롤바가 요동친다.
         let seen = (first..last).map(|i| eb.disp_line(i).width()).max().unwrap_or(0);
         eb.seen_cols = eb.seen_cols.max(seen);
         let content_w = (gutter_w + (eb.seen_cols as f32 + 2.0) * char_w).max(avail_w);
         ui.set_width(content_w);
-        ui.set_height(lc as f32 * row_h);
+        ui.set_height(vis_total as f32 * row_h);
         let (top, left) = (ui.min_rect().top(), ui.min_rect().left());
         let text_left = left + gutter_w;
         // 포커스/입력. 클릭 영역은 보이는 부분 전체.
@@ -211,7 +173,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
         let cd = eb.disp_line(cl);
         let cg = crate::editbufpaint::layout(ui, &cd.text, &mono, egui::Color32::WHITE);
         let cx = text_left + crate::editbufpaint::x_at(&cg, cd.to_disp(cc));
-        let caret = egui::Rect::from_min_size(egui::pos2(cx, top + cl as f32 * row_h), egui::vec2(2.0, row_h));
+        let caret = egui::Rect::from_min_size(egui::pos2(cx, top + eb.folds.src_to_vis(cl) as f32 * row_h), egui::vec2(2.0, row_h));
         if eb.ensure_visible {
             ui.scroll_to_rect(caret, None); // 커서가 보이도록 스크롤.
             eb.ensure_visible = false;
@@ -238,7 +200,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
         };
         // 현재 줄 강조(포커스 + 선택 없을 때) — 편집 위치 식별.
         if focused && sel.is_none() && cl >= first && cl < last {
-            let ly = top + cl as f32 * row_h;
+            let ly = top + eb.folds.src_to_vis(cl) as f32 * row_h;
             let bg = egui::Rect::from_min_size(egui::pos2(left, ly), egui::vec2(content_w, row_h));
             painter.rect_filled(bg, egui::CornerRadius::ZERO, CURLINE);
         }
@@ -248,16 +210,34 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
             crate::ropets::window_spans(hl_id, eb, ext, first, last)
                 .or_else(|| crate::ropehl::window_spans(hl_id, eb, ext, first, last))
         });
-        for i in first..last {
+        let mut unfold_click = None;
+        for vis in first_vis..last_vis {
+            let i = eb.folds.vis_to_src(vis);
+            if i >= lc { break; }
             let d = eb.disp_line(i);
-            let g = match win_spans.as_ref().and_then(|w| w.get(i - first)) {
+            let g = match win_spans.as_ref().and_then(|w| w.get(i.wrapping_sub(first))) {
                 Some(spans) if !spans.is_empty() => {
                     let src = eb.line_string(i);
                     crate::editbufpaint::layout_spans(ui, &d, &src, spans, &mono, ctx.text_col)
                 }
                 _ => crate::editbufpaint::layout(ui, &d.text, &mono, ctx.text_col),
             };
-            crate::editbufpaint::row(&ctx, &g, &d, i, top + i as f32 * row_h, &sel_ranges, eb.rope.line_to_char(i));
+            let y = top + vis as f32 * row_h;
+            crate::editbufpaint::row(&ctx, &g, &d, i, y, &sel_ranges, eb.rope.line_to_char(i));
+            // 접힌 블록 헤더: 줄 끝 "… N" 배지(클릭=펼침).
+            if let Some((s, e)) = eb.folds.header_at(i) {
+                let bx = text_left + g.size().x + 10.0;
+                let badge = egui::Rect::from_min_size(egui::pos2(bx, y + 1.0), egui::vec2(char_w * 7.0, row_h - 2.0));
+                painter.rect_filled(badge, 3.0, ctx.sel_col.linear_multiply(0.5));
+                painter.text(egui::pos2(bx + 4.0, y + row_h * 0.5), egui::Align2::LEFT_CENTER,
+                    format!("\u{2026} {}", e - s), mono.clone(), ctx.text_col);
+                if ui.rect_contains_pointer(badge) && ui.input(|inp| inp.pointer.primary_clicked()) {
+                    unfold_click = Some(s);
+                }
+            }
+        }
+        if let Some(s) = unfold_click {
+            eb.folds.unfold_containing(s);
         }
         if focused {
             painter.rect_filled(caret, egui::CornerRadius::ZERO, CARET);
@@ -269,7 +249,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
                     let d = eb.disp_line(l);
                     let g2 = crate::editbufpaint::layout(ui, &d.text, &mono, egui::Color32::WHITE);
                     let x = text_left + crate::editbufpaint::x_at(&g2, d.to_disp(c.min(eb.line_len(l))));
-                    let rct = egui::Rect::from_min_size(egui::pos2(x, top + l as f32 * row_h), egui::vec2(2.0, row_h));
+                    let rct = egui::Rect::from_min_size(egui::pos2(x, top + eb.folds.src_to_vis(l) as f32 * row_h), egui::vec2(2.0, row_h));
                     painter.rect_filled(rct, egui::CornerRadius::ZERO, CARET);
                 }
             }

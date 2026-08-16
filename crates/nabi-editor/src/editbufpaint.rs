@@ -122,7 +122,9 @@ fn paint_sel(ctx: &RowCtx, g: &Galley, d: &DispLine, y: f32, s: usize, e: usize,
 /// 포인터 위치 → 문서 char 인덱스(갤리 기준 + grapheme 경계로 스냅).
 pub fn hit(ui: &egui::Ui, eb: &EditBuf, p: Pos2, top: f32, text_left: f32, row_h: f32, font: &FontId) -> usize {
     let last = eb.rope.len_lines().saturating_sub(1);
-    let line = (((p.y - top) / row_h).floor().max(0.0) as usize).min(last);
+    // y는 "시각행" — 폴딩 간접층으로 소스줄로 환산한다(T6-3).
+    let vis = ((p.y - top) / row_h).floor().max(0.0) as usize;
+    let line = eb.folds.vis_to_src(vis).min(last);
     let src = eb.line_string(line);
     let d = DispLine::new(&src, eb.tab);
     let g = layout(ui, &d.text, font, Color32::WHITE);

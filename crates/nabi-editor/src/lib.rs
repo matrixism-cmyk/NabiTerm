@@ -9,6 +9,8 @@ pub mod editbig;
 pub mod editbuf;
 pub mod editbufboxsel;
 pub mod editbufcol;
+pub mod editbufbar;
+pub mod editbuffold;
 pub mod editbufedit;
 pub mod editbufkeys;
 pub mod editbufmenu;
