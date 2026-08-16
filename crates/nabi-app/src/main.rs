@@ -163,7 +163,7 @@ mod windndvirt;
 mod windndfolder;
 mod viewportcmd;
 mod windows;
-mod workspace; mod workspace2; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
+mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
 

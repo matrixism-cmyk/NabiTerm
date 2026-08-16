@@ -91,6 +91,10 @@ pub struct NabiApp {
     pub pending_arrange: Option<crate::arrange::ArrangeMode>,
     pub broadcast: bool,
     pub palette_open: bool,
+    /// 워크스페이스 스냅샷 모달 상태(T7-2) + 저장 이름 입력.
+    pub snap_save_open: bool,
+    pub snap_list_open: bool,
+    pub snap_name: String,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

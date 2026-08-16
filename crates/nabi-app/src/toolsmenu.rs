@@ -28,6 +28,8 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("wt.create", PaletteAction::WorktreeCreate),
         ("wt.list", PaletteAction::WorktreeList),
         ("qsel.title", PaletteAction::QuickSelect),
+        ("snap.save", PaletteAction::SnapshotSave),
+        ("snap.list", PaletteAction::SnapshotList),
     ] {
         if ui.button(tr(lang, key)).clicked() {
             act = Some(ToolsPick::Pal(a));
