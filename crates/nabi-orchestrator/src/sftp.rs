@@ -94,23 +94,15 @@ pub fn spawn_sftp(
                 let _ = ev.send(Event::SftpConnected { id });
                 c
             }
-            Err(message) => {
-                let _ = ev.send(Event::SftpError { id, message });
-                return;
-            }
+            Err(message) => { let _ = ev.send(Event::SftpError { id, message }); return; }
         };
         while let Some(req) = rx.recv().await {
             match req {
                 SftpReq::ListTree { root, seq } => {
                     let mut files = Vec::new();
                     match fs.list_tree(&root, "", &mut files).await {
-                        Ok(()) => {
-                            files.sort();
-                            let _ = ev.send(Event::SftpTree { id, seq, files });
-                        }
-                        Err(message) => {
-                            let _ = ev.send(Event::SftpError { id, message });
-                        }
+                        Ok(()) => { files.sort(); let _ = ev.send(Event::SftpTree { id, seq, files }); }
+                        Err(message) => { let _ = ev.send(Event::SftpError { id, message }); }
                     }
                 }
                 SftpReq::List(path) => match fs.list_dir(&path).await {
@@ -118,9 +110,7 @@ pub fn spawn_sftp(
                         let entries = items.into_iter().map(to_entry).collect();
                         let _ = ev.send(Event::SftpListing { id, path, entries });
                     }
-                    Err(message) => {
-                        let _ = ev.send(Event::SftpError { id, message });
-                    }
+                    Err(message) => { let _ = ev.send(Event::SftpError { id, message }); }
                 },
                 SftpReq::Download { xfer, remote, local, resume } if pool.as_ref().is_some_and(|p| !p.degraded()) => {
                     let p = pool.as_mut().expect("위에서 확인함");
