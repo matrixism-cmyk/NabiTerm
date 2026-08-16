@@ -43,7 +43,7 @@ pub fn run(exe: Option<String>) -> ExitCode {
     }
 }
 
-fn smoke(exe: Option<String>) -> Result<(), String> {
+pub(crate) fn smoke(exe: Option<String>) -> Result<(), String> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let exe = exe.map(std::path::PathBuf::from).unwrap_or(root.join("target/debug/nabi.exe"));
     if !exe.exists() {
@@ -61,14 +61,43 @@ fn smoke(exe: Option<String>) -> Result<(), String> {
         .env("NABI_CONFIG_DIR", &cfg_dir)
         .env("NABI_CONTROL_PIPE", &pipe_name)
         .env("NABI_CONTROL_TOKEN", &token)
+        .env("NABI_LOG", "info") // 파일 로그를 남겨 종료 후 오류 스캔(사용자 요청 2026-08-16).
         .spawn()
         .map_err(|e| format!("앱 실행 실패: {e}"))?;
 
     let result = drive(&pipe_name, &token);
     let _ = child.kill(); // 스모크 목적 달성 — 강제 종료로 정리(워크스페이스 저장은 검증 대상 아님).
     let _ = child.wait();
+    // 실행 중 남은 로그에서 오류/패닉을 스캔 — 스모크가 "성공"이어도 내부 오류를 잡는다.
+    let scan = scan_logs(&cfg_dir);
     let _ = std::fs::remove_dir_all(&cfg_dir);
-    result
+    result.and(scan)
+}
+
+/// 격리 설정 폴더의 logs/에서 ERROR·panic 줄을 찾는다(발견=실패, WARN은 보고만).
+pub(crate) fn scan_logs(cfg_dir: &std::path::Path) -> Result<(), String> {
+    let dir = cfg_dir.join("logs");
+    let Ok(rd) = std::fs::read_dir(&dir) else { return Ok(()) }; // 로그 없음=통과(구버전 호환).
+    let (mut errs, mut warns) = (Vec::new(), 0usize);
+    for f in rd.flatten() {
+        let Ok(text) = std::fs::read_to_string(f.path()) else { continue };
+        for line in text.lines() {
+            if line.contains("ERROR") || line.contains("panicked") {
+                errs.push(line.to_string());
+            } else if line.contains(" WARN ") {
+                warns += 1;
+            }
+        }
+    }
+    if warns > 0 {
+        eprintln!("로그 WARN {warns}건(비차단)");
+    }
+    if errs.is_empty() {
+        Ok(())
+    } else {
+        let head: Vec<_> = errs.iter().take(5).cloned().collect();
+        Err(format!("로그 오류 {}건:\n{}", errs.len(), head.join("\n")))
+    }
 }
 
 /// 파이프 접속(재시도) 후 스모크 시나리오를 몬다.

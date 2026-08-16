@@ -16,7 +16,7 @@ mod icon;
 mod lines;
 mod overrides;
 mod prerelease;
-mod soak;
+mod soak; mod postverify;
 
 use std::process::ExitCode;
 
@@ -30,6 +30,7 @@ fn main() -> ExitCode {
         "prerelease" => prerelease::run(),
         "e2e" => e2e::run(std::env::args().nth(2)),
         "soak" => soak::run(std::env::args().nth(2)),
+        "verify-release" => postverify::run(std::env::args().nth(2)),
         "icon" => {
             let p = std::env::args()
                 .nth(2)
