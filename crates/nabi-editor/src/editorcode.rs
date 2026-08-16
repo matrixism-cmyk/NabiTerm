@@ -46,6 +46,47 @@ pub fn show_code_popups(ui: &egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mu
         }
         if !open { doc.lsp_refs = None; }
     }
+    // 자동완성 팝업(T6-4 3단계) — 커서 아래 고정, 앵커 이후 접두어로 필터, 클릭=삽입.
+    if let Some(items) = doc.lsp_comp.clone() {
+        // 앵커 이후 타이핑분(접두어). 커서가 앵커 앞으로 갔거나 식별자 밖 문자가 끼면 닫는다.
+        let prefix: Option<String> = (doc.cur_off >= doc.comp_anchor)
+            .then(|| doc.text.chars().skip(doc.comp_anchor).take(doc.cur_off - doc.comp_anchor).collect::<String>())
+            .filter(|p| p.chars().all(|c| c.is_alphanumeric() || c == '_'));
+        match prefix {
+            None => doc.lsp_comp = None,
+            Some(pre) => {
+                let pl = pre.to_lowercase();
+                let vis: Vec<_> = items.iter().filter(|i| i.label.to_lowercase().starts_with(&pl)).take(12).collect();
+                if vis.is_empty() || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    doc.lsp_comp = None;
+                } else {
+                    let mut chosen = None;
+                    egui::Area::new(egui::Id::new(("lsp_comp", doc.path.clone())))
+                        .fixed_pos(egui::pos2(doc.cursor_px.0, doc.cursor_px.1 + 2.0))
+                        .order(egui::Order::Foreground)
+                        .show(&ctx, |ui| {
+                            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                                ui.set_max_width(420.0);
+                                for it in &vis {
+                                    let row = ui.selectable_label(false, &it.label);
+                                    let row = if it.detail.is_empty() { row } else { row.on_hover_text(&it.detail) };
+                                    if row.clicked() {
+                                        chosen = Some(it.insert.clone());
+                                    }
+                                }
+                            });
+                        });
+                    if let Some(ins) = chosen {
+                        let (text, cur) = crate::lspcomp::commit_completion(&doc.text, doc.comp_anchor, doc.cur_off, &ins);
+                        doc.text = text;
+                        doc.dirty = true;
+                        doc.find.pending_cursor = Some(cur); // 다음 프레임 커서를 삽입 끝으로.
+                        doc.lsp_comp = None;
+                    }
+                }
+            }
+        }
+    }
     // 이름 바꾸기 입력 — 확정 시 act로 앱 허브에 전달(rust-analyzer rename).
     if doc.rename_open {
         let mut open = true;

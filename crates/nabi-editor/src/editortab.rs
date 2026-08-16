@@ -6,8 +6,7 @@ use nabi_i18n::{tr, Lang};
 
 const WARN: egui::Color32 = egui::Color32::from_rgb(240, 180, 60);
 const GUTTER: egui::Color32 = egui::Color32::from_rgb(120, 130, 145);
-const GUTTER_CUR: egui::Color32 = egui::Color32::from_rgb(225, 230, 250); // 커서 줄 번호(밝게).
-const GUTTER_SEL: egui::Color32 = egui::Color32::from_rgb(62, 80, 116); // 선택 줄 번호 배경.
+const GUTTER_CUR: egui::Color32 = egui::Color32::from_rgb(225, 230, 250); const GUTTER_SEL: egui::Color32 = egui::Color32::from_rgb(62, 80, 116); // 커서 줄 번호(밝게)·선택 줄 배경.
 
 /// 한 에디터 문서를 그리고 액션(저장)을 돌려준다. dirty/줌은 doc에 직접 반영.
 pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, recent: &[String]) -> EditorAct {
@@ -248,6 +247,7 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
             let lc = out.galley.layout_from_cursor(cr.primary);
             cur = (lc.row + 1, lc.column.0 + 1);
             (doc.cur_line, doc.cur_off) = (lc.row, cr.primary.index.0); // 북마크 토글/점프 기준(0기반) + LSP 위치 요청 기준(문자 오프셋).
+            let cpos = out.galley.pos_from_cursor(cr.primary); doc.cursor_px = (out.galley_pos.x + cpos.left(), out.galley_pos.y + cpos.bottom()); // 자동완성 팝업 배치(커서 화면좌표).
             let (a, b) = (cr.primary.index.0, cr.secondary.index.0);
             sel_chars = a.max(b) - a.min(b); // 선택 글자 수(상태바 표시).
             // 괄호 매칭(A1) — 작은 파일에서만(비용 제한).

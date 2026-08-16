@@ -225,6 +225,20 @@ impl LspClient {
         Some(crate::lspread::parse_locations(&v))
     }
 
+    /// 자동완성 요청 — 응답은 `take_completion`으로 폴링.
+    pub fn request_completion(&self, path: &Path, line: u32, col: u32) -> Option<i64> {
+        self.request(
+            "textDocument/completion",
+            json!({"textDocument": {"uri": path_to_uri(path)}, "position": {"line": line, "character": col}}),
+        )
+    }
+
+    /// completion 응답이 도착했으면 후보 목록을 꺼낸다(상한 50).
+    pub fn take_completion(&self, id: i64) -> Option<Vec<crate::lspcomp::CompItem>> {
+        let v = self.shared.replies.lock().ok()?.remove(&id)?;
+        Some(crate::lspcomp::parse_completion(&v))
+    }
+
     /// 문서 전체 포맷팅 요청(rust-analyzer=rustfmt) — 응답은 `take_formatting`으로 폴링.
     pub fn request_formatting(&self, path: &Path, tab: u32) -> Option<i64> {
         self.request(

@@ -13,6 +13,24 @@ impl NabiApp {
         }
     }
 
+    /// 지정 pane에서 자동완성 요청 — 앵커는 커서 앞 식별자 시작(접두어 필터·대치 기준).
+    pub(crate) fn lsp_complete_for(&mut self, p: nabi_types::PaneId) {
+        if let Some((path, line, col)) = self.lsp_req_ctx(p) {
+            let doc = &self.editors[&p];
+            let chars: Vec<char> = doc.text.chars().collect();
+            let mut a = doc.cur_off.min(chars.len());
+            while a > 0 && (chars[a - 1].is_alphanumeric() || chars[a - 1] == '_') {
+                a -= 1;
+            }
+            // 요청 전 즉시 동기화(디바운스 우회) — 서버가 최신 텍스트 기준으로 답한다.
+            if let Some(c) = &self.lsp.client {
+                c.did_change(&path, &doc.text);
+            }
+            self.lsp.pending_comp =
+                self.lsp.client.as_ref().and_then(|c| c.request_completion(&path, line, col)).map(|id| (id, p, a));
+        }
+    }
+
     /// 지정 pane에서 심볼 이름 바꾸기 요청(입력 팝업 확정 후).
     pub(crate) fn lsp_rename_for(&mut self, p: nabi_types::PaneId, new_name: &str) {
         if let Some((path, line, col)) = self.lsp_req_ctx(p) {

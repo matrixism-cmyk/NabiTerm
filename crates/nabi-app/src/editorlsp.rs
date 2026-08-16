@@ -28,6 +28,9 @@ pub struct LspHub {
     pub(crate) pending_refs: Option<(i64, nabi_types::PaneId)>,
     pub(crate) pending_rename: Option<i64>,
     pub(crate) pending_fmt: Option<(i64, nabi_types::PaneId)>,
+    /// 자동완성: (요청 id, pane, 앵커 문자 오프셋) + 자동 트리거 중복 방지(오프셋, 해시).
+    pub(crate) pending_comp: Option<(i64, nabi_types::PaneId, usize)>,
+    pub(crate) comp_last: HashMap<nabi_types::PaneId, (usize, u64)>,
 }
 
 /// 텍스트 해시(FNV-1a) — 프레임당 rs 문서 몇 개 수준이라 충분히 싸다.
@@ -123,6 +126,37 @@ impl NabiApp {
             let diags = c.diagnostics(&path);
             if let Some(doc) = self.editors.get_mut(&id) {
                 doc.diags = diags.into_iter().map(|d| (d.line as usize, d.severity, d.message)).collect();
+            }
+        }
+        // 자동완성 자동 트리거: 방금 '.' 또는 '::'를 타이핑한 순간(중복 방지: 같은 오프셋+해시).
+        let mut want_comp = None;
+        for (id, doc) in &self.editors {
+            if !lsp_doc(doc) || doc.lsp_comp.is_some() {
+                continue;
+            }
+            let (off, h) = (doc.cur_off, fnv(&doc.text));
+            if self.lsp.comp_last.get(id) == Some(&(off, h)) {
+                continue;
+            }
+            let tail: Vec<char> = doc.text.chars().take(off).collect::<Vec<_>>().iter().rev().take(2).copied().collect();
+            let trig = matches!(tail.first(), Some('.')) || (tail.len() == 2 && tail[0] == ':' && tail[1] == ':');
+            if trig {
+                want_comp = Some((*id, off, h));
+                break;
+            }
+        }
+        if let Some((id, off, h)) = want_comp {
+            self.lsp.comp_last.insert(id, (off, h));
+            self.lsp_complete_for(id);
+        }
+        // 자동완성 응답 폴링 — 후보를 문서 팝업 상태에 넣는다(빈 목록=조용히 무시).
+        if let (Some((rid, pane, anchor)), Some(c)) = (self.lsp.pending_comp, &self.lsp.client) {
+            if let Some(items) = c.take_completion(rid) {
+                self.lsp.pending_comp = None;
+                if let (false, Some(doc)) = (items.is_empty(), self.editors.get_mut(&pane)) {
+                    doc.lsp_comp = Some(items);
+                    doc.comp_anchor = anchor;
+                }
             }
         }
         // 심볼 정보/참조 응답 폴링 — 도착하면 해당 문서 팝업 상태에 넣는다(editorcode가 그림).

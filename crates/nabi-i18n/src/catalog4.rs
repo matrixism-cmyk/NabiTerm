@@ -38,4 +38,5 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("lsp.format.pal", "nabiPad: format document (rustfmt)", "nabiPad: 문서 포맷(rustfmt)", "nabiPad: ドキュメント整形(rustfmt)"),
     ("lsp.fmt.done", "Formatted (unsaved)", "포맷 완료(저장 전)", "整形完了(未保存)"),
     ("lsp.fmt.clean", "Already formatted", "이미 정렬돼 있습니다", "すでに整形済みです"),
+    ("lsp.complete", "Autocomplete", "자동완성", "自動補完"),
 ];

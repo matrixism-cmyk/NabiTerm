@@ -75,6 +75,7 @@ pub mod encodings;
 pub mod encdetect;
 pub mod humanfmt;
 pub mod lspclient;
+pub mod lspcomp;
 pub mod lspframe;
 pub mod lspread;
 pub mod ropehl;

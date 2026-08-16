@@ -154,6 +154,7 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
                 if ui.button(tr(lang, "lsp.refs")).clicked() { act.lsp_refs = true; ui.close(); }
                 if ui.button(tr(lang, "lsp.rename")).clicked() { doc.rename_open = true; ui.close(); }
                 if ui.button(tr(lang, "lsp.format")).clicked() { act.lsp_format = true; ui.close(); }
+                if ui.button(tr(lang, "lsp.complete")).clicked() { act.lsp_complete = true; ui.close(); }
                 if ui.add_enabled(!doc.diags.is_empty(), egui::Button::new(tr(lang, "lsp.diags"))).clicked() { doc.diag_popup = true; ui.close(); }
             });
         }

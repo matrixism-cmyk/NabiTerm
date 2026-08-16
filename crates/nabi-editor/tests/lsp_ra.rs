@@ -114,6 +114,20 @@ fn ra_diagnostics_and_definition() {
     assert!(!edits.is_empty(), "포맷 편집이 와야 함");
     let pretty = nabi_editor::lspread::apply_edits(ugly, &edits);
     assert!(pretty.contains("fn helper() -> i32"), "rustfmt 결과: {pretty}");
+
+    // 자동완성: main 안에서 "hel" 접두어 → helper 후보가 와야 한다.
+    let comp_src = "fn helper() -> i32 { 7 }\nfn main() { let _x = hel; }\n";
+    c.did_change(&main, comp_src);
+    let id = c.request_completion(&main, 1, 24).expect("completion 요청"); // "hel" 끝.
+    let t7 = Instant::now();
+    let items = loop {
+        if let Some(v) = c.take_completion(id) {
+            break v;
+        }
+        assert!(t7.elapsed() < Duration::from_secs(30), "completion 응답 없음");
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(items.iter().any(|i| i.label.starts_with("helper")), "helper 후보: {:?}", items.iter().map(|i| &i.label).take(8).collect::<Vec<_>>());
     assert!(c.alive());
     drop(c);
     let _ = std::fs::remove_dir_all(&dir);

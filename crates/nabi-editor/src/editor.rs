@@ -64,6 +64,11 @@ pub struct EditorDoc {
     pub diag_popup: bool,
     /// LSP 이름 바꾸기 입력 팝업 열림.
     pub rename_open: bool,
+    /// LSP 자동완성 후보(팝업 열림=Some) + 요청 시점 앵커(문자 오프셋).
+    pub lsp_comp: Option<Vec<crate::lspcomp::CompItem>>,
+    pub comp_anchor: usize,
+    /// 커서의 화면 좌표(팝업 배치용 — 렌더가 매 프레임 갱신).
+    pub cursor_px: (f32, f32),
 }
 
 impl EditorDoc {
@@ -107,6 +112,7 @@ impl EditorDoc {
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
+            lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0),
         }
     }
 }
@@ -145,6 +151,8 @@ pub struct EditorAct {
     pub lsp_rename: Option<String>,
     /// LSP 문서 전체 포맷팅(rustfmt) 요청.
     pub lsp_format: bool,
+    /// LSP 자동완성 요청(수동 — 자동 트리거는 앱 허브가 '.'/'::' 감지).
+    pub lsp_complete: bool,
     /// 다른 파일의 지정 줄(0기반) 열기(참조 목록 클릭 — 앱이 open+jump).
     pub open_at: Option<(String, usize)>,
 }
