@@ -52,7 +52,8 @@ impl eframe::App for NabiApp {
                     self.config.terminal.restore_workspace && self.restore_workspace(bpanes);
                 // 기본 셸은 첫 실행(워크스페이스 파일 없음)이나 복원 비활성일 때만. 복원 활성+파일 존재인데
                 // 복원된 게 없으면(=이전에 모든 탭을 닫고 종료) 사용자 요청대로 빈 화면을 유지한다.
-                if !(restored || self.config.terminal.restore_workspace && ws_exists) {
+                // OOBE(첫 실행) 중엔 자동 스폰 보류 — 환영 화면의 "시작하기"가 고른 셸을 띄운다.
+                if !(restored || self.onboarding_open || self.config.terminal.restore_workspace && ws_exists) {
                     let shell = crate::workspace::shell_from_str(&self.config.terminal.default_shell);
                     self.spawn_local(shell);
                 }
@@ -99,6 +100,7 @@ impl eframe::App for NabiApp {
         self.show_quick_connect(ctx);
         self.show_forward(ctx);
         self.show_settings(ctx);
+        self.show_onboarding(ctx); // 첫 실행 환영 화면(T3-3).
         self.show_link_menu(ctx); // 터미널 링크 길게 누름 메뉴.
         self.show_update_prompt(ctx); // 새 버전 발견 시 알림 모달(업데이트/다음에/일주일후/끄기).
         self.show_shellinteg_prompt(ctx); // 셸 통합 설치 권장 모달.

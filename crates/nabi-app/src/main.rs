@@ -92,7 +92,7 @@ mod snippetsend;
 mod dirjump;
 mod quickselect;
 mod cmdhist;
-mod modal;
+mod modal; mod onboarding;
 mod sessionlog; mod sessionnote; mod sessionctx;
 mod extwatch;
 mod triggers;

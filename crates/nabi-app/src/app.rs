@@ -91,6 +91,8 @@ pub struct NabiApp {
     pub pending_arrange: Option<crate::arrange::ArrangeMode>,
     pub broadcast: bool,
     pub palette_open: bool,
+    /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
+    pub onboarding_open: bool,
     pub palette_query: String,
     pub find_open: bool, pub find_query: String, pub find_regex: bool, pub replace_open: bool, pub replace_find: String, pub replace_to: String, pub replace_count: Option<(usize, usize)>,
     pub tab_names: HashMap<PaneId, String>,
