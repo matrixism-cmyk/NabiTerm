@@ -60,6 +60,7 @@ impl NabiApp {
             }
             PaletteAction::SnapshotSave => { self.snap_name.clear(); self.snap_save_open = true; }
             PaletteAction::SnapshotList => self.snap_list_open = true,
+            PaletteAction::BroadcastResults => self.bcast_view_open = true,
             PaletteAction::OpenAiCli => {
                 self.about_open = true;
                 ctx.data_mut(|d| d.insert_temp(egui::Id::new("help_cat"), 3usize)); // AI 제어 페이지.

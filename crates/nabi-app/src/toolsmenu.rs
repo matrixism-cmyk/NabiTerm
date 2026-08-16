@@ -30,6 +30,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("qsel.title", PaletteAction::QuickSelect),
         ("snap.save", PaletteAction::SnapshotSave),
         ("snap.list", PaletteAction::SnapshotList),
+        ("bcast.results", PaletteAction::BroadcastResults),
     ] {
         if ui.button(tr(lang, key)).clicked() {
             act = Some(ToolsPick::Pal(a));

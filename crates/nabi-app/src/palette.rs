@@ -57,6 +57,8 @@ pub(crate) enum PaletteAction {
     OpenSchedule, OpenAiCli,
     /// 워크스페이스 스냅샷 저장/목록(T7-2).
     SnapshotSave, SnapshotList,
+    /// 브로드캐스트 결과 집계 뷰(T7-3).
+    BroadcastResults,
 }
 
 impl NabiApp {

@@ -120,7 +120,7 @@ impl NabiApp {
             pending_arrange: None,
             broadcast: false,
             palette_open: false,
-            snap_save_open: false, snap_list_open: false, snap_name: String::new(),
+            snap_save_open: false, snap_list_open: false, snap_name: String::new(), bcast_view_open: false,
             onboarding_open: first_run,
             palette_query: String::new(),
             find_open: false,

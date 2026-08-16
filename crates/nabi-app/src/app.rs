@@ -93,6 +93,8 @@ pub struct NabiApp {
     pub palette_open: bool,
     /// 워크스페이스 스냅샷 모달 상태(T7-2) + 저장 이름 입력.
     pub snap_save_open: bool,
+    /// 브로드캐스트 결과 집계 뷰(T7-3).
+    pub bcast_view_open: bool,
     pub snap_list_open: bool,
     pub snap_name: String,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.

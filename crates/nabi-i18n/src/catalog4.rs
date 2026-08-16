@@ -2,6 +2,8 @@
 
 pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("menu.importxshell", "Import from Xshell (auto)", "Xshell에서 가져오기(자동)", "Xshellから取り込み(自動)"),
+    ("bcast.results", "Broadcast results", "일괄 명령 결과", "一括コマンド結果"), ("bcast.off", "Broadcast is off (View menu) — showing last results.", "브로드캐스트가 꺼져 있습니다(보기 메뉴) — 마지막 결과를 표시합니다.", "ブロードキャストはオフです(表示メニュー) — 直近の結果を表示。"),
+    ("bcast.col.pane", "Pane", "pane", "ペイン"), ("bcast.col.state", "Exit", "종료", "終了"), ("bcast.col.dur", "Time", "시간", "時間"), ("bcast.col.lastline", "Last output line", "마지막 출력 줄", "最後の出力行"),
     ("menu.tools", "Tools", "도구", "ツール"),
     ("snap.save", "Save workspace snapshot…", "워크스페이스 스냅샷 저장…", "ワークスペーススナップショット保存…"), ("snap.list", "Workspace snapshots…", "워크스페이스 스냅샷 목록…", "ワークスペーススナップショット一覧…"),
     ("snap.namehint", "Snapshot name (e.g. deploy day)", "스냅샷 이름(예: 배포날)", "スナップショット名(例: リリース日)"), ("snap.empty", "(no snapshots yet)", "(저장된 스냅샷 없음)", "(スナップショットなし)"),
