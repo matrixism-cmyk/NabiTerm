@@ -16,6 +16,9 @@ impl EditBuf {
     /// 묶는 조건은 **시간 AND 인접성**이다. 시간만 보면 취소 단위가 타자 속도에 따라
     /// 들쭉날쭉해지고, 인접성만 보면 한참 뒤에 같은 자리를 고쳐도 예전 편집과 한 덩어리가 된다.
     fn begin(&mut self, kind: EditKind, fresh: bool) {
+        // 편집 시작점(선택이 있으면 그 시작)부터 강조 무효(T6-1).
+        let start = self.selection().map(|(a, _)| a).unwrap_or_else(|| self.cursor());
+        self.mark_hl(start);
         let recent = self.last_time.map(|t| t.elapsed().as_millis() <= GROUP_MS).unwrap_or(false);
         let adjacent = self.cursor() == self.last_at;
         if !fresh && self.undo_open && self.last_kind == Some(kind) && recent && adjacent {
@@ -129,6 +132,7 @@ impl EditBuf {
     }
 
     pub fn undo(&mut self) {
+        self.mark_hl(0); // 문서 전체 교체 — 강조 전면 무효.
         if let Some((r, c)) = self.undo.pop() {
             let snap = (self.rope.clone(), self.cursor());
             self.redo.push(snap);
@@ -142,6 +146,7 @@ impl EditBuf {
     }
 
     pub fn redo(&mut self) {
+        self.mark_hl(0);
         if let Some((r, c)) = self.redo.pop() {
             let snap = (self.rope.clone(), self.cursor());
             self.undo.push(snap);

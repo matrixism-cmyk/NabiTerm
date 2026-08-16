@@ -72,6 +72,7 @@ pub mod editsel;
 pub mod encodings;
 pub mod encdetect;
 pub mod humanfmt;
+pub mod ropehl;
 pub mod textpos;
 pub mod uiutil;
 #[cfg(test)]

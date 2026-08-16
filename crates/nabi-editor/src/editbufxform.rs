@@ -50,6 +50,8 @@ impl EditBuf {
 
     /// 변환 전용 undo 경계 — 앞뒤 타자와 절대 묶이지 않게 한다.
     fn begin_transform(&mut self) {
+        let start = self.selection().map(|(a, _)| a).unwrap_or(0);
+        self.mark_hl(start);
         self.undo.push((self.rope.clone(), self.cursor()));
         self.redo.clear();
         self.undo_open = false;

@@ -36,6 +36,7 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
                 eb.redo();
             }
         }
+        ui.toggle_value(&mut doc.highlight, "\u{1f3a8}").on_hover_text(tr(lang, "editor.highlight"));
         ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
         if doc.edit.as_ref().is_some_and(|e| e.dirty) {
             ui.colored_label(WARN, "\u{25cf}");
@@ -107,6 +108,7 @@ fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize
 /// 가상화 편집 영역 — 보이는 줄만 그리고, 포커스 시 키/마우스로 편집한다.
 fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
+    let hl_ext = doc.highlight.then(|| doc.lang_ext()); // rope 구문 강조(T6-1).
     let mono = egui::FontId::monospace(fsize);
     let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
     let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
@@ -199,9 +201,20 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
             let bg = egui::Rect::from_min_size(egui::pos2(left, ly), egui::vec2(content_w, row_h));
             painter.rect_filled(bg, egui::CornerRadius::ZERO, CURLINE);
         }
+        // rope 구문 강조: 보이는 창의 스팬만 체크포인트 하이라이터로 계산(T6-1).
+        let hl_id = ui.id().with("ropehl").value();
+        let win_spans = hl_ext
+            .as_deref()
+            .and_then(|ext| crate::ropehl::window_spans(hl_id, eb, ext, first, last));
         for i in first..last {
             let d = eb.disp_line(i);
-            let g = crate::editbufpaint::layout(ui, &d.text, &mono, ctx.text_col);
+            let g = match win_spans.as_ref().and_then(|w| w.get(i - first)) {
+                Some(spans) if !spans.is_empty() => {
+                    let src = eb.line_string(i);
+                    crate::editbufpaint::layout_spans(ui, &d, &src, spans, &mono, ctx.text_col)
+                }
+                _ => crate::editbufpaint::layout(ui, &d.text, &mono, ctx.text_col),
+            };
             crate::editbufpaint::row(&ctx, &g, &d, i, top + i as f32 * row_h, sel, eb.rope.line_to_char(i));
         }
         if focused {

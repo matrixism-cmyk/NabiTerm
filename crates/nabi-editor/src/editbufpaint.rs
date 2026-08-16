@@ -26,6 +26,66 @@ pub fn layout(ui: &egui::Ui, text: &str, font: &FontId, col: Color32) -> Arc<Gal
     ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), col))
 }
 
+/// 구문 스팬을 표시 문자열(탭 확장)에 입힌 갤리(T6-1 rope 하이라이트).
+///
+/// 스팬은 **원본 줄의 바이트 길이** 단위(개행 포함 계산됨)라, 원본 char 단위로 색을 펼친 뒤
+/// DispLine 매핑으로 표시 char에 대응시킨다. 탭이 확장된 칸은 그 탭의 색을 따른다.
+pub fn layout_spans(
+    ui: &egui::Ui,
+    d: &crate::editbufcol::DispLine,
+    src: &str,
+    spans: &crate::editorhlspans::LineSpans,
+    font: &FontId,
+    fallback: Color32,
+) -> Arc<Galley> {
+    if spans.is_empty() {
+        return layout(ui, &d.text, font, fallback);
+    }
+    // 원본 char별 색(개행 스팬은 소진되며 잘림).
+    let mut colors: Vec<Color32> = Vec::with_capacity(src.chars().count());
+    let mut byte = 0usize;
+    let mut it = src.char_indices().peekable();
+    'sp: for s in spans {
+        let end = byte + s.len as usize;
+        while let Some(&(b, c)) = it.peek() {
+            if b >= end {
+                byte = end;
+                continue 'sp;
+            }
+            colors.push(s.color);
+            let _ = c;
+            it.next();
+        }
+        break; // 원본 소진(남은 스팬은 개행분).
+    }
+    let disp_chars: Vec<char> = d.text.chars().collect();
+    let mut job = egui::text::LayoutJob::default();
+    job.wrap.max_width = f32::INFINITY;
+    let mut run = String::new();
+    let mut run_col = fallback;
+    let flush = |job: &mut egui::text::LayoutJob, run: &mut String, col: Color32| {
+        if !run.is_empty() {
+            job.append(run, 0.0, egui::TextFormat { font_id: font.clone(), color: col, ..Default::default() });
+            run.clear();
+        }
+    };
+    for (i, col) in colors.iter().enumerate() {
+        let (a, b) = (d.to_disp(i), d.to_disp(i + 1));
+        if *col != run_col {
+            flush(&mut job, &mut run, run_col);
+            run_col = *col;
+        }
+        for ch in disp_chars.get(a..b).unwrap_or(&[]) {
+            run.push(*ch);
+        }
+    }
+    flush(&mut job, &mut run, run_col);
+    if job.text.is_empty() {
+        return layout(ui, &d.text, font, fallback);
+    }
+    ui.fonts_mut(|f| f.layout_job(job))
+}
+
 /// 갤리 안에서 표시 char 인덱스의 x 좌표.
 pub fn x_at(g: &Galley, disp: usize) -> f32 {
     g.pos_from_cursor(CCursor::new(disp)).min.x

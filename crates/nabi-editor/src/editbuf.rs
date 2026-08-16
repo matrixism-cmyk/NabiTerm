@@ -43,6 +43,10 @@ pub struct EditBuf {
     pub last_time: Option<std::time::Instant>,
     /// 마지막 저장 시점의 undo 깊이. 되돌려 이 상태로 오면 수정 표시가 사라진다.
     pub saved_depth: Option<usize>,
+    /// 구문 강조 무효화 신호(T6-1): 편집마다 증가하는 세대 + 가장 위의 변경 줄.
+    /// ropehl이 읽고 소비한다(체크포인트를 그 줄부터 버림).
+    pub hl_gen: u64,
+    pub hl_dirty_from: usize,
 }
 
 impl EditBuf {
@@ -53,6 +57,7 @@ impl EditBuf {
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None, last_at: 0, last_time: None, saved_depth: Some(0),
+            hl_gen: 0, hl_dirty_from: 0,
         }
     }
 
@@ -76,6 +81,13 @@ impl EditBuf {
             _ => lf,
         };
         out.into_bytes()
+    }
+
+    /// 구문 강조 무효화 기록(T6-1) — 편집이 시작되는 char 위치의 줄부터 다시 칠해야 한다.
+    pub fn mark_hl(&mut self, at_char: usize) {
+        self.hl_gen = self.hl_gen.wrapping_add(1);
+        let at = at_char.min(self.rope.len_chars());
+        self.hl_dirty_from = self.hl_dirty_from.min(self.rope.char_to_line(at));
     }
 
     /// i번째 줄 문자열(개행 제외 — 렌더/찾기용).
