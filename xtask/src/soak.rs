@@ -112,7 +112,7 @@ fn drive(pipe_name: &str, token: &str, child: &mut std::process::Child, pid: u32
         if let Some(m) = mem_mb(pid) {
             peak = peak.max(m); // 측정 실패는 이 사이클 샘플만 건너뜀(비치명).
         }
-        std::thread::sleep(Duration::from_secs(9));
+        std::thread::sleep(Duration::from_secs(5));
     }
     let mem1 = mem_mb(pid).unwrap_or(peak); // 최종 측정 실패 시 피크로 대체(생존은 위에서 확인).
     let cap = mem0 * 3 + 200;
