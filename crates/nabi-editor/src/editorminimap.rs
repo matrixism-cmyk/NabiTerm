@@ -11,18 +11,31 @@ const VIEW: Color32 = Color32::from_rgba_premultiplied(150, 170, 210, 36); // �
 /// 미니맵을 그린다. `off`/`content_h`/`viewport_h`는 직전 프레임의 본문 스크롤 상태.
 /// 클릭/드래그 시 그 지점으로 가는 목표 스크롤 오프셋을 Some으로 돌려준다.
 pub fn minimap(ui: &mut egui::Ui, text: &str, off: f32, content_h: f32, viewport_h: f32) -> Option<f32> {
+    let lines: Vec<&str> = text.split('\n').collect();
+    let n = lines.len();
+    minimap_by(ui, n, |i| lines.get(i).map(|l| l.trim_end().chars().count()).unwrap_or(0), off, content_h, viewport_h)
+}
+
+/// 줄 수 + 줄 길이 클로저 버전 — rope 등 &str이 아닌 저장소도 같은 미니맵을 쓴다(T6-3).
+pub fn minimap_by(
+    ui: &mut egui::Ui,
+    n_lines: usize,
+    line_len: impl Fn(usize) -> usize,
+    off: f32,
+    content_h: f32,
+    viewport_h: f32,
+) -> Option<f32> {
     let rect = ui.max_rect();
     let (mm_h, mm_w) = (rect.height().max(1.0), rect.width());
     let painter = ui.painter();
     painter.rect_filled(rect, CornerRadius::ZERO, BG);
 
     // 줄 길이를 가로 막대로(미니맵 픽셀 행 ↔ 문서 줄 매핑 — 행 수 무관 일정 비용).
-    let lines: Vec<&str> = text.split('\n').collect();
-    let n = lines.len().max(1);
+    let n = n_lines.max(1);
     let rows = mm_h as usize;
     for py in 0..rows {
         let li = py * n / rows.max(1);
-        let len = lines.get(li).map(|l| l.trim_end().chars().count()).unwrap_or(0).min(100);
+        let len = line_len(li).min(100);
         if len > 0 {
             let w = (len as f32 / 100.0) * (mm_w - 8.0);
             let y = rect.top() + py as f32;

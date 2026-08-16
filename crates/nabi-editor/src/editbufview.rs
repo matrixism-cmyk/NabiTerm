@@ -63,12 +63,23 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
     egui::Panel::bottom(ui.id().with("eb_status")).show(ui, |ui| {
         eb_status(ui, doc, cur, sel, lang);
     });
-    let m = edit_body(ui, doc, lang);
-    // 우클릭 메뉴에서 온 동작은 여기서 처리한다(클로저 안에서 doc을 또 빌릴 수 없다).
-    if let Some(t) = m.copy {
-        if !t.is_empty() {
-            ui.ctx().copy_text(t);
+    // 미니맵(보기 메뉴 토글) — 직전 프레임 스크롤 상태로 그리고 클릭 시 목표 오프셋(T6-3).
+    let mm_scroll_id = ui.id().with("eb_mm_scroll");
+    let mut mm_target: Option<f32> = None;
+    if doc.minimap {
+        if let Some(eb) = doc.edit.as_ref() {
+            let (oy, ch, vh): (f32, f32, f32) = ui.data(|d| d.get_temp(mm_scroll_id)).unwrap_or((0.0, 1.0, 1.0));
+            let n = eb.rope.len_lines();
+            let mm = egui::Panel::right(ui.id().with("eb_mm")).exact_size(84.0).resizable(false);
+            mm.show(ui, |ui| {
+                mm_target = crate::editorminimap::minimap_by(ui, n, |i| eb.line_len(i), oy, ch, vh);
+            });
         }
+    }
+    let m = edit_body(ui, doc, lang, mm_target, mm_scroll_id);
+    // 우클릭 메뉴에서 온 동작은 여기서 처리한다(클로저 안에서 doc을 또 빌릴 수 없다).
+    if let Some(t) = m.copy.filter(|t| !t.is_empty()) {
+        ui.ctx().copy_text(t);
     }
     if m.paste && !doc.readonly {
         if let Some(t) = crate::uiutil::clipboard_text() {
@@ -107,7 +118,7 @@ fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize
 }
 
 /// 가상화 편집 영역 — 보이는 줄만 그리고, 포커스 시 키/마우스로 편집한다.
-fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editbufmenu::BufMenuAct {
+fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Option<f32>, mm_scroll_id: egui::Id) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
     let hl_ext = doc.highlight.then(|| doc.lang_ext()); // rope 구문 강조(T6-1).
     let mono = egui::FontId::monospace(fsize);
@@ -123,7 +134,12 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
     if let Some(l) = scroll_line {
         sa = sa.vertical_scroll_offset(l as f32 * row_h);
     }
+    if let Some(o) = mm_target {
+        sa = sa.vertical_scroll_offset(o); // 미니맵 스크럽 우선 적용.
+    }
     sa.show_viewport(ui, |ui, vp| {
+        // 미니맵용 스크롤 상태(다음 프레임에 읽음): (오프셋, 콘텐츠 높이, 뷰포트 높이).
+        ui.data_mut(|d| d.insert_temp(mm_scroll_id, (vp.top(), lc as f32 * row_h, vp.height())));
         let first = (vp.top() / row_h).floor().max(0.0) as usize;
         let last = ((vp.bottom() / row_h) as usize + 2).min(lc);
         // 가로 범위는 지금까지 본 최장 줄로 정한다. 보이는 줄만 쓰면 스크롤할 때마다
