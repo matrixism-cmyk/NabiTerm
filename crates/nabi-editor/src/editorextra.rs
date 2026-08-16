@@ -172,6 +172,14 @@ pub fn match_bracket(text: &str, idx: usize) -> Option<(usize, usize)> {
     None
 }
 
+/// LSP 진단 거터 점(T6-4): 오류=빨강, 그 외=앰버. 해당 줄에 진단이 없으면 무시.
+pub fn diag_dot(painter: &egui::Painter, doc: &crate::editor::EditorDoc, line0: usize, x: f32, y: f32) {
+    if let Some((_, sev, _)) = doc.diags.iter().find(|(l, _, _)| *l == line0) {
+        let c = if *sev == 1 { egui::Color32::from_rgb(235, 80, 80) } else { egui::Color32::from_rgb(255, 176, 32) };
+        painter.circle_filled(egui::pos2(x, y), 2.5, c);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{match_bracket, word_range_at};

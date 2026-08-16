@@ -52,6 +52,10 @@ pub struct EditorDoc {
     pub cur_line: usize,
     /// 구문 강조 언어 강제(확장자 문자열, 예 "rs"). None이면 파일 확장자 자동(무제목 문서 언어 모드용).
     pub syntax_ext: Option<String>,
+    /// LSP 진단(T6-4): (0기반 줄, 심각도 1=오류 2=경고…, 메시지). 앱 LSP 허브가 매 프레임 채운다.
+    pub diags: Vec<(usize, u8, String)>,
+    /// 현재 커서 문자 오프셋(렌더가 매 프레임 갱신) — 정의 이동 등 위치 기반 요청 기준.
+    pub cur_off: usize,
 }
 
 impl EditorDoc {
@@ -94,6 +98,7 @@ impl EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+            diags: Vec::new(), cur_off: 0,
         }
     }
 }

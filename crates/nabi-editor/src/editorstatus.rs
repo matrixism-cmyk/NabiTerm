@@ -67,6 +67,18 @@ pub fn editor_status(
         ui.menu_button(synlang, |ui| syntax_lang_picker(ui, doc, lang)).response.on_hover_text(tr(lang, "nabipad.syntaxlang"));
         ui.separator();
         ui.label(format!("{}px", doc.font_size as i32));
+        // LSP 진단 요약(T6-4): 오류/경고 수 + 커서 줄의 첫 진단 메시지.
+        if !doc.diags.is_empty() {
+            let errs = doc.diags.iter().filter(|(_, s, _)| *s == 1).count();
+            let warns = doc.diags.len() - errs;
+            ui.separator();
+            if errs > 0 { ui.colored_label(egui::Color32::from_rgb(235, 80, 80), format!("\u{2717} {errs}")); }
+            if warns > 0 { ui.colored_label(AMBER, format!("\u{26a0} {warns}")); }
+            if let Some((_, _, msg)) = doc.diags.iter().find(|(l, _, _)| *l == doc.cur_line) {
+                let short: String = msg.chars().take(70).collect();
+                ui.weak(short).on_hover_text(msg);
+            }
+        }
     });
     (set_enc, set_eol)
 }

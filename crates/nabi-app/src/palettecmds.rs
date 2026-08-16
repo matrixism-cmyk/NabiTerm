@@ -78,6 +78,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "snap.save").to_string(), PaletteAction::SnapshotSave),
         (tr(lang, "snap.list").to_string(), PaletteAction::SnapshotList),
         (tr(lang, "bcast.results").to_string(), PaletteAction::BroadcastResults),
+        (tr(lang, "lsp.gotodef").to_string(), PaletteAction::GotoDefinition),
         (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
         (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),
     ];

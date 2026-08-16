@@ -14,4 +14,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("settings.verifyhashhint", "After each transfer, compare SHA-256 with the server (rclone-style). Skipped silently if the server has no hash command; size check always runs.", "전송이 끝날 때마다 서버와 SHA-256을 대조합니다(rclone 방식). 서버에 해시 명령이 없으면 조용히 건너뛰며, 크기 비교는 항상 수행됩니다.", "転送のたびにサーバーとSHA-256を照合します(rclone方式)。ハッシュコマンドがないサーバーでは自動的にスキップされ、サイズ照合は常に実行されます。"),
     ("status.pq", "Post-quantum key exchange (ML-KEM768+X25519) — protected against harvest-now-decrypt-later attacks", "포스트퀀텀 키 교환(ML-KEM768+X25519) — 지금 수집해 나중에 푸는 공격으로부터 보호됩니다", "ポスト量子鍵交換(ML-KEM768+X25519) — 収集後解読攻撃から保護されます"),
     ("status.kex", "Key exchange", "키 교환", "鍵交換"), ("status.cipher", "Cipher", "암호", "暗号"),
+    ("lsp.gotodef", "nabiPad: go to definition (Rust)", "nabiPad: 정의로 이동(Rust)", "nabiPad: 定義へ移動(Rust)"),
+    ("lsp.nodef", "Definition not found", "정의를 찾을 수 없습니다", "定義が見つかりません"),
+    ("lsp.off", "Language server not running (rust-analyzer required)", "언어 서버가 꺼져 있습니다(rust-analyzer 필요)", "言語サーバーが動作していません(rust-analyzer必要)"),
 ];

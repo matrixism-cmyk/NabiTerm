@@ -89,6 +89,7 @@ impl NabiApp {
                 font_size: self.font_size, encoding, eol: "-", highlight: false,
                 wrap: false, show_ws: false, readonly: true, big: Some(big), edit: None,
                 find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+                diags: Vec::new(), cur_off: 0,
             });
         } else {
             self.notify = Some((tr(self.lang, "editor.toobig").to_string(), Instant::now()));

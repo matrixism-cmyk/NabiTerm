@@ -204,8 +204,7 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
             }
             None => (usize::MAX, None),
         };
-        let (mut cur_line, mut sel_lo, mut sel_hi) = (usize::MAX, usize::MAX, 0usize);
-        let mut k = 1usize;
+        let (mut cur_line, mut sel_lo, mut sel_hi, mut k) = (usize::MAX, usize::MAX, 0usize, 1usize);
         for (i, r) in rows.iter().enumerate() {
             if i == cur_grow {
                 cur_line = k;
@@ -241,13 +240,14 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
                 let col = if n == cur_line { GUTTER_CUR } else { GUTTER };
                 painter.text(egui::pos2(out.galley_pos.x - 12.0, y), egui::Align2::RIGHT_TOP, n.to_string(), mono.clone(), col);
                 if doc.bookmarks.contains(&(n - 1)) { painter.circle_filled(egui::pos2(out.galley_pos.x - gutter_w + 5.0, y + row.rect().height() * 0.5), 3.0, GUTTER_CUR); } // 북마크 점.
+                crate::editorextra::diag_dot(painter, doc, n - 1, out.galley_pos.x - gutter_w + 12.0, y + row.rect().height() * 0.5); // LSP 진단 점(T6-4).
                 n += 1;
             }
         }
         if let Some(cr) = out.cursor_range {
             let lc = out.galley.layout_from_cursor(cr.primary);
             cur = (lc.row + 1, lc.column.0 + 1);
-            doc.cur_line = lc.row; // 북마크 토글/점프 기준(0기반).
+            (doc.cur_line, doc.cur_off) = (lc.row, cr.primary.index.0); // 북마크 토글/점프 기준(0기반) + LSP 위치 요청 기준(문자 오프셋).
             let (a, b) = (cr.primary.index.0, cr.secondary.index.0);
             sel_chars = a.max(b) - a.min(b); // 선택 글자 수(상태바 표시).
             // 괄호 매칭(A1) — 작은 파일에서만(비용 제한).

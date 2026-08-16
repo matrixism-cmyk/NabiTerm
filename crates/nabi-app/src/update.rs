@@ -147,6 +147,7 @@ impl eframe::App for NabiApp {
         self.show_worktree_modals(ctx); // git 워크트리 만들기/목록(B6).
         self.show_snapshot_modals(ctx); // 워크스페이스 스냅샷(T7-2).
         self.show_broadcast_results(ctx); // 일괄 명령 결과 집계(T7-3).
+        self.lsp_tick(); // nabiPad LSP 동기화·진단·정의 응답(T6-4).
         self.tick_scheduler(); // 내장 스케줄러(C3, 2초 스로틀).
         self.show_toast(ctx);
         self.show_resize_badge(ctx);

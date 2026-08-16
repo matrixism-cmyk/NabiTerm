@@ -43,7 +43,7 @@ mod fontinstall;
 mod netinfo;
 mod drives;
  mod editorsave;
-mod editoropen; mod editorclose;
+mod editoropen; mod editorclose; mod editorlsp;
 
 mod filezilla; mod xshell;
 mod mobaxterm;

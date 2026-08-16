@@ -97,6 +97,8 @@ pub struct NabiApp {
     pub bcast_view_open: bool,
     pub snap_list_open: bool,
     pub snap_name: String,
+    /// nabiPad LSP 허브(T6-4) — rust-analyzer 진단·정의 이동.
+    pub lsp: crate::editorlsp::LspHub,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,
