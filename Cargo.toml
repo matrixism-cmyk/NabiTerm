@@ -87,13 +87,13 @@ unicode-segmentation = "1"  # 캐럿을 grapheme cluster 단위로 옮기기 위
 encoding_rs = "0.8"
 
 # --- gui ---
-egui = "0.34"              # 단계 상향 중(0.29→0.34→0.36, T2-2). IME 오버홀·힌팅 수확.
-egui_extras = "0.34"       # 탐색기식 컬럼 테이블(TableBuilder)용.
+egui = "0.36"              # T2-2 완료: 0.29→0.34→0.36. IME 오버홀(0.35)·harfrust 리거처·힌팅 수확.
+egui_extras = "0.36"       # 탐색기식 컬럼 테이블(TableBuilder)용.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }  # 로컬 일시 표기.
 # 렌더러는 wgpu(DX12→Vulkan→DX11→GL 자동 폴백). glow(OpenGL 단일)는 하이브리드 그래픽·RDP·
 # 가상 GPU·구형 인텔 드라이버에서 컨텍스트 생성/스왑 실패로 화면이 안 보이는 사례가 있어 교체.
-eframe = { version = "0.34", default-features = false, features = ["accesskit", "default_fonts", "wgpu", "persistence"] }  # accesskit=스크린리더 접근성.
-egui_dock = { version = "0.19", features = ["serde"] }  # egui 0.34 짝(0.36엔 0.21); 레이아웃 직렬화에 serde
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "wgpu", "persistence"] }  # accesskit=스크린리더 접근성.
+egui_dock = { version = "0.21", features = ["serde"] }  # egui 0.36 짝; 레이아웃 직렬화에 serde
 
 # --- ssh / fs ---
 nabi-ssh = { path = "crates/nabi-ssh" }

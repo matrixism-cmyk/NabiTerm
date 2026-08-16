@@ -5,11 +5,12 @@ use nabi_types::PaneId;
 
 impl NabiApp {
     /// 분리 창의 내장 에디터 렌더 + 저장/다른이름저장/인코딩 처리.
-    pub(crate) fn floating_editor(&mut self, vctx: &egui::Context, pane: PaneId) {
+    pub(crate) fn floating_editor(&mut self, ui: &mut egui::Ui, pane: PaneId) {
+        let vctx = &ui.ctx().clone();
         let lang = self.lang;
         let recent = self.editor_config.recent_files.clone();
         let mut act = crate::editor::EditorAct::default();
-        egui::CentralPanel::default().show(vctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             if let Some(e) = self.editors.get_mut(&pane) {
                 act = crate::editortab::render_editor_tab(ui, e, lang, &recent);
             }
@@ -68,12 +69,13 @@ impl NabiApp {
     }
 
     /// 분리 창의 로컬 파일 브라우저 렌더 + 액션 처리(central과 같은 스왑 적용 경로).
-    pub(crate) fn floating_browser(&mut self, vctx: &egui::Context, pane: PaneId) {
+    pub(crate) fn floating_browser(&mut self, ui: &mut egui::Ui, pane: PaneId) {
+        let vctx = &ui.ctx().clone();
         let remote_map = self.remote_compare_map();
         let can_upload = self.sftp.open && self.sftp.id.is_some();
         let lang = self.lang;
         let mut act = None;
-        egui::CentralPanel::default().show(vctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             if let Some(b) = self.browser_tabs.get_mut(&pane) {
                 act = Some(crate::browser::render_browser_tab(ui, b, &remote_map, can_upload, lang, pane.get()));
             }
@@ -89,13 +91,14 @@ impl NabiApp {
     }
 
     /// 분리 창의 SFTP 파일브라우저 렌더 + 액션 처리(활성 패널만 액션 처리, 배경은 표시).
-    pub(crate) fn floating_sftp(&mut self, vctx: &egui::Context, pane: PaneId) {
+    pub(crate) fn floating_sftp(&mut self, ui: &mut egui::Ui, pane: PaneId) {
+        let vctx = &ui.ctx().clone();
         let lang = self.lang;
         let active = Some(pane) == self.sftp_pane;
         let bm = self.config.terminal.sftp_bookmarks.clone();
         let sd = self.browser.sort_desc; // 클로저가 self를 가변 차용하므로 미리 캡처.
         let mut act = crate::sftptab::SftpAct::default();
-        egui::CentralPanel::default().show(vctx, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let panel = if active {
                 &mut self.sftp
             } else if let Some(p) = self.sftp_bg.get_mut(&pane) {

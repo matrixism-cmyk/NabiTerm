@@ -47,7 +47,7 @@ impl NabiApp {
                     egui::Id::new("nabi-bell"),
                 ));
                 painter.rect_filled(
-                    ctx.screen_rect(),
+                    ctx.content_rect(),
                     egui::CornerRadius::ZERO,
                     egui::Color32::from_white_alpha(48),
                 );

@@ -50,7 +50,7 @@ fn set_range(ctx: &egui::Context, id: egui::Id, a: usize, b: usize) {
 pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang, readonly: bool, act: &mut crate::editor::EditorAct) {
     let id = out.response.id;
     let range = out.cursor_range.map(|cr| {
-        let (a, b) = (cr.primary.index, cr.secondary.index);
+        let (a, b) = (cr.primary.index.0, cr.secondary.index.0);
         (a.min(b), a.max(b))
     });
     let has_sel = range.is_some_and(|(a, b)| b > a);
@@ -174,7 +174,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
         });
         // 괄호 짝으로 커서 이동(VS Code). 커서 위치 괄호의 짝 char 인덱스로 점프.
         if ui.button(tr(lang, "ctx.gotobracket")).clicked() {
-            if let Some(cidx) = out.cursor_range.map(|cr| cr.primary.index) {
+            if let Some(cidx) = out.cursor_range.map(|cr| cr.primary.index.0) {
                 if let Some((_, j)) = crate::editorextra::match_bracket(&doc.text, cidx) {
                     set_range(&ctx, id, j, j);
                 }

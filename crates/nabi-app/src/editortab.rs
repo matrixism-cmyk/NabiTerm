@@ -61,17 +61,17 @@ pub(crate) fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: La
     let mut mm_target = None;
     if doc.minimap {
         let (oy, ch, vh): (f32, f32, f32) = ui.data(|d| d.get_temp(scroll_id)).unwrap_or((0.0, 1.0, 1.0));
-        let mm = egui::SidePanel::right(ui.id().with("ed_mm")).exact_width(84.0).resizable(false);
-        mm.show_inside(ui, |ui| mm_target = crate::editorminimap::minimap(ui, &doc.text, oy, ch, vh));
+        let mm = egui::Panel::right(ui.id().with("ed_mm")).exact_size(84.0).resizable(false);
+        mm.show(ui, |ui| mm_target = crate::editorminimap::minimap(ui, &doc.text, oy, ch, vh));
     }
     // 개요(좌측 아웃라인) — 헤더/정의 줄 목록, 클릭 시 그 줄로 점프(작은 파일만 — 매프레임 스캔 비용).
     let mut ol_line = None;
     if doc.outline && doc.text.len() < crate::editorhl::MAX_HL_BYTES {
         let items = crate::editoroutline::outline_items(&doc.text);
-        let ol = egui::SidePanel::left(ui.id().with("ed_ol")).default_width(170.0);
-        ol.show_inside(ui, |ui| ol_line = crate::editoroutline::outline_panel(ui, &items));
+        let ol = egui::Panel::left(ui.id().with("ed_ol")).default_size(170.0);
+        ol.show(ui, |ui| ol_line = crate::editoroutline::outline_panel(ui, &items));
     }
-    egui::TopBottomPanel::bottom(ui.id().with("ed_status")).show_inside(ui, |ui| {
+    egui::Panel::bottom(ui.id().with("ed_status")).show(ui, |ui| {
         let (enc, eol) = crate::editorstatus::editor_status(ui, doc, last_cur, lang); act.set_encoding = enc; act.set_eol = eol;
     });
     let row_h = ui.fonts_mut(|f| f.row_height(&egui::FontId::monospace(doc.font_size)));
@@ -160,8 +160,7 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
     // 거터 폭 = 숫자폭 + 여백. 숫자는 편집창 프레임에서 충분히 떨어뜨려(활성 시 가림 방지).
     let gutter_w = if doc.show_lineno { char_w * (lines.to_string().len().max(3) as f32) + 22.0 } else { 0.0 };
     let body_w = (ui.available_width() - gutter_w).max(80.0); // 본문 TextEdit가 창을 채우도록.
-    let mut cur = (1usize, 1usize);
-    let mut sel_chars = 0usize;
+    let (mut cur, mut sel_chars) = ((1usize, 1usize), 0usize);
     // syntect 하이라이트(켜짐 + 임계 이하). 캐시로 변경 시에만 재계산.
     let hl = doc.highlight && doc.text.len() < crate::editorhl::MAX_SYNTAX_BYTES;
     let ext = doc.lang_ext(); // 구문 언어 모드 우선(무제목/오탐 문서도 강조), 없으면 확장자.
@@ -247,9 +246,9 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         }
         if let Some(cr) = out.cursor_range {
             let lc = out.galley.layout_from_cursor(cr.primary);
-            cur = (lc.row + 1, lc.column + 1);
+            cur = (lc.row + 1, lc.column.0 + 1);
             doc.cur_line = lc.row; // 북마크 토글/점프 기준(0기반).
-            let (a, b) = (cr.primary.index, cr.secondary.index);
+            let (a, b) = (cr.primary.index.0, cr.secondary.index.0);
             sel_chars = a.max(b) - a.min(b); // 선택 글자 수(상태바 표시).
             // 괄호 매칭(A1) — 작은 파일에서만(비용 제한).
             if doc.text.len() < crate::editorhl::MAX_HL_BYTES { crate::editorextra::highlight_brackets(ui.painter(), &out.galley, out.galley_pos, char_w, &doc.text, a); }

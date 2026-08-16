@@ -17,7 +17,7 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
     // 변환 명령은 String 문서든 rope(대용량) 문서든 똑같이 쓸 수 있다 — 순수 fn(&str)->String이라
     // 버퍼 종류를 가릴 이유가 없었는데, 2MB를 넘는 순간 40여 개가 통째로 사라졌었다.
     let can_transform = plain || doc.edit.is_some();
-    egui::menu::bar(ui, |ui| {
+    egui::MenuBar::new().ui(ui, |ui| {
         ui.menu_button(tr(lang, "nabipad.menu.file"), |ui| {
             if ui.button(tr(lang, "menu.newpad")).clicked() { act.new_doc = true; ui.close(); }
             if ui.button(tr(lang, "nabipad.openfile")).clicked() { act.open_file = true; ui.close(); }

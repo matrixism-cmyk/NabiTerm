@@ -72,7 +72,7 @@ impl NabiApp {
     /// 터미널로 새기 전에 가로채 확인 경로로 보낸다. 입력 위젯/팝업 포커스 중에는 양보한다.
     pub(crate) fn intercept_keyboard_paste(&mut self, ctx: &egui::Context) {
         if !self.config.terminal.warn_paste_newline
-            || ctx.memory(|m| m.focused().is_some() || m.any_popup_open())
+            || ctx.memory(|m| m.focused().is_some()) || egui::Popup::is_any_open(ctx)
         {
             return;
         }

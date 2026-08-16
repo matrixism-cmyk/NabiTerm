@@ -16,7 +16,7 @@ pub(crate) fn appearance_preview(ui: &mut egui::Ui, a: &nabi_config::Appearance)
     let mat = col(&a.match_color, base.match_color);
     let cur = col(&a.cursor_color, base.cursor_color.unwrap_or(base.fg));
     let sz = a.font_size;
-    egui::Frame::NONE.fill(bg).inner_margin(8.0).rounding(4.0).show(ui, |ui| {
+    egui::Frame::NONE.fill(bg).inner_margin(8.0).corner_radius(4).show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 0.0;
             let t = |s: &str| egui::RichText::new(s).monospace().size(sz);

@@ -42,7 +42,7 @@ impl NabiApp {
                     ui.vertical(|ui| {
                         ui.set_width(120.0);
                         for (i, key) in crate::helppages::HELP_CATS.iter().enumerate() {
-                            let lbl = egui::SelectableLabel::new(cat == i, tr(lang, key));
+                            let lbl = egui::Button::selectable(cat == i, tr(lang, key));
                             if ui.add_sized([112.0, 28.0], lbl).clicked() {
                                 cat = i;
                             }

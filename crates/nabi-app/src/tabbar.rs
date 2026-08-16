@@ -15,7 +15,7 @@ impl NabiApp {
 
     pub(crate) fn detect_tabbar_menu(&mut self, ctx: &egui::Context) {
         // 탭 컨텍스트 메뉴가 열렸으면(짧은 탭 우클릭 등) 빈 탭바 메뉴는 띄우지 않는다(#3 중복 방지).
-        if self.tab_ctx_open || ctx.memory(|m| m.any_popup_open()) {
+        if self.tab_ctx_open || egui::Popup::is_any_open(ctx) {
             return;
         }
         let Some(pos) = ctx.input(|i| {

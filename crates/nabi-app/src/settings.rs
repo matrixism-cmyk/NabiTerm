@@ -36,7 +36,7 @@ impl NabiApp {
             let cfg = &mut self.config;
             let editor_cfg = &mut self.editor_config;
             // 콘텐츠에 맞는 고정 크기 모달(전체 화면 덮기 → 우측 여백만 남던 문제 해소).
-            let screen = ctx.screen_rect();
+            let screen = ctx.content_rect();
             let size = egui::vec2(840.0, 600.0).min(screen.size() - egui::vec2(60.0, 48.0));
             let win = egui::Rect::from_center_size(screen.center(), size);
             // 선택된 카테고리(프레임 간 유지).
@@ -54,7 +54,7 @@ impl NabiApp {
                         ui.vertical(|ui| {
                             ui.set_width(160.0);
                             for (i, key) in crate::settingsui::PAGE_KEYS.iter().enumerate() {
-                                let lbl = egui::SelectableLabel::new(cat == i, tr(lang, key));
+                                let lbl = egui::Button::selectable(cat == i, tr(lang, key));
                                 if ui.add_sized([150.0, 26.0], lbl).clicked() {
                                     cat = i;
                                 }

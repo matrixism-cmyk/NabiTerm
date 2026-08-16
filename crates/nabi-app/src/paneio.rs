@@ -192,7 +192,7 @@ pub(crate) fn pointer_on_pane(ui: &egui::Ui, rect: egui::Rect, p: egui::Pos2) ->
 /// 터미널로 입력을 보낼 수 없는 상태(싱크 외 위젯에 포커스가 있거나 팝업이 열림).
 pub(crate) fn term_input_blocked(ctx: &egui::Context) -> bool {
     let sink = term_focus_sink();
-    ctx.memory(|m| m.any_popup_open() || m.focused().is_some_and(|f| f != sink))
+    egui::Popup::is_any_open(ctx) || ctx.memory(|m| m.focused().is_some_and(|f| f != sink))
 }
 
 /// 우클릭/중간클릭 붙여넣기로 들어온 **원문 텍스트**(바이트로 만들지 않는다).

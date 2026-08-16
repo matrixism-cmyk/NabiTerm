@@ -97,7 +97,7 @@ pub(crate) fn paint_floating_term(
         .unwrap_or((false, false, false, false, false, false, false, false, 0));
     let composing = events
         .iter()
-        .any(|e| matches!(e, egui::Event::Ime(egui::ImeEvent::Preedit(s)) if !s.is_empty()));
+        .any(|e| matches!(e, egui::Event::Ime(egui::ImeEvent::Preedit { text, .. }) if !text.is_empty()));
     let bytes = nabi_render::events_to_bytes_kitty(&events, app_cursor, bracketed, composing, kitty);
     // 이 분리 창의 터미널이 입력 대상 — 포커스 싱크를 잡아 Tab/화살표/Esc가 PTY로 가게 한다.
     crate::paneio::grab_term_focus(ui, true);

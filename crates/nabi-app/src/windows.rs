@@ -53,12 +53,13 @@ impl NabiApp {
             ctx.show_viewport_immediate(
                 egui::ViewportId::from_hash_of(("nabi-float", pane.get())),
                 builder,
-                |vctx, _class| {
+                |ui, _class| {
+                    let vctx = &ui.ctx().clone();
                     // 항상 위 고정 토글(매 프레임 idempotent하게 적용 — 라이브 반영).
                     vctx.send_viewport_cmd(egui::ViewportCommand::WindowLevel(
                         if on_top { egui::WindowLevel::AlwaysOnTop } else { egui::WindowLevel::Normal },
                     ));
-                    self.floating_body(vctx, pane); // 터미널 또는 SFTP 패널(메뉴바는 메인 전용).
+                    self.floating_body(ui, pane); // 터미널 또는 SFTP 패널(메뉴바는 메인 전용).
                     // 현재 창 위치(outer.min)·내부 크기(inner)를 기억(저장·재오픈 복원용, P10).
                     // 크기는 inner_rect라야 with_inner_size 복원과 일치(outer면 테두리만큼 어긋남).
                     if let (Some(o), Some(r)) =
@@ -107,17 +108,18 @@ impl NabiApp {
     }
 
     /// 분리 창 본문: SFTP=파일브라우저, 에디터=내장 에디터, 아니면 터미널.
-    fn floating_body(&mut self, vctx: &egui::Context, pane: PaneId) {
+    fn floating_body(&mut self, ui: &mut egui::Ui, pane: PaneId) {
+        let vctx = &ui.ctx().clone();
         if Some(pane) == self.sftp_pane || self.sftp_bg.contains_key(&pane) {
-            self.floating_sftp(vctx, pane);
+            self.floating_sftp(ui, pane);
             return;
         }
         if self.editors.contains_key(&pane) {
-            self.floating_editor(vctx, pane);
+            self.floating_editor(ui, pane);
             return;
         }
         if self.browser_tabs.contains_key(&pane) {
-            self.floating_browser(vctx, pane);
+            self.floating_browser(ui, pane);
             return;
         }
         let font_size = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
@@ -130,7 +132,7 @@ impl NabiApp {
         let mut zoom = None;
         let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산(차용 충돌 회피).
         render_floating(
-            vctx,
+            ui,
             &self.orch.panes,
             &self.orch.cmd_tx,
             &self.floating_grid,
@@ -230,7 +232,7 @@ impl NabiApp {
 /// 분리 창(별도 OS 창)에서 터미널 pane을 렌더한다 — CentralPanel로 감싼 thin 래퍼.
 #[allow(clippy::too_many_arguments)]
 fn render_floating(
-    ctx: &egui::Context,
+    ui: &mut egui::Ui,
     panes: &SharedPanes,
     cmd_tx: &Sender<Command>,
     grids: &Arc<Mutex<HashMap<PaneId, GridSize>>>,
@@ -248,7 +250,7 @@ fn render_floating(
     force_keys: bool,
     tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
 ) {
-    egui::CentralPanel::default().show(ctx, |ui| {
+    egui::CentralPanel::default().show(ui, |ui| {
         crate::floatterm::paint_floating_term(
             ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
             link_click, paste_req, warn_paste, force_keys, tui_overlay,

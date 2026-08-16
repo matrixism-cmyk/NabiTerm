@@ -3,7 +3,8 @@
 use crate::app::NabiApp;
 
 impl NabiApp {
-    pub(crate) fn central(&mut self, ctx: &egui::Context) {
+    pub(crate) fn central(&mut self, ui: &mut egui::Ui) {
+        let ctx = &ui.ctx().clone();
         // 포커스된 탭의 활동 표시는 해제.
         let focused = self.focused_pane();
         if let Some(p) = focused {
@@ -52,9 +53,9 @@ impl NabiApp {
             }
         }
         // 기본 8px 여백은 콘텐츠 둘레 띠가 두꺼워 보임 — 2px로 축소.
-        let cframe = egui::Frame::central_panel(&ctx.style())
+        let cframe = egui::Frame::central_panel(&ctx.global_style())
             .inner_margin(egui::Margin::same(2));
-        egui::CentralPanel::default().frame(cframe).show(ctx, |ui| {
+        egui::CentralPanel::default().frame(cframe).show(ui, |ui| {
             if self.dock.iter_all_tabs().next().is_none() {
                 ui.vertical_centered(|ui| {
                     ui.add_space(60.0);
@@ -178,7 +179,7 @@ impl NabiApp {
             if let Some(loc) = self.dock.find_tab(&p) {
                 let _ = self.dock.set_active_tab(loc);
             }
-        } else if ctrl_wheel.abs() > 0.5 && !ctx.is_pointer_over_area() {
+        } else if ctrl_wheel.abs() > 0.5 && !ctx.is_pointer_over_egui() {
             // 포인터가 떠 있는 창(창 안에 띄우기 오버레이·메뉴 등) 위면 전역 줌을 막는다
             // — 오버레이가 자기 pane만 줌하므로 뒤 도크까지 함께 확대되지 않게(P3 누수 수정).
             self.set_font_size(self.font_size + ctrl_wheel.signum());

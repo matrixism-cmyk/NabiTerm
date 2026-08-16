@@ -104,7 +104,8 @@ impl NabiApp {
     }
 
     /// 사이드패널 렌더(켜져 있을 때) + 액션 적용.
-    pub(crate) fn show_browser(&mut self, ctx: &egui::Context) {
+    pub(crate) fn show_browser(&mut self, ui: &mut egui::Ui) {
+        let ctx = &ui.ctx().clone();
         if !self.browser.open {
             return;
         }
@@ -112,10 +113,10 @@ impl NabiApp {
         let can_upload = self.sftp.open && self.sftp.id.is_some();
         let lang = self.lang;
         let mut act: Option<BrowserAct> = None;
-        egui::SidePanel::right("file_browser")
-            .default_width(300.0)
-            .width_range(180.0..=560.0) // 터미널을 가리지 않도록 상한 제한.
-            .show(ctx, |ui| {
+        egui::Panel::right("file_browser")
+            .default_size(300.0)
+            .size_range(180.0..=560.0) // 터미널을 가리지 않도록 상한 제한.
+            .show(ui, |ui| {
                 act = Some(render_browser_tab(ui, &mut self.browser, &remote_map, can_upload, lang, 0));
             });
         if let Some(a) = act {

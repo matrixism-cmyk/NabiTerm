@@ -33,7 +33,7 @@ pub(crate) fn unicode_word_dblclick(ui: &egui::Ui, out: &egui::text_edit::TextEd
         return;
     }
     let Some(pos) = out.response.interact_pointer_pos() else { return };
-    let idx = out.galley.cursor_from_pos(pos - out.galley_pos).index;
+    let idx = out.galley.cursor_from_pos(pos - out.galley_pos).index.0;
     let (s, e) = word_range_at(text, idx);
     if e > s {
         if let Some(mut st) = egui::text_edit::TextEditState::load(ui.ctx(), out.response.id) {

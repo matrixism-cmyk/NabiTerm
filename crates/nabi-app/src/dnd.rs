@@ -18,7 +18,7 @@ impl NabiApp {
     /// 매 프레임 OS 파일 드롭을 적절한 패널로 라우팅한다(central 이후 호출).
     pub(crate) fn dispatch_dropped_files(&mut self, ctx: &egui::Context) {
         let paths: Vec<std::path::PathBuf> =
-            ctx.input(|i| i.raw.dropped_files.iter().filter_map(|f| f.path.clone()).collect());
+            ctx.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect());
         if paths.is_empty() {
             return;
         }

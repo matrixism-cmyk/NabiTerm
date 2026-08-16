@@ -6,7 +6,8 @@ use nabi_i18n::tr;
 impl NabiApp {
     /// 퀵커넥트 바를 그린다(설정 `show_quickconnect_bar`가 켜진 경우).
     /// Enter 또는 연결 버튼 = SSH 터미널, 🖧 = SFTP 브라우저로 연결.
-    pub(crate) fn show_quickconnect_bar(&mut self, ctx: &egui::Context) {
+    pub(crate) fn show_quickconnect_bar(&mut self, ui: &mut egui::Ui) {
+        let _ctx = &ui.ctx().clone();
         if !self.config.appearance.show_quickconnect_bar {
             return;
         }
@@ -15,7 +16,7 @@ impl NabiApp {
         let frame = egui::Frame::NONE
             .fill(crate::theme_ui::STATUS_FILL)
             .inner_margin(egui::Margin::symmetric(8, 4));
-        egui::TopBottomPanel::top("qc_bar").frame(frame).show(ctx, |ui| {
+        egui::Panel::top("qc_bar").frame(frame).show(ui, |ui| {
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
             ui.horizontal(|ui| {
                 let enter = |ui: &egui::Ui, r: &egui::Response| {

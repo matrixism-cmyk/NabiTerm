@@ -131,7 +131,7 @@ pub fn apply_theme(ctx: &egui::Context) {
     // 영속되면 다음 실행의 초기 창 크기가 (모니터/줌)으로 클램프되어 창이 작아진다.
     ctx.options_mut(|o| o.zoom_with_keyboard = false);
     ctx.set_zoom_factor(1.0);
-    ctx.style_mut(|s| {
+    ctx.global_style_mut(|s| {
         s.spacing.item_spacing = egui::vec2(8.0, 6.0);
         s.spacing.button_padding = egui::vec2(10.0, 5.0);
         s.spacing.interact_size.y = 24.0; // 버튼/콤보 최소 높이(클릭 타깃 확대).

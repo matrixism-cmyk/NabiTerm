@@ -18,7 +18,7 @@ fn hl(ext: &str) -> IncHl {
 
 /// (구간, 색) 목록 — 증분/전체 결과 비교용 지문.
 fn fingerprint(j: &egui::text::LayoutJob) -> Vec<(std::ops::Range<usize>, egui::Color32)> {
-    j.sections.iter().map(|s| (s.byte_range.clone(), s.format.color)).collect()
+    j.sections.iter().map(|s| (s.byte_range.start.0..s.byte_range.end.0, s.format.color)).collect()
 }
 
 /// 같은 텍스트를 증분으로 도달했을 때와 새로 계산했을 때가 같은지 확인한다.

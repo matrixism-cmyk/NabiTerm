@@ -72,8 +72,13 @@ mod tests {
 
     #[test]
     fn job_text_matches_source() {
+        // 0.36: append가 동일 서식 인접 구간을 병합한다 — 구간 수를 보려면 색을 다르게.
+        let c = |n: u8| egui::Color32::from_rgb(n, n, n);
         let text = "ab\ncd\n";
-        let lines: Vec<LineSpans> = vec![vec![sp(1), sp(2)], vec![sp(3)]];
+        let lines: Vec<LineSpans> = vec![
+            vec![Span { len: 1, color: c(1), italic: false }, Span { len: 2, color: c(2), italic: false }],
+            vec![Span { len: 3, color: c(3), italic: false }],
+        ];
         let job = build_job(text, &lines, 12.0).expect("길이 합이 맞아야 함");
         assert_eq!(job.text, text, "갤리 텍스트는 원문과 정확히 같아야 커서가 안 어긋난다");
         assert_eq!(job.sections.len(), 3);

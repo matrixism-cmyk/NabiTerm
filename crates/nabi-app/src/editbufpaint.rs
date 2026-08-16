@@ -67,7 +67,7 @@ pub(crate) fn hit(ui: &egui::Ui, eb: &EditBuf, p: Pos2, top: f32, text_left: f32
     let d = DispLine::new(&src, eb.tab);
     let g = layout(ui, &d.text, font, Color32::WHITE);
     let cur = g.cursor_from_pos(egui::vec2(p.x - text_left, row_h * 0.5));
-    let off = crate::editbufcol::grapheme_snap(&src, d.to_src(cur.index));
+    let off = crate::editbufcol::grapheme_snap(&src, d.to_src(cur.index.0));
     eb.rope.line_to_char(line) + off
 }
 
@@ -77,8 +77,11 @@ mod tests {
 
     /// 실제 폰트로 레이아웃한 갤리를 준비한다(GPU 없이 epaint만으로 동작).
     fn laid_out(src: &str) -> (DispLine, std::sync::Arc<egui::Galley>) {
+        // 0.36: Context::run이 사라짐 — begin/end_pass 한 사이클로 폰트를 초기화한다.
         let ctx = egui::Context::default();
-        let _ = ctx.run(egui::RawInput::default(), |_| {});
+        ctx.begin_pass(egui::RawInput::default());
+        let mut out = ctx.end_pass();
+        out.textures_delta.clear(); // 렌더러 없는 테스트 — 미적용 델타 드롭 패닉 방지.
         let d = DispLine::new(src, 4);
         let font = egui::FontId::monospace(14.0);
         let g = ctx.fonts_mut(|f| f.layout_no_wrap(d.text.clone(), font, egui::Color32::WHITE));
@@ -94,7 +97,7 @@ mod tests {
             for i in 0..=d.chars() {
                 let x = x_at(&g, d.to_disp(i));
                 let cur = g.cursor_from_pos(egui::vec2(x + 0.1, 0.0));
-                assert_eq!(d.to_src(cur.index), i, "{src:?}의 {i}번째에서 왕복 실패");
+                assert_eq!(d.to_src(cur.index.0), i, "{src:?}의 {i}번째에서 왕복 실패");
             }
         }
     }

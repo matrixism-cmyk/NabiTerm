@@ -2,9 +2,6 @@
 // 릴리스(설치본)는 GUI 서브시스템 — 실행 시 콘솔(파워셸 로그 창)이 뜨지 않는다.
 // 디버그는 콘솔 유지(NABI_LOG 실시간 관찰용).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-// egui 0.34 정거장: Panel/SelectableLabel/menu::bar 등 비권장 API를 아직 쓴다(동작 동일).
-// 0.36 정거장에서 Panel→show_inside·MenuBar 이관과 함께 이 allow를 제거할 것(T2-2 2단계).
-#![allow(deprecated)]
 
 // egui는 프레임마다 작은 할당을 대량으로 한다(레이아웃 잡·갤리·셰이프). Windows 기본 힙은
 // 이 패턴에서 병목이 되어 프레임 시간을 크게 잡아먹는다 — 전역 할당자만 바꿔도 체감이 달라진다.

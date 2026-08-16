@@ -19,8 +19,10 @@ pub fn advertise_ime(
     let crect = egui::Rect::from_min_size(min, egui::vec2(cw, ch));
     ui.output_mut(|o| {
         o.ime = Some(egui::output::IMEOutput {
+            purpose: egui::IMEPurpose::Terminal,
             rect: crect,
             cursor_rect: crect,
+            should_interrupt_composition: false,
         });
     });
 }
@@ -32,8 +34,8 @@ pub fn update_preedit(events: &[Event], preedit: &mut String) -> bool {
     let before = preedit.clone();
     for ev in events {
         match ev {
-            Event::Ime(egui::ImeEvent::Preedit(s)) => s.clone_into(preedit),
-            Event::Ime(egui::ImeEvent::Commit(_)) | Event::Ime(egui::ImeEvent::Disabled) => {
+            Event::Ime(egui::ImeEvent::Preedit { text, .. }) => text.clone_into(preedit),
+            Event::Ime(egui::ImeEvent::Commit(_)) => {
                 preedit.clear();
             }
             _ => {}
@@ -76,8 +78,8 @@ pub fn events_to_bytes_kitty(
                 out.extend_from_slice(t.as_bytes());
                 composing = false;
             }
-            Event::Ime(egui::ImeEvent::Preedit(s)) if !s.is_empty() => composing = true,
-            Event::Ime(egui::ImeEvent::Disabled) => composing = false,
+            Event::Ime(egui::ImeEvent::Preedit { text, .. }) if !text.is_empty() => composing = true,
+            
             Event::Paste(s) => {
                 // paste-injection 방지: 끼어든 bracketed 마커 제거 + 위험 제어문자 위생.
                 let clean = crate::paste::sanitize_paste(
@@ -230,7 +232,7 @@ mod tests {
     #[test]
     fn preedit_suppresses_following_key_same_frame() {
         // 조합(Preedit) 진행 중 같은 프레임의 Enter는 PTY로 보내지 않는다(IME가 처리).
-        let pre = Event::Ime(egui::ImeEvent::Preedit("가".into()));
+        let pre = Event::Ime(egui::ImeEvent::Preedit { text: "가".into(), active_range_chars: None });
         let enter = Event::Key {
             key: Key::Enter,
             physical_key: None,

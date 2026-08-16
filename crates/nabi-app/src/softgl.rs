@@ -128,8 +128,7 @@ fn request_adapter(backends: Backends) -> Option<eframe::wgpu::Adapter> {
     let inst = wgpu::Instance::new(desc);
     pollster::block_on(inst.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::LowPower,
-        compatible_surface: None,
-        force_fallback_adapter: false,
+        ..Default::default()
     }))
     .ok()
 }

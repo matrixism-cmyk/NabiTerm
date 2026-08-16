@@ -16,7 +16,7 @@ impl eframe::App for NabiApp {
         if !ctx.input(|i| i.pointer.any_down()) && (ctx.pixels_per_point() - scale).abs() > 1e-3 {
             ctx.set_pixels_per_point(scale);
         }
-        let sz = ctx.input(|i| i.screen_rect().size());
+        let sz = ctx.input(|i| i.viewport_rect().size());
         self.last_win = (sz.x, sz.y); // 종료 시 창 크기 저장용 추적.
         if !self.did_startup {
             self.did_startup = true;
@@ -89,13 +89,13 @@ impl eframe::App for NabiApp {
         self.update_compare_map(); // 디렉터리 비교 색칠용 로컬 맵.
         self.persist_view_prefs(); // 정렬/보기/숨김 변경 시 설정 저장.
         self.handle_shortcuts(ctx);
-        self.menu_bar(ctx);
-        self.show_quickconnect_bar(ctx);
-        self.status_bar(ctx);
-        self.show_sessions_sidebar(ctx);
+        self.menu_bar(ui);
+        self.show_quickconnect_bar(ui);
+        self.status_bar(ui);
+        self.show_sessions_sidebar(ui);
         self.drop_zones.clear(); // 이번 프레임 드롭 존 재수집(브라우저/SFTP 렌더 시).
-        self.show_browser(ctx);
-        self.central(ctx);
+        self.show_browser(ui);
+        self.central(ui);
         self.show_quick_connect(ctx);
         self.show_forward(ctx);
         self.show_settings(ctx);
@@ -177,7 +177,7 @@ fn perf_overlay(ctx: &egui::Context, frame: &eframe::Frame) {
         egui::Id::new("nabi_perf_hud"),
     ));
     let g = p.layout_no_wrap(txt, egui::FontId::monospace(12.0), egui::Color32::WHITE);
-    let top_right = ctx.input(|i| i.screen_rect()).right_top() + egui::vec2(-8.0, 8.0);
+    let top_right = ctx.input(|i| i.content_rect()).right_top() + egui::vec2(-8.0, 8.0);
     let min = egui::pos2(top_right.x - g.size().x, top_right.y);
     let textrect = egui::Rect::from_min_size(min, g.size());
     p.rect_filled(textrect.expand(3.0), 3.0, egui::Color32::from_black_alpha(180));

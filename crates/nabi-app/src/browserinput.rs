@@ -64,7 +64,7 @@ pub(crate) fn keyboard_nav(
     selected: &mut Option<String>,
     scroll: &mut bool,
 ) -> Option<PathBuf> {
-    if !over || ctx.memory(|m| m.focused().is_some() || m.any_popup_open()) {
+    if !over || (ctx.memory(|m| m.focused().is_some()) || egui::Popup::is_any_open(ctx)) {
         return None;
     }
     let filt = filter.to_lowercase();

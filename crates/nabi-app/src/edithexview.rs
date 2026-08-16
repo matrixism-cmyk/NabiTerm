@@ -56,7 +56,7 @@ pub(crate) fn hex_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Ed
         .as_ref()
         .map(|h| (h.cursor, h.len(), h.insert_mode, h.selection().map(|(a, b)| b - a).unwrap_or(0), h.inspector()))
         .unwrap_or((0, 0, false, 0, None));
-    egui::TopBottomPanel::bottom(ui.id().with("hx_status")).show_inside(ui, |ui| {
+    egui::Panel::bottom(ui.id().with("hx_status")).show(ui, |ui| {
         ui.separator();
         ui.horizontal(|ui| {
             ui.label(format!("0x{cur:08X}"));

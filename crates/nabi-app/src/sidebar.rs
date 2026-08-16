@@ -7,7 +7,8 @@ use nabi_session::{SavedSession, SessionKind};
 
 impl NabiApp {
     /// 세션 사이드바를 그린다(설정 `show_sessions_panel`이 켜진 경우).
-    pub(crate) fn show_sessions_sidebar(&mut self, ctx: &egui::Context) {
+    pub(crate) fn show_sessions_sidebar(&mut self, ui: &mut egui::Ui) {
+        let ctx = &ui.ctx().clone();
         if !self.config.appearance.show_sessions_panel {
             return;
         }
@@ -27,9 +28,9 @@ impl NabiApp {
         let last_conn = self.config.terminal.last_connected.clone();
         let now = chrono::Local::now().timestamp();
         let mut toggle_group: Option<String> = None;
-        egui::SidePanel::left("sessions_sidebar")
-            .default_width(200.0)
-            .show(ctx, |ui| {
+        egui::Panel::left("sessions_sidebar")
+            .default_size(200.0)
+            .show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.label(
                         egui::RichText::new(tr(lang, "status.sessions"))

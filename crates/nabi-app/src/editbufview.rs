@@ -58,7 +58,7 @@ pub(crate) fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> E
         Some(e) => (e.cursor_line_col(), e.selected_text().chars().count()),
         None => return act, // edit 없는 문서 — 그릴 본문이 없다(패닉 대신 빈 화면).
     };
-    egui::TopBottomPanel::bottom(ui.id().with("eb_status")).show_inside(ui, |ui| {
+    egui::Panel::bottom(ui.id().with("eb_status")).show(ui, |ui| {
         eb_status(ui, doc, cur, sel, lang);
     });
     let m = edit_body(ui, doc, lang);

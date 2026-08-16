@@ -5,7 +5,7 @@ use egui::{Align2, Area, Color32, Context, Frame, Id, Order, Sense, Ui};
 
 /// 화면 중앙에 Foreground 레이어 모달을 그린다. 배경을 어둡게 덮어 뒤쪽 입력을 차단한다.
 pub(crate) fn foreground_modal<R>(ctx: &Context, id: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    let screen = ctx.screen_rect();
+    let screen = ctx.content_rect();
     Area::new(Id::new(format!("{id}_dim"))).order(Order::Foreground).fixed_pos(screen.min).show(ctx, |ui| {
         ui.painter().rect_filled(screen, 0.0, Color32::from_black_alpha(96));
         ui.allocate_rect(screen, Sense::click_and_drag());

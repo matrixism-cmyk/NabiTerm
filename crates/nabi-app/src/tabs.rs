@@ -127,7 +127,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             let outside = response
                 .ctx
                 .pointer_latest_pos()
-                .map(|p| !response.ctx.screen_rect().contains(p))
+                .map(|p| !response.ctx.content_rect().contains(p))
                 .unwrap_or(false);
             if outside {
                 *self.tear_off = Some(*tab);

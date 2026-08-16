@@ -5,7 +5,8 @@ use crate::statusfmt::{human_duration, short_path};
 use nabi_i18n::tr;
 
 impl NabiApp {
-    pub(crate) fn status_bar(&mut self, ctx: &egui::Context) {
+    pub(crate) fn status_bar(&mut self, ui: &mut egui::Ui) {
+        let ctx = &ui.ctx().clone();
         if !self.config.appearance.show_statusbar {
             return;
         }
@@ -89,7 +90,7 @@ impl NabiApp {
         let sbar = egui::Frame::NONE
             .fill(crate::theme_ui::STATUS_FILL)
             .inner_margin(egui::Margin::symmetric(8, 2));
-        egui::TopBottomPanel::bottom("statusbar").frame(sbar).show(ctx, |ui| {
+        egui::Panel::bottom("statusbar").frame(sbar).show(ui, |ui| {
             // 배경이 하드코딩 네이비라 텍스트도 밝게 강제(테마 무관 가독성).
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
             ui.horizontal(|ui| {

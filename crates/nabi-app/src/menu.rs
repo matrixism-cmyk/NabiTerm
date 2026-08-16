@@ -74,7 +74,8 @@ pub(crate) fn item_keys(ui: &mut egui::Ui, label: &str, keys: &str) -> bool {
 }
 
 impl NabiApp {
-    pub(crate) fn menu_bar(&mut self, ctx: &egui::Context) {
+    pub(crate) fn menu_bar(&mut self, ui: &mut egui::Ui) {
+        let ctx = &ui.ctx().clone();
         let mut action: Option<MenuAction> = None;
         let mut tool: Option<crate::toolsmenu::ToolsPick> = None;
         let lang = self.lang;
@@ -97,10 +98,10 @@ impl NabiApp {
         let mbar = egui::Frame::NONE
             .fill(crate::theme_ui::MENU_FILL)
             .inner_margin(egui::Margin::symmetric(6, 3));
-        egui::TopBottomPanel::top("menubar").frame(mbar).show(ctx, |ui| {
+        egui::Panel::top("menubar").frame(mbar).show(ui, |ui| {
             // 메뉴 띠 글씨를 강제로 밝게(어두운 띠에서 확실히 보이도록).
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
-            egui::menu::bar(ui, |ui| {
+            egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button(tr(lang, "menu.file"), |ui| {
                     ui.menu_button(tr(lang, "menu.newlocal"), |ui| {
                         for (label, shell) in installed_shells() {
