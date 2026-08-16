@@ -26,12 +26,12 @@ impl ByteChannel for SshChannel {
     fn write(&mut self, data: &[u8]) -> io::Result<()> {
         self.tx
             .send(SshInput::Data(data.to_vec()))
-            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "ssh 채널 닫힘"))
+            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, nabi_i18n::trc("net.chan.closed")))
     }
 
     fn resize(&mut self, size: GridSize) -> io::Result<()> {
         self.tx
             .send(SshInput::Resize(size.cols(), size.rows()))
-            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "ssh 채널 닫힘"))
+            .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, nabi_i18n::trc("net.chan.closed")))
     }
 }

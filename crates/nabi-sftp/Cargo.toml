@@ -6,6 +6,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+nabi-i18n = { workspace = true }  # 에러 문구 3어화(trc, T8-1).
 nabi-fs = { workspace = true }
 nabi-proto = { workspace = true }
 nabi-ssh = { workspace = true }   # 호스트키 검증 핸들러 재사용(SFTP도 MITM 보호).
@@ -16,6 +17,8 @@ tokio = { workspace = true }
 # 요청 여러 개를 한 태스크에서 동시에 진행시킨다(전송 파이프라이닝). spawn보다 가볍고
 # 세션을 빌린 채로 쓸 수 있다.
 futures-util = { workspace = true }
+# 전송 무결성 SHA-256(hashcheck). russh가 이미 끌어오는 버전과 동일(중복 컴파일 없음).
+sha2 = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }

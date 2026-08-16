@@ -36,3 +36,17 @@ fn answers_foreground_color_query() {
 fn answers_device_attributes() {
     assert!(!reply_to(b"\x1b[c", nabi_vt::Theme::default()).is_empty());
 }
+
+/// Kitty keyboard protocol(T2-3): 협상은 코어가 하고 우리는 플래그를 읽는다.
+/// push(`CSI > 1 u`) → 활성, pop(`CSI < u`) → 해제, 질의(`CSI ? u`)에는 응답이 있어야 한다.
+#[test]
+fn kitty_keyboard_negotiation_roundtrip() {
+    let mut m = TermModel::new(GridSize::new(20, 5), 50);
+    assert_eq!(m.kitty_keys(), 0, "초기엔 비활성");
+    m.process(b"\x1b[>1u"); // disambiguate 푸시.
+    assert_eq!(m.kitty_keys() & 1, 1, "disambiguate 활성");
+    m.process(b"\x1b[?u"); // 질의 — 응답이 PTY로 가야 앱이 진행한다.
+    assert!(!m.take_replies().is_empty(), "kitty 모드 질의에 응답해야 한다");
+    m.process(b"\x1b[<u"); // 팝.
+    assert_eq!(m.kitty_keys(), 0, "pop 후 비활성");
+}

@@ -4,6 +4,8 @@ use crate::app::NabiApp;
 
 impl eframe::App for NabiApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // 전역 현재 언어 동기화 — 네트워크 계층(trc)이 새 에러를 이 언어로 만든다(T8-1).
+        nabi_i18n::set_current(self.lang);
         // UI 배율(ppp) 적용 — 포인터를 누르고 있는 동안(배율 슬라이더 드래그/클릭 포함)에는
         // 재적용을 미룬다. 매 프레임 적용하면 ppp 변경이 슬라이더 좌표계를 바꿔 포인터→값 매핑이
         // 어긋나며 값이 극단으로 튀는 피드백 루프가 생긴다 → 버튼을 뗄 때 1회만 반영.
@@ -17,6 +19,7 @@ impl eframe::App for NabiApp {
             self.did_startup = true;
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
             nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
+            nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
             // 과거 영속된 egui zoom_factor가 초기 창을 축소했을 수 있으므로
             // 줌 리셋 후 저장된 크기를 다시 적용 + 최소화 해제 + 전면 포커스.
             ctx.set_zoom_factor(1.0);

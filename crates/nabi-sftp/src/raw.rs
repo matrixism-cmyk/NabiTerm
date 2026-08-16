@@ -159,7 +159,7 @@ impl RawFs {
             return match self.session.extended(POSIX_RENAME, data).await.map_err(es)? {
                 russh_sftp::protocol::Packet::Status(s) if s.status_code == StatusCode::Ok => Ok(()),
                 russh_sftp::protocol::Packet::Status(s) => Err(s.error_message),
-                _ => Err("posix-rename: 예기치 않은 응답".into()),
+                _ => Err(nabi_i18n::trc("net.sftp.rename").into()),
             };
         }
         if self.session.rename(from, to).await.is_ok() {

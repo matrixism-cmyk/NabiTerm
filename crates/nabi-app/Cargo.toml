@@ -20,6 +20,7 @@ nabi-config = { workspace = true }
 nabi-session = { workspace = true }
 nabi-ssh = { workspace = true }
 nabi-ssh-ext = { workspace = true }
+nabi-sftp = { workspace = true }  # 해시 검증 전역 스위치(SFTP_VERIFY_HASH) 설정용.
 rand = { workspace = true }
 nabi-secret = { workspace = true }
 nabi-telegram = { workspace = true }

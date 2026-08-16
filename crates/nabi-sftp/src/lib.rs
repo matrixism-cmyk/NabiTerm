@@ -5,6 +5,7 @@
 //! 확장한다(현재는 별도 연결 + 비밀번호 인증).
 
 pub mod fs;
+pub mod hashcheck;
 mod pipeline;
 pub mod raw;
 mod recurse;
@@ -12,6 +13,7 @@ pub mod session;
 mod xfer;
 
 pub use fs::SftpFs;
+pub use hashcheck::SFTP_VERIFY_HASH;
 pub use recurse::DirProgress;
 pub use session::connect_sftp;
 

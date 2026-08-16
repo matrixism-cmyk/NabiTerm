@@ -33,7 +33,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.423"
+version = "0.1.424"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["aeo <the@aeokorea.com>"]
@@ -114,6 +114,7 @@ suppaftp = { version = "8", features = ["tokio"] }  # FTP 비동기(tokio). FTPS
 # --- security (vault) ---
 argon2 = "0.5"
 aes-gcm = "0.10"
+sha2 = "0.11"              # SFTP 전송 무결성 해시(russh 의존 트리와 동일 버전)
 zeroize = "1"
 rand = "0.8"
 # 볼트 마스터 비밀번호의 OS 자격증명 저장(선택, F1). Windows 네이티브 백엔드(windows-sys)라

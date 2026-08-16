@@ -12,10 +12,37 @@ mod catalog_editor2;
 mod catalog_sftp;
 mod catalog_vault;
 mod catalog_conn;
+mod catalog_net;
 mod catalog_term;
 mod catalog_queue;
 
 pub use catalog::tr;
+
+/// 전역 현재 언어 — UI 밖(네트워크 계층 등)에서 언어 인자 없이 번역할 때 쓴다(T8-1).
+/// 앱이 시작·언어 전환 시 갱신한다. UI 코드는 계속 `tr(lang, …)`를 쓴다(프레임 재평가).
+static CURRENT: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
+pub fn set_current(lang: Lang) {
+    let v = match lang {
+        Lang::En => 0,
+        Lang::Ko => 1,
+        Lang::Ja => 2,
+    };
+    CURRENT.store(v, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn current() -> Lang {
+    match CURRENT.load(std::sync::atomic::Ordering::Relaxed) {
+        1 => Lang::Ko,
+        2 => Lang::Ja,
+        _ => Lang::En,
+    }
+}
+
+/// 현재 언어로 번역(current + tr). 에러 문자열의 원산지 다국어화용.
+pub fn trc(key: &str) -> &'static str {
+    tr(current(), key)
+}
 
 /// 지원 언어.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]

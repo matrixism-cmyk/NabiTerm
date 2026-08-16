@@ -44,7 +44,7 @@ pub fn connect(
         crate::kexinfo::clear(pane); // 배지 잔상 방지.
         let err = res.err().map(|e| e.to_string());
         if let Some(e) = &err {
-            let _ = out.send((pane, Bytes::from(format!("\r\n[ssh 오류: {e}]\r\n"))));
+            let _ = out.send((pane, Bytes::from(format!("\r\n[{}: {e}]\r\n", nabi_i18n::trc("net.ssh.err")))));
         }
         on_close(err);
     });
@@ -74,8 +74,8 @@ async fn run(
     }
     if old {
         // 조용히 넘어가면 사용자는 자기가 SHA-1로 붙었는지 알 수 없다.
-        let msg = "\r\n[알림: 서버가 오래되어 레거시 알고리즘(SHA-1)으로 접속했습니다]\r\n";
-        let _ = out_tx.send((pane, Bytes::from_static(msg.as_bytes())));
+        let msg = format!("\r\n[{}]\r\n", nabi_i18n::trc("net.legacy.notice"));
+        let _ = out_tx.send((pane, Bytes::from(msg)));
     }
 
     let channel = handle.channel_open_session().await?;

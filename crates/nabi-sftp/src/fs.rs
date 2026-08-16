@@ -10,7 +10,8 @@ use russh_sftp::protocol::{FileAttributes, FileType, OpenFlags};
 /// SFTP 백엔드. handle을 함께 보관해 세션을 살려둔다.
 pub struct SftpFs {
     pub(crate) raw: RawFs,
-    _handle: Handle<Handler>,
+    /// SSH 핸들 — 세션 유지 + 원격 해시 명령(hashcheck) 실행에 쓴다.
+    pub(crate) handle: Handle<Handler>,
     /// 점프 호스트 핸들(ProxyJump). 드롭되면 터널이 끊기므로 세션 동안 보관(D2).
     _jump: Option<Handle<Handler>>,
     /// 전송 속도 제한(bytes/sec, 0=무제한).
@@ -45,7 +46,7 @@ impl SftpFs {
     pub(crate) fn new(raw: RawFs, handle: Handle<Handler>, jump: Option<Handle<Handler>>) -> Self {
         Self {
             raw,
-            _handle: handle,
+            handle,
             _jump: jump,
             limit_bps: 0,
             cancel: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),

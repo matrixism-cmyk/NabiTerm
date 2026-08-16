@@ -228,6 +228,9 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.maxparallel"));
     ui.add(egui::Slider::new(&mut cfg.terminal.max_parallel_transfers, 1..=4));
     ui.end_row();
+    ui.label(tr(lang, "settings.verifyhash"));
+    ui.checkbox(&mut cfg.terminal.sftp_verify_hash, "").on_hover_text(tr(lang, "settings.verifyhashhint"));
+    ui.end_row();
     // 원격이 로컬 클립보드에 쓰는 것(OSC 52) — 차단/알림/조용히 허용.
     ui.label(tr(lang, "settings.osc52"));
     ui.horizontal(|ui| {

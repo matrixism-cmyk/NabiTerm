@@ -49,10 +49,10 @@ pub async fn connect_via_jump(
                 .await
                 .map_err(|e| e.to_string())?;
             if !matches!(r, AuthResult::Success) {
-                return Err("ProxyJump 타겟 인증 실패".into());
+                return Err(nabi_i18n::trc("net.jump.authfail").into());
             }
         }
-        _ => return Err("ProxyJump: 비밀번호 인증만 지원".into()),
+        _ => return Err(nabi_i18n::trc("net.jump.pwonly").into()),
     }
 
     Ok(JumpedSession {

@@ -63,6 +63,30 @@ async fn realserver_multi_wave_roundtrip() {
     let _ = std::fs::remove_file(&dst);
 }
 
+/// 해시 검증을 켠 왕복(T2-1) — 원격에 해시 명령이 있으면 대조, 없으면(Windows OpenSSH)
+/// 조용히 건너뛰고 성공해야 한다. 두 경로 모두 "전송이 실패하면 안 된다"가 검증 대상.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_roundtrip_with_hash_verify() {
+    let Some(mut fs) = open_fs().await else { return };
+    crate::hashcheck::SFTP_VERIFY_HASH.store(true, std::sync::atomic::Ordering::Relaxed);
+    let remote = "nabi_realtest_hash.bin";
+    let data = pattern(2 * 1024 * 1024 + 13);
+    let src = std::env::temp_dir().join(format!("nabi-rt-hash-{}.bin", std::process::id()));
+    std::fs::write(&src, &data).unwrap();
+    fs.upload(src.to_str().unwrap(), remote, |_| {}).await.expect("해시 검증 업로드");
+    let dst = std::env::temp_dir().join(format!("nabi-rt-hash-dl-{}.bin", std::process::id()));
+    fs.download(remote, dst.to_str().unwrap(), 0, |_| {}).await.expect("해시 검증 다운로드");
+    assert_eq!(std::fs::read(&dst).unwrap(), data);
+    // 원격 해시 명령 가용 여부를 기록해 둔다(관측 — 서버마다 다르다).
+    let rh = crate::hashcheck::remote_sha256(&fs.handle, remote).await;
+    println!("원격 sha256 명령: {}", if rh.is_some() { "가용(대조 수행됨)" } else { "없음(크기 비교 폴백)" });
+    crate::hashcheck::SFTP_VERIFY_HASH.store(false, std::sync::atomic::Ordering::Relaxed);
+    let _ = fs.remove(remote).await;
+    let _ = std::fs::remove_file(&src);
+    let _ = std::fs::remove_file(&dst);
+}
+
 /// 구멍 난 임시 파일에서 이어올리기 — 조용한 데이터 손상을 막는지 본다(B3).
 #[tokio::test]
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]

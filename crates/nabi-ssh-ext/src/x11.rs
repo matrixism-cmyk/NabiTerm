@@ -78,10 +78,10 @@ pub async fn request_x11_forward(
                 .await
                 .map_err(|e| e.to_string())?;
             if !matches!(r, AuthResult::Success) {
-                return Err("SSH 인증 실패".into());
+                return Err(nabi_i18n::trc("net.auth.fail").into());
             }
         }
-        _ => return Err("X11: 비밀번호 인증만 지원".into()),
+        _ => return Err(nabi_i18n::trc("net.x11.pwonly").into()),
     }
 
     let channel = handle

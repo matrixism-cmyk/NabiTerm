@@ -37,7 +37,7 @@ pub(crate) async fn connect_authed(params: &SshParams) -> Result<client::Handle<
         // 키 인증도 지원(과거엔 비밀번호만 가능해 키 사용자는 포워딩 자체를 못 썼다).
         SshAuth::KeyFile { path, passphrase } => {
             let key = russh::keys::load_secret_key(path, passphrase.as_deref())
-                .map_err(|e| format!("키 로드 실패: {e}"))?;
+                .map_err(|e| format!("{}: {e}", nabi_i18n::trc("net.key.load")))?;
             let with_hash = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
             handle
                 .authenticate_publickey(&params.user, with_hash)
@@ -48,13 +48,13 @@ pub(crate) async fn connect_authed(params: &SshParams) -> Result<client::Handle<
         SshAuth::Agent => {
             nabi_ssh::agent::authenticate_agent(&mut handle, &params.user)
                 .await
-                .map_err(|e| format!("포워딩 에이전트 인증: {e}"))?;
+                .map_err(|e| format!("{}: {e}", nabi_i18n::trc("net.fwd.agent")))?;
             AuthResult::Success
         }
-        SshAuth::None => return Err("포워딩: 인증 정보가 없습니다".into()),
+        SshAuth::None => return Err(nabi_i18n::trc("net.fwd.noauth").into()),
     };
     if !matches!(result, AuthResult::Success) {
-        return Err("SSH 인증 실패".into());
+        return Err(nabi_i18n::trc("net.auth.fail").into());
     }
     Ok(handle)
 }

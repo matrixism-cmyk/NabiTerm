@@ -6,6 +6,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+nabi-i18n = { workspace = true }  # 에러 문구 3어화(trc, T8-1).
 nabi-proto = { workspace = true }
 nabi-ssh = { workspace = true }      # 호스트키 검증 핸들러 재사용(터널도 MITM 보호).
 nabi-config = { workspace = true }   # known_hosts 경로 확인.

@@ -46,12 +46,10 @@ pub async fn authenticate_agent<H: russh::client::Handler>(
         }
     }
     Err(match tried {
-        0 => "쓸 수 있는 ssh-agent가 없습니다(에이전트 미실행 또는 등록된 키 없음)".to_string(),
+        0 => nabi_i18n::trc("net.agent.none").to_string(),
         // 상한까지 갔다면 뒤에 남은 키를 못 써 본 것이다 — 그 사실을 알려 준다.
-        n if n >= MAX_KEYS => format!(
-            "에이전트 키 {n}개가 모두 거부됐습니다(서버 MaxAuthTries 때문에 더 시도하지 않습니다). 쓰지 않는 키를 에이전트에서 빼거나 키 파일을 직접 지정하세요"
-        ),
-        n => format!("에이전트의 키 {n}개를 서버가 모두 거부했습니다"),
+        n if n >= MAX_KEYS => nabi_i18n::trc("net.agent.rejectedmax").replace("{n}", &n.to_string()),
+        n => nabi_i18n::trc("net.agent.rejected").replace("{n}", &n.to_string()),
     })
 }
 

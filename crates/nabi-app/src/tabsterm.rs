@@ -35,7 +35,7 @@ impl TermTabViewer<'_> {
         };
 
         let events = ui.input(|i| i.events.clone());
-        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll) = self
+        let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll, kitty) = self
             .orch
             .panes
             .read()
@@ -44,22 +44,17 @@ impl TermTabViewer<'_> {
             .and_then(|model| {
                 model.lock().ok().map(|md| {
                     (
-                        md.app_cursor(),
-                        md.bracketed_paste(),
-                        md.mouse_on(),
-                        md.mouse_wants_release(),
-                        md.mouse_sgr(),
-                        md.mouse_wants_motion(),
-                        md.alt_screen(),
-                        md.alt_scroll(),
+                        md.app_cursor(), md.bracketed_paste(), md.mouse_on(),
+                        md.mouse_wants_release(), md.mouse_sgr(), md.mouse_wants_motion(),
+                        md.alt_screen(), md.alt_scroll(), md.kitty_keys(),
                     )
                 })
             })
-            .unwrap_or((false, false, false, false, false, false, false, false));
+            .unwrap_or((false, false, false, false, false, false, false, false, 0));
         // 조합 초기 상태 = 직전 프레임 조합 유지 여부. 이번 프레임의 Preedit/Commit은
         // events_to_bytes가 '순서대로' 반영한다(Commit 직후 같은 프레임의 Enter는 PTY로 감).
         let composing = is_focused && !self.ime_preedit.is_empty();
-        let bytes = nabi_render::events_to_bytes(&events, app_cursor, bracketed, composing);
+        let bytes = nabi_render::events_to_bytes_kitty(&events, app_cursor, bracketed, composing, kitty);
         // IME 조합 상태는 포커스 pane만 추적(한글 초성·중성·종성 진행을 커서에 표시).
         if is_focused && nabi_render::update_preedit(&events, self.ime_preedit) {
             ui.ctx().request_repaint();

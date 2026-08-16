@@ -16,7 +16,7 @@ impl SftpFs {
     ) -> impl FnMut(u64) -> Result<Option<std::time::Duration>, String> + '_ {
         move |done: u64| {
             if self.canceled() {
-                return Err("전송 취소됨".to_string());
+                return Err(nabi_i18n::trc("net.xfer.canceled").to_string());
             }
             Ok(throttle_delay(done, start.elapsed(), self.limit_bps))
         }
@@ -69,7 +69,17 @@ impl SftpFs {
         // 무결성: 원격 크기와 받은 총 바이트가 같아야 한다. stat 미지원 서버는 건너뛴다.
         if let Some(rs) = attrs.as_ref().and_then(|a| a.size) {
             if resume_from + got != rs {
-                return Err(format!("다운로드 크기 불일치: {}/{rs} 바이트", resume_from + got));
+                return Err(nabi_i18n::trc("net.xfer.dlsize").replace("{a}", &(resume_from + got).to_string()).replace("{b}", &rs.to_string()));
+            }
+        }
+        // 무결성(옵션): 원격 sha256sum과 받은 파일의 SHA-256 대조 — 실패 시 대상 파일을
+        // 건드리지 않고 임시(.filepart)만 남긴다. 해시 명령이 없는 서버는 조용히 건너뛴다.
+        if crate::hashcheck::enabled() {
+            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, remote).await {
+                let lh = crate::hashcheck::local_sha256(&part)?;
+                if lh != rh {
+                    return Err(nabi_i18n::trc("net.xfer.dlhash").replace("{l}", &lh).replace("{r}", &rh));
+                }
             }
         }
         std::fs::rename(&part, local).map_err(|e| e.to_string())?;
@@ -160,7 +170,16 @@ impl SftpFs {
         // 무결성: 올린 임시 파일 크기가 로컬과 같아야 한다. stat 미지원 서버는 건너뛴다.
         if let Some(rs) = raw.stat(&part).await.ok().and_then(|a| a.size) {
             if rs != local_len {
-                return Err(format!("업로드 크기 불일치: {rs}/{local_len} 바이트"));
+                return Err(nabi_i18n::trc("net.xfer.upsize").replace("{a}", &rs.to_string()).replace("{b}", &local_len.to_string()));
+            }
+        }
+        // 무결성(옵션): 올린 임시 파일의 원격 해시와 로컬 원본 대조 — 교체 전에 잡는다.
+        if crate::hashcheck::enabled() {
+            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, &part).await {
+                let lh = crate::hashcheck::local_sha256(local)?;
+                if lh != rh {
+                    return Err(nabi_i18n::trc("net.xfer.uphash").replace("{l}", &lh).replace("{r}", &rh));
+                }
             }
         }
         raw.rename(&part, remote).await
@@ -177,7 +196,7 @@ impl SftpFs {
         };
         let margin = (depth() * self.raw.write_chunk()) as u64;
         if free < need.saturating_add(margin) {
-            return Err(format!("원격 여유 공간 부족: {free} < {need} 바이트"));
+            return Err(nabi_i18n::trc("net.xfer.nospace").replace("{free}", &free.to_string()).replace("{need}", &need.to_string()));
         }
         Ok(())
     }

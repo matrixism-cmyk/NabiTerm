@@ -16,7 +16,7 @@ pub async fn connect_ftp(host: &str, port: u16, user: &str, pass: &str) -> Resul
     let connect = AsyncFtpStream::connect(format!("{host}:{port}"));
     let mut ftp = tokio::time::timeout(std::time::Duration::from_secs(15), connect)
         .await
-        .map_err(|_| "연결 시간 초과".to_string())?
+        .map_err(|_| nabi_i18n::trc("net.ftp.timeout").to_string())?
         .map_err(|e| e.to_string())?;
     ftp.login(user, pass).await.map_err(|e| e.to_string())?;
     Ok(FtpFs { ftp })

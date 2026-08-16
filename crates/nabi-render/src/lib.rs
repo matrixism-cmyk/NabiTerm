@@ -10,6 +10,7 @@ mod highlight;
 mod underline;
 pub mod input;
 mod keymap;
+mod kittykeys;
 mod overlay;
 pub mod mouse;
 pub mod painter;
@@ -22,7 +23,7 @@ mod urls_scp;
 mod screenurls;
 pub mod title;
 
-pub use input::{events_to_bytes, update_preedit};
+pub use input::{events_to_bytes, events_to_bytes_kitty, update_preedit};
 pub use keymap::key_label;
 pub use mouse::{mouse_report, MouseBtn};
 pub use painter::{cell_size, paint};

@@ -77,7 +77,9 @@ async fn upload_refuses_when_remote_is_full() {
     std::fs::write(&src, vec![7u8; free as usize + 1]).unwrap();
     let mut fs = connect_fs().await;
     let err = fs.upload(src.to_str().unwrap(), "/toobig.bin", |_| {}).await.expect_err("거부 기대");
-    assert!(err.contains("여유 공간"), "공간 부족을 알려야: {err}");
+    // 문구는 3어화됐다(T8-1) — 언어에 매이지 않게, 같은 키의 현재 언어 앞부분으로 대조한다.
+    let want = nabi_i18n::trc("net.xfer.nospace").split('{').next().unwrap_or("").to_string();
+    assert!(!want.is_empty() && err.starts_with(&want), "공간 부족을 알려야: {err}");
     let _ = std::fs::remove_file(&src);
 }
 

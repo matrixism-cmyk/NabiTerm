@@ -65,7 +65,7 @@ async fn handshake(socket: &mut TcpStream) -> Result<(String, u16), String> {
             socket.read_exact(&mut d).await.map_err(io)?;
             String::from_utf8_lossy(&d).into_owned()
         }
-        _ => return Err("SOCKS5 atyp 미지원".into()),
+        _ => return Err(nabi_i18n::trc("net.socks.atyp").into()),
     };
     let mut pb = [0u8; 2];
     socket.read_exact(&mut pb).await.map_err(io)?;

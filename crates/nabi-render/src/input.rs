@@ -52,7 +52,18 @@ pub fn events_to_bytes(
     events: &[Event],
     app_cursor: bool,
     bracketed_paste: bool,
+    composing: bool,
+) -> Vec<u8> {
+    events_to_bytes_kitty(events, app_cursor, bracketed_paste, composing, 0)
+}
+
+/// [`events_to_bytes`] + kitty keyboard 플래그(활성 시 disambiguate 인코딩 우선).
+pub fn events_to_bytes_kitty(
+    events: &[Event],
+    app_cursor: bool,
+    bracketed_paste: bool,
     mut composing: bool,
+    kitty: u8,
 ) -> Vec<u8> {
     let mut out = Vec::new();
     // 이벤트를 순서대로 처리하며 조합 상태를 갱신한다 — 확정(Commit) 이후 '같은 프레임'의
@@ -87,7 +98,10 @@ pub fn events_to_bytes(
                 modifiers,
                 ..
             } if !composing => {
-                if let Some(seq) = crate::keymap::key_to_bytes(*key, *modifiers, app_cursor) {
+                // kitty 프로토콜 활성 시 그쪽 인코딩 우선, 아니면(또는 폴백) legacy.
+                if let Some(seq) = crate::kittykeys::key_to_bytes(*key, *modifiers, kitty)
+                    .or_else(|| crate::keymap::key_to_bytes(*key, *modifiers, app_cursor))
+                {
                     out.extend_from_slice(&seq);
                 }
             }

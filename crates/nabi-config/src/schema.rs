@@ -189,13 +189,13 @@ pub struct TerminalCfg {
     /// 자주 쓰는 명령 스니펫(메뉴에서 클릭하면 포커스 pane에 전송+실행).
     pub snippets: Vec<String>,
     /// SFTP 전송 속도 제한(KB/s, 0=무제한).
-    #[serde(default)]
-    pub speed_limit_kbps: u32,
+    #[serde(default)] pub speed_limit_kbps: u32,
+    /// 전송 후 SHA-256 해시 검증(rclone식). 원격에 해시 명령이 없으면 크기 비교로 폴백.
+    #[serde(default)] pub sftp_verify_hash: bool,
     /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
     pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
-    #[serde(default)]
-    pub download_dir: String,
+    #[serde(default)] pub download_dir: String,
     /// 다운로드 시 목적지를 매번 물어볼지(기본 true). false + download_dir 설정 시 묻지 않고 그 폴더로.
     #[serde(default = "default_true")]
     pub download_ask: bool,
@@ -322,6 +322,7 @@ impl Default for TerminalCfg {
             warn_paste_newline: false,
             snippets: Vec::new(),
             speed_limit_kbps: 0,
+            sftp_verify_hash: false,
             max_parallel_transfers: 2,
             download_dir: String::new(),
             download_ask: true,

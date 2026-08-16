@@ -139,10 +139,10 @@ async fn auth(handle: &mut client::Handle<Handler>, params: &SshParams) -> Resul
         SshAuth::Agent => {
             nabi_ssh::agent::authenticate_agent(handle, &params.user)
                 .await
-                .map_err(|e| format!("SFTP 에이전트 인증: {e}"))?;
+                .map_err(|e| format!("{}: {e}", nabi_i18n::trc("net.sftp.agent")))?;
             AuthResult::Success
         }
-        SshAuth::None => return Err("SFTP: 인증 정보가 없습니다".into()),
+        SshAuth::None => return Err(nabi_i18n::trc("net.sftp.noauth").into()),
     };
-    matches!(result, AuthResult::Success).then_some(()).ok_or_else(|| "SFTP 인증 실패".to_string())
+    matches!(result, AuthResult::Success).then_some(()).ok_or_else(|| nabi_i18n::trc("net.sftp.authfail").to_string())
 }

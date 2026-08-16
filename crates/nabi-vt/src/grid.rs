@@ -41,16 +41,11 @@ pub struct TermModel {
 impl TermModel {
     /// 주어진 그리드 크기와 스크롤백 줄 수로 모델을 만든다.
     pub fn new(size: GridSize, scrollback: usize) -> Self {
-        let cfg = Config {
-            scrolling_history: scrollback,
-            ..Default::default()
-        };
+        // Kitty keyboard protocol 협상 허용(T2-3). 기본 false면 push/query가 무시되어
+        // 지원 앱(claude CLI 등)이 Shift+Enter 구분을 못 쓴다. 인코딩은 nabi-render.
+        let cfg = Config { scrolling_history: scrollback, kitty_keyboard: true, ..Default::default() };
         let sink = EvSink::default();
-        let term = Term::new(
-            cfg,
-            &TermSize::new(size.cols() as usize, size.rows() as usize),
-            sink.clone(),
-        );
+        let term = Term::new(cfg, &TermSize::new(size.cols() as usize, size.rows() as usize), sink.clone());
         Self {
             term,
             parser: Processor::new(),
@@ -200,6 +195,14 @@ impl TermModel {
     /// bracketed paste 모드(DECSET 2004). 붙여넣기 래핑에 영향.
     pub fn bracketed_paste(&self) -> bool {
         self.term.mode().contains(TermMode::BRACKETED_PASTE)
+    }
+
+    /// Kitty keyboard protocol 활성 플래그(스펙 비트: 1=disambiguate 2=event types
+    /// 4=alternate 8=all-as-esc 16=associated text). 협상은 코어가 처리 — 여기선 읽기만.
+    pub fn kitty_keys(&self) -> u8 {
+        let md = self.term.mode();
+        let bits = [TermMode::DISAMBIGUATE_ESC_CODES, TermMode::REPORT_EVENT_TYPES, TermMode::REPORT_ALTERNATE_KEYS, TermMode::REPORT_ALL_KEYS_AS_ESC, TermMode::REPORT_ASSOCIATED_TEXT];
+        bits.iter().enumerate().fold(0, |acc, (i, b)| acc | (md.contains(*b) as u8) << i)
     }
 
     /// 벨 누적 횟수(시각 벨 트리거용).
