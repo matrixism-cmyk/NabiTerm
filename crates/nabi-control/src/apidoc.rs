@@ -28,6 +28,9 @@ pub fn api_doc() -> serde_json::Value {
             "agent-explain": { "params": ["pane"], "doc": "상태 감지 근거" },
             "schedule-create": { "params": ["name", "spec", "kind", "payload", "pane_title"], "doc": "스케줄 등록(send|command|notify)" },
             "layout-export": { "params": [], "doc": "레이아웃 JSON(panes 목록+분할 tree) — layout apply가 panes를 소비" },
+            "sftp-list": { "params": ["path"], "doc": "열린 SFTP 연결의 원격 목록(JSON 배열)" },
+            "sftp-get": { "params": ["remote", "local"], "doc": "원격→로컬 단일 파일 다운로드(완료 대기)" },
+            "sftp-put": { "params": ["local", "remote"], "doc": "로컬→원격 단일 파일 업로드(완료 대기)" },
         }
     })
 }
@@ -60,6 +63,9 @@ mod tests {
             R::AgentExplain { pane: 1 },
             R::ScheduleCreate { name: String::new(), spec: String::new(), kind: String::new(), payload: String::new(), pane_title: String::new() },
             R::LayoutExport,
+            R::SftpList { path: ".".into() },
+            R::SftpGet { remote: "r".into(), local: "l".into() },
+            R::SftpPut { local: "l".into(), remote: "r".into() },
         ];
         let doc = super::api_doc();
         let ops = doc["ops"].as_object().expect("ops");

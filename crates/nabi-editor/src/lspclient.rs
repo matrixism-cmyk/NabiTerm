@@ -225,6 +225,21 @@ impl LspClient {
         Some(crate::lspread::parse_locations(&v))
     }
 
+    /// 심볼 이름 바꾸기 요청 — 응답(WorkspaceEdit)은 `take_rename`으로 폴링.
+    pub fn request_rename(&self, path: &Path, line: u32, col: u32, new_name: &str) -> Option<i64> {
+        self.request(
+            "textDocument/rename",
+            json!({"textDocument": {"uri": path_to_uri(path)}, "position": {"line": line, "character": col},
+                   "newName": new_name}),
+        )
+    }
+
+    /// rename 응답이 도착했으면 파일별 편집 목록을 꺼낸다.
+    pub fn take_rename(&self, id: i64) -> Option<Vec<crate::lspread::FileEdits>> {
+        let v = self.shared.replies.lock().ok()?.remove(&id)?;
+        Some(crate::lspread::parse_workspace_edit(&v))
+    }
+
     /// 서버 프로세스가 살아 있는지.
     pub fn alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))

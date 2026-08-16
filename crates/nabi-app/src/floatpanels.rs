@@ -66,6 +66,7 @@ impl NabiApp {
         if act.lsp_goto_def { self.lsp_goto_definition_for(pane); }
         if act.lsp_hover { self.lsp_hover_for(pane); }
         if act.lsp_refs { self.lsp_refs_for(pane); }
+        if let Some(nm) = &act.lsp_rename { self.lsp_rename_for(pane, nm); }
         if let Some((path, line)) = act.open_at { self.open_editor_at(path, line); }
         // 분리 창이 자체 설정 창을 열었으면 이 창(vctx)에 렌더(단독 개발 대비 nabiPad 메뉴 자족).
         if self.editor_settings_for == Some(pane) {

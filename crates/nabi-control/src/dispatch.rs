@@ -65,9 +65,40 @@ fn group_of(req: &ControlRequest) -> crate::policy::Group {
     match req {
         ControlRequest::SendInput { .. }
         | ControlRequest::ClosePane { .. }
-        | ControlRequest::OpenSftp { .. } => Group::Inject,
+        | ControlRequest::OpenSftp { .. }
+        // 원격/로컬 파일을 실제로 쓰는 전송은 주입 등급(별도 승인).
+        | ControlRequest::SftpGet { .. }
+        | ControlRequest::SftpPut { .. } => Group::Inject,
         _ => Group::Act,
     }
+}
+
+/// SFTP 조작을 앱에 보내고 `SftpCtlDone{seq}` 회신을 기다린다(LayoutExport와 같은 패턴).
+fn sftp_roundtrip(
+    app_tx: &Sender<AppCtl>,
+    events: &EventHub,
+    op: nabi_proto::SftpCtlOp,
+    timeout_secs: u64,
+) -> ControlResponse {
+    let seq = SPAWN_SEQ.fetch_add(1, Ordering::Relaxed);
+    let rx = events.subscribe();
+    app_tx.send(AppCtl::SftpCtl { seq, op }).ok();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    while std::time::Instant::now() < deadline {
+        while let Ok(ev) = rx.try_recv() {
+            if let Event::SftpCtlDone { seq: s, ok, data } = ev {
+                if s == seq {
+                    return if ok {
+                        ControlResponse::Event { pane: 0, kind: "sftp".into(), data }
+                    } else {
+                        err(&data)
+                    };
+                }
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    err("SFTP 조작 시간 초과")
 }
 
 /// 승인된 쓰기 동작 실행(spawn/send/close/resize/open-browser/open-sftp).
@@ -205,6 +236,19 @@ fn dispatch_write(
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
             err("레이아웃 회신 시간 초과")
+        }
+        // S6-55: SFTP 조작 — 앱(UI 스레드)의 열린 연결로 실행하고 seq 상관으로 회신을 기다린다.
+        ControlRequest::SftpList { path } => {
+            tracing::info!(target: "control", from = ?from, %path, "sftp-list");
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::List { path }, 30)
+        }
+        ControlRequest::SftpGet { remote, local } => {
+            tracing::info!(target: "control", from = ?from, %remote, "sftp-get");
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Get { remote, local }, 600)
+        }
+        ControlRequest::SftpPut { local, remote } => {
+            tracing::info!(target: "control", from = ?from, %remote, "sftp-put");
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Put { local, remote }, 600)
         }
         ControlRequest::ScheduleCreate { name, spec, kind, payload, pane_title } => {
             tracing::info!(target: "control", from = ?from, %spec, "schedule-create");

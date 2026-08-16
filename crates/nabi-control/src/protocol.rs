@@ -89,6 +89,12 @@ pub enum ControlRequest {
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
     /// B4: 현재 탭·분할 레이아웃을 JSON으로 회신(apply가 소비하는 panes 목록 + 정확한 tree).
     LayoutExport,
+    /// S6-55: 열린 SFTP 연결의 원격 디렉터리 목록(JSON 배열 회신).
+    SftpList { path: String },
+    /// S6-55: 원격 → 로컬 단일 파일 다운로드(전송 큐 경유, 완료까지 대기).
+    SftpGet { remote: String, local: String },
+    /// S6-55: 로컬 → 원격 단일 파일 업로드(완료까지 대기).
+    SftpPut { local: String, remote: String },
 }
 
 /// 서버 → 클라이언트 응답(요청당 한 줄).

@@ -102,6 +102,83 @@ pub(crate) fn parse_locations(v: &Value) -> Vec<DefLoc> {
     v.as_array().map(Vec::as_slice).unwrap_or_default().iter().filter_map(parse_definition).collect()
 }
 
+/// 한 파일에 적용할 텍스트 편집 묶음(T6-4 rename). 열은 LSP 규약대로 UTF-16 단위.
+pub struct FileEdits {
+    pub path: PathBuf,
+    /// (시작줄, 시작열16, 끝줄, 끝열16, 새 텍스트) — 0기반.
+    pub edits: Vec<(u32, u32, u32, u32, String)>,
+}
+
+/// WorkspaceEdit → 파일별 편집 목록(changes | documentChanges 양쪽 수용).
+pub(crate) fn parse_workspace_edit(v: &Value) -> Vec<FileEdits> {
+    let mut out = Vec::new();
+    let mut push = |uri: &str, arr: &Value| {
+        let Some(path) = uri_to_path(uri) else { return };
+        let edits = arr
+            .as_array()
+            .map(Vec::as_slice)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|e| {
+                Some((
+                    e["range"]["start"]["line"].as_u64()? as u32,
+                    e["range"]["start"]["character"].as_u64()? as u32,
+                    e["range"]["end"]["line"].as_u64()? as u32,
+                    e["range"]["end"]["character"].as_u64()? as u32,
+                    e["newText"].as_str()?.to_string(),
+                ))
+            })
+            .collect::<Vec<_>>();
+        if !edits.is_empty() {
+            out.push(FileEdits { path, edits });
+        }
+    };
+    if let Some(m) = v.get("changes").and_then(Value::as_object) {
+        for (uri, arr) in m {
+            push(uri, arr);
+        }
+    }
+    for dc in v.get("documentChanges").and_then(Value::as_array).map(Vec::as_slice).unwrap_or_default() {
+        // 파일 생성/이름변경 등 비-편집 항목은 v1에서 무시(텍스트 편집만).
+        if let Some(uri) = dc["textDocument"]["uri"].as_str() {
+            push(uri, &dc["edits"]);
+        }
+    }
+    out
+}
+
+/// UTF-16 (줄, 열) → 바이트 오프셋. 줄/열이 범위를 넘으면 그 줄 끝/문서 끝으로 고정.
+pub fn pos16_to_byte(text: &str, line: u32, col16: u32) -> usize {
+    let mut off = 0usize;
+    for (i, l) in text.split_inclusive('\n').enumerate() {
+        if i as u32 == line {
+            let mut u16s = 0u32;
+            for (bi, ch) in l.char_indices() {
+                if u16s >= col16 || ch == '\n' {
+                    return off + bi;
+                }
+                u16s += ch.len_utf16() as u32;
+            }
+            return off + l.trim_end_matches('\n').len();
+        }
+        off += l.len();
+    }
+    text.len()
+}
+
+/// 편집 묶음을 텍스트에 적용한다(뒤에서부터 — 앞 오프셋이 밀리지 않게). 순수.
+pub fn apply_edits(text: &str, edits: &[(u32, u32, u32, u32, String)]) -> String {
+    let mut sorted: Vec<_> = edits.to_vec();
+    sorted.sort_by_key(|e| (e.0, e.1));
+    let mut out = text.to_string();
+    for (sl, sc, el, ec, new) in sorted.iter().rev() {
+        let a = pos16_to_byte(&out, *sl, *sc);
+        let b = pos16_to_byte(&out, *el, *ec).max(a);
+        out.replace_range(a..b, new);
+    }
+    out
+}
+
 /// file:// URI → 로컬 경로.
 fn uri_to_path(uri: &str) -> Option<PathBuf> {
     let rest = uri.strip_prefix("file:///").or_else(|| uri.strip_prefix("file://"))?;
@@ -132,6 +209,30 @@ mod tests {
         let arr = json!({"contents": ["첫", {"language": "rust", "value": "둘"}]});
         assert_eq!(parse_hover(&arr).unwrap(), "첫\n\n둘", "MarkedString 배열");
         assert!(parse_hover(&json!({"contents": ""})).is_none(), "빈 본문은 None");
+    }
+
+    #[test]
+    fn applies_edits_utf16_safely() {
+        // '한'=UTF-16 1유닛이지만 3바이트 — 바이트/UTF-16 변환이 어긋나면 여기서 깨진다.
+        let text = "let 한글 = old();\nold();\n";
+        // 'old'의 시작 UTF-16 열 = l,e,t,공백,한,글,공백,=,공백 다음 → 9.
+        let edits = vec![(0, 9, 0, 12, "new".to_string()), (1, 0, 1, 3, "new".to_string())];
+        assert_eq!(apply_edits(text, &edits), "let 한글 = new();\nnew();\n");
+        // 범위 밖 열은 줄 끝으로 고정(패닉 금지).
+        assert_eq!(pos16_to_byte("ab\ncd", 0, 99), 2);
+        assert_eq!(pos16_to_byte("ab", 9, 0), 2, "줄 초과=문서 끝");
+    }
+
+    #[test]
+    fn parses_workspace_edit_both_shapes() {
+        let ch = json!({"changes": {"file:///C:/p/a.rs": [
+            {"range":{"start":{"line":1,"character":2},"end":{"line":1,"character":5}},"newText":"x"}]}});
+        let got = parse_workspace_edit(&ch);
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].edits[0], (1, 2, 1, 5, "x".into()));
+        let dc = json!({"documentChanges": [{"textDocument":{"uri":"file:///C:/p/b.rs","version":3},
+            "edits":[{"range":{"start":{"line":0,"character":0},"end":{"line":0,"character":1}},"newText":"y"}]}]});
+        assert_eq!(parse_workspace_edit(&dc).len(), 1, "documentChanges 수용");
     }
 
     #[test]

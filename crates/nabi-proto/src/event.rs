@@ -46,6 +46,8 @@ pub enum Event {
     AgentStatus { pane: PaneId, state: &'static str },
     /// 레이아웃 export 회신(B4) — 제어 평면 요청 seq에 JSON을 되돌려 준다.
     LayoutJson { seq: u64, json: String },
+    /// 제어평면 SFTP 조작 회신(S6-55): ok=성공, data=목록 JSON 또는 사유.
+    SftpCtlDone { seq: u64, ok: bool, data: String },
     /// 설정 리로드 완료.
     ConfigReloaded,
     /// SFTP 연결 성공.

@@ -9,6 +9,7 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
         nabi cli send --pane <id> --data <text> [--raw]\n  nabi cli kill --pane <id>\n  \
         nabi cli resize --pane <id> --cols <c> --rows <r>\n  \
         nabi cli focus --pane <id> | set-title --pane <id> --title <t> | notify --title <t> [--body <b>]\n  \
+        nabi cli sftp-list [--path <원격경로>] | sftp-get --remote <r> --local <l> | sftp-put --local <l> --remote <r>\n  \
         공통: --json(머신 출력), --pane 대신 --match \"title:x,cwd:y,kind:z,state:idle\"";
     let pane = |a: &[String]| flag(a, "--pane").and_then(|s| s.parse::<u64>().ok());
     match args.first().map(String::as_str) {
@@ -58,6 +59,16 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             rows: flag(args, "--rows").and_then(|s| s.parse().ok()).ok_or(usage)?,
         }),
         Some("open-browser") => Ok(ControlRequest::OpenBrowser { path: flag(args, "--path") }),
+        // S6-55: 열린 SFTP 연결로 원격 목록/전송(에이전트 파일 왕복).
+        Some("sftp-list") => Ok(ControlRequest::SftpList { path: flag(args, "--path").unwrap_or_else(|| ".".into()) }),
+        Some("sftp-get") => Ok(ControlRequest::SftpGet {
+            remote: flag(args, "--remote").ok_or(usage)?,
+            local: flag(args, "--local").ok_or(usage)?,
+        }),
+        Some("sftp-put") => Ok(ControlRequest::SftpPut {
+            local: flag(args, "--local").ok_or(usage)?,
+            remote: flag(args, "--remote").ok_or(usage)?,
+        }),
         Some("open-sftp") => {
             Ok(ControlRequest::OpenSftp { session: flag(args, "--session").ok_or(usage)? })
         }

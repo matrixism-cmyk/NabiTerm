@@ -56,6 +56,7 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                     if ui.button(tr(lang, "lsp.gotodef.short")).clicked() { act.lsp_goto_def = true; ui.close(); }
                     if ui.button(tr(lang, "lsp.hover")).clicked() { act.lsp_hover = true; ui.close(); }
                     if ui.button(tr(lang, "lsp.refs")).clicked() { act.lsp_refs = true; ui.close(); }
+                    if ui.button(tr(lang, "lsp.rename")).clicked() { doc.rename_open = true; ui.close(); }
                     if ui.add_enabled(!doc.diags.is_empty(), egui::Button::new(tr(lang, "lsp.diags"))).clicked() { doc.diag_popup = true; ui.close(); }
                 });
             }

@@ -123,6 +123,7 @@ impl NabiApp {
             snap_save_open: false, snap_list_open: false, snap_name: String::new(), bcast_view_open: false,
             lsp: Default::default(),
             xfer_history: Vec::new(), xfer_history_open: false,
+            ctl_sftp: Default::default(),
             onboarding_open: first_run,
             palette_query: String::new(),
             find_open: false,

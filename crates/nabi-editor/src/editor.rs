@@ -62,6 +62,8 @@ pub struct EditorDoc {
     pub lsp_refs: Option<Vec<(String, u32, u32)>>,
     /// 진단 목록 팝업 열림(상태바 오류/경고 클릭).
     pub diag_popup: bool,
+    /// LSP 이름 바꾸기 입력 팝업 열림.
+    pub rename_open: bool,
 }
 
 impl EditorDoc {
@@ -104,7 +106,7 @@ impl EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
-            diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false,
+            diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
         }
     }
 }
@@ -139,6 +141,8 @@ pub struct EditorAct {
     pub run_in_term: Option<String>,
     /// LSP(T6-4 2단계): 정의로 이동/심볼 정보/참조 찾기 요청(rs 문서 — 앱 허브가 처리).
     pub lsp_goto_def: bool, pub lsp_hover: bool, pub lsp_refs: bool,
+    /// LSP 이름 바꾸기 확정(새 이름) — 앱 허브가 rename 요청을 보낸다.
+    pub lsp_rename: Option<String>,
     /// 다른 파일의 지정 줄(0기반) 열기(참조 목록 클릭 — 앱이 open+jump).
     pub open_at: Option<(String, usize)>,
 }

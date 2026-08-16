@@ -71,6 +71,7 @@ impl crate::app::NabiApp {
                     };
                     self.notify = Some((text, std::time::Instant::now()));
                 }
+                AppCtl::SftpCtl { seq, op } => self.on_sftp_ctl(seq, op),
                 AppCtl::LayoutExport { seq } => {
                     let json = self.layout_export_json();
                     self.control_events.publish(&nabi_proto::Event::LayoutJson { seq, json });

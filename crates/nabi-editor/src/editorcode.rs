@@ -46,6 +46,25 @@ pub fn show_code_popups(ui: &egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mu
         }
         if !open { doc.lsp_refs = None; }
     }
+    // 이름 바꾸기 입력 — 확정 시 act로 앱 허브에 전달(rust-analyzer rename).
+    if doc.rename_open {
+        let mut open = true;
+        let sid = egui::Id::new(("lsp_rename", doc.path.clone()));
+        let mut name: String = ctx.data(|d| d.get_temp(sid)).unwrap_or_default();
+        egui::Window::new(tr(lang, "lsp.rename.title")).id(sid.with("w"))
+            .open(&mut open).collapsible(false).resizable(false).show(&ctx, |ui| {
+                let r = ui.add(egui::TextEdit::singleline(&mut name).hint_text(tr(lang, "lsp.rename.hint")).desired_width(220.0));
+                r.request_focus();
+                let go = (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) || ui.button(tr(lang, "common.ok")).clicked();
+                if go && !name.trim().is_empty() {
+                    act.lsp_rename = Some(name.trim().to_string());
+                    name.clear();
+                    doc.rename_open = false;
+                }
+            });
+        ctx.data_mut(|d| d.insert_temp(sid, name));
+        if !open { doc.rename_open = false; }
+    }
     // 진단 목록 — 상태바 오류/경고 클릭으로 열림, 클릭 시 그 줄로.
     if doc.diag_popup {
         let mut open = true;

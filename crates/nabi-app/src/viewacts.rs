@@ -87,6 +87,7 @@ impl NabiApp {
             if a.lsp_goto_def { self.lsp_goto_definition_for(p); }
             if a.lsp_hover { self.lsp_hover_for(p); }
             if a.lsp_refs { self.lsp_refs_for(p); }
+            if let Some(nm) = &a.lsp_rename { self.lsp_rename_for(p, nm); }
             if let Some((path, line)) = a.open_at { self.open_editor_at(path, line); }
         }
         if let Some(p) = closed {

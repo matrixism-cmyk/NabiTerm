@@ -82,6 +82,22 @@ fn ra_diagnostics_and_definition() {
         std::thread::sleep(Duration::from_millis(200));
     };
     assert!(refs.len() >= 2, "선언+호출 최소 2곳: {refs:?}");
+
+    // 이름 바꾸기: helper → helper2. WorkspaceEdit를 순수 적용해 결과를 검증한다.
+    let id = c.request_rename(&main, 0, 4, "helper2").expect("rename 요청");
+    let t5 = Instant::now();
+    let files = loop {
+        if let Some(f) = c.take_rename(id) {
+            break f;
+        }
+        assert!(t5.elapsed() < Duration::from_secs(30), "rename 응답 없음");
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(!files.is_empty(), "rename 편집 목록");
+    let fe = files.iter().find(|f| f.path.ends_with("main.rs")).expect("main.rs 편집");
+    let renamed = nabi_editor::lspread::apply_edits(code, &fe.edits);
+    assert!(renamed.contains("fn helper2()"), "선언 변경: {renamed}");
+    assert!(renamed.contains("helper2();") || renamed.contains("= helper2()"), "호출 변경: {renamed}");
     assert!(c.alive());
     drop(c);
     let _ = std::fs::remove_dir_all(&dir);

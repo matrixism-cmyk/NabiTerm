@@ -229,3 +229,42 @@ fn ask_mode_groups_and_approval() {
     // revoke 뒤에는 어떤 주장 pane에서도 거부.
     assert!(!policy.allow(Group::Inject, Some(6)));
 }
+
+/// S6-55: sftp-list가 앱 회신(SftpCtlDone)과 seq 상관으로 왕복하는지 — 가짜 앱 스레드로 검증.
+#[test]
+fn sftp_ctl_roundtrip_via_app_reply() {
+    let pipe = format!(r"\\.\pipe\nabi-ctl-sftp-{}", std::process::id());
+    let token = nabi_control::gen_token();
+    let (cmd_tx, _cmd_rx) = unbounded();
+    let (app_tx, app_rx) = unbounded::<nabi_proto::AppCtl>();
+    let (policy, _ask_rx) = nabi_control::policy::ControlPolicy::new(nabi_control::policy::Mode::On);
+    let events = nabi_control::subscribe::EventHub::new();
+    let hub = events.clone();
+    // 가짜 앱: SftpCtl 요청을 받아 즉시 성공 회신을 이벤트로 발행.
+    std::thread::spawn(move || {
+        while let Ok(ctl) = app_rx.recv() {
+            if let nabi_proto::AppCtl::SftpCtl { seq, op: nabi_proto::SftpCtlOp::List { path } } = ctl {
+                let data = format!(r#"[{{"name":"{path}","is_dir":true,"size":0,"mode":0,"mtime":0}}]"#);
+                hub.publish(&nabi_proto::Event::SftpCtlDone { seq, ok: true, data });
+            }
+        }
+    });
+    let ctx = nabi_control::server::ServerCtx {
+        panes: new_shared_panes(),
+        cmd_tx,
+        app_tx,
+        policy,
+        cfg: nabi_control::dispatch::SpawnCfg { scrollback: 100, encoding: "UTF-8".into(), cols: 80, rows: 24 },
+        events,
+    };
+    let _ = tracing_subscriber::fmt().with_test_writer().try_init();
+    nabi_control::server::start(pipe.clone(), token.clone(), ctx);
+    let r = nabi_control::client::request(&pipe, &token, &ControlRequest::SftpList { path: "/tmp".into() }).unwrap();
+    match r {
+        ControlResponse::Event { kind, data, .. } => {
+            assert_eq!(kind, "sftp");
+            assert!(data.contains("/tmp"), "회신 데이터에 요청 경로: {data}");
+        }
+        other => panic!("Event 응답이 아님: {other:?}"),
+    }
+}

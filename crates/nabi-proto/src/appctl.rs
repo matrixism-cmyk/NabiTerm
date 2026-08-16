@@ -35,4 +35,17 @@ pub enum AppCtl {
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
     /// 레이아웃 export 요청(B4) — 앱이 Event::LayoutJson{seq,json}으로 회신.
     LayoutExport { seq: u64 },
+    /// 제어평면 SFTP 조작(S6-55): 현재 열린 SFTP 연결 대상. 앱이 Event::SftpCtlDone{seq,…}로 회신.
+    SftpCtl { seq: u64, op: SftpCtlOp },
+}
+
+/// 제어평면 SFTP 조작 종류(S6-55) — 에이전트/스크립트의 원격 파일 왕복.
+#[derive(Debug, Clone)]
+pub enum SftpCtlOp {
+    /// 원격 디렉터리 목록(JSON 배열로 회신).
+    List { path: String },
+    /// 원격 → 로컬 단일 파일 다운로드(전송 큐 경유 — UI에도 보인다).
+    Get { remote: String, local: String },
+    /// 로컬 → 원격 단일 파일 업로드.
+    Put { local: String, remote: String },
 }

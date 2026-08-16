@@ -28,4 +28,10 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("sftp.history.empty", "(no transfers yet this session)", "(이 세션의 전송 기록이 아직 없습니다)", "(このセッションの転送履歴はまだありません)"),
     ("sftp.history.clear", "Clear", "지우기", "クリア"),
     ("bcast.focus", "Click to focus this pane", "클릭하면 이 pane 탭으로 이동", "クリックでこのペインへ移動"),
+    ("lsp.rename", "Rename symbol…", "심볼 이름 바꾸기…", "シンボル名を変更…"),
+    ("lsp.rename.title", "Rename symbol", "심볼 이름 바꾸기", "シンボル名を変更"),
+    ("lsp.rename.hint", "New name", "새 이름", "新しい名前"),
+    ("common.ok", "OK", "확인", "OK"),
+    ("lsp.renamed", "Renamed:", "이름 변경 완료:", "名前を変更:"),
+    ("lsp.norename", "Cannot rename this symbol", "이 심볼의 이름을 바꿀 수 없습니다", "このシンボル名は変更できません"),
 ];

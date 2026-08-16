@@ -102,6 +102,8 @@ pub struct NabiApp {
     /// SFTP 전송 히스토리(S6-60) + 목록 창 열림.
     pub xfer_history: Vec<crate::sftphistory::XferRecord>,
     pub xfer_history_open: bool,
+    /// 제어평면 SFTP 요청 상관 상태(S6-55).
+    pub ctl_sftp: crate::controlsftp::CtlSftp,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

@@ -13,6 +13,10 @@ impl NabiApp {
         match ev {
             Event::SftpConnected { id } => self.on_sftp_connected(id, ctx),
             Event::SftpListing { id, path, mut entries } => {
+                // 제어평면(sftp-list) 회신이면 브라우저 UI를 건드리지 않는다(S6-55).
+                if self.sftp_ctl_take_listing(&path, &entries) {
+                    return None;
+                }
                 let (sort, desc) = (self.browser.sort, self.browser.sort_desc); // 활성/배경 동일 정렬.
                 if let Some(p) = self.remote_panel_mut(id) {
                     crate::sftpentries::sort_sftp(&mut entries, sort, desc);
@@ -128,6 +132,7 @@ impl NabiApp {
             (refresh, p.path.clone(), drained, rec)
         });
         let Some((refresh, path, drained, rec)) = res else { return };
+        self.sftp_ctl_take_xfer(xfer, ok, &message, &name); // 제어평면 전송 회신(S6-55).
         if let Some((up, size, secs)) = rec {
             self.record_xfer(&name, up, ok, size, secs, &message); // 전송 히스토리(S6-60).
         }

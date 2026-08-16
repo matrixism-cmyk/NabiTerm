@@ -13,7 +13,8 @@ pub fn request(pipe: &str, token: &str, req: &ControlRequest) -> Result<ControlR
                 f = Some(h);
                 break;
             }
-            Err(e) if i < 49 && matches!(e.raw_os_error(), Some(231) | Some(2)) => {
+            // 231=파이프 혼잡, 2=파일 없음, 3=경로 없음(서버가 파이프를 만들기 직전) — 모두 준비 대기.
+            Err(e) if i < 49 && matches!(e.raw_os_error(), Some(231) | Some(2) | Some(3)) => {
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
             Err(e) => return Err(format!("파이프 접속 실패({pipe}): {e}")),

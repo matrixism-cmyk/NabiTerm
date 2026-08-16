@@ -13,7 +13,7 @@ pub mod ssh;
 pub mod stats;
 pub mod statsparse;
 
-pub use appctl::AppCtl;
+pub use appctl::{AppCtl, SftpCtlOp};
 pub use command::Command;
 pub use event::Event;
 pub use pane_msg::CommandBlock;
