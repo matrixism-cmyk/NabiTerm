@@ -14,6 +14,4 @@ russh = { workspace = true }
 tokio = { workspace = true }
 crossbeam-channel = { workspace = true }
 bytes = { workspace = true }
-
-[dev-dependencies]
-rand = "0.9"   # 인-프로세스 테스트 서버의 호스트키 생성(russh 예제와 동일)
+rand = "0.10"  # 키 생성(keygen.rs — ssh-key rand_core 0.10 정합)

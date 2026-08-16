@@ -39,4 +39,12 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("lsp.fmt.done", "Formatted (unsaved)", "포맷 완료(저장 전)", "整形完了(未保存)"),
     ("lsp.fmt.clean", "Already formatted", "이미 정렬돼 있습니다", "すでに整形済みです"),
     ("lsp.complete", "Autocomplete", "자동완성", "自動補完"),
+    ("keygen.title", "Generate SSH key (ed25519)…", "SSH 키 생성(ed25519)…", "SSH鍵を生成(ed25519)…"),
+    ("keygen.about", "Creates a modern ed25519 key pair. The private key stays on this PC; register the public key on servers.", "현대적 ed25519 키쌍을 만듭니다. 개인키는 이 PC에 남고, 공개키를 서버에 등록해 쓰세요.", "現代的なed25519鍵ペアを作成します。秘密鍵はこのPCに残し、公開鍵をサーバーに登録します。"),
+    ("keygen.path", "Save as", "저장 경로", "保存先"), ("keygen.comment", "Comment", "코멘트", "コメント"),
+    ("keygen.generate", "Generate", "생성", "生成"), ("keygen.saved", "Key pair saved (.pub alongside)", "키쌍 저장됨(.pub 동반)", "鍵ペアを保存(.pub併記)"),
+    ("keygen.copypub", "Copy public key", "공개키 복사", "公開鍵をコピー"),
+    ("keygen.hint", "Append the public key to ~/.ssh/authorized_keys on the server, then set this key path in the session.", "공개키를 서버의 ~/.ssh/authorized_keys에 추가하고, 세션 설정의 키 경로에 이 파일을 지정하세요.", "公開鍵をサーバーの~/.ssh/authorized_keysに追加し、セッション設定でこの鍵パスを指定してください。"),
+    ("keygen.needpath", "Enter a save path", "저장 경로를 입력하세요", "保存先を入力してください"),
+    ("keygen.exists", "File already exists — choose another path (existing keys are never overwritten)", "이미 파일이 있습니다 — 다른 경로를 지정하세요(기존 키는 덮어쓰지 않습니다)", "既にファイルがあります — 別のパスを指定してください(既存鍵は上書きしません)"),
 ];

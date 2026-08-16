@@ -124,6 +124,7 @@ impl NabiApp {
             lsp: Default::default(),
             xfer_history: Vec::new(), xfer_history_open: false,
             ctl_sftp: Default::default(),
+            keygen: None,
             onboarding_open: first_run,
             palette_query: String::new(),
             find_open: false,

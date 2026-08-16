@@ -177,6 +177,7 @@ impl NabiApp {
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
             MenuAction::RenameGroup(old, new) => self.rename_folder(&old, &new),
             MenuAction::DisbandGroup(f) => self.rename_folder(&f, ""),
+            MenuAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
             MenuAction::TogglePin(name) => {
                 let v = &mut self.config.appearance.pinned_sessions;

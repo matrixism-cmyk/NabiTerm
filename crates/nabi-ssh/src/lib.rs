@@ -14,6 +14,7 @@ pub mod agent;
 pub mod legacy;
 pub mod handler;
 pub mod kexinfo;
+pub mod keygen;
 pub mod params;
 pub mod session;
 pub mod stats;

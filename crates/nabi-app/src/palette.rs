@@ -61,6 +61,8 @@ pub(crate) enum PaletteAction {
     BroadcastResults,
     /// nabiPad: 커서 심볼의 정의로 이동/심볼 정보/참조 찾기(T6-4 LSP).
     GotoDefinition, LspHover, LspRefs, LspFormat,
+    /// SSH ed25519 키 생성 모달.
+    OpenKeygen,
     /// SFTP 전송 히스토리 창(S6-60).
     XferHistory,
 }

@@ -131,7 +131,7 @@ mod sftpview;
 mod syncbrowse;
 mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; 
 mod sftppath;
-mod sftpxfer; mod sftphistory; mod controlsftp; mod sftpqueue; mod sftpqact;
+mod sftpxfer; mod sftphistory; mod controlsftp; mod sshkeygenui; mod sftpqueue; mod sftpqact;
 mod sftpdownload;
 mod sftpperms;
 mod sftptoolbar;

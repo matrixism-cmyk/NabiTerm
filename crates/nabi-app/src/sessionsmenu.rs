@@ -107,6 +107,10 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
     ]);
     // 로컬 포트 포워딩(-L) — 상단 메뉴·사이드바 공용(이전엔 상단 메뉴에만 있었음).
     ui.separator();
+    if ui.button(tr(lang, "keygen.title")).clicked() {
+        action = Some(MenuAction::OpenKeygen);
+        ui.close();
+    }
     if ui.button(tr(lang, "menu.localforward")).clicked() {
         action = Some(MenuAction::OpenForward);
         ui.close();

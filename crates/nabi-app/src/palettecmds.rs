@@ -82,6 +82,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "lsp.hover.pal").to_string(), PaletteAction::LspHover),
         (tr(lang, "lsp.refs.pal").to_string(), PaletteAction::LspRefs),
         (tr(lang, "lsp.format.pal").to_string(), PaletteAction::LspFormat),
+        (tr(lang, "keygen.title").to_string(), PaletteAction::OpenKeygen),
         (tr(lang, "sftp.history").to_string(), PaletteAction::XferHistory),
         (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
         (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),

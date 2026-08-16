@@ -104,6 +104,8 @@ pub struct NabiApp {
     pub xfer_history_open: bool,
     /// 제어평면 SFTP 요청 상관 상태(S6-55).
     pub ctl_sftp: crate::controlsftp::CtlSftp,
+    /// SSH 키 생성 모달 상태(Some=열림).
+    pub keygen: Option<crate::sshkeygenui::KeygenState>,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

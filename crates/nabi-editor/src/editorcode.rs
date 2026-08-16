@@ -60,15 +60,27 @@ pub fn show_code_popups(ui: &egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mu
                 if vis.is_empty() || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
                     doc.lsp_comp = None;
                 } else {
-                    let mut chosen = None;
+                    // 키보드 선택: ↑↓ 이동, Enter/Tab 확정 — 팝업이 열린 동안만 에디터에서 가로챈다.
+                    let sid = egui::Id::new(("lsp_comp_sel", doc.path.clone()));
+                    let mut sel: usize = ctx.data(|d| d.get_temp(sid)).unwrap_or(0);
+                    let mut kb_commit = false;
+                    ctx.input_mut(|i| {
+                        if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowDown) { sel += 1; }
+                        if i.consume_key(egui::Modifiers::NONE, egui::Key::ArrowUp) { sel = sel.saturating_sub(1); }
+                        if i.consume_key(egui::Modifiers::NONE, egui::Key::Enter)
+                            || i.consume_key(egui::Modifiers::NONE, egui::Key::Tab) { kb_commit = true; }
+                    });
+                    sel = sel.min(vis.len() - 1);
+                    ctx.data_mut(|d| d.insert_temp(sid, sel));
+                    let mut chosen = kb_commit.then(|| vis[sel].insert.clone());
                     egui::Area::new(egui::Id::new(("lsp_comp", doc.path.clone())))
                         .fixed_pos(egui::pos2(doc.cursor_px.0, doc.cursor_px.1 + 2.0))
                         .order(egui::Order::Foreground)
                         .show(&ctx, |ui| {
                             egui::Frame::popup(ui.style()).show(ui, |ui| {
                                 ui.set_max_width(420.0);
-                                for it in &vis {
-                                    let row = ui.selectable_label(false, &it.label);
+                                for (i, it) in vis.iter().enumerate() {
+                                    let row = ui.selectable_label(i == sel, &it.label);
                                     let row = if it.detail.is_empty() { row } else { row.on_hover_text(&it.detail) };
                                     if row.clicked() {
                                         chosen = Some(it.insert.clone());
