@@ -76,6 +76,14 @@ impl NabiApp {
                     }
                 }
             }
+            MenuAction::ImportXshell => {
+                // Xshell 기본 세션 폴더 자동 탐색, 없으면 폴더 선택(한국 1급 — Xshell 이탈 흡수).
+                let dir = crate::xshell::default_sessions_dir()
+                    .or_else(|| rfd::FileDialog::new().pick_folder());
+                if let Some(d) = dir {
+                    self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell");
+                }
+            }
             MenuAction::ImportPuTTY => {
                 // PuTTY는 세션을 레지스트리에 둔다 — reg.exe로 export해 파싱. 실패 시 .reg 파일 선택.
                 let text = crate::putty::export_registry_text().or_else(|| {

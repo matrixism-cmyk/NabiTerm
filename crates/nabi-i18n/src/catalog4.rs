@@ -1,6 +1,7 @@
 //! 번역 카탈로그 4 — 상용화 계획(Phase 0~4) 신규 표면. catalog3 라인 한도로 분리.
 
 pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
+    ("menu.importxshell", "Import from Xshell (auto)", "Xshell에서 가져오기(자동)", "Xshellから取り込み(自動)"),
     ("menu.tools", "Tools", "도구", "ツール"),
     ("snap.save", "Save workspace snapshot…", "워크스페이스 스냅샷 저장…", "ワークスペーススナップショット保存…"), ("snap.list", "Workspace snapshots…", "워크스페이스 스냅샷 목록…", "ワークスペーススナップショット一覧…"),
     ("snap.namehint", "Snapshot name (e.g. deploy day)", "스냅샷 이름(예: 배포날)", "スナップショット名(例: リリース日)"), ("snap.empty", "(no snapshots yet)", "(저장된 스냅샷 없음)", "(スナップショットなし)"),

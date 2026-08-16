@@ -45,7 +45,7 @@ mod drives;
  mod editorsave;
 mod editoropen; mod editorclose;
 
-mod filezilla;
+mod filezilla; mod xshell;
 mod mobaxterm;
 mod putty;
 

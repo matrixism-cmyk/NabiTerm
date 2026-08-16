@@ -33,6 +33,7 @@ pub(crate) enum MenuAction {
     ImportFileZilla,
     ImportMobaXterm,
     ImportPuTTY,
+    ImportXshell,
     ExportFileZilla,
     ExportMobaXterm,
     ExportPuTTY,

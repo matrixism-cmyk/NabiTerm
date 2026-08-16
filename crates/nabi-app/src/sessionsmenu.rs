@@ -79,6 +79,7 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
         ("menu.importfilezilla", MenuAction::ImportFileZilla),
         ("menu.importmobaxterm", MenuAction::ImportMobaXterm),
         ("menu.importputty", MenuAction::ImportPuTTY),
+        ("menu.importxshell", MenuAction::ImportXshell),
     ]);
     group(ui, "menu.export", vec![
         ("menu.exportsessions", MenuAction::ExportSessions),
