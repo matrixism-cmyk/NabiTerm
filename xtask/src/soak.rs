@@ -36,17 +36,11 @@ fn mem_mb(pid: u32) -> Option<u64> {
     digits.parse::<u64>().ok().map(|k| k / 1024)
 }
 
-/// mem_mb의 견고판 — tasklist는 시스템 부하에서 일시 실패할 수 있어(빌드 병행 등)
-/// 한 번의 실패를 크래시로 단정하지 않는다: 3회 재시도 후에도 None이면 진짜 소멸로 본다.
-/// (실제로 v0.1.429 소크가 clippy 전체 빌드와 겹친 순간 오탐으로 실패했다.)
-fn mem_mb_retry(pid: u32) -> Option<u64> {
-    for i in 0..3 {
-        if let Some(m) = mem_mb(pid) {
-            return Some(m);
-        }
-        std::thread::sleep(Duration::from_millis(500 * (i + 1)));
-    }
-    None
+/// 생존 판정은 tasklist가 아니라 child.try_wait()가 권위다 — tasklist는 dist(fat LTO)
+/// 같은 고부하 병행 시 3회 재시도로도 일시 실패해 두 번(v0.1.429/430)이나 크래시로 오탐했다.
+/// 메모리 샘플 실패는 그냥 그 사이클을 건너뛴다(측정 누락≠사망).
+fn alive(child: &mut std::process::Child) -> bool {
+    matches!(child.try_wait(), Ok(None))
 }
 
 fn soak(mins: u64) -> Result<String, String> {
@@ -64,18 +58,24 @@ fn soak(mins: u64) -> Result<String, String> {
         .env("NABI_CONFIG_DIR", &cfg_dir)
         .env("NABI_CONTROL_PIPE", &pipe_name)
         .env("NABI_CONTROL_TOKEN", &token)
+        .env("NABI_LOG", "info") // 실패 시 보존되는 logs/에서 원인 추적.
         .spawn()
         .map_err(|e| format!("앱 실행 실패: {e}"))?;
     let pid = child.id();
 
-    let res = drive(&pipe_name, &token, pid, mins);
+    let res = drive(&pipe_name, &token, &mut child, pid, mins);
     let _ = child.kill();
     let _ = child.wait();
-    let _ = std::fs::remove_dir_all(&cfg_dir);
+    if res.is_err() {
+        // 실패 진단용으로 격리 프로필(로그 포함)을 남긴다 — 성공 시에만 청소.
+        eprintln!("진단 로그 보존: {}", cfg_dir.display());
+    } else {
+        let _ = std::fs::remove_dir_all(&cfg_dir);
+    }
     res
 }
 
-fn drive(pipe_name: &str, token: &str, pid: u32, mins: u64) -> Result<String, String> {
+fn drive(pipe_name: &str, token: &str, child: &mut std::process::Child, pid: u32, mins: u64) -> Result<String, String> {
     let t0 = Instant::now();
     let mut pipe = loop {
         match std::fs::OpenOptions::new().read(true).write(true).open(pipe_name) {
@@ -106,14 +106,15 @@ fn drive(pipe_name: &str, token: &str, pid: u32, mins: u64) -> Result<String, St
         if !ok {
             fails += 1;
         }
-        if let Some(m) = mem_mb_retry(pid) {
-            peak = peak.max(m);
-        } else {
-            return Err(format!("사이클 {cycles}: 프로세스 소멸(크래시)"));
+        if !alive(child) {
+            return Err(format!("사이클 {cycles}: 프로세스 소멸(크래시, exit={:?})", child.try_wait()));
+        }
+        if let Some(m) = mem_mb(pid) {
+            peak = peak.max(m); // 측정 실패는 이 사이클 샘플만 건너뜀(비치명).
         }
         std::thread::sleep(Duration::from_secs(9));
     }
-    let mem1 = mem_mb_retry(pid).ok_or("최종 메모리 측정 실패(크래시)")?;
+    let mem1 = mem_mb(pid).unwrap_or(peak); // 최종 측정 실패 시 피크로 대체(생존은 위에서 확인).
     let cap = mem0 * 3 + 200;
     let report = format!(
         "soak {mins}분: 사이클 {cycles} · 응답실패 {fails} · 메모리 {mem0}→{mem1}MB(피크 {peak}, 허용 {cap})"
