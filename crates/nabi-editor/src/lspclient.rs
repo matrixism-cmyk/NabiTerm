@@ -196,6 +196,35 @@ impl LspClient {
         Some(parse_definition(&v))
     }
 
+    /// 심볼 정보(hover) 요청 — 응답은 `take_hover`로 폴링.
+    pub fn request_hover(&self, path: &Path, line: u32, col: u32) -> Option<i64> {
+        self.request(
+            "textDocument/hover",
+            json!({"textDocument": {"uri": path_to_uri(path)}, "position": {"line": line, "character": col}}),
+        )
+    }
+
+    /// hover 응답이 도착했으면 본문 텍스트를 꺼낸다(없으면 내부 None).
+    pub fn take_hover(&self, id: i64) -> Option<Option<String>> {
+        let v = self.shared.replies.lock().ok()?.remove(&id)?;
+        Some(crate::lspread::parse_hover(&v))
+    }
+
+    /// 참조 찾기 요청(선언 포함) — 응답은 `take_references`로 폴링.
+    pub fn request_references(&self, path: &Path, line: u32, col: u32) -> Option<i64> {
+        self.request(
+            "textDocument/references",
+            json!({"textDocument": {"uri": path_to_uri(path)}, "position": {"line": line, "character": col},
+                   "context": {"includeDeclaration": true}}),
+        )
+    }
+
+    /// 참조 응답이 도착했으면 위치 목록을 꺼낸다.
+    pub fn take_references(&self, id: i64) -> Option<Vec<DefLoc>> {
+        let v = self.shared.replies.lock().ok()?.remove(&id)?;
+        Some(crate::lspread::parse_locations(&v))
+    }
+
     /// 서버 프로세스가 살아 있는지.
     pub fn alive(&mut self) -> bool {
         matches!(self.child.try_wait(), Ok(None))

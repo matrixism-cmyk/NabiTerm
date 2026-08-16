@@ -99,6 +99,9 @@ pub struct NabiApp {
     pub snap_name: String,
     /// nabiPad LSP 허브(T6-4) — rust-analyzer 진단·정의 이동.
     pub lsp: crate::editorlsp::LspHub,
+    /// SFTP 전송 히스토리(S6-60) + 목록 창 열림.
+    pub xfer_history: Vec<crate::sftphistory::XferRecord>,
+    pub xfer_history_open: bool,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

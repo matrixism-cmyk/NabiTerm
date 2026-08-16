@@ -103,17 +103,19 @@ impl NabiApp {
         use crate::sftpxfer::XferState;
         let res = self.remote_panel_mut(id).map(|p| {
             let mut was_upload = false;
+            let mut rec = None; // 전송 히스토리 기록(S6-60): (up, size, 소요초).
             if let Some(t) = p.transfers.iter_mut().find(|t| t.xfer == xfer) {
                 was_upload = t.up;
                 // 사용자가 멈춘 항목의 취소 완료는 정지 상태를 유지한다(실패로 표시하지 않는다).
                 if t.state != XferState::Paused {
                     t.state = if ok { XferState::Done } else { XferState::Failed };
+                    rec = Some((t.up, t.size, t.started.elapsed().as_secs_f64()));
                 }
                 if !ok {
                     t.err = message.clone(); // 항목별 실패 사유 저장(툴팁).
                 }
             }
-            p.status = if ok { format!("\u{2193} {name}") } else { message };
+            p.status = if ok { format!("\u{2193} {name}") } else { message.clone() };
             if ok && was_upload {
                 p.dir_stale = true; // 목록 갱신은 큐가 빈 뒤 한 번만(아래 refresh).
             }
@@ -123,9 +125,12 @@ impl NabiApp {
             // 영영 막으면 안 된다(완료 토스트는 여전히 "전부 끝남" 기준이다).
             let quiet = crate::sftpxfer::settled(&p.transfers);
             let refresh = crate::sftpxfer::take_refresh(quiet, &mut p.dir_stale);
-            (refresh, p.path.clone(), drained)
+            (refresh, p.path.clone(), drained, rec)
         });
-        let Some((refresh, path, drained)) = res else { return };
+        let Some((refresh, path, drained, rec)) = res else { return };
+        if let Some((up, size, secs)) = rec {
+            self.record_xfer(&name, up, ok, size, secs, &message); // 전송 히스토리(S6-60).
+        }
         self.sftp_xfer_notify(ctx, ok, &name, drained); // H6 완료 토스트+attention.
         if ok {
             self.on_edit_download(&name); // 외부 편집기 오픈 또는 내장 에디터 적재.

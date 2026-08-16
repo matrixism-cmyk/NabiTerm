@@ -56,6 +56,12 @@ pub struct EditorDoc {
     pub diags: Vec<(usize, u8, String)>,
     /// 현재 커서 문자 오프셋(렌더가 매 프레임 갱신) — 정의 이동 등 위치 기반 요청 기준.
     pub cur_off: usize,
+    /// LSP 심볼 정보(hover) 팝업 본문. Some=열림(editorcode가 그림).
+    pub lsp_info: Option<String>,
+    /// LSP 참조 목록 팝업: (경로, 0기반 줄, 열). Some=열림.
+    pub lsp_refs: Option<Vec<(String, u32, u32)>>,
+    /// 진단 목록 팝업 열림(상태바 오류/경고 클릭).
+    pub diag_popup: bool,
 }
 
 impl EditorDoc {
@@ -98,7 +104,7 @@ impl EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
-            diags: Vec::new(), cur_off: 0,
+            diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false,
         }
     }
 }
@@ -131,6 +137,10 @@ pub struct EditorAct {
     pub diff_disk: bool,
     /// 선택 텍스트를 포커스 외 첫 터미널 pane에서 실행(우클릭 ▸ 터미널에서 실행).
     pub run_in_term: Option<String>,
+    /// LSP(T6-4 2단계): 정의로 이동/심볼 정보/참조 찾기 요청(rs 문서 — 앱 허브가 처리).
+    pub lsp_goto_def: bool, pub lsp_hover: bool, pub lsp_refs: bool,
+    /// 다른 파일의 지정 줄(0기반) 열기(참조 목록 클릭 — 앱이 open+jump).
+    pub open_at: Option<(String, usize)>,
 }
 
 /// 경로의 파일명(표시용).

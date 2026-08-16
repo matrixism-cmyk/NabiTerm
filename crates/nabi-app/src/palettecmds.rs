@@ -79,6 +79,9 @@ pub(crate) fn palette_commands(
         (tr(lang, "snap.list").to_string(), PaletteAction::SnapshotList),
         (tr(lang, "bcast.results").to_string(), PaletteAction::BroadcastResults),
         (tr(lang, "lsp.gotodef").to_string(), PaletteAction::GotoDefinition),
+        (tr(lang, "lsp.hover.pal").to_string(), PaletteAction::LspHover),
+        (tr(lang, "lsp.refs.pal").to_string(), PaletteAction::LspRefs),
+        (tr(lang, "sftp.history").to_string(), PaletteAction::XferHistory),
         (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
         (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),
     ];

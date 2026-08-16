@@ -146,6 +146,15 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
                 }
             });
         });
+        // 코드(LSP — rs 문서만): 정의로 이동/심볼 정보/참조 찾기(+진단 목록). 앱 허브가 처리.
+        if doc.lang_ext() == "rs" {
+            ui.menu_button(tr(lang, "ctx.code"), |ui| {
+                if ui.button(tr(lang, "lsp.gotodef.short")).clicked() { act.lsp_goto_def = true; ui.close(); }
+                if ui.button(tr(lang, "lsp.hover")).clicked() { act.lsp_hover = true; ui.close(); }
+                if ui.button(tr(lang, "lsp.refs")).clicked() { act.lsp_refs = true; ui.close(); }
+                if ui.add_enabled(!doc.diags.is_empty(), egui::Button::new(tr(lang, "lsp.diags"))).clicked() { doc.diag_popup = true; ui.close(); }
+            });
+        }
         // 괄호 짝으로 커서 이동(VS Code). 커서 위치 괄호의 짝 char 인덱스로 점프.
         if ui.button(tr(lang, "ctx.gotobracket")).clicked() {
             if let Some(cidx) = out.cursor_range.map(|cr| cr.primary.index.0) {

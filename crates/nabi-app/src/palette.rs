@@ -59,8 +59,10 @@ pub(crate) enum PaletteAction {
     SnapshotSave, SnapshotList,
     /// 브로드캐스트 결과 집계 뷰(T7-3).
     BroadcastResults,
-    /// nabiPad: 커서 심볼의 정의로 이동(T6-4 LSP).
-    GotoDefinition,
+    /// nabiPad: 커서 심볼의 정의로 이동/심볼 정보/참조 찾기(T6-4 LSP).
+    GotoDefinition, LspHover, LspRefs,
+    /// SFTP 전송 히스토리 창(S6-60).
+    XferHistory,
 }
 
 impl NabiApp {

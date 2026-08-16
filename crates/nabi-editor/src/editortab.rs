@@ -54,8 +54,7 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
     if doc.find.open { crate::editorfind::find_bar(ui, doc, lang); ui.separator(); }
     // 하단 상태바를 패널로 고정(탭 바깥 스크롤 방지) — 본문이 남은 공간을 정확히 채운다.
     // 커서 Ln/Col은 본문 렌더에서 나오므로 1프레임 지연값(메모리)을 표시.
-    let cur_id = ui.id().with("ed_cur");
-    let scroll_id = ui.id().with("ed_scroll");
+    let (cur_id, scroll_id) = (ui.id().with("ed_cur"), ui.id().with("ed_scroll"));
     let last_cur: (usize, usize, usize) = ui.data(|d| d.get_temp(cur_id)).unwrap_or((1, 1, 0));
     // 미니맵(우측 개요) — 직전 프레임 스크롤 상태로 그리고, 클릭 시 목표 오프셋을 받는다.
     let mut mm_target = None;
@@ -74,6 +73,7 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
     egui::Panel::bottom(ui.id().with("ed_status")).show(ui, |ui| {
         let (enc, eol) = crate::editorstatus::editor_status(ui, doc, last_cur, lang); act.set_encoding = enc; act.set_eol = eol;
     });
+    crate::editorcode::show_code_popups(ui, doc, lang, &mut act); // LSP 팝업(호버·참조·진단 목록).
     let row_h = ui.fonts_mut(|f| f.row_height(&egui::FontId::monospace(doc.font_size)));
     // 점프(찾기/줄이동/개요)는 대상 줄을 화면 ≈40% 지점에 두어 위아래 맥락이 보이게 한다(VS Code식). 미니맵 스크럽은 정확 위치.
     let vh = ui.available_height();

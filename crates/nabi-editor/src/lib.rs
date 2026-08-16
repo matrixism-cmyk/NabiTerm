@@ -31,6 +31,7 @@ pub mod editorcodec;
 pub mod editorcodec2;
 pub mod editorcodec3;
 pub mod editorcodec4;
+pub mod editorcode;
 pub mod editorcolor;
 pub mod editorcomment;
 pub mod editorconvert;

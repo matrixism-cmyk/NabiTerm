@@ -50,7 +50,29 @@ pub(crate) fn session_menu_items(ui: &mut egui::Ui, s: &SavedSession, lang: Lang
                 ui.close();
             }
         }
+        // 새 그룹 만들기(백로그): 이름 입력 → Enter/+ 로 그 그룹으로 이동(그룹은 라벨이라 이동=생성).
+        ui.separator();
+        if let Some(new) = crate::sessionctx::inline_name_input(ui, egui::Id::new(("newgroup", &s.name)), "sessions.newgroup", lang) {
+            action = Some(MenuAction::MoveSessionToGroup(s.name.clone(), Some(new)));
+            ui.close();
+        }
     });
     if ui.button(tr(lang, "sessions.delete")).clicked() { action = Some(MenuAction::DeleteSession(s.name.clone())); ui.close(); }
     action
+}
+
+/// 메뉴 안 한 줄 이름 입력(임시 상태는 egui 메모리) — Enter 또는 + 클릭 시 값 반환.
+pub(crate) fn inline_name_input(ui: &mut egui::Ui, id: egui::Id, hint_key: &str, lang: nabi_i18n::Lang) -> Option<String> {
+    let mut txt: String = ui.data(|d| d.get_temp(id)).unwrap_or_default();
+    let mut out = None;
+    ui.horizontal(|ui| {
+        let r = ui.add(egui::TextEdit::singleline(&mut txt).hint_text(tr(lang, hint_key)).desired_width(130.0));
+        let enter = r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+        if (enter || ui.small_button("+").clicked()) && !txt.trim().is_empty() {
+            out = Some(txt.trim().to_string());
+            txt.clear();
+        }
+    });
+    ui.data_mut(|d| d.insert_temp(id, txt));
+    out
 }

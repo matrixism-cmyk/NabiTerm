@@ -31,6 +31,14 @@ impl NabiApp {
             v.sort();
             v
         };
+        // 실패를 맨 위로(무엇이 잘못됐는지부터) — 실패(0) > 실행중(1) > 미상(2) > 성공(3).
+        let mut targets = targets;
+        targets.sort_by_key(|p| match (self.cmd_start.contains_key(p), self.last_exit.get(p)) {
+            (false, Some(c)) if *c != 0 => 0u8,
+            (true, _) => 1,
+            (false, None) => 2,
+            (false, Some(_)) => 3,
+        });
         let mut open = true;
         egui::Window::new(tr(lang, "bcast.results"))
             .open(&mut open)
@@ -48,6 +56,7 @@ impl NabiApp {
                         ui.strong(tr(lang, "bcast.col.dur"));
                         ui.strong(tr(lang, "bcast.col.lastline"));
                         ui.end_row();
+                        let mut focus = None;
                         for p in &targets {
                             let title = self
                                 .orch
@@ -56,7 +65,10 @@ impl NabiApp {
                                 .ok()
                                 .and_then(|m| m.get(p).map(|v| v.title.clone()))
                                 .unwrap_or_default();
-                            ui.label(format!("#{} {title}", p.get()));
+                            // 클릭 → 해당 pane 탭 활성화(실패 원인 확인 동선 단축).
+                            if ui.selectable_label(false, format!("#{} {title}", p.get())).on_hover_text(tr(lang, "bcast.focus")).clicked() {
+                                focus = Some(*p);
+                            }
                             // 상태: 실행 중(⚙) > 종료코드(✓/✗ N) > 미상.
                             if self.cmd_start.contains_key(p) {
                                 ui.colored_label(crate::theme_ui::BROADCAST, "\u{2699}");
@@ -84,6 +96,11 @@ impl NabiApp {
                             let short: String = line.chars().take(60).collect();
                             ui.monospace(short);
                             ui.end_row();
+                        }
+                        if let Some(p) = focus {
+                            if let Some(loc) = self.dock.find_tab(&p) {
+                                let _ = self.dock.set_active_tab(loc);
+                            }
                         }
                     });
                 });

@@ -72,8 +72,12 @@ pub fn editor_status(
             let errs = doc.diags.iter().filter(|(_, s, _)| *s == 1).count();
             let warns = doc.diags.len() - errs;
             ui.separator();
-            if errs > 0 { ui.colored_label(egui::Color32::from_rgb(235, 80, 80), format!("\u{2717} {errs}")); }
-            if warns > 0 { ui.colored_label(AMBER, format!("\u{26a0} {warns}")); }
+            let red = egui::Color32::from_rgb(235, 80, 80);
+            let chip = |ui: &mut egui::Ui, c, s: String| ui.selectable_label(false, egui::RichText::new(s).color(c)).on_hover_text(tr(lang, "lsp.diags")).clicked();
+            let mut clicked = false;
+            if errs > 0 { clicked |= chip(ui, red, format!("\u{2717} {errs}")); }
+            if warns > 0 { clicked |= chip(ui, AMBER, format!("\u{26a0} {warns}")); }
+            if clicked { doc.diag_popup = true; } // 클릭 → 진단 목록 팝업.
             if let Some((_, _, msg)) = doc.diags.iter().find(|(l, _, _)| *l == doc.cur_line) {
                 let short: String = msg.chars().take(70).collect();
                 ui.weak(short).on_hover_text(msg);

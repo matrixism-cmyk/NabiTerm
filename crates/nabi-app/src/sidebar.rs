@@ -158,15 +158,15 @@ impl NabiApp {
         if let Some(a) = action { self.apply(ctx, a); }
     }
 
-    /// 그룹 이름을 바꾼다(그 folder의 모든 세션 folder 교체; 새 이름이 비면 그룹 해제). 저장.
-    fn rename_folder(&mut self, old: &str, new: &str) {
-        let folder = (!new.trim().is_empty()).then(|| new.trim().to_string());
-        let mut changed = false;
-        for s in self.sessions.sessions.iter_mut().filter(|s| s.folder.as_deref() == Some(old)) {
-            s.folder = folder.clone();
-            changed = true;
-        }
-        if changed { self.save_sessions(); }
+    /// 그룹 이름을 바꾼다(그 folder의 모든 세션 일괄; 새 이름이 비면 그룹 해제). 저장.
+    /// 실제 일괄 조작은 nabi-session::groups 순수 함수(SSOT — 세션 메뉴와 공유).
+    pub(crate) fn rename_folder(&mut self, old: &str, new: &str) {
+        let n = if new.trim().is_empty() {
+            nabi_session::groups::disband_group(&mut self.sessions.sessions, old)
+        } else {
+            nabi_session::groups::rename_group(&mut self.sessions.sessions, old, new)
+        };
+        if n > 0 { self.save_sessions(); }
     }
 
     /// 세션의 그룹(folder)을 바꾸고 저장한다(사이드바 DnD·우클릭 그룹 이동).

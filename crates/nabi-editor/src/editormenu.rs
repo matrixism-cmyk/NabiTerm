@@ -50,6 +50,15 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
         });
         ui.menu_button(tr(lang, "nabipad.menu.edit"), |ui| {
             if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close(); }
+            // 코드(LSP — rs 문서만): 컨텍스트 메뉴와 동일 항목(표면 일관).
+            if doc.lang_ext() == "rs" {
+                ui.menu_button(tr(lang, "ctx.code"), |ui| {
+                    if ui.button(tr(lang, "lsp.gotodef.short")).clicked() { act.lsp_goto_def = true; ui.close(); }
+                    if ui.button(tr(lang, "lsp.hover")).clicked() { act.lsp_hover = true; ui.close(); }
+                    if ui.button(tr(lang, "lsp.refs")).clicked() { act.lsp_refs = true; ui.close(); }
+                    if ui.add_enabled(!doc.diags.is_empty(), egui::Button::new(tr(lang, "lsp.diags"))).clicked() { doc.diag_popup = true; ui.close(); }
+                });
+            }
             // 변환 명령(일반 텍스트 문서 전용)은 전부 주제별 서브메뉴로 묶어 평면 비대화를 막는다.
             if can_transform {
                 use crate::editmenugroups as g;

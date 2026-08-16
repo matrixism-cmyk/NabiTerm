@@ -58,6 +58,30 @@ fn ra_diagnostics_and_definition() {
     };
     let def = def.expect("정의 위치");
     assert_eq!(def.line, 0, "helper 정의는 1번째 줄");
+
+    // 심볼 정보(hover): helper 호출 위 — 시그니처가 와야 한다.
+    let id = c.request_hover(&main, 1, 26).expect("hover 요청");
+    let t3 = Instant::now();
+    let info = loop {
+        if let Some(h) = c.take_hover(id) {
+            break h;
+        }
+        assert!(t3.elapsed() < Duration::from_secs(30), "hover 응답 없음");
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(info.unwrap_or_default().contains("helper"), "hover에 심볼명 포함");
+
+    // 참조 찾기: helper 정의 위 — 선언+호출 2곳.
+    let id = c.request_references(&main, 0, 4).expect("references 요청");
+    let t4 = Instant::now();
+    let refs = loop {
+        if let Some(r) = c.take_references(id) {
+            break r;
+        }
+        assert!(t4.elapsed() < Duration::from_secs(30), "references 응답 없음");
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(refs.len() >= 2, "선언+호출 최소 2곳: {refs:?}");
     assert!(c.alive());
     drop(c);
     let _ = std::fs::remove_dir_all(&dir);

@@ -61,6 +61,9 @@ impl NabiApp {
             PaletteAction::SnapshotSave => { self.snap_name.clear(); self.snap_save_open = true; }
             PaletteAction::SnapshotList => self.snap_list_open = true,
             PaletteAction::GotoDefinition => self.lsp_goto_definition(),
+            PaletteAction::LspHover => self.lsp_hover(),
+            PaletteAction::LspRefs => self.lsp_refs(),
+            PaletteAction::XferHistory => self.xfer_history_open = true,
             PaletteAction::BroadcastResults => self.bcast_view_open = true,
             PaletteAction::OpenAiCli => {
                 self.about_open = true;

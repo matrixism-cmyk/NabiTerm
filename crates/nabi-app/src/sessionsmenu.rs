@@ -50,6 +50,18 @@ pub(crate) fn sessions_menu(ui: &mut egui::Ui, lang: Lang, saved: &[SavedSession
                     action = Some(a);
                 }
             }
+            // 그룹 관리(백로그): 이름 바꾸기(일괄)·해산(세션은 유지).
+            ui.separator();
+            ui.menu_button(tr(lang, "sessions.renamegroup"), |ui| {
+                if let Some(new) = crate::sessionctx::inline_name_input(ui, egui::Id::new(("rengrp", f)), "sessions.newgroup", lang) {
+                    action = Some(MenuAction::RenameGroup(f.to_string(), new));
+                    ui.close();
+                }
+            });
+            if ui.button(tr(lang, "sessions.ungroupall")).clicked() {
+                action = Some(MenuAction::DisbandGroup(f.to_string()));
+                ui.close();
+            }
         });
     }
     ui.separator();

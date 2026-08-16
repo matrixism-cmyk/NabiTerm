@@ -29,6 +29,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("wt.list", PaletteAction::WorktreeList),
         ("qsel.title", PaletteAction::QuickSelect),
         ("snap.save", PaletteAction::SnapshotSave),
+        ("sftp.history", PaletteAction::XferHistory),
         ("snap.list", PaletteAction::SnapshotList),
         ("bcast.results", PaletteAction::BroadcastResults),
     ] {

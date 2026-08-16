@@ -83,6 +83,11 @@ impl NabiApp {
             if let Some(rp) = a.open_recent { self.open_editor_local(rp.into()); }
             if a.diff_disk { self.diff_editor_against_disk(p); }
             if let Some(c) = a.run_in_term { self.run_in_first_terminal(c); }
+            // LSP(T6-4 2단계): 컨텍스트/메뉴에서 온 코드 요청 + 참조 목록의 타 파일 점프.
+            if a.lsp_goto_def { self.lsp_goto_definition_for(p); }
+            if a.lsp_hover { self.lsp_hover_for(p); }
+            if a.lsp_refs { self.lsp_refs_for(p); }
+            if let Some((path, line)) = a.open_at { self.open_editor_at(path, line); }
         }
         if let Some(p) = closed {
             self.editors.remove(&p);

@@ -23,6 +23,9 @@ pub struct LspHub {
     changed_at: HashMap<PathBuf, (u64, Instant)>,
     /// 대기 중인 정의 이동 요청 id.
     pending_def: Option<i64>,
+    /// 대기 중인 심볼 정보/참조 요청: (요청 id, 대상 pane).
+    pending_hover: Option<(i64, nabi_types::PaneId)>,
+    pending_refs: Option<(i64, nabi_types::PaneId)>,
 }
 
 /// 텍스트 해시(FNV-1a) — 프레임당 rs 문서 몇 개 수준이라 충분히 싸다.
@@ -120,36 +123,100 @@ impl NabiApp {
                 doc.diags = diags.into_iter().map(|d| (d.line as usize, d.severity, d.message)).collect();
             }
         }
+        // 심볼 정보/참조 응답 폴링 — 도착하면 해당 문서 팝업 상태에 넣는다(editorcode가 그림).
+        if let (Some((id, pane)), Some(c)) = (self.lsp.pending_hover, &self.lsp.client) {
+            if let Some(reply) = c.take_hover(id) {
+                self.lsp.pending_hover = None;
+                match (reply, self.editors.get_mut(&pane)) {
+                    (Some(text), Some(doc)) => doc.lsp_info = Some(text),
+                    (None, _) => self.notify = Some((nabi_i18n::tr(self.lang, "lsp.noinfo").to_string(), Instant::now())),
+                    _ => {}
+                }
+            }
+        }
+        if let (Some((id, pane)), Some(c)) = (self.lsp.pending_refs, &self.lsp.client) {
+            if let Some(locs) = c.take_references(id) {
+                self.lsp.pending_refs = None;
+                if locs.is_empty() {
+                    self.notify = Some((nabi_i18n::tr(self.lang, "lsp.norefs").to_string(), Instant::now()));
+                } else if let Some(doc) = self.editors.get_mut(&pane) {
+                    doc.lsp_refs = Some(locs.into_iter().map(|l| (l.path.to_string_lossy().into_owned(), l.line, l.col)).collect());
+                }
+            }
+        }
         // 정의 이동 응답 폴링 — 도착하면 해당 파일을 열어 그 줄로 점프.
         if let (Some(reqid), Some(c)) = (self.lsp.pending_def, &self.lsp.client) {
             if let Some(reply) = c.take_definition(reqid) {
                 self.lsp.pending_def = None;
                 match reply {
-                    Some(def) => {
-                        self.open_editor_local(def.path.clone());
-                        if let Some(d) = self.editors.values_mut().find(|d| d.path == def.path) {
-                            d.jump_to_line(def.line as usize);
-                        }
-                    }
+                    Some(def) => self.open_editor_at(def.path.to_string_lossy().into_owned(), def.line as usize),
                     None => self.notify = Some((nabi_i18n::tr(self.lang, "lsp.nodef").to_string(), Instant::now())),
                 }
             }
         }
     }
 
-    /// 팔레트 "정의로 이동": 포커스된 rs 문서의 커서 위치로 definition 요청.
-    pub(crate) fn lsp_goto_definition(&mut self) {
-        let Some(p) = self.focused_pane() else { return };
-        let Some(doc) = self.editors.get(&p) else { return };
-        if !lsp_doc(doc) {
-            return;
+    /// 파일을 열고 지정 줄(0기반)로 점프(참조 목록 등 위치 점프 공용).
+    pub(crate) fn open_editor_at(&mut self, path: String, line: usize) {
+        let pb = PathBuf::from(&path);
+        self.open_editor_local(pb.clone());
+        if let Some(d) = self.editors.values_mut().find(|d| d.path == pb) {
+            d.jump_to_line(line);
         }
-        let Some(c) = &self.lsp.client else {
+    }
+
+    /// 지정 pane의 rs 문서에서 커서 위치 LSP 요청을 보낼 준비(공용 게이트).
+    fn lsp_req_ctx(&mut self, p: nabi_types::PaneId) -> Option<(PathBuf, u32, u32)> {
+        let doc = self.editors.get(&p)?;
+        if !lsp_doc(doc) {
+            return None;
+        }
+        if self.lsp.client.is_none() {
             self.notify = Some((nabi_i18n::tr(self.lang, "lsp.off").to_string(), Instant::now()));
-            return;
-        };
+            return None;
+        }
         let (line, col) = lsp_pos(&doc.text, doc.cur_off);
-        self.lsp.pending_def = c.request_definition(&doc.path, line, col);
+        Some((doc.path.clone(), line, col))
+    }
+
+    /// 지정 pane에서 정의로 이동 요청(컨텍스트/메뉴 경유).
+    pub(crate) fn lsp_goto_definition_for(&mut self, p: nabi_types::PaneId) {
+        if let Some((path, line, col)) = self.lsp_req_ctx(p) {
+            self.lsp.pending_def = self.lsp.client.as_ref().and_then(|c| c.request_definition(&path, line, col));
+        }
+    }
+
+    /// 지정 pane에서 심볼 정보(hover) 요청.
+    pub(crate) fn lsp_hover_for(&mut self, p: nabi_types::PaneId) {
+        if let Some((path, line, col)) = self.lsp_req_ctx(p) {
+            self.lsp.pending_hover = self.lsp.client.as_ref().and_then(|c| c.request_hover(&path, line, col)).map(|id| (id, p));
+        }
+    }
+
+    /// 지정 pane에서 참조 찾기 요청.
+    pub(crate) fn lsp_refs_for(&mut self, p: nabi_types::PaneId) {
+        if let Some((path, line, col)) = self.lsp_req_ctx(p) {
+            self.lsp.pending_refs = self.lsp.client.as_ref().and_then(|c| c.request_references(&path, line, col)).map(|id| (id, p));
+        }
+    }
+
+    /// 팔레트 "정의로 이동": 포커스된 rs 문서 기준.
+    pub(crate) fn lsp_goto_definition(&mut self) {
+        if let Some(p) = self.focused_pane() {
+            self.lsp_goto_definition_for(p);
+        }
+    }
+
+    /// 팔레트 "심볼 정보"/"참조 찾기": 포커스된 rs 문서 기준.
+    pub(crate) fn lsp_hover(&mut self) {
+        if let Some(p) = self.focused_pane() {
+            self.lsp_hover_for(p);
+        }
+    }
+    pub(crate) fn lsp_refs(&mut self) {
+        if let Some(p) = self.focused_pane() {
+            self.lsp_refs_for(p);
+        }
     }
 }
 

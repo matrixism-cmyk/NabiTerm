@@ -4,6 +4,7 @@
 //! 포맷은 버전드(schema_version) — 후속 마이그레이션 가능.
 
 pub mod export;
+pub mod groups;
 pub mod model;
 #[cfg(test)]
 mod model_tests;
