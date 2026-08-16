@@ -3071,6 +3071,7 @@ dependencies = [
  "nabi-agentdetect",
  "nabi-config",
  "nabi-control",
+ "nabi-editor",
  "nabi-i18n",
  "nabi-log",
  "nabi-orchestrator",
@@ -3143,8 +3144,28 @@ dependencies = [
 name = "nabi-editor"
 version = "0.1.424"
 dependencies = [
+ "arboard",
+ "chardetng",
+ "chrono",
+ "egui",
+ "encoding_rs",
+ "memmap2",
+ "nabi-config",
  "nabi-fs",
+ "nabi-i18n",
+ "nabi-proto",
+ "nabi-types",
+ "rand 0.8.6",
+ "regex",
+ "rfd",
+ "ropey",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "syntect",
  "tokio",
+ "toml 0.8.23",
+ "unicode-segmentation",
 ]
 
 [[package]]

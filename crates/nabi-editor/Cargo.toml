@@ -6,7 +6,28 @@ license.workspace = true
 publish = false
 
 [dependencies]
-nabi-fs = { workspace = true }
+nabi-fs = { workspace = true }       # extsession(원격 외부편집).
+nabi-i18n = { workspace = true }
+nabi-proto = { workspace = true }
+nabi-types = { workspace = true }
+nabi-config = { workspace = true }   # EditorConfig(구문 테마·확장자 매핑).
+egui = { workspace = true }
+ropey = "1"                # 대용량 파일 편집 엔진.
+memmap2 = "0.9"            # 대용량 파일 뷰어 mmap.
+encoding_rs = { workspace = true }
+unicode-segmentation = { workspace = true }
+sha2 = { workspace = true }
+serde_json = { workspace = true }
+regex = "1"
+chrono = { workspace = true }
+arboard = "3"              # 클립보드(uiutil).
+rfd = "0.15"               # 파일 대화상자(에디터 메뉴).
+# 코드 하이라이트: onig(C) 회피 위해 default-features off + fancy-regex(순수 Rust).
+syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+rand = { workspace = true }        # UUID 생성(editoruuid).
+chardetng = "0.1"                  # 자동 인코딩 감지(editload).
+sha1 = "0.11"                      # 해시 도구(editorhash).
+toml = { workspace = true }        # 변환 도구(editordev2).
 
 [dev-dependencies]
 tokio = { workspace = true }

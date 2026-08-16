@@ -1,11 +1,81 @@
-//! nabi-editor — 외부 편집기 편집.
+//! nabi-editor — nabiPad 편집기 코어(T5-1로 nabi-app에서 분리).
 //!
-//! 원격 파일을 임시로 받아 외부 편집기로 열고, 임시 파일이 바뀌면 재업로드한다.
-//! 백엔드는 `nabi_fs::RemoteFs`라 SFTP/FTP/로컬 어디서나 동작한다.
-//!
-//! 핵심 사이클(다운로드→재업로드)은 LocalFs로 단위 테스트한다. 편집기 실행/파일 감시는
-//! 후속에 notify로 자동화한다(현재는 폴링형 `reupload_if_changed`).
+//! 문서 모델(EditorDoc)·렌더(editortab)·HEX(edithex*)·대용량 rope(editbuf*)·변환 도구·
+//! 구문 강조(editorsyntax/hl*)·인코딩 목록까지 편집기 전부가 여기 산다. 앱은 열기/저장/
+//! 닫기/원격 글루(nabi-app editor{open,save,close,sftp,app}.rs)만 가진다.
+//! 원격 외부편집 세션(EditSession)은 extsession(구 editor.rs).
 
+pub mod editbig;
+pub mod editbuf;
+pub mod editbufcol;
+pub mod editbufedit;
+pub mod editbufkeys;
+pub mod editbufmenu;
+pub mod editbufmove;
+pub mod editbufpaint;
+pub mod editbufview;
+pub mod editbufxform;
+pub mod edithex;
+pub mod edithexedit;
+pub mod edithexfind;
+pub mod edithexmenu;
+pub mod edithexops;
+pub mod edithexview;
+pub mod editload;
+pub mod editmenugroups;
 pub mod editor;
+pub mod editoralign;
+pub mod editorcase;
+pub mod editorcodec;
+pub mod editorcodec2;
+pub mod editorcodec3;
+pub mod editorcodec4;
+pub mod editorcolor;
+pub mod editorcomment;
+pub mod editorconvert;
+pub mod editorcsv;
+pub mod editorcsv2;
+pub mod editorctx;
+pub mod editordev;
+pub mod editordev2;
+pub mod editorextra;
+pub mod editorextract;
+pub mod editorfind;
+pub mod editorfreq;
+pub mod editorhash;
+pub mod editorhl;
+pub mod editorhlinc;
+pub mod editorhlspans;
+pub mod editorindent;
+pub mod editorlineops;
+pub mod editorlines;
+pub mod editorlist;
+pub mod editorloc;
+pub mod editormd5;
+pub mod editormenu;
+pub mod editorminimap;
+pub mod editornum;
+pub mod editornumops;
+pub mod editoroutline;
+pub mod editorreplace;
+pub mod editorsort;
+pub mod editorstats;
+pub mod editorstatus;
+pub mod editorsyntax;
+pub mod editortab;
+pub mod editortext;
+pub mod editoruuid;
+pub mod editorwidth;
+pub mod editorxform;
+pub mod editorxml;
+pub mod editsel;
+pub mod encodings;
+pub mod encdetect;
+pub mod humanfmt;
+pub mod textpos;
+pub mod uiutil;
+#[cfg(test)]
+mod editornum_tests;
 
-pub use editor::EditSession;
+pub mod extsession;
+pub use extsession::EditSession;

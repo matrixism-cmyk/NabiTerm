@@ -6,38 +6,11 @@
 //! 치환문자 비율로 "현재 인코딩이 깨졌다"를 감지한다(확정 감지가 아닌 전환 제안).
 
 use crate::app::NabiApp;
+pub(crate) use nabi_editor::encdetect::{replacement_ratio, suggest_alt};
 use nabi_types::PaneId;
 
-/// 텍스트 중 U+FFFD(치환문자) 비율 0..1. 빈 문자열이면 0.
-pub(crate) fn replacement_ratio(text: &str) -> f32 {
-    let (mut total, mut bad) = (0u32, 0u32);
-    for c in text.chars() {
-        total += 1;
-        if c == '\u{fffd}' {
-            bad += 1;
-        }
-    }
-    if total == 0 {
-        0.0
-    } else {
-        bad as f32 / total as f32
-    }
-}
 
-/// 현재 인코딩과 치환문자 비율로 전환을 제안한다. 비율이 임계(2%) 미만이면 None(정상).
-/// 한국 환경: UTF-8로 보다 깨지면 EUC-KR(encoding_rs에서 CP949 상위호환) 제안, 그 반대도.
-pub(crate) fn suggest_alt(current_label: &str, ratio: f32) -> Option<&'static str> {
-    if ratio < 0.02 {
-        return None;
-    }
-    let cur = current_label.to_ascii_uppercase().replace(['-', '_'], "");
-    match cur.as_str() {
-        "UTF8" => Some("EUC-KR"),
-        // 그 외(EUC-KR/CP949/Shift_JIS 등)가 깨지면 UTF-8 시도가 가장 흔한 정답.
-        _ => Some("UTF-8"),
-    }
-}
-
+// 현재 인코딩과 치환문자 비율로 전환을 제안한다(순수 로직은 nabi_editor::encdetect).
 impl NabiApp {
     /// 포커스 pane을 검사해 인코딩 전환 제안을 계산한다(없으면 None).
     /// 화면이 깨졌으면(U+FFFD↑) raw 표본으로 chardetng 정확 감지(B9), 표본 부족 시 토글 폴백(P4).

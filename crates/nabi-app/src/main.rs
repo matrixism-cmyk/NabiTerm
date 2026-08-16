@@ -8,13 +8,27 @@
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-mod app; mod appnew; mod appicon; mod gpu; mod softgl;
+mod app; mod appnew;
+
+// --- nabiPad 코어는 nabi-editor 크레이트로 이관(T5-1) — 기존 crate:: 경로 유지용 심 ---
+mod editbig { pub use nabi_editor::editbig::*; }
+mod editbuf { pub use nabi_editor::editbuf::*; }
+mod edithex { pub use nabi_editor::edithex::*; }
+mod editload { pub use nabi_editor::editload::*; }
+mod editor { pub use nabi_editor::editor::*; }
+mod editorconvert { pub use nabi_editor::editorconvert::*; }
+mod editorextract { pub use nabi_editor::editorextract::*; }
+mod editorsyntax { pub use nabi_editor::editorsyntax::*; }
+mod editortab { pub use nabi_editor::editortab::*; }
+mod encodings { pub use nabi_editor::encodings::*; }
+mod humanfmt { pub use nabi_editor::humanfmt::*; }
+ mod appicon; mod gpu; mod softgl;
 mod arrange; mod bell;
 mod browser; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
 mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell;
 mod controlui; mod controlapp;
 mod filetype;
-mod humanfmt;
+
 mod clicks;
 mod closeconfirm;
 mod connect;
@@ -28,50 +42,25 @@ mod fonts;
 mod fontinstall;
 mod netinfo;
 mod drives;
-mod editor; mod editorsave;
+ mod editorsave;
 mod editoropen; mod editorclose;
-mod editload;
-mod editortab;
+
 mod filezilla;
 mod mobaxterm;
 mod putty;
-mod editorstatus;
-mod editormenu;
-mod editorextra;
-mod editorminimap;
-mod editoroutline;
-mod editorconvert;
-mod editmenugroups;
-mod editorcolor;
-mod editorcodec;
-mod editorcodec2;
-mod editorcodec4;
-mod editoralign;
-mod editorfreq;
-mod editorwidth; mod editorxml; mod editoruuid; mod editorxform;
-mod editorcase; mod editorcomment;
-mod editortext;
-mod editorlist;
-mod editordev;
-mod editordev2;
-mod editorcodec3;
-mod editorcsv; mod editorcsv2;
-mod editorhash;
-mod editormd5;
-mod editornum; mod editornumops;
-#[cfg(test)]
-mod editornum_tests;
-mod edithexops;
-mod editorindent;
-mod editorsort;
-mod editorlines;
-mod editorstats;
-mod edithex; mod edithexedit; mod edithexfind; mod edithexmenu; mod edithexview;
-mod encodings;
-mod editorhl; mod editorhlinc; mod editorhlspans; mod editorsyntax;
-mod editbig; mod editbuf; mod editbufcol; mod editbufedit; mod editbufkeys; mod editbufmove; mod editbufpaint; mod editbufview;
-mod editorfind;
-mod editorreplace;
+
+   
+ 
+
+ 
+
+ 
+
+    
+
+   
+       
+
 mod floatpanels;
 mod floatterm;
 mod linkmenu;
@@ -83,16 +72,14 @@ mod agentguide;
 mod aicli; mod aiclipage; mod aicliupd; mod aicliver; mod wsairesume;
 mod aistatus; mod agentwatch;
 mod aidash;
-mod encsuggest;
-mod editbufmenu;
-mod editbufxform;
+
 mod sshkey;
 mod sshauth;
 mod snippetsend;
 mod dirjump;
 mod quickselect;
 mod cmdhist;
-mod modal; mod onboarding;
+mod modal; mod onboarding; mod editorapp; mod encsuggest;
 mod sessionlog; mod sessionnote; mod sessionctx;
 mod extwatch;
 mod triggers;
@@ -100,8 +87,8 @@ mod findfiles;
 mod difflines;
 mod dupfiles;
 mod largefiles;
-mod editorextract;
-mod editorlineops; mod editorctx; mod dirtools; mod replaceui; mod sftpbookmark;
+
+  mod dirtools; mod replaceui; mod sftpbookmark;
 mod sshcmd; mod sshjump;
 mod helppages;
 mod help;
@@ -142,7 +129,7 @@ mod sftplist;
 mod viewmode;
 mod sftpview;
 mod syncbrowse;
-mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod editorloc;
+mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; 
 mod sftppath;
 mod sftpxfer; mod sftpqueue; mod sftpqact;
 mod sftpdownload;
@@ -150,7 +137,7 @@ mod sftpperms;
 mod sftptoolbar;
 mod sftpops;
 mod eventsftp;
-mod editsel;
+
 mod sshconfig;
 mod settings;
 mod settingslists;

@@ -74,26 +74,7 @@ pub(crate) fn mouse_reports(
     out
 }
 
-/// 프레임의 원시 휠 델타(포인트) — 0.34에서 `raw_scroll_delta` 필드가 사라져
-/// MouseWheel 이벤트 합산으로 구한다(단위 환산은 egui 기본 관례를 따름).
-pub(crate) fn raw_wheel(i: &egui::InputState) -> egui::Vec2 {
-    i.events.iter().fold(egui::Vec2::ZERO, |acc, e| match e {
-        egui::Event::MouseWheel { unit, delta, .. } => {
-            let pts = match unit {
-                egui::MouseWheelUnit::Point => *delta,
-                egui::MouseWheelUnit::Line => *delta * 40.0, // egui line_scroll_speed 기본치.
-                egui::MouseWheelUnit::Page => *delta * 600.0,
-            };
-            acc + pts
-        }
-        _ => acc,
-    })
-}
-
-/// 원시 휠 이벤트를 이 프레임에서 소비한다(스크롤 영역 등 다른 위젯이 또 먹지 않게).
-pub(crate) fn consume_wheel(i: &mut egui::InputState) {
-    i.events.retain(|e| !matches!(e, egui::Event::MouseWheel { .. }));
-}
+pub(crate) use nabi_editor::uiutil::{consume_wheel, raw_wheel};
 
 /// 스크롤백 키(Shift+PageUp/Down/Home/End)를 소비하고 (delta, to_top, to_bottom)를 돌려준다.
 /// PageUp/Down은 `page`줄(한 화면) 단위로 스크롤한다.
@@ -141,10 +122,7 @@ pub(crate) fn draw_scroll_badge(ui: &egui::Ui, rect: egui::Rect, offset: usize) 
         .clicked()
 }
 
-/// 시스템 클립보드 텍스트를 읽는다(우클릭 붙여넣기용). 실패 시 None.
-pub(crate) fn clipboard_text() -> Option<String> {
-    arboard::Clipboard::new().ok()?.get_text().ok()
-}
+pub(crate) use nabi_editor::uiutil::clipboard_text;
 
 /// 터미널 포커스 싱크 id(보이지 않는 포커스 대상 — 모든 키가 PTY로 가게 한다).
 fn term_focus_sink() -> egui::Id {

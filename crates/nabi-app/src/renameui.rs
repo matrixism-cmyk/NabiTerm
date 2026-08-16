@@ -2,17 +2,7 @@
 //! 로컬/SFTP 브라우저의 자세히(Details) 테이블 셀이 공유한다. + 브라우저 Ctrl+휠 줌 헬퍼.
 
 /// 패널 위에서 Ctrl+휠 방향을 돌려준다(+1 확대/-1 축소/0 없음). 양쪽 브라우저 공용.
-pub(crate) fn ctrl_wheel_zoom(ui: &egui::Ui, over: bool) -> f32 {
-    if !over {
-        return 0.0;
-    }
-    let (wheel, ctrl) = ui.input(|i| (crate::paneio::raw_wheel(i).y, i.modifiers.command));
-    if ctrl && wheel != 0.0 {
-        wheel.signum()
-    } else {
-        0.0
-    }
-}
+pub(crate) use nabi_editor::uiutil::ctrl_wheel_zoom;
 
 /// 이름변경 편집기 상태(패널 필드를 빌려 구성). 대상 행에서 `edit`로 오버레이.
 /// target/buf는 비활성이면 None(더미 버퍼 불필요).
