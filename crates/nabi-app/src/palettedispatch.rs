@@ -63,6 +63,7 @@ impl NabiApp {
             PaletteAction::GotoDefinition => self.lsp_goto_definition(),
             PaletteAction::LspHover => self.lsp_hover(),
             PaletteAction::LspRefs => self.lsp_refs(),
+            PaletteAction::LspFormat => { if let Some(p) = self.focused_pane() { self.lsp_format_for(p); } }
             PaletteAction::XferHistory => self.xfer_history_open = true,
             PaletteAction::BroadcastResults => self.bcast_view_open = true,
             PaletteAction::OpenAiCli => {

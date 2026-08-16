@@ -143,6 +143,8 @@ pub struct EditorAct {
     pub lsp_goto_def: bool, pub lsp_hover: bool, pub lsp_refs: bool,
     /// LSP 이름 바꾸기 확정(새 이름) — 앱 허브가 rename 요청을 보낸다.
     pub lsp_rename: Option<String>,
+    /// LSP 문서 전체 포맷팅(rustfmt) 요청.
+    pub lsp_format: bool,
     /// 다른 파일의 지정 줄(0기반) 열기(참조 목록 클릭 — 앱이 open+jump).
     pub open_at: Option<(String, usize)>,
 }

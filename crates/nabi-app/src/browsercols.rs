@@ -19,15 +19,17 @@ pub(crate) fn row_h(ui: &egui::Ui) -> f32 {
     ui.text_style_height(&egui::TextStyle::Body).max(14.0) + 6.0
 }
 
-/// 파일 유형 라벨(폴더 또는 확장자 대문자).
-pub(crate) fn type_label(row: &Row, lang: Lang) -> String {
-    if row.is_dir {
+/// 파일 유형 라벨(폴더 또는 확장자 대문자) — 이름 기반 공용(#12: 브라우저·SFTP 공유).
+pub(crate) fn type_label_of(name: &str, is_dir: bool, lang: Lang) -> String {
+    if is_dir {
         return tr(lang, "browser.type.folder").to_string();
     }
-    Path::new(&row.name)
-        .extension()
-        .map(|e| e.to_string_lossy().to_uppercase())
-        .unwrap_or_default()
+    Path::new(name).extension().map(|e| e.to_string_lossy().to_uppercase()).unwrap_or_default()
+}
+
+/// 파일 유형 라벨(로컬 브라우저 Row).
+pub(crate) fn type_label(row: &Row, lang: Lang) -> String {
+    type_label_of(&row.name, row.is_dir, lang)
 }
 
 /// 정렬 가능한 헤더 셀: 텍스트는 가운데 정렬, 칸 전체가 클릭 영역(텍스트만 노리지 않아도 됨).

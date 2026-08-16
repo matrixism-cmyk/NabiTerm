@@ -102,11 +102,13 @@ pub(crate) fn parse_locations(v: &Value) -> Vec<DefLoc> {
     v.as_array().map(Vec::as_slice).unwrap_or_default().iter().filter_map(parse_definition).collect()
 }
 
+/// 텍스트 편집 하나: (시작줄, 시작열16, 끝줄, 끝열16, 새 텍스트) — 0기반, 열은 UTF-16 단위.
+pub type TextEditSpan = (u32, u32, u32, u32, String);
+
 /// 한 파일에 적용할 텍스트 편집 묶음(T6-4 rename). 열은 LSP 규약대로 UTF-16 단위.
 pub struct FileEdits {
     pub path: PathBuf,
-    /// (시작줄, 시작열16, 끝줄, 끝열16, 새 텍스트) — 0기반.
-    pub edits: Vec<(u32, u32, u32, u32, String)>,
+    pub edits: Vec<TextEditSpan>,
 }
 
 /// WorkspaceEdit → 파일별 편집 목록(changes | documentChanges 양쪽 수용).
@@ -147,6 +149,24 @@ pub(crate) fn parse_workspace_edit(v: &Value) -> Vec<FileEdits> {
     out
 }
 
+/// TextEdit 배열(포맷팅 응답 등) → 편집 목록. null/비배열=빈 목록.
+pub(crate) fn parse_text_edits(v: &Value) -> Vec<TextEditSpan> {
+    v.as_array()
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|e| {
+            Some((
+                e["range"]["start"]["line"].as_u64()? as u32,
+                e["range"]["start"]["character"].as_u64()? as u32,
+                e["range"]["end"]["line"].as_u64()? as u32,
+                e["range"]["end"]["character"].as_u64()? as u32,
+                e["newText"].as_str()?.to_string(),
+            ))
+        })
+        .collect()
+}
+
 /// UTF-16 (줄, 열) → 바이트 오프셋. 줄/열이 범위를 넘으면 그 줄 끝/문서 끝으로 고정.
 pub fn pos16_to_byte(text: &str, line: u32, col16: u32) -> usize {
     let mut off = 0usize;
@@ -167,7 +187,7 @@ pub fn pos16_to_byte(text: &str, line: u32, col16: u32) -> usize {
 }
 
 /// 편집 묶음을 텍스트에 적용한다(뒤에서부터 — 앞 오프셋이 밀리지 않게). 순수.
-pub fn apply_edits(text: &str, edits: &[(u32, u32, u32, u32, String)]) -> String {
+pub fn apply_edits(text: &str, edits: &[TextEditSpan]) -> String {
     let mut sorted: Vec<_> = edits.to_vec();
     sorted.sort_by_key(|e| (e.0, e.1));
     let mut out = text.to_string();

@@ -36,6 +36,19 @@ fn mem_mb(pid: u32) -> Option<u64> {
     digits.parse::<u64>().ok().map(|k| k / 1024)
 }
 
+/// mem_mb의 견고판 — tasklist는 시스템 부하에서 일시 실패할 수 있어(빌드 병행 등)
+/// 한 번의 실패를 크래시로 단정하지 않는다: 3회 재시도 후에도 None이면 진짜 소멸로 본다.
+/// (실제로 v0.1.429 소크가 clippy 전체 빌드와 겹친 순간 오탐으로 실패했다.)
+fn mem_mb_retry(pid: u32) -> Option<u64> {
+    for i in 0..3 {
+        if let Some(m) = mem_mb(pid) {
+            return Some(m);
+        }
+        std::thread::sleep(Duration::from_millis(500 * (i + 1)));
+    }
+    None
+}
+
 fn soak(mins: u64) -> Result<String, String> {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().to_path_buf();
     let exe = root.join("target/debug/nabi.exe");
@@ -93,14 +106,14 @@ fn drive(pipe_name: &str, token: &str, pid: u32, mins: u64) -> Result<String, St
         if !ok {
             fails += 1;
         }
-        if let Some(m) = mem_mb(pid) {
+        if let Some(m) = mem_mb_retry(pid) {
             peak = peak.max(m);
         } else {
             return Err(format!("사이클 {cycles}: 프로세스 소멸(크래시)"));
         }
         std::thread::sleep(Duration::from_secs(9));
     }
-    let mem1 = mem_mb(pid).ok_or("최종 메모리 측정 실패(크래시)")?;
+    let mem1 = mem_mb_retry(pid).ok_or("최종 메모리 측정 실패(크래시)")?;
     let cap = mem0 * 3 + 200;
     let report = format!(
         "soak {mins}분: 사이클 {cycles} · 응답실패 {fails} · 메모리 {mem0}→{mem1}MB(피크 {peak}, 허용 {cap})"

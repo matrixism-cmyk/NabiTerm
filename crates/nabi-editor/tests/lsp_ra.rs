@@ -98,6 +98,22 @@ fn ra_diagnostics_and_definition() {
     let renamed = nabi_editor::lspread::apply_edits(code, &fe.edits);
     assert!(renamed.contains("fn helper2()"), "선언 변경: {renamed}");
     assert!(renamed.contains("helper2();") || renamed.contains("= helper2()"), "호출 변경: {renamed}");
+
+    // 문서 포맷팅: 일부러 찌그러뜨린 텍스트를 동기화 후 rustfmt 결과를 적용해 확인.
+    let ugly = "fn helper()->i32{7}\nfn main(){let _x:i32=helper();}\n";
+    c.did_change(&main, ugly);
+    let id = c.request_formatting(&main, 4).expect("format 요청");
+    let t6 = Instant::now();
+    let edits = loop {
+        if let Some(e) = c.take_formatting(id) {
+            break e;
+        }
+        assert!(t6.elapsed() < Duration::from_secs(30), "format 응답 없음");
+        std::thread::sleep(Duration::from_millis(200));
+    };
+    assert!(!edits.is_empty(), "포맷 편집이 와야 함");
+    let pretty = nabi_editor::lspread::apply_edits(ugly, &edits);
+    assert!(pretty.contains("fn helper() -> i32"), "rustfmt 결과: {pretty}");
     assert!(c.alive());
     drop(c);
     let _ = std::fs::remove_dir_all(&dir);

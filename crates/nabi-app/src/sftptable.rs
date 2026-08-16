@@ -96,15 +96,9 @@ pub(crate) fn keyboard_nav(ui: &egui::Ui, sftp: &mut SftpPanel, a: &mut SftpAct)
 
 // perms_menu는 sftpperms.rs로 분리(파일 크기 규율).
 
-/// 파일 유형 라벨(폴더 또는 확장자 대문자).
+/// 파일 유형 라벨 — 브라우저와 공용 헬퍼 재사용(#12 DRY).
 fn type_label(e: &SftpEntry, lang: Lang) -> String {
-    if e.is_dir {
-        return tr(lang, "browser.type.folder").to_string();
-    }
-    std::path::Path::new(&e.name)
-        .extension()
-        .map(|x| x.to_string_lossy().to_uppercase())
-        .unwrap_or_default()
+    crate::browsercols::type_label_of(&e.name, e.is_dir, lang)
 }
 
 /// 이름 셀: 색칠된 아이콘+이름(click_and_drag — 더블클릭 열기, 드래그 다운로드 페이로드).

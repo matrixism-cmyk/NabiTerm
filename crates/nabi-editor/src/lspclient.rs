@@ -225,6 +225,21 @@ impl LspClient {
         Some(crate::lspread::parse_locations(&v))
     }
 
+    /// 문서 전체 포맷팅 요청(rust-analyzer=rustfmt) — 응답은 `take_formatting`으로 폴링.
+    pub fn request_formatting(&self, path: &Path, tab: u32) -> Option<i64> {
+        self.request(
+            "textDocument/formatting",
+            json!({"textDocument": {"uri": path_to_uri(path)},
+                   "options": {"tabSize": tab, "insertSpaces": true}}),
+        )
+    }
+
+    /// formatting 응답(TextEdit[])이 도착했으면 편집 목록을 꺼낸다(빈 배열=변경 없음).
+    pub fn take_formatting(&self, id: i64) -> Option<Vec<crate::lspread::TextEditSpan>> {
+        let v = self.shared.replies.lock().ok()?.remove(&id)?;
+        Some(crate::lspread::parse_text_edits(&v))
+    }
+
     /// 심볼 이름 바꾸기 요청 — 응답(WorkspaceEdit)은 `take_rename`으로 폴링.
     pub fn request_rename(&self, path: &Path, line: u32, col: u32, new_name: &str) -> Option<i64> {
         self.request(

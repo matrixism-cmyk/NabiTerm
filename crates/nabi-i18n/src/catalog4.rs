@@ -34,4 +34,8 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("common.ok", "OK", "확인", "OK"),
     ("lsp.renamed", "Renamed:", "이름 변경 완료:", "名前を変更:"),
     ("lsp.norename", "Cannot rename this symbol", "이 심볼의 이름을 바꿀 수 없습니다", "このシンボル名は変更できません"),
+    ("lsp.format", "Format document", "문서 포맷", "ドキュメント整形"),
+    ("lsp.format.pal", "nabiPad: format document (rustfmt)", "nabiPad: 문서 포맷(rustfmt)", "nabiPad: ドキュメント整形(rustfmt)"),
+    ("lsp.fmt.done", "Formatted (unsaved)", "포맷 완료(저장 전)", "整形完了(未保存)"),
+    ("lsp.fmt.clean", "Already formatted", "이미 정렬돼 있습니다", "すでに整形済みです"),
 ];

@@ -100,6 +100,14 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   Default wraps as a bracketed paste; `--raw` sends bytes verbatim (control keys).
 - `nabi cli kill --pane <id>` — close a pane.
 - `nabi cli open-sftp --session <name>` — open an SFTP browser for a saved session.
+- `nabi cli sftp-get --remote <path> --local <path>` — download one file over the
+  currently open SFTP connection (waits for completion; shows in the transfer queue).
+- `nabi cli sftp-put --local <path> --remote <path>` — upload one file (same rules).
+
+### Remote files (Act — needs an SFTP tab already connected)
+
+- `nabi cli sftp-list [--path <remote dir>]` — list a remote directory as JSON
+  (`name`, `is_dir`, `size`, `mode`, `mtime`). Fails if no SFTP connection is open.
 
 ## Targeting a pane without an id
 
