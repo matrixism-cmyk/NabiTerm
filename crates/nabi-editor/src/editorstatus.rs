@@ -67,6 +67,12 @@ pub fn editor_status(
         ui.menu_button(synlang, |ui| syntax_lang_picker(ui, doc, lang)).response.on_hover_text(tr(lang, "nabipad.syntaxlang"));
         ui.separator();
         ui.label(format!("{}px", doc.font_size as i32));
+        // LSP 서버 상태(rs 문서): 시작 중=모래시계, 준비=번개(호버 설명).
+        match doc.lsp_state {
+            1 => { ui.separator(); ui.weak("\u{23f3} RA").on_hover_text(tr(lang, "lsp.starting")); }
+            2 => { ui.separator(); ui.colored_label(egui::Color32::from_rgb(120, 200, 140), "\u{26a1} RA").on_hover_text(tr(lang, "lsp.ready")); }
+            _ => {}
+        }
         // LSP 진단 요약(T6-4): 오류/경고 수 + 커서 줄의 첫 진단 메시지.
         if !doc.diags.is_empty() {
             let errs = doc.diags.iter().filter(|(_, s, _)| *s == 1).count();

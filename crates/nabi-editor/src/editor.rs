@@ -69,6 +69,8 @@ pub struct EditorDoc {
     pub comp_anchor: usize,
     /// 커서의 화면 좌표(팝업 배치용 — 렌더가 매 프레임 갱신).
     pub cursor_px: (f32, f32),
+    /// LSP 서버 상태(상태바 표시): 0=해당없음 1=시작 중 2=준비됨.
+    pub lsp_state: u8,
 }
 
 impl EditorDoc {
@@ -112,7 +114,7 @@ impl EditorDoc {
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
-            lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0),
+            lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
         }
     }
 }

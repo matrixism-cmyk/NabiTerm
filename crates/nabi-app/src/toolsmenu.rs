@@ -30,6 +30,8 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("qsel.title", PaletteAction::QuickSelect),
         ("snap.save", PaletteAction::SnapshotSave),
         ("sftp.history", PaletteAction::XferHistory),
+        ("sync.title", PaletteAction::OpenSync),
+        ("keygen.title", PaletteAction::OpenKeygen),
         ("snap.list", PaletteAction::SnapshotList),
         ("bcast.results", PaletteAction::BroadcastResults),
     ] {

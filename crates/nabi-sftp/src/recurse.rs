@@ -177,29 +177,15 @@ impl SftpFs {
         })
     }
 
-    /// root 아래 **파일** 트리를 (상대경로, 크기, mtime)으로 수집한다(동기화 계획용).
-    /// 상대경로 구분자는 '/'. 디렉터리 자체는 결과에 넣지 않는다(빈 폴더는 v1 미지원).
-    pub fn list_tree<'a>(
-        &'a mut self,
-        root: &'a str,
-        prefix: &'a str,
-        out: &'a mut Vec<(String, u64, u64)>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send + 'a>> {
-        Box::pin(async move {
-            for e in self.list_dir(root).await? {
-                if e.name == "." || e.name == ".." {
-                    continue;
-                }
-                let child = format!("{}/{}", root.trim_end_matches('/'), e.name);
-                let rel = if prefix.is_empty() { e.name.clone() } else { format!("{prefix}/{}", e.name) };
-                if matches!(e.kind, FileKind::Dir) {
-                    self.list_tree(&child, &rel, out).await?;
-                } else {
-                    out.push((rel, e.size, e.mtime));
-                }
-            }
-            Ok(())
-        })
+    /// root 아래 **파일** 트리를 (상대경로, 크기, mtime)으로 수집(동기화 계획용) —
+    /// 백엔드 공용 [`nabi_fs::walk_tree`] 위임(FTP와 로직 공유, DRY).
+    pub async fn list_tree(
+        &mut self,
+        root: &str,
+        prefix: &str,
+        out: &mut Vec<(String, u64, u64)>,
+    ) -> Result<(), String> {
+        nabi_fs::walk_tree(self, root, prefix, out).await
     }
 
     /// root 아래를 재귀 검색해 이름에 needle(소문자)을 포함하는 경로들을 모은다(최대 max).

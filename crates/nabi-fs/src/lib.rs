@@ -7,4 +7,4 @@ pub mod local;
 pub mod remote_fs;
 
 pub use local::LocalFs;
-pub use remote_fs::{FileEntry, FileKind, RemoteFs};
+pub use remote_fs::{walk_tree, FileEntry, FileKind, RemoteFs};

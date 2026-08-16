@@ -116,7 +116,7 @@ impl Conn {
             Conn::Ftp(_) => Vec::new(),
         }
     }
-    /// 동기화 계획용 파일 트리(상대경로·크기·mtime). FTP는 v1 미지원.
+    /// 동기화 계획용 파일 트리(상대경로·크기·mtime) — SFTP·FTP 모두 지원(walk_tree 공용).
     pub(crate) async fn list_tree(
         &mut self,
         root: &str,
@@ -125,7 +125,7 @@ impl Conn {
     ) -> Result<(), String> {
         match self {
             Conn::Sftp(f) => f.list_tree(root, prefix, out).await,
-            Conn::Ftp(_) => Err("FTP 동기화는 아직 지원하지 않습니다".into()),
+            Conn::Ftp(f) => nabi_fs::walk_tree(f, root, prefix, out).await,
         }
     }
     pub(crate) async fn dir_stats(&mut self, path: &str) -> (u64, u64, u64) {

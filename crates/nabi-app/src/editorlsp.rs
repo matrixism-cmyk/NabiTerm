@@ -122,10 +122,11 @@ impl NabiApp {
                 }
                 _ => {}
             }
-            // 진단을 문서에 반영(거터 점·상태바가 그린다).
-            let diags = c.diagnostics(&path);
+            // 진단을 문서에 반영(거터 점·상태바가 그린다) + 서버 상태 표시.
+            let (diags, st) = (c.diagnostics(&path), if c.ready() { 2 } else { 1 });
             if let Some(doc) = self.editors.get_mut(&id) {
                 doc.diags = diags.into_iter().map(|d| (d.line as usize, d.severity, d.message)).collect();
+                doc.lsp_state = st;
             }
         }
         // 자동완성 자동 트리거: 방금 '.' 또는 '::'를 타이핑한 순간(중복 방지: 같은 오프셋+해시).
