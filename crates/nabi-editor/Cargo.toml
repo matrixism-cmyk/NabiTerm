@@ -24,6 +24,15 @@ arboard = "3"              # 클립보드(uiutil).
 rfd = "0.15"               # 파일 대화상자(에디터 메뉴).
 # 코드 하이라이트: onig(C) 회피 위해 default-features off + fancy-regex(순수 Rust).
 syntect = { version = "5", default-features = false, features = ["default-fancy"] }
+# tree-sitter 정밀 강조(T6-2): 주요 언어 정적 링크(C 파서 — MinGW 빌드 스파이크 확인 2026-08-16).
+# 나머지 언어는 syntect 체크포인트(ropehl)가 계속 담당한다.
+tree-sitter = "0.26"
+tree-sitter-highlight = "0.26"
+tree-sitter-rust = "0.24"
+tree-sitter-json = "0.24"
+tree-sitter-toml-ng = "0.7"
+tree-sitter-python = "0.25"
+tree-sitter-javascript = "0.25"
 rand = { workspace = true }        # UUID 생성(editoruuid).
 chardetng = "0.1"                  # 자동 인코딩 감지(editload).
 sha1 = "0.11"                      # 해시 도구(editorhash).

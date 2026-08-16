@@ -242,11 +242,12 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
             let bg = egui::Rect::from_min_size(egui::pos2(left, ly), egui::vec2(content_w, row_h));
             painter.rect_filled(bg, egui::CornerRadius::ZERO, CURLINE);
         }
-        // rope 구문 강조: 보이는 창의 스팬만 체크포인트 하이라이터로 계산(T6-1).
+        // rope 구문 강조: tree-sitter(지원 언어·≤512KB) 우선, 아니면 syntect 체크포인트(T6-1/T6-2).
         let hl_id = ui.id().with("ropehl").value();
-        let win_spans = hl_ext
-            .as_deref()
-            .and_then(|ext| crate::ropehl::window_spans(hl_id, eb, ext, first, last));
+        let win_spans = hl_ext.as_deref().and_then(|ext| {
+            crate::ropets::window_spans(hl_id, eb, ext, first, last)
+                .or_else(|| crate::ropehl::window_spans(hl_id, eb, ext, first, last))
+        });
         for i in first..last {
             let d = eb.disp_line(i);
             let g = match win_spans.as_ref().and_then(|w| w.get(i - first)) {
