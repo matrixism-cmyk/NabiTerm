@@ -116,6 +116,18 @@ impl Conn {
             Conn::Ftp(_) => Vec::new(),
         }
     }
+    /// 동기화 계획용 파일 트리(상대경로·크기·mtime). FTP는 v1 미지원.
+    pub(crate) async fn list_tree(
+        &mut self,
+        root: &str,
+        prefix: &str,
+        out: &mut Vec<(String, u64, u64)>,
+    ) -> Result<(), String> {
+        match self {
+            Conn::Sftp(f) => f.list_tree(root, prefix, out).await,
+            Conn::Ftp(_) => Err("FTP 동기화는 아직 지원하지 않습니다".into()),
+        }
+    }
     pub(crate) async fn dir_stats(&mut self, path: &str) -> (u64, u64, u64) {
         match self {
             Conn::Sftp(f) => f.dir_stats(path).await,

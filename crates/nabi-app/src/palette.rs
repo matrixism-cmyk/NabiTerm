@@ -63,6 +63,8 @@ pub(crate) enum PaletteAction {
     GotoDefinition, LspHover, LspRefs, LspFormat,
     /// SSH ed25519 키 생성 모달.
     OpenKeygen,
+    /// 폴더 동기화 다이얼로그(S6-51).
+    OpenSync,
     /// SFTP 전송 히스토리 창(S6-60).
     XferHistory,
 }

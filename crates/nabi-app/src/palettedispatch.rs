@@ -65,6 +65,7 @@ impl NabiApp {
             PaletteAction::LspRefs => self.lsp_refs(),
             PaletteAction::LspFormat => { if let Some(p) = self.focused_pane() { self.lsp_format_for(p); } }
             PaletteAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
+            PaletteAction::OpenSync => self.open_sync_dialog(),
             PaletteAction::XferHistory => self.xfer_history_open = true,
             PaletteAction::BroadcastResults => self.bcast_view_open = true,
             PaletteAction::OpenAiCli => {

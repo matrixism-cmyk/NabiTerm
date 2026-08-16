@@ -79,6 +79,7 @@ pub fn handle_command(
             parallel,
         } => spawn_sftp(id, params, ftp, limit_kbps, parallel, rt, sftp, event_tx, verifier.clone()),
         Command::SftpList { id, path } => sftp_request(id, SftpReq::List(path), sftp),
+        Command::SftpListTree { id, root, seq } => sftp_request(id, SftpReq::ListTree { root, seq }, sftp),
         Command::SftpDownload {
             id,
             xfer,

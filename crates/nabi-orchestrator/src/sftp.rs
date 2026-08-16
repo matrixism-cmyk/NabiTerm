@@ -28,6 +28,8 @@ pub enum SftpReq {
     Chmod { path: String, mode: u32 },
     ChmodRec { path: String, mode: u32 },
     Search { root: String, needle: String },
+    /// 동기화 계획용 파일 트리 수집(상대경로·크기·mtime) — seq 상관 회신.
+    ListTree { root: String, seq: u64 },
     DirSize(String),
     Close,
 }
@@ -99,6 +101,18 @@ pub fn spawn_sftp(
         };
         while let Some(req) = rx.recv().await {
             match req {
+                SftpReq::ListTree { root, seq } => {
+                    let mut files = Vec::new();
+                    match fs.list_tree(&root, "", &mut files).await {
+                        Ok(()) => {
+                            files.sort();
+                            let _ = ev.send(Event::SftpTree { id, seq, files });
+                        }
+                        Err(message) => {
+                            let _ = ev.send(Event::SftpError { id, message });
+                        }
+                    }
+                }
                 SftpReq::List(path) => match fs.list_dir(&path).await {
                     Ok(items) => {
                         let entries = items.into_iter().map(to_entry).collect();

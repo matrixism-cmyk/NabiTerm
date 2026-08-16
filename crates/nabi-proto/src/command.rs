@@ -60,6 +60,8 @@ pub enum Command {
     },
     /// 원격 디렉터리 목록 요청.
     SftpList { id: SftpId, path: String },
+    /// 동기화 계획용 원격 파일 트리 수집(S6-51). 회신=Event::SftpTree{seq}.
+    SftpListTree { id: SftpId, root: String, seq: u64 },
     /// 원격 파일을 로컬 경로로 내려받기. resume>0이면 그 오프셋부터 이어받기.
     ///
     /// `xfer`는 UI 전송 큐 항목 식별자. 진행률·완료 이벤트가 이 값을 그대로 돌려주므로

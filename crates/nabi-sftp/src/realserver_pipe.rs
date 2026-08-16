@@ -162,3 +162,33 @@ async fn realserver_resume_does_not_need_truncate() {
     assert!(size >= 41_000, "오프셋 쓰기가 반영되지 않았다: {size}");
     let _ = fs.remove(remote).await;
 }
+/// list_tree(동기화 계획의 원격 스캔)가 실서버에서 상대경로·크기·mtime을 제대로 모으는지.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_list_tree_for_sync() {
+    let Some(mut fs) = open_fs().await else { return };
+    let root = format!("nabi-sync-rt-{}", std::process::id());
+    let sub = format!("{root}/서브");
+    fs.mkdir(&root).await.expect("루트 생성");
+    fs.mkdir(&sub).await.expect("서브 생성");
+    let a = std::env::temp_dir().join("nabi-sync-a.txt");
+    let b = std::env::temp_dir().join("nabi-sync-b.txt");
+    std::fs::write(&a, b"12345").unwrap();
+    std::fs::write(&b, b"xy").unwrap();
+    fs.upload(a.to_str().unwrap(), &format!("{root}/a.txt"), |_| {}).await.expect("a 업로드");
+    fs.upload(b.to_str().unwrap(), &format!("{sub}/한글.txt"), |_| {}).await.expect("b 업로드");
+
+    let mut files = Vec::new();
+    fs.list_tree(&root, "", &mut files).await.expect("트리 수집");
+    files.sort();
+    assert_eq!(files.len(), 2, "{files:?}");
+    assert_eq!(files[0].0, "a.txt");
+    assert_eq!(files[0].1, 5);
+    assert_eq!(files[1].0, "서브/한글.txt");
+    assert_eq!(files[1].1, 2);
+    assert!(files[0].2 > 1_700_000_000, "mtime이 그럴듯한 epoch: {}", files[0].2);
+
+    fs.remove_recursive(&root).await.expect("정리");
+    let _ = std::fs::remove_file(&a);
+    let _ = std::fs::remove_file(&b);
+}

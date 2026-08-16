@@ -33,6 +33,7 @@ impl NabiApp {
                     ctx.request_repaint();
                 }
             }
+            Event::SftpTree { seq, files, .. } => self.on_sync_tree(seq, files),
             Event::SftpDirSize { id, path, files, dirs, bytes } => {
                 let lang = self.lang;
                 if let Some(p) = self.remote_panel_mut(id) {

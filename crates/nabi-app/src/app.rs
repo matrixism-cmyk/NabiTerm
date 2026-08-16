@@ -106,6 +106,9 @@ pub struct NabiApp {
     pub ctl_sftp: crate::controlsftp::CtlSftp,
     /// SSH 키 생성 모달 상태(Some=열림).
     pub keygen: Option<crate::sshkeygenui::KeygenState>,
+    /// 폴더 동기화 다이얼로그(S6-51) + 트리 수집 상관 seq.
+    pub sync_dlg: Option<crate::sftpsyncui::SyncDlg>,
+    pub sync_seq: u64,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

@@ -1,0 +1,158 @@
+//! 폴더 동기화 계획(S6-51~53, WinSCP식) — 로컬/원격 파일 트리를 비교해 할 일 목록을 만든다.
+//!
+//! 순수 함수: I/O 없음. 안전 원칙 — 삭제는 Mirror 모드에서만 나오고, UI는 삭제 항목을
+//! 기본 체크 해제로 보여 준다(실수로 지우는 것보다 안 지우는 쪽이 항상 싸다).
+
+use std::collections::BTreeMap;
+
+/// 동기화 방향.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncDir {
+    /// 로컬 → 원격(업로드).
+    Up,
+    /// 원격 → 로컬(다운로드).
+    Down,
+}
+
+/// 비교 기준 — 시각은 ±2초 허용(FAT/SFTP 반올림 관용, WinSCP 기본과 동일 사상).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncBy {
+    Size,
+    SizeAndTime,
+}
+
+/// 한 파일에 대한 판정.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SyncAction {
+    /// 원본에만 있음 → 복사(방향대로).
+    Copy(String),
+    /// 양쪽에 있고 다름 → 갱신(방향대로 덮어씀).
+    Update(String),
+    /// 대상에만 있음 → Mirror 모드에서만 삭제 후보.
+    Delete(String),
+}
+
+impl SyncAction {
+    pub fn path(&self) -> &str {
+        match self {
+            SyncAction::Copy(p) | SyncAction::Update(p) | SyncAction::Delete(p) => p,
+        }
+    }
+}
+
+/// (상대경로 → (크기, mtime)) 맵으로 변환(비교 기준 자료).
+pub fn to_map(list: &[(String, u64, u64)]) -> BTreeMap<String, (u64, u64)> {
+    list.iter().map(|(p, s, m)| (p.clone(), (*s, *m))).collect()
+}
+
+/// 원본(src)→대상(dst) 계획: 새 파일=Copy, 다른 파일=Update, 대상에만 있는 파일=Delete(mirror 시).
+/// 시각 비교는 원본이 더 최신일 때만 갱신(대상이 더 새로우면 건드리지 않는다 — 안전).
+pub fn plan(
+    src: &BTreeMap<String, (u64, u64)>,
+    dst: &BTreeMap<String, (u64, u64)>,
+    by: SyncBy,
+    mirror: bool,
+) -> Vec<SyncAction> {
+    let mut out = Vec::new();
+    for (p, (ss, sm)) in src {
+        match dst.get(p) {
+            None => out.push(SyncAction::Copy(p.clone())),
+            Some((ds, dm)) => {
+                let differs = match by {
+                    SyncBy::Size => ss != ds,
+                    SyncBy::SizeAndTime => ss != ds || sm.saturating_sub(*dm) > 2,
+                };
+                if differs && (by == SyncBy::Size || *sm > *dm) {
+                    out.push(SyncAction::Update(p.clone()));
+                }
+            }
+        }
+    }
+    if mirror {
+        for p in dst.keys() {
+            if !src.contains_key(p) {
+                out.push(SyncAction::Delete(p.clone()));
+            }
+        }
+    }
+    out
+}
+
+/// 로컬 디렉터리 트리를 (상대경로, 크기, mtime)로 수집(원격 list_tree와 짝).
+pub fn walk_local(root: &std::path::Path) -> Vec<(String, u64, u64)> {
+    let mut out = Vec::new();
+    walk(root, "", &mut out);
+    out.sort();
+    out
+}
+
+fn walk(dir: &std::path::Path, prefix: &str, out: &mut Vec<(String, u64, u64)>) {
+    let Ok(rd) = std::fs::read_dir(dir) else { return };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };
+        let Ok(meta) = e.metadata() else { continue };
+        if meta.is_dir() {
+            walk(&e.path(), &rel, out);
+        } else {
+            let mtime = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                .map(|d| d.as_secs())
+                .unwrap_or(0);
+            out.push((rel, meta.len(), mtime));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn m(v: &[(&str, u64, u64)]) -> BTreeMap<String, (u64, u64)> {
+        v.iter().map(|(p, s, t)| (p.to_string(), (*s, *t))).collect()
+    }
+
+    #[test]
+    fn plans_copy_update_delete() {
+        let src = m(&[("a.txt", 10, 100), ("b/새파일.txt", 5, 200), ("same.txt", 7, 50)]);
+        let dst = m(&[("a.txt", 10, 90), ("only_dst.txt", 3, 10), ("same.txt", 7, 50)]);
+        let acts = plan(&src, &dst, SyncBy::SizeAndTime, true);
+        assert!(acts.contains(&SyncAction::Update("a.txt".into())), "원본이 더 최신+시각차>2 → 갱신");
+        assert!(acts.contains(&SyncAction::Copy("b/새파일.txt".into())));
+        assert!(acts.contains(&SyncAction::Delete("only_dst.txt".into())), "mirror만 삭제");
+        assert!(!acts.iter().any(|a| a.path() == "same.txt"), "동일 파일 무동작");
+        // mirror 끄면 삭제 없음.
+        assert!(!plan(&src, &dst, SyncBy::SizeAndTime, false).iter().any(|a| matches!(a, SyncAction::Delete(_))));
+    }
+
+    #[test]
+    fn time_tolerance_and_direction_safety() {
+        // ±2초 이내 차이는 같은 것으로(FAT/SFTP 반올림).
+        let src = m(&[("x", 4, 102)]);
+        let dst = m(&[("x", 4, 100)]);
+        assert!(plan(&src, &dst, SyncBy::SizeAndTime, false).is_empty(), "2초 차=동일");
+        // 대상이 더 최신이면 덮어쓰지 않는다(크기 달라도 시각 기준에서 보호).
+        let src2 = m(&[("y", 9, 100)]);
+        let dst2 = m(&[("y", 4, 999)]);
+        assert!(plan(&src2, &dst2, SyncBy::SizeAndTime, false).is_empty(), "대상 최신 보호");
+        // 크기 기준은 시각 무관하게 갱신.
+        assert_eq!(plan(&src2, &dst2, SyncBy::Size, false).len(), 1);
+    }
+
+    #[test]
+    fn local_walk_collects_relative_paths() {
+        let d = std::env::temp_dir().join(format!("nabi-syncwalk-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        std::fs::write(d.join("a.txt"), b"12345").unwrap();
+        std::fs::write(d.join("sub").join("한글.txt"), b"xy").unwrap();
+        let got = walk_local(&d);
+        assert_eq!(got.len(), 2);
+        assert_eq!(got[0].0, "a.txt");
+        assert_eq!(got[1].0, "sub/한글.txt");
+        assert_eq!(got[1].1, 2);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+}
