@@ -6,7 +6,7 @@ pub(crate) fn ctrl_wheel_zoom(ui: &egui::Ui, over: bool) -> f32 {
     if !over {
         return 0.0;
     }
-    let (wheel, ctrl) = ui.input(|i| (i.raw_scroll_delta.y, i.modifiers.command));
+    let (wheel, ctrl) = ui.input(|i| (crate::paneio::raw_wheel(i).y, i.modifiers.command));
     if ctrl && wheel != 0.0 {
         wheel.signum()
     } else {

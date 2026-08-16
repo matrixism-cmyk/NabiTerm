@@ -144,7 +144,7 @@ pub(crate) fn extract_menu(ui: &mut egui::Ui, lang: Lang) -> Option<fn(&str) -> 
         ("editor.extquoted", extract_quoted),
     ] {
         if ui.button(tr(lang, key)).clicked() {
-            ui.close_menu();
+            ui.close();
             return Some(f);
         }
     }
@@ -154,23 +154,23 @@ pub(crate) fn extract_menu(ui: &mut egui::Ui, lang: Lang) -> Option<fn(&str) -> 
 /// 기존 추출 항목(URL·이메일·숫자·IP).
 fn extract_menu_base(ui: &mut egui::Ui, lang: Lang) -> Option<fn(&str) -> String> {
     if ui.button(tr(lang, "editor.exturls")).clicked() {
-        ui.close_menu();
+        ui.close();
         return Some(extract_urls);
     }
     if ui.button(tr(lang, "editor.extemails")).clicked() {
-        ui.close_menu();
+        ui.close();
         return Some(extract_emails);
     }
     if ui.button(tr(lang, "editor.extnumbers")).clicked() {
-        ui.close_menu();
+        ui.close();
         return Some(extract_numbers);
     }
     if ui.button(tr(lang, "editor.extips")).clicked() {
-        ui.close_menu();
+        ui.close();
         return Some(extract_ips);
     }
     if ui.button(tr(lang, "editor.extipv6")).clicked() {
-        ui.close_menu();
+        ui.close();
         return Some(extract_ipv6);
     }
     None

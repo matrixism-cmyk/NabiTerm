@@ -148,13 +148,13 @@ fn render_inner(
             for (key, sub) in [("browser.desktop", "Desktop"), ("browser.documents", "Documents"), ("browser.downloads", "Downloads")] {
                 if ui.button(nabi_i18n::tr(lang, key)).clicked() {
                     a.nav = Some(home.join(sub));
-                    ui.close_menu();
+                    ui.close();
                 }
             }
             if ui.button(nabi_i18n::tr(lang, "browser.network")).clicked() {
                 // 네트워크는 인앱 SMB 열거가 없어 OS 네트워크 폴더로 연다.
                 let _ = std::process::Command::new("explorer").arg("shell:NetworkPlacesFolder").spawn();
-                ui.close_menu();
+                ui.close();
             }
         })
         .response
@@ -236,7 +236,7 @@ fn render_inner(
     // 위에 있어 좌/우클릭을 가져가고, 빈 칸 우클릭만 이 배경 메뉴가 받는다 — 행 클릭 회귀 방지).
     let bg = ui.interact(ui.available_rect_before_wrap(), ui.id().with("empty_bg"), egui::Sense::click());
     bg.context_menu(|ui| crate::browsermenu::empty_space_menu(ui, &mut a, lang, &path));
-    let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::none(), |ui| {
+    let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::NONE, |ui| {
         let acts = crate::browserrows::browser_rows(
             ui, &entries, &path, &filt, remote_map, can_upload, lang, b.sort, b.sort_desc,
             a.view, b.selected.as_deref(), &b.multi, b.scroll, &mut ren,

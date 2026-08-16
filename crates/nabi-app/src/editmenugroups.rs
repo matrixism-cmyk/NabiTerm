@@ -10,7 +10,7 @@ pub(crate) type Xf = fn(&str) -> String;
 pub(crate) fn pick(ui: &mut egui::Ui, lang: Lang, items: &[(&str, Xf)]) -> Option<Xf> {
     for (k, f) in items {
         if ui.button(tr(lang, k)).clicked() {
-            ui.close_menu();
+            ui.close();
             return Some(*f);
         }
     }

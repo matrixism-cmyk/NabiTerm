@@ -3,7 +3,10 @@
 use crate::app::NabiApp;
 
 impl eframe::App for NabiApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+    // 0.34: App::update → App::ui(&mut Ui). 우리 UI는 전부 ctx 레벨(패널/Area)이라
+    // 루트 ui는 쓰지 않고 ctx만 꺼내 기존 본문을 그대로 돌린다.
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // 전역 현재 언어 동기화 — 네트워크 계층(trc)이 새 에러를 이 언어로 만든다(T8-1).
         nabi_i18n::set_current(self.lang);
         // UI 배율(ppp) 적용 — 포인터를 누르고 있는 동안(배율 슬라이더 드래그/클릭 포함)에는
@@ -13,7 +16,7 @@ impl eframe::App for NabiApp {
         if !ctx.input(|i| i.pointer.any_down()) && (ctx.pixels_per_point() - scale).abs() > 1e-3 {
             ctx.set_pixels_per_point(scale);
         }
-        let sz = ctx.input(|i| i.screen_rect.size());
+        let sz = ctx.input(|i| i.screen_rect().size());
         self.last_win = (sz.x, sz.y); // 종료 시 창 크기 저장용 추적.
         if !self.did_startup {
             self.did_startup = true;
@@ -174,7 +177,7 @@ fn perf_overlay(ctx: &egui::Context, frame: &eframe::Frame) {
         egui::Id::new("nabi_perf_hud"),
     ));
     let g = p.layout_no_wrap(txt, egui::FontId::monospace(12.0), egui::Color32::WHITE);
-    let top_right = ctx.input(|i| i.screen_rect).right_top() + egui::vec2(-8.0, 8.0);
+    let top_right = ctx.input(|i| i.screen_rect()).right_top() + egui::vec2(-8.0, 8.0);
     let min = egui::pos2(top_right.x - g.size().x, top_right.y);
     let textrect = egui::Rect::from_min_size(min, g.size());
     p.rect_filled(textrect.expand(3.0), 3.0, egui::Color32::from_black_alpha(180));

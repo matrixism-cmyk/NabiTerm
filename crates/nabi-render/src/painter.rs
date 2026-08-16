@@ -7,8 +7,9 @@ use nabi_vt::{CursorShape, RenderCell, TermModel, Theme};
 
 /// 폰트의 셀(너비·높이) 픽셀 크기.
 pub fn cell_size(ui: &Ui, font: &FontId) -> (f32, f32) {
-    let w = ui.ctx().fonts(|f| f.glyph_width(font, 'M')).max(1.0);
-    let h = ui.ctx().fonts(|f| f.row_height(font)).max(1.0);
+    // 0.34: 측정이 지연 셰이핑을 건드릴 수 있어 &mut 뷰가 필요하다(fonts_mut).
+    let w = ui.ctx().fonts_mut(|f| f.glyph_width(font, 'M')).max(1.0);
+    let h = ui.ctx().fonts_mut(|f| f.row_height(font)).max(1.0);
     (w, h)
 }
 
@@ -32,7 +33,7 @@ pub fn paint(
 ) {
     let painter = ui.painter_at(rect);
     let (cw, ch) = cell_size(ui, &font);
-    painter.rect_filled(rect, egui::Rounding::ZERO, to_c32(theme.bg));
+    painter.rect_filled(rect, egui::CornerRadius::ZERO, to_c32(theme.bg));
     // 키워드 규칙을 한 번만 파싱(단어 + 색). "단어=#RRGGBB" 형식, 색 생략 시 검색 일치색.
     let rules: Vec<(&str, Rgba)> = keywords
         .iter()
@@ -104,7 +105,7 @@ pub fn paint(
             None => Color32::from_rgb(0x70, 0x70, 0x70),
         };
         let bar = Rect::from_min_size(Pos2::new(rect.left(), y), Vec2::new(2.0, ch));
-        painter.rect_filled(bar, egui::Rounding::ZERO, c);
+        painter.rect_filled(bar, egui::CornerRadius::ZERO, c);
     }
     // 스크롤백(히스토리)을 보는 중에는 커서를 그리지 않는다.
     if model.scrollback_offset() == 0 {
@@ -213,7 +214,7 @@ fn flush_uline(p: &Painter, x0: f32, x1: f32, y: f32, ch: f32, clr: Option<Color
 fn flush_fill(painter: &Painter, x0: f32, x1: f32, y: f32, ch: f32, clr: Option<Color32>) {
     if let Some(c) = clr {
         if x1 > x0 {
-            painter.rect_filled(Rect::from_min_size(Pos2::new(x0, y), Vec2::new(x1 - x0, ch)), egui::Rounding::ZERO, c);
+            painter.rect_filled(Rect::from_min_size(Pos2::new(x0, y), Vec2::new(x1 - x0, ch)), egui::CornerRadius::ZERO, c);
         }
     }
 }
@@ -246,20 +247,21 @@ fn paint_cursor(
         match theme.cursor_shape {
             CursorShape::Block => {
                 let fill = Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), 150);
-                painter.rect_filled(r, egui::Rounding::ZERO, fill);
+                painter.rect_filled(r, egui::CornerRadius::ZERO, fill);
             }
             CursorShape::Bar => {
                 let bar = Rect::from_min_size(p, Vec2::new(2.0, ch));
-                painter.rect_filled(bar, egui::Rounding::ZERO, c);
+                painter.rect_filled(bar, egui::CornerRadius::ZERO, c);
             }
             CursorShape::Underline => {
                 let line = Rect::from_min_size(Pos2::new(p.x, p.y + ch - 2.0), Vec2::new(cw, 2.0));
-                painter.rect_filled(line, egui::Rounding::ZERO, c);
+                painter.rect_filled(line, egui::CornerRadius::ZERO, c);
             }
         }
     } else {
         // 비포커스: 깜빡임 없이 윤곽선.
-        painter.rect_stroke(r, egui::Rounding::ZERO, Stroke::new(1.0, c));
+        // Inside: 윤곽선이 셀 밖으로 삐져 이웃 셀을 침범하지 않게.
+        painter.rect_stroke(r, egui::CornerRadius::ZERO, Stroke::new(1.0, c), egui::StrokeKind::Inside);
     }
 }
 

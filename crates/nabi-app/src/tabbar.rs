@@ -8,8 +8,8 @@ impl NabiApp {
     /// (이후 새 탭이 그 그룹에 생기도록). 탭 자체의 컨텍스트 메뉴가 열렸으면 양보.
     /// 비활성 pane 우클릭으로 들어온 포커스 요청을 dock에 적용한다(dock.show 직후 호출).
     pub(crate) fn apply_pending_focus(&mut self) {
-        if let Some((s, n, _)) = self.focus_req.take().and_then(|p| self.dock.find_tab(&p)) {
-            self.dock.set_focused_node_and_surface((s, n));
+        if let Some(tp) = self.focus_req.take().and_then(|p| self.dock.find_tab(&p)) {
+            self.dock.set_focused_node_and_surface(egui_dock::NodePath { surface: tp.surface, node: tp.node });
         }
     }
 
@@ -28,7 +28,8 @@ impl NabiApp {
         // 우클릭 위치가 어느 leaf의 탭바 띠(상단 32px)에 있는지 찾는다.
         let mut hit: Option<egui_dock::NodeIndex> = None;
         for (i, n) in self.dock.main_surface().iter().enumerate() {
-            if let egui_dock::Node::Leaf { rect, .. } = n {
+            // 0.19: Leaf가 구조체 변형(LeafNode)이 됐고 rect는 Option 게터다.
+            if let Some(rect) = n.get_leaf().map(|l| l.rect) {
                 let band = egui::Rect::from_min_size(rect.min, egui::vec2(rect.width(), 32.0));
                 if band.contains(pos) {
                     hit = Some(egui_dock::NodeIndex(i));
@@ -37,8 +38,7 @@ impl NabiApp {
             }
         }
         if let Some(node) = hit {
-            self.dock
-                .set_focused_node_and_surface((egui_dock::SurfaceIndex::main(), node));
+            self.dock.set_focused_node_and_surface(egui_dock::NodePath { surface: egui_dock::SurfaceIndex::main(), node });
             self.tabbar_menu = Some(pos);
         }
     }

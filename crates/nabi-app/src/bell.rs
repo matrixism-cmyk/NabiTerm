@@ -48,7 +48,7 @@ impl NabiApp {
                 ));
                 painter.rect_filled(
                     ctx.screen_rect(),
-                    egui::Rounding::ZERO,
+                    egui::CornerRadius::ZERO,
                     egui::Color32::from_white_alpha(48),
                 );
                 ctx.request_repaint();

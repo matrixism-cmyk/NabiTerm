@@ -118,7 +118,7 @@ pub(crate) fn tab_context_menu(
     ui.text_edit_singleline(name).request_focus();
     if ui.button(tr(lang, "tab.reset")).clicked() {
         tab_names.remove(tab);
-        ui.close_menu();
+        ui.close();
     }
     if ui.button(tr(lang, "term.reset")).clicked() {
         if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) {
@@ -126,14 +126,14 @@ pub(crate) fn tab_context_menu(
                 md.reset();
             }
         }
-        ui.close_menu();
+        ui.close();
     }
     // 스크롤백(히스토리)만 비우기 — 화면 유지(Clear Buffer).
     if ui.button(tr(lang, "term.clearbuf")).clicked() {
         if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) {
             if let Ok(mut md) = v.model.lock() { md.clear_scrollback(); }
         }
-        ui.close_menu();
+        ui.close();
     }
     // 출력(히스토리+화면)을 파일로 저장(세션 로그).
     let dump = || orch.panes.read().ok().and_then(|m| m.get(tab).cloned()).and_then(|v| v.model.lock().ok().map(|md| md.dump_text(1_000_000)));
@@ -143,16 +143,16 @@ pub(crate) fn tab_context_menu(
                 let _ = std::fs::write(path, text);
             }
         }
-        ui.close_menu();
+        ui.close();
     }
     // 출력을 클립보드로 복사(파일 저장 없이) + AI용 마크다운 코드블록 복사(바이브코딩).
     if ui.button(tr(lang, "term.copyoutput")).clicked() {
         if let Some(t) = dump() { ui.ctx().copy_text(t); }
-        ui.close_menu();
+        ui.close();
     }
     if ui.button(tr(lang, "term.copyoutputmd")).clicked() {
         if let Some(t) = dump() { ui.ctx().copy_text(format!("```\n{}\n```", t.trim_end())); }
-        ui.close_menu();
+        ui.close();
     }
     // 출력에서 URL/IP/이메일/숫자만 추출해 클립보드로 — 4종을 "추출" 서브메뉴로 묶어
     // 컨텍스트 평면 비대화를 막는다(T3-1; 에디터 추출 메뉴와 같은 라벨).
@@ -166,14 +166,14 @@ pub(crate) fn tab_context_menu(
         ] {
             if ui.button(tr(lang, key)).clicked() {
                 if let Some(t) = dump() { ui.ctx().copy_text(f(&t)); }
-                ui.close_menu();
+                ui.close();
             }
         }
     });
     // 스크롤백 맨 위/아래로 이동(긴 출력 빠른 탐색).
     let scroll = |top: bool| { if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) { if let Ok(mut md) = v.model.lock() { if top { md.scroll_to_top(); } else { md.scroll_to_bottom(); } } } };
-    if ui.button(tr(lang, "term.scrolltop")).clicked() { scroll(true); ui.close_menu(); }
-    if ui.button(tr(lang, "term.scrollbottom")).clicked() { scroll(false); ui.close_menu(); }
+    if ui.button(tr(lang, "term.scrolltop")).clicked() { scroll(true); ui.close(); }
+    if ui.button(tr(lang, "term.scrollbottom")).clicked() { scroll(false); ui.close(); }
     // 스크롤백을 남기지 않는 TUI(codex CLI 등)는 휠로 볼 과거가 터미널에 없다.
     // 그런 pane에서만 사용자가 켜서 휠을 PageUp/PageDown으로 바꿔 보낸다.
     let mut keys = wheel_keys.contains(tab) || (wheel_auto && !wheel_keys_off.contains(tab));
@@ -213,7 +213,7 @@ pub(crate) fn tab_context_menu(
         .clicked()
     {
         *tear_off = Some(*tab);
-        ui.close_menu();
+        ui.close();
     }
     if let Some(dock_float) = dock_float {
         if ui
@@ -222,18 +222,18 @@ pub(crate) fn tab_context_menu(
             .clicked()
         {
             *dock_float = Some(*tab);
-            ui.close_menu();
+            ui.close();
         }
     }
     // SSH 탭이면 같은 연결로 SFTP 파일 브라우저 열기(자격증명 재사용).
     if is_ssh && ui.button(tr(lang, "tab.opensftp")).clicked() {
         *sftp_open = Some(*tab);
-        ui.close_menu();
+        ui.close();
     }
     ui.separator();
     if ui.button(tr(lang, "tab.close")).clicked() {
         orch.send(nabi_proto::Command::ClosePane { pane: *tab });
-        ui.close_menu();
+        ui.close();
     }
 }
 

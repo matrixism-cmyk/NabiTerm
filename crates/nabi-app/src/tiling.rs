@@ -5,16 +5,14 @@ use crate::app::NabiApp;
 impl NabiApp {
     /// 탭 그룹(leaf)들을 분할 타일로 재배치한다 — 한 탭바에 묶인 탭은 묶음 유지.
     pub(crate) fn tile_tabs(&mut self) {
-        use egui_dock::{Node, NodeIndex};
+        use egui_dock::NodeIndex;
         let focused = self.focused_pane();
+        // 0.19: Leaf가 LeafNode 구조체 — tabs는 게터로 꺼낸다.
         let groups: Vec<Vec<nabi_types::PaneId>> = self
             .dock
             .main_surface()
             .iter()
-            .filter_map(|n| match n {
-                Node::Leaf { tabs, .. } if !tabs.is_empty() => Some(tabs.clone()),
-                _ => None,
-            })
+            .filter_map(|n| n.tabs().filter(|t| !t.is_empty()).map(|t| t.to_vec()))
             .collect();
         if groups.len() < 2 {
             return;
@@ -33,8 +31,8 @@ impl NabiApp {
         // 재배치 후 포커스를 원래 탭으로(이후 새 탭이 엉뚱한 타일에 붙지 않도록).
         if let Some(fp) = focused {
             if let Some(loc) = self.dock.find_tab(&fp) {
-                self.dock.set_focused_node_and_surface((loc.0, loc.1));
-                self.dock.set_active_tab(loc);
+                self.dock.set_focused_node_and_surface(egui_dock::NodePath { surface: loc.surface, node: loc.node });
+                let _ = self.dock.set_active_tab(loc);
             }
         }
     }

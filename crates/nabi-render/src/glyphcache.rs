@@ -24,18 +24,19 @@ thread_local! {
 struct GlyphCache {
     map: HashMap<(String, u32), Arc<Galley>>,
     ppp: f32,
-    /// 폰트 아틀라스 Arc의 포인터. egui 0.29에는 폰트 세대 카운터가 없어서, 아틀라스가
-    /// 재생성됐는지(→ 기존 갤리의 UV가 무효) 판별하는 유일한 값싼 신호다.
-    atlas: usize,
+    /// 폰트 아틀라스 이미지 크기. 0.34의 FontsView는 아틀라스 Arc를 노출하지 않는다 —
+    /// 아틀라스는 가득 차면 더 큰 크기로 재생성되므로(기존 갤리 UV 무효) 크기 변화가
+    /// 재생성의 값싼 신호다(ppp 변화와 조합).
+    atlas_size: [usize; 2],
 }
 
 impl GlyphCache {
     /// 배율이나 아틀라스가 바뀌었으면 캐시를 통째로 버린다.
-    fn invalidate_if_stale(&mut self, ppp: f32, atlas: usize) {
-        if self.ppp != ppp || self.atlas != atlas {
+    fn invalidate_if_stale(&mut self, ppp: f32, atlas_size: [usize; 2]) {
+        if self.ppp != ppp || self.atlas_size != atlas_size {
             self.map.clear();
             self.ppp = ppp;
-            self.atlas = atlas;
+            self.atlas_size = atlas_size;
         }
     }
 }
@@ -45,18 +46,17 @@ impl GlyphCache {
 /// 반환된 갤리는 `Painter::galley(pos, galley, fg)` 또는 `Shape::galley(pos, galley, fg)`로
 /// 그린다. 색이 `PLACEHOLDER`라 `fg`가 그대로 적용된다.
 pub fn galley(ctx: &Context, text: &str, font: &FontId) -> Arc<Galley> {
-    let (ppp, atlas) = ctx.fonts(|f| {
-        (f.pixels_per_point(), Arc::as_ptr(&f.texture_atlas()) as usize)
-    });
+    let ppp = ctx.pixels_per_point();
+    let atlas_size = ctx.fonts(|f| f.font_image_size());
     // 폰트 크기가 키에 들어가야 줌 시 다른 갤리를 쓴다.
     let key = (text.to_owned(), font.size.to_bits());
     CACHE.with(|c| {
         let mut c = c.borrow_mut();
-        c.invalidate_if_stale(ppp, atlas);
+        c.invalidate_if_stale(ppp, atlas_size);
         if let Some(g) = c.map.get(&key) {
             return g.clone();
         }
-        let g = ctx.fonts(|f| f.layout_delayed_color(text.to_owned(), font.clone(), f32::INFINITY));
+        let g = ctx.fonts_mut(|f| f.layout_delayed_color(text.to_owned(), font.clone(), f32::INFINITY));
         c.map.insert(key, g.clone());
         g
     })

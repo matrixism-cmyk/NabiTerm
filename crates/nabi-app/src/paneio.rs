@@ -36,7 +36,8 @@ pub(crate) fn mouse_reports(
                 out.extend(mouse_report(sgr, mb, col, row, false, mods));
             }
         }
-        let wy = if report_wheel { i.raw_scroll_delta.y } else { 0.0 };
+        let wheel = raw_wheel(i);
+        let wy = if report_wheel { wheel.y } else { 0.0 };
         if wy != 0.0 {
             let mb = if wy > 0.0 {
                 MouseBtn::WheelUp
@@ -45,7 +46,7 @@ pub(crate) fn mouse_reports(
             };
             out.extend(mouse_report(sgr, mb, col, row, true, mods));
         }
-        let wx = if report_wheel { i.raw_scroll_delta.x } else { 0.0 };
+        let wx = if report_wheel { wheel.x } else { 0.0 };
         if wx != 0.0 {
             let mb = if wx > 0.0 {
                 MouseBtn::WheelRight
@@ -71,6 +72,27 @@ pub(crate) fn mouse_reports(
         }
     });
     out
+}
+
+/// 프레임의 원시 휠 델타(포인트) — 0.34에서 `raw_scroll_delta` 필드가 사라져
+/// MouseWheel 이벤트 합산으로 구한다(단위 환산은 egui 기본 관례를 따름).
+pub(crate) fn raw_wheel(i: &egui::InputState) -> egui::Vec2 {
+    i.events.iter().fold(egui::Vec2::ZERO, |acc, e| match e {
+        egui::Event::MouseWheel { unit, delta, .. } => {
+            let pts = match unit {
+                egui::MouseWheelUnit::Point => *delta,
+                egui::MouseWheelUnit::Line => *delta * 40.0, // egui line_scroll_speed 기본치.
+                egui::MouseWheelUnit::Page => *delta * 600.0,
+            };
+            acc + pts
+        }
+        _ => acc,
+    })
+}
+
+/// 원시 휠 이벤트를 이 프레임에서 소비한다(스크롤 영역 등 다른 위젯이 또 먹지 않게).
+pub(crate) fn consume_wheel(i: &mut egui::InputState) {
+    i.events.retain(|e| !matches!(e, egui::Event::MouseWheel { .. }));
 }
 
 /// 스크롤백 키(Shift+PageUp/Down/Home/End)를 소비하고 (delta, to_top, to_bottom)를 돌려준다.
@@ -105,7 +127,7 @@ pub(crate) fn draw_scroll_badge(ui: &egui::Ui, rect: egui::Rect, offset: usize) 
     let painter = ui.painter_at(rect);
     painter.rect_filled(
         badge,
-        egui::Rounding::same(3.0),
+        egui::CornerRadius::same(3),
         egui::Color32::from_black_alpha(190),
     );
     painter.text(

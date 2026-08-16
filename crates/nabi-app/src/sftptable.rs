@@ -152,7 +152,7 @@ fn name_cell(
     // 로컬 파일을 끌어 폴더 위에 올리면 테두리로 강조(업로드 대상 안내).
     if e.is_dir && resp.dnd_hover_payload::<String>().is_some() {
         let c = ui.visuals().selection.stroke.color;
-        ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c));
+        ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c), egui::StrokeKind::Inside);
     }
     let resp = if e.mode & 0o777 != 0 {
         let rwx = crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link);

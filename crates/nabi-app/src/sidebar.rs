@@ -94,7 +94,7 @@ impl NabiApp {
                         ui.separator();
                     }
                     // 그룹 없음(루트) — 드롭 시 그룹 해제. 고정 항목은 위 📌 그룹에만.
-                    let (_, drop) = ui.dnd_drop_zone::<String, _>(egui::Frame::none(), |ui| {
+                    let (_, drop) = ui.dnd_drop_zone::<String, _>(egui::Frame::NONE, |ui| {
                         for s in vis.iter().filter(|s| s.folder.is_none() && !pinned.contains(&s.name)) {
                             if let Some(a) = drag_row(ui, s, cur_sel.as_deref(), &mut new_sel) { action = Some(a); }
                         }
@@ -105,7 +105,7 @@ impl NabiApp {
                     folders.dedup();
                     for &f in &folders {
                         let fhdr = egui::RichText::new(format!("\u{1f4c1} {f}")).color(crate::theme_ui::FOLDER);
-                        let (_, drop) = ui.dnd_drop_zone::<String, _>(egui::Frame::none(), |ui| {
+                        let (_, drop) = ui.dnd_drop_zone::<String, _>(egui::Frame::NONE, |ui| {
                             // 접기 상태는 config로 영속 — open(Some)으로 강제, 헤더 클릭 시 토글 수집.
                             // 필터 중에는 접힌 폴더도 강제로 펼쳐 일치 항목이 숨지 않게 한다(트리 검색 UX).
                             let want_open = !filt.trim().is_empty() || !collapsed.iter().any(|c| c == f);
@@ -116,9 +116,9 @@ impl NabiApp {
                             });
                             if ch.header_response.clicked() { toggle_group = Some(f.to_string()); }
                             ch.header_response.context_menu(|ui| {
-                                if ui.button(tr(lang, "sessions.connectall")).clicked() { action = Some(MenuAction::ConnectFolder(f.to_string())); ui.close_menu(); }
-                                if ui.button(tr(lang, "sessions.renamegroup")).clicked() { start_rename = Some(f.to_string()); ui.close_menu(); }
-                                if ui.button(tr(lang, "sessions.ungroupall")).clicked() { ungroup_folder = Some(f.to_string()); ui.close_menu(); }
+                                if ui.button(tr(lang, "sessions.connectall")).clicked() { action = Some(MenuAction::ConnectFolder(f.to_string())); ui.close(); }
+                                if ui.button(tr(lang, "sessions.renamegroup")).clicked() { start_rename = Some(f.to_string()); ui.close(); }
+                                if ui.button(tr(lang, "sessions.ungroupall")).clicked() { ungroup_folder = Some(f.to_string()); ui.close(); }
                             });
                         });
                         if let Some(n) = drop { move_to = Some(((*n).clone(), Some(f.to_string()))); }
@@ -216,7 +216,7 @@ fn side_row(
     // 아이콘이 40개라 목록이 아이콘 밭이 된다(오클릭 위험도 있다 — 특히 ✕ 삭제).
     // 평소엔 이름만 보이고, 우클릭 메뉴는 행 어디서나 그대로 열린다.
     let show_icons = row_hot || selected;
-    let rounding = egui::Rounding::same(4.0);
+    let rounding = egui::CornerRadius::same(4);
     if selected {
         ui.painter().rect_filled(full, rounding, ui.visuals().selection.bg_fill);
     } else if row_hot {
@@ -237,7 +237,7 @@ fn side_row(
         let note = if notes.get(&s.name).is_some_and(|n| !n.is_empty()) { " \u{1f4dd}" } else { "" };
         let mut job = egui::text::LayoutJob::simple_singleline(format!("{}{note}", s.name), font, vis.text_color());
         job.wrap = egui::text::TextWrapping { max_width: (rect.width() - 26.0).max(16.0), max_rows: 1, break_anywhere: true, overflow_character: Some('\u{2026}') };
-        let galley = ui.fonts(|f| f.layout_job(job));
+        let galley = ui.fonts_mut(|f| f.layout_job(job));
         ui.painter().galley(egui::pos2(rect.left() + 24.0, rect.center().y - galley.size().y / 2.0), galley, vis.text_color());
         // 드래그(길게 눌러 이동) 페이로드 + 고스트(커서 옆에 이름).
         if r.drag_started() { r.dnd_set_drag_payload(s.name.clone()); }

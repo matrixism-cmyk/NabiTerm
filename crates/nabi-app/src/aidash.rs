@@ -75,7 +75,7 @@ impl crate::app::NabiApp {
                 }
             });
         if let Some(p) = focus {
-            if let Some(loc) = self.dock.find_tab(&p) { self.dock.set_active_tab(loc); }
+            if let Some(loc) = self.dock.find_tab(&p) { let _ = self.dock.set_active_tab(loc); }
         }
         if !open {
             self.ai_dash_open = false;

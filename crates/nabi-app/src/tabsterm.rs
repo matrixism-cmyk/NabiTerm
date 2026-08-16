@@ -98,7 +98,7 @@ impl TermTabViewer<'_> {
         // 않는다 — 휠을 소비해 아래 마우스 보고/스크롤백 경로로 새지 않게 한다.
         let over = ui.rect_contains_pointer(rect);
         let (wheel, ctrl_wheel, shift_wheel) = ui.input(|i| {
-            let wheel = i.raw_scroll_delta.y;
+            let wheel = crate::paneio::raw_wheel(i).y;
             (wheel, over && i.modifiers.command && wheel != 0.0,
              over && i.modifiers.shift && !i.modifiers.command && wheel != 0.0)
         });
@@ -106,7 +106,7 @@ impl TermTabViewer<'_> {
             // 포커스 여부와 무관하게 포인터가 올라간 이 pane을 확대/축소(+포커스).
             *self.zoom_req = Some((pane, wheel));
             ui.input_mut(|i| {
-                i.raw_scroll_delta = egui::Vec2::ZERO;
+                crate::paneio::consume_wheel(i); // 0.34: 이벤트 제거 = 원시 델타 소비.
                 i.smooth_scroll_delta = egui::Vec2::ZERO;
             });
         }
@@ -216,8 +216,9 @@ impl TermTabViewer<'_> {
                 if self.broadcast && (self.broadcast_group.is_empty() || self.broadcast_group.contains(&pane)) {
                     ui.painter_at(rect).rect_stroke(
                         rect.shrink(1.0),
-                        egui::Rounding::ZERO,
+                        egui::CornerRadius::ZERO,
                         egui::Stroke::new(2.5, crate::theme_ui::BROADCAST),
+                        egui::StrokeKind::Inside,
                     );
                 }
                 if !mouse_on && !occluded && !press_on_layer && !menu_open {

@@ -74,7 +74,7 @@ pub(crate) fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: La
     egui::TopBottomPanel::bottom(ui.id().with("ed_status")).show_inside(ui, |ui| {
         let (enc, eol) = crate::editorstatus::editor_status(ui, doc, last_cur, lang); act.set_encoding = enc; act.set_eol = eol;
     });
-    let row_h = ui.fonts(|f| f.row_height(&egui::FontId::monospace(doc.font_size)));
+    let row_h = ui.fonts_mut(|f| f.row_height(&egui::FontId::monospace(doc.font_size)));
     // 점프(찾기/줄이동/개요)는 대상 줄을 화면 ≈40% 지점에 두어 위아래 맥락이 보이게 한다(VS Code식). 미니맵 스크럽은 정확 위치.
     let vh = ui.available_height();
     let center = |l: usize| (l as f32 * row_h - vh * 0.4).max(0.0);
@@ -121,8 +121,8 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
     });
     ui.separator();
     let mono = egui::FontId::monospace(fsize);
-    let row_h = ui.fonts(|f| f.row_height(&mono)).max(1.0);
-    let char_w = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
+    let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
+    let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let gutter_w = if doc.show_lineno { char_w * (lc.to_string().len().max(4) as f32) + 12.0 } else { 0.0 };
     let text_col = ui.visuals().text_color();
     let avail_w = ui.available_width(); // 창을 가득 채우도록 콘텐츠 최소 폭 기준.
@@ -155,7 +155,7 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
 fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut EditorAct) -> (usize, usize, usize) {
     let (wrap, readonly, show_ws) = (doc.wrap, doc.readonly, doc.show_ws);
     let mono = egui::FontId::monospace(doc.font_size);
-    let char_w = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
+    let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let lines = doc.text_stats().1.max(1); // 거터 폭(길이 변화 시에만 재스캔 — D 성능).
     // 거터 폭 = 숫자폭 + 여백. 숫자는 편집창 프레임에서 충분히 떨어뜨려(활성 시 가림 방지).
     let gutter_w = if doc.show_lineno { char_w * (lines.to_string().len().max(3) as f32) + 22.0 } else { 0.0 };
@@ -168,7 +168,9 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
     let (fsize, hl_id) = (doc.font_size, ui.id().with("hl").value()); // hl_id=증분 강조 캐시 키.
     // wrap(=doc.wrap)이 꺼져 있으면 layouter의 줄바꿈 폭을 무한대로 둔다 — egui가 넘겨주는 폭은
     // 뷰포트 폭(유한값)이라 그대로 쓰면 wrap=off여도 줄바꿈돼 버린다(가로 스크롤로 표시되도록).
-    let mut layouter = move |ui: &egui::Ui, text: &str, wrap_w: f32| {
+    // 0.34: layouter 인자가 &str → &dyn TextBuffer로 바뀌었다(as_str로 동일 사용).
+    let mut layouter = move |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_w: f32| {
+        let text = buf.as_str();
         let max_w = if wrap { wrap_w } else { f32::INFINITY };
         let mut job = if hl {
             crate::editorhl::highlight(hl_id, text, &ext, fsize)
@@ -177,7 +179,7 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
             egui::text::LayoutJob::simple(text.to_owned(), egui::FontId::monospace(fsize), color, max_w)
         };
         job.wrap.max_width = max_w;
-        ui.fonts(|f| f.layout_job(job))
+        ui.fonts_mut(|f| f.layout_job(job))
     };
     ui.horizontal_top(|ui| {
         ui.add_space(gutter_w);
@@ -194,12 +196,12 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         if show_ws { draw_whitespace(ui, &out.galley, out.galley_pos, &mono); }
         // 커서/선택(블럭)의 galley 행을 구해, 한 번 순회로 논리 줄 번호로 환산.
         let rows = &out.galley.rows;
+        // 0.34: rcursor가 사라져 CCursor→행/열은 galley.layout_from_cursor로 구한다.
         let (cur_grow, sel_g) = match &out.cursor_range {
             Some(cr) => {
-                let s = (!cr.is_empty()).then(|| {
-                    (cr.primary.rcursor.row.min(cr.secondary.rcursor.row), cr.primary.rcursor.row.max(cr.secondary.rcursor.row))
-                });
-                (cr.primary.rcursor.row, s)
+                let (pr, sr) = (out.galley.layout_from_cursor(cr.primary).row, out.galley.layout_from_cursor(cr.secondary).row);
+                let s = (!cr.is_empty()).then(|| (pr.min(sr), pr.max(sr)));
+                (pr, s)
             }
             None => (usize::MAX, None),
         };
@@ -232,21 +234,22 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         let mut n = 1usize;
         for (i, row) in rows.iter().enumerate().filter(|_| doc.show_lineno) {
             if i == 0 || rows[i - 1].ends_with_newline {
-                let y = out.galley_pos.y + row.rect.top();
+                let y = out.galley_pos.y + row.rect().top();
                 if sel_g.is_some() && n >= sel_lo && n <= sel_hi {
-                    let bg = egui::Rect::from_min_max(egui::pos2(out.galley_pos.x - gutter_w + 2.0, y), egui::pos2(out.galley_pos.x - 6.0, y + row.rect.height()));
-                    painter.rect_filled(bg, egui::Rounding::ZERO, GUTTER_SEL);
+                    let bg = egui::Rect::from_min_max(egui::pos2(out.galley_pos.x - gutter_w + 2.0, y), egui::pos2(out.galley_pos.x - 6.0, y + row.rect().height()));
+                    painter.rect_filled(bg, egui::CornerRadius::ZERO, GUTTER_SEL);
                 }
                 let col = if n == cur_line { GUTTER_CUR } else { GUTTER };
                 painter.text(egui::pos2(out.galley_pos.x - 12.0, y), egui::Align2::RIGHT_TOP, n.to_string(), mono.clone(), col);
-                if doc.bookmarks.contains(&(n - 1)) { painter.circle_filled(egui::pos2(out.galley_pos.x - gutter_w + 5.0, y + row.rect.height() * 0.5), 3.0, GUTTER_CUR); } // 북마크 점.
+                if doc.bookmarks.contains(&(n - 1)) { painter.circle_filled(egui::pos2(out.galley_pos.x - gutter_w + 5.0, y + row.rect().height() * 0.5), 3.0, GUTTER_CUR); } // 북마크 점.
                 n += 1;
             }
         }
         if let Some(cr) = out.cursor_range {
-            cur = (cr.primary.rcursor.row + 1, cr.primary.rcursor.column + 1);
-            doc.cur_line = cr.primary.rcursor.row; // 북마크 토글/점프 기준(0기반).
-            let (a, b) = (cr.primary.ccursor.index, cr.secondary.ccursor.index);
+            let lc = out.galley.layout_from_cursor(cr.primary);
+            cur = (lc.row + 1, lc.column + 1);
+            doc.cur_line = lc.row; // 북마크 토글/점프 기준(0기반).
+            let (a, b) = (cr.primary.index, cr.secondary.index);
             sel_chars = a.max(b) - a.min(b); // 선택 글자 수(상태바 표시).
             // 괄호 매칭(A1) — 작은 파일에서만(비용 제한).
             if doc.text.len() < crate::editorhl::MAX_HL_BYTES { crate::editorextra::highlight_brackets(ui.painter(), &out.galley, out.galley_pos, char_w, &doc.text, a); }
@@ -265,8 +268,8 @@ fn draw_whitespace(ui: &egui::Ui, galley: &egui::Galley, origin: egui::Pos2, mon
     let faint = ui.visuals().weak_text_color();
     let painter = ui.painter();
     for row in &galley.rows {
-        let y = origin.y + row.rect.top();
-        if y + row.rect.height() < clip.top() || y > clip.bottom() {
+        let y = origin.y + row.rect().top();
+        if y + row.rect().height() < clip.top() || y > clip.bottom() {
             continue; // 화면 밖 행은 그리지 않음(대용량 정상 파일에서 비용 절감).
         }
         for g in &row.glyphs {

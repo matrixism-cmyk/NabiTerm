@@ -12,9 +12,9 @@ impl NabiApp {
         }
         let lang = self.lang;
         let (mut go, mut sftp, mut host_blur) = (false, false, false);
-        let frame = egui::Frame::none()
+        let frame = egui::Frame::NONE
             .fill(crate::theme_ui::STATUS_FILL)
-            .inner_margin(egui::Margin::symmetric(8.0, 4.0));
+            .inner_margin(egui::Margin::symmetric(8, 4));
         egui::TopBottomPanel::top("qc_bar").frame(frame).show(ctx, |ui| {
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
             ui.horizontal(|ui| {

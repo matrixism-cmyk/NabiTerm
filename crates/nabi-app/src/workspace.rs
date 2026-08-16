@@ -77,17 +77,18 @@ impl NabiApp {
         let main = egui_dock::SurfaceIndex::main();
         // 포커스 리프 기준 분할. 포커스가 없으면(사이드바·메뉴 조작 후 흔함) 메인 트리 첫 탭 기준으로
         // 폴백해 분할이 묵살되지 않게 한다(탭이 전혀 없을 때만 일반 추가).
+        // 0.19: focused_leaf/find_tab이 튜플 대신 NodePath/TabPath를 돌려준다.
         let target = self
             .dock
             .focused_leaf()
-            .filter(|(s, _)| *s == main)
-            .map(|(_, n)| n)
+            .filter(|p| p.surface == main)
+            .map(|p| p.node)
             .or_else(|| {
                 let first = self.dock.iter_all_tabs().next().map(|(_, t)| *t)?;
                 self.dock
                     .find_tab(&first)
-                    .filter(|loc| loc.0 == main)
-                    .map(|loc| loc.1)
+                    .filter(|loc| loc.surface == main)
+                    .map(|loc| loc.node)
             });
         if let Some(node) = target {
             let tree = self.dock.main_surface_mut();

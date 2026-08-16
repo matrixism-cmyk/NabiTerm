@@ -56,7 +56,7 @@ pub(crate) fn transform_menu(ui: &mut egui::Ui, lang: Lang) -> Option<Xf> {
             for (key, f) in items {
                 if ui.button(tr(lang, key)).clicked() {
                     chosen = Some(*f);
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         });

@@ -31,7 +31,7 @@ impl NabiApp {
             data.push(b'\r');
             self.orch.send(nabi_proto::Command::WriteInput { pane: p, data: bytes::Bytes::from(data) });
             if let Some(loc) = self.dock.find_tab(&p) {
-                self.dock.set_active_tab(loc);
+                let _ = self.dock.set_active_tab(loc);
             }
         }
     }

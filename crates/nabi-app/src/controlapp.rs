@@ -47,7 +47,7 @@ impl crate::app::NabiApp {
                 AppCtl::Focus { pane } => {
                     let p = nabi_types::PaneId::new(pane);
                     if let Some(loc) = self.dock.find_tab(&p) {
-                        self.dock.set_active_tab(loc);
+                        let _ = self.dock.set_active_tab(loc);
                     }
                 }
                 AppCtl::SetTitle { pane, title } => {

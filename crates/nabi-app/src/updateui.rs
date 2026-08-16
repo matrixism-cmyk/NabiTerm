@@ -21,7 +21,7 @@ pub(crate) fn update_section(
     updater: &UpdateChecker,
     quit: &Arc<AtomicBool>,
 ) {
-    egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(10.0)).show(ui, |ui| {
+    egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(10)).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new(tr(lang, "update.section")).strong().color(TEAL));
             ui.weak(format!("v{APP_VERSION}"));

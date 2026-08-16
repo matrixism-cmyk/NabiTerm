@@ -31,45 +31,45 @@ pub(crate) fn context_menu(
     ui.add_enabled_ui(has_sel, |ui| {
         if ui.button(tr(lang, "menu.copy")).clicked() {
             act.copy = Some(eb.selected_text());
-            ui.close_menu();
+            ui.close();
         }
         ui.add_enabled_ui(!readonly, |ui| {
             if ui.button(tr(lang, "ctx.cut")).clicked() {
                 act.copy = Some(eb.selected_text());
                 eb.delete();
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "ctx.delete")).clicked() {
                 eb.delete();
-                ui.close_menu();
+                ui.close();
             }
         });
     });
     ui.add_enabled_ui(!readonly, |ui| {
         if ui.button(tr(lang, "menu.paste")).clicked() {
             act.paste = true;
-            ui.close_menu();
+            ui.close();
         }
     });
     if ui.button(tr(lang, "menu.selectall")).clicked() {
         eb.select_all();
-        ui.close_menu();
+        ui.close();
     }
     ui.separator();
     ui.add_enabled_ui(!readonly, |ui| {
         if ui.button(tr(lang, "editor.undo")).clicked() {
             eb.undo();
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "editor.redo")).clicked() {
             eb.redo();
-            ui.close_menu();
+            ui.close();
         }
     });
     ui.separator();
     if ui.button(tr(lang, "menu.find")).clicked() {
         act.find = true;
-        ui.close_menu();
+        ui.close();
     }
     // 변환(정렬·대소문자·인코딩 등)은 editbufxform 덕에 rope 문서에서도 돈다.
     // 선택이 있으면 그 구간만, 없으면 문서 전체(크기 한도 안에서).
@@ -78,7 +78,7 @@ pub(crate) fn context_menu(
         ui.menu_button(tr(lang, "ctx.transform"), |ui| {
             if let Some(f) = crate::editorxform::transform_menu(ui, lang) {
                 eb.apply_transform(f);
-                ui.close_menu();
+                ui.close();
             }
         })
         .response

@@ -9,10 +9,10 @@ use nabi_i18n::{tr, Lang};
 pub(crate) fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, lang: Lang) {
     if !readonly {
         ui.add_enabled_ui(!h.undo.is_empty(), |ui| {
-            if ui.button(tr(lang, "editor.undo")).clicked() { h.undo(); ui.close_menu(); }
+            if ui.button(tr(lang, "editor.undo")).clicked() { h.undo(); ui.close(); }
         });
         ui.add_enabled_ui(!h.redo.is_empty(), |ui| {
-            if ui.button(tr(lang, "editor.redo")).clicked() { h.redo(); ui.close_menu(); }
+            if ui.button(tr(lang, "editor.redo")).clicked() { h.redo(); ui.close(); }
         });
         ui.separator();
     }
@@ -21,40 +21,40 @@ pub(crate) fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, la
         ui.menu_button(tr(lang, "nabipad.copygroup"), |ui| {
             if ui.button(tr(lang, "nabipad.copyhex")).clicked() {
                 ui.ctx().copy_text(to_hex_string(&h.selected_bytes()));
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "nabipad.copytext")).clicked() {
                 ui.ctx().copy_text(ascii_of(&h.selected_bytes()));
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "nabipad.copycarray")).clicked() {
                 ui.ctx().copy_text(crate::edithexedit::to_c_array(&h.selected_bytes()));
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "nabipad.copyb64")).clicked() {
                 ui.ctx().copy_text(crate::editorconvert::base64_encode_bytes(&h.selected_bytes()));
-                ui.close_menu();
+                ui.close();
             }
         });
         if !readonly && ui.button(tr(lang, "nabipad.cut")).clicked() {
             ui.ctx().copy_text(to_hex_string(&h.selected_bytes()));
             h.delete_forward(); // 선택 삭제.
-            ui.close_menu();
+            ui.close();
         }
         if !readonly && ui.button(tr(lang, "nabipad.delete")).clicked() {
             h.delete_forward();
-            ui.close_menu();
+            ui.close();
         }
         if !readonly {
             // 채우기 값(0x00/0xFF)을 한 서브메뉴로 묶는다.
             ui.menu_button(tr(lang, "nabipad.fillgroup"), |ui| {
                 if ui.button(tr(lang, "nabipad.fill00")).clicked() {
                     h.fill_selection(0x00);
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.button(tr(lang, "nabipad.fillff")).clicked() {
                     h.fill_selection(0xFF);
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         }
@@ -63,7 +63,7 @@ pub(crate) fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, la
             if let Some(path) = rfd::FileDialog::new().set_file_name("selection.bin").save_file() {
                 let _ = std::fs::write(path, data); // 선택 바이트를 파일로 추출.
             }
-            ui.close_menu();
+            ui.close();
         }
         ui.separator();
     }
@@ -74,17 +74,17 @@ pub(crate) fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, la
                 if let Some(t) = crate::paneio::clipboard_text() {
                     h.insert_bytes(&parse_hex(&t)); // 클립보드를 HEX로 해석해 삽입.
                 }
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "nabipad.pastetext")).clicked() {
                 if let Some(t) = crate::paneio::clipboard_text() {
                     h.insert_bytes(t.as_bytes()); // 클립보드 텍스트를 바이트로 삽입.
                 }
-                ui.close_menu();
+                ui.close();
             }
             if ui.button(tr(lang, "nabipad.insertbyte")).clicked() {
                 h.insert_bytes(&[0]); // 0x00 한 바이트 삽입(이후 편집).
-                ui.close_menu();
+                ui.close();
             }
         });
         ui.separator();
@@ -92,23 +92,23 @@ pub(crate) fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, la
     if !readonly {
         // 비트 연산(선택 영역, 없으면 전체) — HxD/010 식.
         ui.menu_button(tr(lang, "nabipad.bitops"), |ui| {
-            if ui.button(tr(lang, "nabipad.invert")).clicked() { h.invert(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.swapnib")).clicked() { h.swap_nibbles(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.revbytes")).clicked() { h.reverse_bytes(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.shl")).clicked() { h.shift_left(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.shr")).clicked() { h.shift_right(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.rol")).clicked() { h.rotate_left(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.ror")).clicked() { h.rotate_right(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.revbits")).clicked() { h.reverse_bits(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.swap16")).clicked() { h.swap_bytes16(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.swap32")).clicked() { h.swap_bytes32(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.incbyte")).clicked() { h.increment(); ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.decbyte")).clicked() { h.decrement(); ui.close_menu(); }
+            if ui.button(tr(lang, "nabipad.invert")).clicked() { h.invert(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.swapnib")).clicked() { h.swap_nibbles(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.revbytes")).clicked() { h.reverse_bytes(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.shl")).clicked() { h.shift_left(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.shr")).clicked() { h.shift_right(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.rol")).clicked() { h.rotate_left(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.ror")).clicked() { h.rotate_right(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.revbits")).clicked() { h.reverse_bits(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.swap16")).clicked() { h.swap_bytes16(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.swap32")).clicked() { h.swap_bytes32(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.incbyte")).clicked() { h.increment(); ui.close(); }
+            if ui.button(tr(lang, "nabipad.decbyte")).clicked() { h.decrement(); ui.close(); }
         });
     }
     if ui.button(tr(lang, "tab.selectall")).clicked() {
         h.select_all();
-        ui.close_menu();
+        ui.close();
     }
 }
 

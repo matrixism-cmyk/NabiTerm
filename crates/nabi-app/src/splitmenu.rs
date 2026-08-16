@@ -15,7 +15,7 @@ pub(crate) fn split_menu(
     for (label, kind) in crate::menu::installed_shells() {
         if ui.button(label).clicked() {
             action = Some(MenuAction::SplitSpawn(kind, right));
-            ui.close_menu();
+            ui.close();
         }
     }
     if sessions.iter().any(|s| !s.name.is_empty()) {
@@ -23,7 +23,7 @@ pub(crate) fn split_menu(
         for s in sessions {
             if !s.name.is_empty() && ui.button(&s.name).clicked() {
                 action = Some(MenuAction::SplitConnect(s.clone(), right));
-                ui.close_menu();
+                ui.close();
             }
         }
     }

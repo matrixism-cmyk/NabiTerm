@@ -31,7 +31,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
     ] {
         if ui.button(tr(lang, key)).clicked() {
             act = Some(ToolsPick::Pal(a));
-            ui.close_menu();
+            ui.close();
         }
     }
     ui.separator();
@@ -55,7 +55,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         }
         if ui.button(tr(lang, key)).clicked() {
             act = Some(ToolsPick::Pal(a));
-            ui.close_menu();
+            ui.close();
         }
     }
     act
@@ -71,19 +71,19 @@ fn snippets_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> Option<M
         ui.separator();
         if ui.button(tr(lang, "menu.addsnippet")).clicked() {
             action = Some(MenuAction::AddSnippet);
-            ui.close_menu();
+            ui.close();
         }
         if snippets.len() > 1 && ui.button(tr(lang, "menu.sortsnippets")).clicked() {
             action = Some(MenuAction::SortSnippets);
-            ui.close_menu();
+            ui.close();
         }
         if !snippets.is_empty() && ui.button(tr(lang, "menu.exportsnippets")).clicked() {
             action = Some(MenuAction::ExportSnippets);
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "menu.importsnippets")).clicked() {
             action = Some(MenuAction::ImportSnippets);
-            ui.close_menu();
+            ui.close();
         }
         ui.separator();
         if snippets.is_empty() {
@@ -94,11 +94,11 @@ fn snippets_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> Option<M
                 let short: String = snip.chars().take(36).collect();
                 if ui.button(short).on_hover_text(snip).clicked() {
                     action = Some(MenuAction::SendSnippet(snip.clone()));
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.small_button("\u{2715}").clicked() {
                     action = Some(MenuAction::RemoveSnippet(i));
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         }

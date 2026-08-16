@@ -13,7 +13,7 @@ pub(crate) fn sessions_menu(ui: &mut egui::Ui, lang: Lang, saved: &[SavedSession
     let live = |s: &SavedSession| matches!(&s.kind, nabi_session::SessionKind::Ssh { host, user, port, .. } if active.contains(&format!("{user}@{host}:{port}")));
     if ui.button(tr(lang, "menu.newssh")).clicked() {
         action = Some(MenuAction::NewSshConnection);
-        ui.close_menu();
+        ui.close();
     }
     ui.separator();
     if saved.is_empty() {
@@ -43,7 +43,7 @@ pub(crate) fn sessions_menu(ui: &mut egui::Ui, lang: Lang, saved: &[SavedSession
         let fhdr = egui::RichText::new(format!("\u{1f4c1} {f}")).color(crate::theme_ui::FOLDER);
         ui.menu_button(fhdr, |ui| {
             // 폴더 전체 연결(레이아웃처럼 한 번에 모두 열기, E7).
-            if ui.button(tr(lang, "sessions.connectall")).clicked() { action = Some(MenuAction::ConnectFolder(f.to_string())); ui.close_menu(); }
+            if ui.button(tr(lang, "sessions.connectall")).clicked() { action = Some(MenuAction::ConnectFolder(f.to_string())); ui.close(); }
             ui.separator();
             for s in saved.iter().filter(|s| s.folder.as_deref() == Some(f) && hit(s)) {
                 if let Some(a) = session_row(ui, lang, s, last(s), now, live(s), &all_folders) {
@@ -68,7 +68,7 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
             for (k, a) in items {
                 if ui.button(tr(lang, k)).clicked() {
                     action = Some(a);
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         });
@@ -96,12 +96,12 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
     ui.separator();
     if ui.button(tr(lang, "menu.localforward")).clicked() {
         action = Some(MenuAction::OpenForward);
-        ui.close_menu();
+        ui.close();
     }
     // 볼트(자격증명 금고) — 최상위 메뉴에서 세션 관리 영역으로 흡수(T3-1).
     if ui.button(tr(lang, "menu.vault")).on_hover_text(tr(lang, "vault.about")).clicked() {
         action = Some(MenuAction::OpenVault);
-        ui.close_menu();
+        ui.close();
     }
     action
 }
@@ -122,7 +122,7 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
             ui.allocate_exact_size(egui::vec2(bw, ui.spacing().interact_size.y), egui::Sense::click());
         let vis = ui.style().interact(&nb);
         if nb.hovered() {
-            ui.painter().rect_filled(rect, vis.rounding, vis.bg_fill);
+            ui.painter().rect_filled(rect, vis.corner_radius, vis.bg_fill);
         }
         ui.painter().text(
             egui::pos2(rect.left() + 6.0, rect.center().y),
@@ -139,7 +139,7 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
         let nbr = nb.on_hover_text(hint);
         if nbr.clicked() {
             action = Some(MenuAction::ConnectSaved(s.clone()));
-            ui.close_menu();
+            ui.close();
         }
         // 우클릭 시 사이드바와 동일한 공용 컨텍스트 메뉴(기능 통일).
         nbr.context_menu(|ui| {
@@ -152,11 +152,11 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
             };
             if icon(ui, "\u{2715}", "sessions.delete") {
                 action = Some(MenuAction::DeleteSession(s.name.clone()));
-                ui.close_menu();
+                ui.close();
             }
             if icon(ui, "\u{270e}", "sessions.edit") {
                 action = Some(MenuAction::EditSession(s.clone()));
-                ui.close_menu();
+                ui.close();
             }
             // SFTP 열기: 일반 SSH 세션만(FTP 세션은 연결이 곧 FTP 브라우저).
             if matches!(s.kind, SessionKind::Ssh { .. })
@@ -164,7 +164,7 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
                 && icon(ui, "\u{1f5a7}", "sessions.opensftp")
             {
                 action = Some(MenuAction::OpenSftp(s.clone()));
-                ui.close_menu();
+                ui.close();
             }
             // 더보기 "⋯" = 사이드바와 동일한 공용 전체 메뉴(고정·메모·복제·복사·연결테스트·그룹이동 등, 기능 통일).
             ui.menu_button("\u{22ef}", |ui| {

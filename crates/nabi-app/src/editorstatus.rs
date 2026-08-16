@@ -9,9 +9,9 @@ const EOLS: [&str; 3] = ["LF", "CRLF", "CR"];
 
 /// 구문 강조 언어 선택 항목(자동 + 흔한 언어). doc.syntax_ext를 직접 설정. 보기 메뉴·상태바 공용(DRY).
 pub(crate) fn syntax_lang_picker(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
-    if ui.selectable_label(doc.syntax_ext.is_none(), tr(lang, "nabipad.syntaxauto")).clicked() { doc.syntax_ext = None; ui.close_menu(); }
+    if ui.selectable_label(doc.syntax_ext.is_none(), tr(lang, "nabipad.syntaxauto")).clicked() { doc.syntax_ext = None; ui.close(); }
     for (name, ext) in [("Rust", "rs"), ("Python", "py"), ("JavaScript", "js"), ("TypeScript", "ts"), ("JSON", "json"), ("TOML", "toml"), ("YAML", "yaml"), ("Markdown", "md"), ("HTML", "html"), ("CSS", "css"), ("Shell", "sh"), ("C", "c"), ("C++", "cpp"), ("Go", "go"), ("SQL", "sql"), ("Ruby", "rb"), ("PHP", "php"), ("Java", "java"), ("Lua", "lua")] {
-        if ui.selectable_label(doc.syntax_ext.as_deref() == Some(ext), name).clicked() { doc.syntax_ext = Some(ext.to_string()); ui.close_menu(); }
+        if ui.selectable_label(doc.syntax_ext.as_deref() == Some(ext), name).clicked() { doc.syntax_ext = Some(ext.to_string()); ui.close(); }
     }
 }
 
@@ -53,7 +53,7 @@ pub(crate) fn editor_status(
             for e in EOLS {
                 if ui.selectable_label(doc.eol == e, e).clicked() {
                     set_eol = Some(e);
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         })

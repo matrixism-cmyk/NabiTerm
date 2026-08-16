@@ -19,38 +19,38 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
     let can_transform = plain || doc.edit.is_some();
     egui::menu::bar(ui, |ui| {
         ui.menu_button(tr(lang, "nabipad.menu.file"), |ui| {
-            if ui.button(tr(lang, "menu.newpad")).clicked() { act.new_doc = true; ui.close_menu(); }
-            if ui.button(tr(lang, "nabipad.openfile")).clicked() { act.open_file = true; ui.close_menu(); }
+            if ui.button(tr(lang, "menu.newpad")).clicked() { act.new_doc = true; ui.close(); }
+            if ui.button(tr(lang, "nabipad.openfile")).clicked() { act.open_file = true; ui.close(); }
             ui.add_enabled_ui(!recent.is_empty(), |ui| {
                 ui.menu_button(tr(lang, "nabipad.recentfiles"), |ui| {
                     for p in recent {
-                        if ui.button(p).clicked() { act.open_recent = Some(p.clone()); ui.close_menu(); }
+                        if ui.button(p).clicked() { act.open_recent = Some(p.clone()); ui.close(); }
                     }
                 });
             });
             ui.separator();
-            if ui.button(tr(lang, "editor.save")).clicked() { act.save = true; ui.close_menu(); }
-            if ui.button(tr(lang, "cmd.saveall")).clicked() { act.save_all = true; ui.close_menu(); }
-            if ui.button(tr(lang, "editor.saveas")).clicked() { act.save_as = true; ui.close_menu(); }
-            if plain && ui.button(tr(lang, "editor.reload")).clicked() { act.reload = true; ui.close_menu(); }
-            if plain && ui.button(tr(lang, "editor.diffdisk")).clicked() { act.diff_disk = true; ui.close_menu(); }
+            if ui.button(tr(lang, "editor.save")).clicked() { act.save = true; ui.close(); }
+            if ui.button(tr(lang, "cmd.saveall")).clicked() { act.save_all = true; ui.close(); }
+            if ui.button(tr(lang, "editor.saveas")).clicked() { act.save_as = true; ui.close(); }
+            if plain && ui.button(tr(lang, "editor.reload")).clicked() { act.reload = true; ui.close(); }
+            if plain && ui.button(tr(lang, "editor.diffdisk")).clicked() { act.diff_disk = true; ui.close(); }
             ui.separator();
             let path = doc.path.to_string_lossy().into_owned();
             if ui.button(tr(lang, "nabipad.reveal")).clicked() {
                 let _ = std::process::Command::new("explorer").arg(format!("/select,{path}")).spawn();
-                ui.close_menu();
+                ui.close();
             }
-            if ui.button(tr(lang, "nabipad.copypath")).clicked() { ui.ctx().copy_text(path.clone()); ui.close_menu(); }
+            if ui.button(tr(lang, "nabipad.copypath")).clicked() { ui.ctx().copy_text(path.clone()); ui.close(); }
             if ui.button(tr(lang, "nabipad.openexternal")).clicked() {
                 // OS 기본 프로그램으로 파일 열기(start "" <path>).
                 let _ = std::process::Command::new("cmd").args(["/C", "start", "", &path]).spawn();
-                ui.close_menu();
+                ui.close();
             }
             ui.separator();
-            if ui.button(tr(lang, "nabipad.close")).clicked() { act.close = true; ui.close_menu(); }
+            if ui.button(tr(lang, "nabipad.close")).clicked() { act.close = true; ui.close(); }
         });
         ui.menu_button(tr(lang, "nabipad.menu.edit"), |ui| {
-            if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close_menu(); }
+            if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close(); }
             // 변환 명령(일반 텍스트 문서 전용)은 전부 주제별 서브메뉴로 묶어 평면 비대화를 막는다.
             if can_transform {
                 use crate::editmenugroups as g;
@@ -72,7 +72,7 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                             doc.dirty = true;
                         }
                     }
-                    ui.close_menu();
+                    ui.close();
                 };
                 if blocked {
                     ui.label(tr(lang, "editor.xform.toobig"));
@@ -120,7 +120,7 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                                 doc.bookmarks.sort_unstable(); // 다음/이전 점프가 순서대로.
                             }
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button(tr(lang, "nabipad.bmnext")).clicked() {
                         // 아래로 가장 가까운 북마크(없으면 처음으로 감싸기).
@@ -128,7 +128,7 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                         if let Some(n) = next.or_else(|| doc.bookmarks.first()).copied() {
                             doc.jump_to_line(n);
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
                     if ui.button(tr(lang, "nabipad.bmprev")).clicked() {
                         // 위로 가장 가까운 북마크(없으면 마지막으로 감싸기).
@@ -136,9 +136,9 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                         if let Some(n) = prev.or_else(|| doc.bookmarks.last()).copied() {
                             doc.jump_to_line(n);
                         }
-                        ui.close_menu();
+                        ui.close();
                     }
-                    if ui.button(tr(lang, "nabipad.bmclear")).clicked() { doc.bookmarks.clear(); ui.close_menu(); }
+                    if ui.button(tr(lang, "nabipad.bmclear")).clicked() { doc.bookmarks.clear(); ui.close(); }
                 });
                 ui.menu_button(tr(lang, "editor.docinfo"), |ui| {
                     let s = crate::editorstats::document_stats(&doc.text);
@@ -158,12 +158,12 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
             let mut shown = true;
             if ui.checkbox(&mut shown, tr(lang, "nabipad.menu.show")).clicked() {
                 act.toggle_menu_bar = true;
-                ui.close_menu();
+                ui.close();
             }
         });
         if !is_hex {
             ui.menu_button(tr(lang, "nabipad.menu.search"), |ui| {
-                if ui.button(tr(lang, "find.placeholder")).clicked() { doc.find.open = true; ui.close_menu(); }
+                if ui.button(tr(lang, "find.placeholder")).clicked() { doc.find.open = true; ui.close(); }
             });
         }
         if plain {
@@ -177,7 +177,7 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
                 ui.separator();
                 ui.label(egui::RichText::new(tr(lang, "editor.eol")).weak().small());
                 for eol in EOLS {
-                    if ui.selectable_label(doc.eol == eol, eol).clicked() { act.set_eol = Some(eol); ui.close_menu(); }
+                    if ui.selectable_label(doc.eol == eol, eol).clicked() { act.set_eol = Some(eol); ui.close(); }
                 }
             });
         }
@@ -185,10 +185,10 @@ pub(crate) fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: 
         if plain || is_hex {
             ui.menu_button(tr(lang, "nabipad.menu.tools"), |ui| {
                 let label = if is_hex { "nabipad.textmode" } else { "nabipad.hexmode" };
-                if ui.button(tr(lang, label)).clicked() { act.toggle_hex = true; ui.close_menu(); }
+                if ui.button(tr(lang, label)).clicked() { act.toggle_hex = true; ui.close(); }
             });
         }
-        if ui.button(tr(lang, "menu.settings")).clicked() { act.open_settings = true; ui.close_menu(); }
+        if ui.button(tr(lang, "menu.settings")).clicked() { act.open_settings = true; ui.close(); }
         ui.menu_button(tr(lang, "nabipad.menu.help"), |ui| {
             ui.label(format!("{} v{}", tr(lang, "nabipad.name"), env!("CARGO_PKG_VERSION")));
         });

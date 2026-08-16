@@ -94,9 +94,9 @@ impl NabiApp {
         // 현재 연결된 SSH 출처 집합(세션 목록 라이브 표시 D9).
         let active: std::collections::HashSet<String> = self.pane_origins.values().filter_map(|k| match k {
             nabi_session::SessionKind::Ssh { host, user, port, .. } => Some(format!("{user}@{host}:{port}")), _ => None }).collect();
-        let mbar = egui::Frame::none()
+        let mbar = egui::Frame::NONE
             .fill(crate::theme_ui::MENU_FILL)
-            .inner_margin(egui::Margin::symmetric(6.0, 3.0));
+            .inner_margin(egui::Margin::symmetric(6, 3));
         egui::TopBottomPanel::top("menubar").frame(mbar).show(ctx, |ui| {
             // 메뉴 띠 글씨를 강제로 밝게(어두운 띠에서 확실히 보이도록).
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
@@ -106,7 +106,7 @@ impl NabiApp {
                         for (label, shell) in installed_shells() {
                             if ui.button(label).clicked() {
                                 action = Some(MenuAction::Spawn(shell));
-                                ui.close_menu();
+                                ui.close();
                             }
                         }
                     });
@@ -114,14 +114,14 @@ impl NabiApp {
                     if ui.button(tr(lang, "menu.newpad")).clicked() { action = Some(MenuAction::OpenNabiPad); }
                     if ui.button(tr(lang, "menu.browsertab")).clicked() {
                         action = Some(MenuAction::OpenBrowserTab);
-                        ui.close_menu();
+                        ui.close();
                     }
                     ui.separator();
-                    if ui.button(tr(lang, "menu.saveworkspace")).clicked() { action = Some(MenuAction::SaveWorkspace); ui.close_menu(); }
-                    if ui.button(tr(lang, "menu.restoreworkspace")).clicked() { action = Some(MenuAction::RestoreWorkspace); ui.close_menu(); }
+                    if ui.button(tr(lang, "menu.saveworkspace")).clicked() { action = Some(MenuAction::SaveWorkspace); ui.close(); }
+                    if ui.button(tr(lang, "menu.restoreworkspace")).clicked() { action = Some(MenuAction::RestoreWorkspace); ui.close(); }
                     if ui.button(tr(lang, "menu.configdir")).clicked() {
                         action = Some(MenuAction::OpenConfigDir);
-                        ui.close_menu();
+                        ui.close();
                     }
                     ui.separator();
                     if item_keys(ui, tr(lang, "menu.exit"), "Ctrl+Shift+Q") {
@@ -137,25 +137,25 @@ impl NabiApp {
                 ui.menu_button(tr(lang, "menu.edit"), |ui| {
                     if item_keys(ui, tr(lang, "menu.copy"), "Ctrl+Shift+C") {
                         action = Some(MenuAction::Copy);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if item_keys(ui, tr(lang, "menu.paste"), "Ctrl+Shift+V") {
                         action = Some(MenuAction::Paste);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if item_keys(ui, tr(lang, "menu.selectall"), "Ctrl+Shift+A") {
                         action = Some(MenuAction::SelectAll);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if item_keys(ui, tr(lang, "menu.find"), "Ctrl+F") {
                         action = Some(MenuAction::Find);
-                        ui.close_menu();
+                        ui.close();
                     }
                     if item_keys(ui, tr(lang, "term.reset"), "Ctrl+Shift+K") {
                         action = Some(MenuAction::ResetTerm);
-                        ui.close_menu();
+                        ui.close();
                     }
-                    if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close_menu(); }
+                    if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close(); }
                     // 스니펫은 도구 메뉴로 이동(T3-1 — 편집=텍스트 조작, 도구=생산성 도구).
                 });
                 ui.menu_button(tr(lang, "menu.view"), |ui| {
@@ -173,12 +173,12 @@ impl NabiApp {
                 });
                 if ui.button(tr(lang, "menu.settings")).clicked() {
                     action = Some(MenuAction::OpenSettings);
-                    ui.close_menu();
+                    ui.close();
                 }
                 // 볼트는 세션 메뉴(관리 영역)로 흡수 — 최상위 7→6(T3-1).
                 if ui.button(tr(lang, "menu.help")).clicked() {
                     action = Some(MenuAction::OpenAbout); // 클릭 즉시 도움말(설정과 동일).
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         });

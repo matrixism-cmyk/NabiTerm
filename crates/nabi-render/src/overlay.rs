@@ -30,7 +30,7 @@ pub(crate) fn paint_preedit(
         .sum::<f32>()
         .max(cw);
     let bg = Rect::from_min_size(Pos2::new(x0, y), Vec2::new(width, ch));
-    painter.rect_filled(bg, egui::Rounding::ZERO, to_c32(theme.sel_color));
+    painter.rect_filled(bg, egui::CornerRadius::ZERO, to_c32(theme.sel_color));
     painter.text(Pos2::new(x0, y), Align2::LEFT_TOP, preedit, font.clone(), to_c32(theme.fg));
     let uy = y + ch - 1.0;
     painter.line_segment(

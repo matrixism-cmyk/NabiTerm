@@ -92,7 +92,7 @@ pub fn install_cjk_fonts(ctx: &egui::Context, user_font: &str) {
         if let Ok(data) = std::fs::read(path) {
             fonts
                 .font_data
-                .insert(name.to_owned(), egui::FontData::from_owned(data));
+                .insert(name.to_owned(), std::sync::Arc::new(egui::FontData::from_owned(data)));
             added.push(name.to_owned());
         }
     }
@@ -109,7 +109,7 @@ pub fn install_cjk_fonts(ctx: &egui::Context, user_font: &str) {
         if let Ok(data) = std::fs::read(user_font) {
             fonts
                 .font_data
-                .insert("user_mono".to_owned(), egui::FontData::from_owned(data));
+                .insert("user_mono".to_owned(), std::sync::Arc::new(egui::FontData::from_owned(data)));
             fonts
                 .families
                 .entry(egui::FontFamily::Monospace)

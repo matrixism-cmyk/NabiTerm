@@ -182,18 +182,12 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         }
     }
 
-    fn on_add(&mut self, surface: egui_dock::SurfaceIndex, node: egui_dock::NodeIndex) {
+    fn on_add(&mut self, path: egui_dock::NodePath) {
         *self.add_requested = true;
-        *self.add_target = Some((surface, node)); // 클릭된 탭 바 위치를 기억(거기에 새 탭 생성).
+        *self.add_target = Some((path.surface, path.node)); // 클릭된 탭 바 위치를 기억(거기에 새 탭 생성).
     }
 
-    fn context_menu(
-        &mut self,
-        ui: &mut egui::Ui,
-        tab: &mut PaneId,
-        _surface: egui_dock::SurfaceIndex,
-        _node: egui_dock::NodeIndex,
-    ) {
+    fn context_menu(&mut self, ui: &mut egui::Ui, tab: &mut PaneId, _path: egui_dock::NodePath) {
         *self.tab_ctx_open = true; // 탭 메뉴가 열렸으니 빈 탭바 우클릭 메뉴는 띄우지 않는다(#3).
         let is_ssh = matches!(
             self.pane_origins.get(tab),
@@ -251,22 +245,23 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         self.paint_term(ui, pane);
     }
 
-    fn on_close(&mut self, tab: &mut PaneId) -> bool {
+    fn on_close(&mut self, tab: &mut PaneId) -> egui_dock::tab_viewer::OnCloseResponse {
+        use egui_dock::tab_viewer::OnCloseResponse;
         if self.browser_tabs.contains_key(tab) {
             *self.browser_closed = Some(*tab); // UI 전용 탭 — 오케스트레이터 명령 없음.
-            return true;
+            return OnCloseResponse::Close;
         }
         if self.editors.contains_key(tab) {
             *self.editor_closed = Some(*tab); // 정리는 central에서.
-            return true;
+            return OnCloseResponse::Close;
         }
         if Some(*tab) == self.sftp_pane || self.sftp_bg.contains_key(tab) {
-            *self.sftp_closed = Some(*tab); // 정리는 central에서.
-            return false;
+            *self.sftp_closed = Some(*tab); // 정리는 central에서(닫힘 자체도 central이 수행).
+            return OnCloseResponse::Ignore;
         }
         self.orch.send(Command::ClosePane { pane: *tab });
         self.last_grid.remove(tab);
-        true
+        OnCloseResponse::Close
     }
 }
 

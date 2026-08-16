@@ -61,32 +61,32 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
         // 심볼릭 링크: 디렉터리로 진입 시도(대부분 dir 링크). 더블클릭 기본은 다운로드라 회귀 없음.
         if e.is_link && ui.button(tr(lang, "sftp.enterlink")).clicked() {
             click = Some(EClick::Nav(join_path(cur, &e.name)));
-            ui.close_menu();
+            ui.close();
         }
         // 파일 다운로드(폴더는 아래 '폴더 다운로드'). 메뉴 최상단에 노출.
         if !e.is_dir && ui.button(tr(lang, "sftp.download")).clicked() {
             click = Some(EClick::Download(e.name.clone(), e.size));
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "browser.copypath")).clicked() {
             ui.ctx().copy_text(join_path(cur, &e.name));
-            ui.close_menu();
+            ui.close();
         }
         if e.is_dir && ui.button(tr(lang, "sftp.downloaddir")).clicked() {
             click = Some(EClick::DownloadDir(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
         if e.is_dir && ui.button(tr(lang, "sftp.dirsize")).clicked() {
             click = Some(EClick::DirSize(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
         if e.is_dir && ui.button(tr(lang, "sftp.openterm")).clicked() {
             click = Some(EClick::OpenTermHere(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
         if !e.is_dir && ui.button(tr(lang, "sftp.edit")).clicked() {
             click = Some(EClick::Edit(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
         ui.menu_button(tr(lang, "sftp.perms"), |ui| {
             if let Some(a) = crate::sftpperms::perms_menu(ui, &e.name, e.is_dir, lang) {
@@ -95,11 +95,11 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
         });
         if ui.button(tr(lang, "sftp.rename")).clicked() {
             click = Some(EClick::Rename(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "sftp.delete")).clicked() {
             click = Some(EClick::Delete(e.name.clone()));
-            ui.close_menu();
+            ui.close();
         }
     });
     click

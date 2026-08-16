@@ -2,7 +2,7 @@
 //! editortab.rs의 본문 렌더에서 호출한다(작은 파일에서만 — 비용 제한은 호출부에서).
 
 use egui::text::CCursor;
-use egui::{Color32, Painter, Rect, Rounding, Stroke};
+use egui::{Color32, Painter, Rect, CornerRadius, Stroke};
 
 // premultiplied 값은 RGB ≤ alpha를 지켜야 정상 알파혼합(반투명). RGB>alpha면 가산 혼합되어
 // 거의 순백/과포화로 글자를 덮는다(현재 줄 안 보임 버그였음). 값=unmultiplied×alpha/255.
@@ -33,7 +33,7 @@ pub(crate) fn unicode_word_dblclick(ui: &egui::Ui, out: &egui::text_edit::TextEd
         return;
     }
     let Some(pos) = out.response.interact_pointer_pos() else { return };
-    let idx = out.galley.cursor_from_pos(pos - out.galley_pos).ccursor.index;
+    let idx = out.galley.cursor_from_pos(pos - out.galley_pos).index;
     let (s, e) = word_range_at(text, idx);
     if e > s {
         if let Some(mut st) = egui::text_edit::TextEditState::load(ui.ctx(), out.response.id) {
@@ -73,11 +73,11 @@ fn draw_match_rects(painter: &Painter, galley: &egui::Galley, origin: egui::Pos2
         let eq = chars[i..i + q.len()].iter().zip(q.iter()).all(|(a, b)| if ci { a.eq_ignore_ascii_case(b) } else { a == b });
         let bound = !whole || ((i == 0 || !is_word(chars[i - 1])) && (i + q.len() == chars.len() || !is_word(chars[i + q.len()])));
         if eq && bound {
-            let r0 = galley.pos_from_cursor(&galley.from_ccursor(CCursor::new(i)));
-            let r1 = galley.pos_from_cursor(&galley.from_ccursor(CCursor::new(i + q.len())));
+            let r0 = galley.pos_from_cursor(CCursor::new(i));
+            let r1 = galley.pos_from_cursor(CCursor::new(i + q.len()));
             if (r0.top() - r1.top()).abs() < 0.5 {
                 let rect = Rect::from_min_max(egui::pos2(origin.x + r0.left(), origin.y + r0.top()), egui::pos2(origin.x + r1.left(), origin.y + r0.bottom()));
-                painter.rect_filled(rect, Rounding::ZERO, color);
+                painter.rect_filled(rect, CornerRadius::ZERO, color);
             }
             i += q.len();
         } else {
@@ -122,8 +122,8 @@ pub(crate) fn highlight_word(painter: &Painter, galley: &egui::Galley, origin: e
 /// 커서가 있는 시각 행(galley row)의 배경을 은은히 칠한다(편집 위치 식별).
 pub(crate) fn current_line_bg(painter: &Painter, galley: &egui::Galley, origin: egui::Pos2, body_w: f32, row: usize) {
     if let Some(r) = galley.rows.get(row) {
-        let y = origin.y + r.rect.top();
-        painter.rect_filled(Rect::from_min_size(egui::pos2(origin.x, y), egui::vec2(body_w, r.rect.height())), Rounding::ZERO, CURLINE);
+        let y = origin.y + r.rect().top();
+        painter.rect_filled(Rect::from_min_size(egui::pos2(origin.x, y), egui::vec2(body_w, r.rect().height())), CornerRadius::ZERO, CURLINE);
     }
 }
 
@@ -131,10 +131,9 @@ pub(crate) fn current_line_bg(painter: &Painter, galley: &egui::Galley, origin: 
 pub(crate) fn highlight_brackets(painter: &Painter, galley: &egui::Galley, origin: egui::Pos2, char_w: f32, text: &str, idx: usize) {
     let Some((a, b)) = match_bracket(text, idx) else { return };
     for bi in [a, b] {
-        let cur = galley.from_ccursor(CCursor::new(bi));
-        let r = galley.pos_from_cursor(&cur);
+        let r = galley.pos_from_cursor(CCursor::new(bi));
         let cell = Rect::from_min_size(egui::pos2(origin.x + r.left(), origin.y + r.top()), egui::vec2(char_w, r.height().max(1.0)));
-        painter.rect_stroke(cell, Rounding::ZERO, Stroke::new(1.0, BRACKET));
+        painter.rect_stroke(cell, CornerRadius::ZERO, Stroke::new(1.0, BRACKET), egui::StrokeKind::Inside);
     }
 }
 

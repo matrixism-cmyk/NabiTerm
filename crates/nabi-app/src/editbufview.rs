@@ -108,8 +108,8 @@ fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), sel: usize
 fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
     let mono = egui::FontId::monospace(fsize);
-    let row_h = ui.fonts(|f| f.row_height(&mono)).max(1.0);
-    let char_w = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
+    let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
+    let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let scroll_line = doc.find.scroll_to.take();
     let mut menu_act = crate::editbufmenu::BufMenuAct::default();
     let Some(eb) = doc.edit.as_mut() else { return menu_act };
@@ -197,7 +197,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
         if focused && sel.is_none() && cl >= first && cl < last {
             let ly = top + cl as f32 * row_h;
             let bg = egui::Rect::from_min_size(egui::pos2(left, ly), egui::vec2(content_w, row_h));
-            painter.rect_filled(bg, egui::Rounding::ZERO, CURLINE);
+            painter.rect_filled(bg, egui::CornerRadius::ZERO, CURLINE);
         }
         for i in first..last {
             let d = eb.disp_line(i);
@@ -205,7 +205,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editb
             crate::editbufpaint::row(&ctx, &g, &d, i, top + i as f32 * row_h, sel, eb.rope.line_to_char(i));
         }
         if focused {
-            painter.rect_filled(caret, egui::Rounding::ZERO, CARET);
+            painter.rect_filled(caret, egui::CornerRadius::ZERO, CARET);
         }
     });
     menu_act

@@ -74,7 +74,7 @@ pub(crate) fn row_interact(
         // 드롭 가능한 폴더에 드래그가 올라오면 테두리로 강조(드롭 대상 안내).
         if resp.dnd_hover_payload::<RemoteName>().is_some() {
             let c = ui.visuals().selection.stroke.color;
-            ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c));
+            ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c), egui::StrokeKind::Inside);
         }
         if let Some(rn) = resp.dnd_release_payload::<RemoteName>() {
             acts.dl_into = Some((row.name.clone(), (*rn).clone()));
@@ -101,44 +101,44 @@ pub(crate) fn row_interact(
         // 파일이면 편집(내장 에디터 — 설정에 따라 외부도). 폴더는 제외.
         if !row.is_dir && ui.button(tr(lang, "sftp.edit")).clicked() {
             acts.edit = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
-        if !row.is_dir && ui.button(tr(lang, "nabipad.openhex")).clicked() { acts.edit_hex = Some(row.name.clone()); ui.close_menu(); }
-        if !row.is_dir && ui.button(tr(lang, "browser.preview")).clicked() { acts.preview = Some(row.name.clone()); ui.close_menu(); } // E9
+        if !row.is_dir && ui.button(tr(lang, "nabipad.openhex")).clicked() { acts.edit_hex = Some(row.name.clone()); ui.close(); }
+        if !row.is_dir && ui.button(tr(lang, "browser.preview")).clicked() { acts.preview = Some(row.name.clone()); ui.close(); } // E9
         // CF_HDROP 복사 — 탐색기에서 Ctrl+V로 실제 파일 붙여넣기.
         if ui.button(tr(lang, "browser.copy")).clicked() {
             acts.copy = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "browser.copypath")).clicked() {
             ui.ctx().copy_text(full.to_string_lossy().into_owned());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "browser.reveal")).clicked() {
             let _ = std::process::Command::new("explorer")
                 .arg(format!("/select,{}", full.display()))
                 .spawn();
-            ui.close_menu();
+            ui.close();
         }
         if row.is_dir && ui.button(tr(lang, "browser.calcsize")).clicked() {
             acts.calc_size = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "browser.duplicate")).clicked() {
             acts.duplicate = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "sftp.rename")).clicked() {
             acts.rename = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "browser.delete")).clicked() {
             acts.delete = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
         if can_upload && !row.is_dir && ui.button(tr(lang, "browser.upload")).clicked() {
             acts.upload = Some(row.name.clone());
-            ui.close_menu();
+            ui.close();
         }
     });
 }

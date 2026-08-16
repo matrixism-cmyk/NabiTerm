@@ -11,7 +11,7 @@ impl NabiApp {
         }
         // Ctrl+휠 글꼴 확대/축소: pane 위에서 굴리면 그 pane(포커스 불필요)을, 빈 영역이면 전역.
         // 실제 대상 pane은 paint_term이 포인터 위치로 판별해 zoom_req에 담는다(아래에서 적용).
-        let ctrl_wheel = ctx.input(|i| if i.modifiers.command { i.raw_scroll_delta.y } else { 0.0 });
+        let ctrl_wheel = ctx.input(|i| if i.modifiers.command { crate::paneio::raw_wheel(i).y } else { 0.0 });
         let mut zoom_req: Option<(nabi_types::PaneId, f32)> = None;
         let mut resized: Option<nabi_types::GridSize> = None;
         // 탭 우클릭 신호: tear_off=새 OS 창, dock_float=창 안에 띄우기(P3), sftp_open=SFTP 열기.
@@ -53,7 +53,7 @@ impl NabiApp {
         }
         // 기본 8px 여백은 콘텐츠 둘레 띠가 두꺼워 보임 — 2px로 축소.
         let cframe = egui::Frame::central_panel(&ctx.style())
-            .inner_margin(egui::Margin::same(2.0));
+            .inner_margin(egui::Margin::same(2));
         egui::CentralPanel::default().frame(cframe).show(ctx, |ui| {
             if self.dock.iter_all_tabs().next().is_none() {
                 ui.vertical_centered(|ui| {
@@ -176,7 +176,7 @@ impl NabiApp {
             let cur = self.pane_font.get(&p).copied().unwrap_or(self.font_size);
             self.pane_font.insert(p, (cur + wheel.signum()).clamp(6.0, 40.0));
             if let Some(loc) = self.dock.find_tab(&p) {
-                self.dock.set_active_tab(loc);
+                let _ = self.dock.set_active_tab(loc);
             }
         } else if ctrl_wheel.abs() > 0.5 && !ctx.is_pointer_over_area() {
             // 포인터가 떠 있는 창(창 안에 띄우기 오버레이·메뉴 등) 위면 전역 줌을 막는다
@@ -221,7 +221,7 @@ impl NabiApp {
         if self.add_requested || spawn_empty {
             self.add_requested = false;
             // "+"가 눌린 분할을 포커스로 → 이어지는 add_pane이 활성 탭이 아닌 거기에 생성.
-            if let Some(t) = self.add_target.take() { self.dock.set_focused_node_and_surface(t); }
+            if let Some((s, n)) = self.add_target.take() { self.dock.set_focused_node_and_surface(egui_dock::NodePath { surface: s, node: n }); }
             self.spawn_local(crate::workspace::shell_from_str(&self.config.terminal.default_shell));
         }
         if connect_empty {

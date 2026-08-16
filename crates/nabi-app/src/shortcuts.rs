@@ -190,7 +190,7 @@ impl NabiApp {
             if ctx.input_mut(|i| i.consume_key(alt, *key)) {
                 let pane = self.dock.iter_all_tabs().nth(idx).map(|(_, p)| *p);
                 if let Some(loc) = pane.and_then(|p| self.dock.find_tab(&p)) {
-                    self.dock.set_active_tab(loc);
+                    let _ = self.dock.set_active_tab(loc);
                 }
             }
         }
@@ -208,7 +208,7 @@ impl NabiApp {
                 let n = tabs.len();
                 let idx = if next { (cur + 1) % n } else { (cur + n - 1) % n };
                 if let Some(loc) = self.dock.find_tab(&tabs[idx]) {
-                    self.dock.set_active_tab(loc);
+                    let _ = self.dock.set_active_tab(loc);
                 }
             }
         }

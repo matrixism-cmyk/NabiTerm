@@ -54,7 +54,7 @@ impl NabiApp {
         let found = self.editors.iter().find(|(_, d)| d.path == path).map(|(p, _)| *p);
         if let Some(p) = found {
             if let Some(loc) = self.dock.find_tab(&p) {
-                self.dock.set_active_tab(loc);
+                let _ = self.dock.set_active_tab(loc);
             }
             return true;
         }

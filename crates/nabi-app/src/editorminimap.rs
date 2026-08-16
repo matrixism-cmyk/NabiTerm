@@ -2,7 +2,7 @@
 //! 클릭/드래그하면 그 위치로 스크롤(반환한 목표 오프셋을 본문 ScrollArea가 적용).
 //! 줄당이 아니라 미니맵 픽셀 행마다 한 줄을 매핑해 그려, 대용량에서도 비용이 일정하다.
 
-use egui::{Color32, Rect, Rounding, Sense};
+use egui::{Color32, Rect, CornerRadius, Sense};
 
 const BG: Color32 = Color32::from_rgba_premultiplied(0, 0, 0, 40); // 미니맵 배경.
 const LINE: Color32 = Color32::from_rgba_premultiplied(170, 180, 200, 90); // 코드 줄.
@@ -14,7 +14,7 @@ pub(crate) fn minimap(ui: &mut egui::Ui, text: &str, off: f32, content_h: f32, v
     let rect = ui.max_rect();
     let (mm_h, mm_w) = (rect.height().max(1.0), rect.width());
     let painter = ui.painter();
-    painter.rect_filled(rect, Rounding::ZERO, BG);
+    painter.rect_filled(rect, CornerRadius::ZERO, BG);
 
     // 줄 길이를 가로 막대로(미니맵 픽셀 행 ↔ 문서 줄 매핑 — 행 수 무관 일정 비용).
     let lines: Vec<&str> = text.split('\n').collect();
@@ -26,7 +26,7 @@ pub(crate) fn minimap(ui: &mut egui::Ui, text: &str, off: f32, content_h: f32, v
         if len > 0 {
             let w = (len as f32 / 100.0) * (mm_w - 8.0);
             let y = rect.top() + py as f32;
-            painter.rect_filled(Rect::from_min_size(egui::pos2(rect.left() + 4.0, y), egui::vec2(w, 1.0)), Rounding::ZERO, LINE);
+            painter.rect_filled(Rect::from_min_size(egui::pos2(rect.left() + 4.0, y), egui::vec2(w, 1.0)), CornerRadius::ZERO, LINE);
         }
     }
 
@@ -34,7 +34,7 @@ pub(crate) fn minimap(ui: &mut egui::Ui, text: &str, off: f32, content_h: f32, v
     if content_h > 1.0 {
         let vy = rect.top() + (off / content_h) * mm_h;
         let vh = ((viewport_h / content_h) * mm_h).max(4.0);
-        painter.rect_filled(Rect::from_min_size(egui::pos2(rect.left(), vy), egui::vec2(mm_w, vh)), Rounding::ZERO, VIEW);
+        painter.rect_filled(Rect::from_min_size(egui::pos2(rect.left(), vy), egui::vec2(mm_w, vh)), CornerRadius::ZERO, VIEW);
     }
 
     // 클릭/드래그 → 그 지점을 뷰포트 중앙에 두는 목표 오프셋.

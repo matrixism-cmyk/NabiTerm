@@ -5,9 +5,12 @@
 /// eframe 렌더러용 wgpu 설정. 통합 GPU(LowPower) 선호. 백엔드는 softgl::resolve_backends가
 /// 결정한다(하드웨어=all, GPU 없는 VM=GL 소프트웨어 폴백).
 pub(crate) fn wgpu_options(backends: eframe::wgpu::Backends) -> eframe::egui_wgpu::WgpuConfiguration {
+    // 0.34: 백엔드·전원 선호가 WgpuSetup::CreateNew 안으로 이사했다.
+    let mut setup = eframe::egui_wgpu::WgpuSetupCreateNew::without_display_handle();
+    setup.instance_descriptor.backends = backends;
+    setup.power_preference = eframe::wgpu::PowerPreference::LowPower;
     eframe::egui_wgpu::WgpuConfiguration {
-        supported_backends: backends,
-        power_preference: eframe::wgpu::PowerPreference::LowPower,
+        wgpu_setup: eframe::egui_wgpu::WgpuSetup::CreateNew(setup),
         ..Default::default()
     }
 }

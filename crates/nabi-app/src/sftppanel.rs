@@ -118,7 +118,7 @@ impl NabiApp {
         });
         self.add_pane(pane);
         if let Some(loc) = self.dock.find_tab(&pane) {
-            self.dock.set_active_tab(loc);
+            let _ = self.dock.set_active_tab(loc);
         }
         self.sftp_pane = Some(pane);
     }

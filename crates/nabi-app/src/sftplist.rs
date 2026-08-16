@@ -18,19 +18,19 @@ pub(crate) fn list_zone(
     let bg = ui.interact(ui.available_rect_before_wrap(), ui.id().with("sftp_empty_bg"), egui::Sense::click());
     bg.context_menu(|ui| {
         let t = |k| nabi_i18n::tr(lang, k);
-        if ui.button(format!("\u{1f4c1}+ {}", t("sftp.newfolder"))).clicked() { a.new_folder = true; ui.close_menu(); }
-        if ui.button(format!("\u{1f4c4}+ {}", t("sftp.newfile"))).clicked() { a.new_file = true; ui.close_menu(); }
-        if ui.button(format!("\u{1f4cb}\u{2193} {}", t("browser.paste"))).clicked() { a.paste = true; ui.close_menu(); } // OS 파일 붙여넣기=업로드.
-        if ui.button(format!("\u{2b07} {}", t("sftp.downloaddir"))).clicked() { a.dl_cur = true; ui.close_menu(); }
-        if ui.button(format!("\u{21bb} {}", t("sftp.refresh"))).clicked() { a.go = Some(sftp.path.clone()); ui.close_menu(); }
+        if ui.button(format!("\u{1f4c1}+ {}", t("sftp.newfolder"))).clicked() { a.new_folder = true; ui.close(); }
+        if ui.button(format!("\u{1f4c4}+ {}", t("sftp.newfile"))).clicked() { a.new_file = true; ui.close(); }
+        if ui.button(format!("\u{1f4cb}\u{2193} {}", t("browser.paste"))).clicked() { a.paste = true; ui.close(); } // OS 파일 붙여넣기=업로드.
+        if ui.button(format!("\u{2b07} {}", t("sftp.downloaddir"))).clicked() { a.dl_cur = true; ui.close(); }
+        if ui.button(format!("\u{21bb} {}", t("sftp.refresh"))).clicked() { a.go = Some(sftp.path.clone()); ui.close(); }
         ui.separator();
-        if ui.button(format!("\u{1f50d} {}", t("sftp.search"))).clicked() { a.search = true; ui.close_menu(); }
-        if ui.button(format!("\u{1f441} {}", t("sftp.hidden"))).clicked() { sftp.show_hidden = !sftp.show_hidden; ui.close_menu(); }
-        if ui.button(format!("\u{1f4cb} {}", t("browser.copycurpath"))).clicked() { ui.ctx().copy_text(sftp.path.clone()); ui.close_menu(); }
+        if ui.button(format!("\u{1f50d} {}", t("sftp.search"))).clicked() { a.search = true; ui.close(); }
+        if ui.button(format!("\u{1f441} {}", t("sftp.hidden"))).clicked() { sftp.show_hidden = !sftp.show_hidden; ui.close(); }
+        if ui.button(format!("\u{1f4cb} {}", t("browser.copycurpath"))).clicked() { ui.ctx().copy_text(sftp.path.clone()); ui.close(); }
         ui.menu_button(t("editor.toolsmenu"), |ui| {
             // 선택/복사는 모두 "보이는 항목"만 대상으로 한다(필터로 가려진 파일 보호).
-            if ui.button(format!("\u{2611} {}", t("menu.selectall"))).clicked() { sftp.multi = crate::sftptable::visible_names(sftp).into_iter().collect(); ui.close_menu(); }
-            if ui.button(format!("\u{21c4} {}", t("menu.invertsel"))).clicked() { let cur = sftp.multi.clone(); sftp.multi = crate::sftptable::visible_names(sftp).into_iter().filter(|n| !cur.contains(n)).collect(); ui.close_menu(); }
+            if ui.button(format!("\u{2611} {}", t("menu.selectall"))).clicked() { sftp.multi = crate::sftptable::visible_names(sftp).into_iter().collect(); ui.close(); }
+            if ui.button(format!("\u{21c4} {}", t("menu.invertsel"))).clicked() { let cur = sftp.multi.clone(); sftp.multi = crate::sftptable::visible_names(sftp).into_iter().filter(|n| !cur.contains(n)).collect(); ui.close(); }
             if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() {
                 // 선택이 없으면 보이는 항목 전체(로컬 브라우저와 같은 규칙).
                 let names: Vec<String> = if sftp.multi.is_empty() {
@@ -40,7 +40,7 @@ pub(crate) fn list_zone(
                 };
                 let paths = names.iter().map(|n| crate::sftppath::join_path(&sftp.path, n));
                 ui.ctx().copy_text(paths.collect::<Vec<_>>().join("\n"));
-                ui.close_menu();
+                ui.close();
             }
         });
     });
@@ -55,7 +55,7 @@ pub(crate) fn list_zone(
         cancel: false,
     };
     // 목록 영역을 드롭 존으로 — 로컬 브라우저에서 끌어온 경로(String)를 받으면 업로드.
-    let (dropped, payload) = ui.dnd_drop_zone::<String, _>(egui::Frame::none(), |ui| {
+    let (dropped, payload) = ui.dnd_drop_zone::<String, _>(egui::Frame::NONE, |ui| {
         crate::sftpentries::show_entries(
             ui,
             &sftp.entries,

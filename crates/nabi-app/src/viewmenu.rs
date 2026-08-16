@@ -46,7 +46,7 @@ pub(crate) fn view_menu(
     let mut sel = |ui: &mut egui::Ui, on: bool, key: &str, keys: &str, a: MenuAction| {
         if ui.selectable_label(on, check_keys(on, tr(lang, key), keys)).clicked() {
             action = Some(a);
-            ui.close_menu();
+            ui.close();
         }
     };
     // ── 패널 표시 토글 ──
@@ -66,17 +66,17 @@ pub(crate) fn view_menu(
         ui.separator();
         // 분리 2종을 "분리" 서브메뉴로 묶음(탭 컨텍스트와 동일 라벨·힌트 — 드리프트 제거).
         ui.menu_button(tr(lang, "menu.detach"), |ui| {
-            if ui.button(tr(lang, "tab.tearoff")).on_hover_text(tr(lang, "tab.tearoff.hint")).clicked() { action = Some(MenuAction::TearOff); ui.close_menu(); }
-            if ui.button(tr(lang, "tab.dockfloat")).on_hover_text(tr(lang, "tab.dockfloat.hint")).clicked() { action = Some(MenuAction::DockFloat); ui.close_menu(); }
-            if ui.selectable_label(st.float_on_top, check(st.float_on_top, tr(lang, "float.ontop"))).clicked() { action = Some(MenuAction::ToggleFloatOnTop); ui.close_menu(); }
+            if ui.button(tr(lang, "tab.tearoff")).on_hover_text(tr(lang, "tab.tearoff.hint")).clicked() { action = Some(MenuAction::TearOff); ui.close(); }
+            if ui.button(tr(lang, "tab.dockfloat")).on_hover_text(tr(lang, "tab.dockfloat.hint")).clicked() { action = Some(MenuAction::DockFloat); ui.close(); }
+            if ui.selectable_label(st.float_on_top, check(st.float_on_top, tr(lang, "float.ontop"))).clicked() { action = Some(MenuAction::ToggleFloatOnTop); ui.close(); }
         });
         // 배열 4종은 항목이 2+2뿐이라 서브메뉴 껍데기 없이 인라인(3단계 위반 해소, T3-1).
         ui.separator();
-        if ui.button(tr(lang, "arrange.tile")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Tile)); ui.close_menu(); }
-        if ui.button(tr(lang, "arrange.cascade")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Cascade)); ui.close_menu(); }
+        if ui.button(tr(lang, "arrange.tile")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Tile)); ui.close(); }
+        if ui.button(tr(lang, "arrange.cascade")).clicked() { action = Some(MenuAction::Arrange(ArrangeMode::Cascade)); ui.close(); }
         ui.separator();
-        if ui.button(tr(lang, "tab.tile")).clicked() { action = Some(MenuAction::TileTabs); ui.close_menu(); }
-        if ui.button(tr(lang, "tab.merge")).clicked() { action = Some(MenuAction::TabifyTabs); ui.close_menu(); }
+        if ui.button(tr(lang, "tab.tile")).clicked() { action = Some(MenuAction::TileTabs); ui.close(); }
+        if ui.button(tr(lang, "tab.merge")).clicked() { action = Some(MenuAction::TabifyTabs); ui.close(); }
     });
     ui.separator();
     // ── 모드 토글 ──
@@ -85,18 +85,18 @@ pub(crate) fn view_menu(
         .clicked()
     {
         action = Some(MenuAction::ToggleBroadcast);
-        ui.close_menu();
+        ui.close();
     }
     if ui.selectable_label(on_top, check(on_top, tr(lang, "menu.ontop"))).clicked() {
         action = Some(MenuAction::ToggleOnTop);
-        ui.close_menu();
+        ui.close();
     }
     if ui
         .selectable_label(fullscreen, check_keys(fullscreen, tr(lang, "menu.fullscreen"), "F11"))
         .clicked()
     {
         action = Some(MenuAction::ToggleFullscreen);
-        ui.close_menu();
+        ui.close();
     }
     // 언어 선택은 설정 > 동작(영속)과 팔레트로 이동 — 메뉴 중복 제거.
     action

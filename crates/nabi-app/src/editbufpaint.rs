@@ -6,7 +6,7 @@
 use crate::editbuf::EditBuf;
 use crate::editbufcol::DispLine;
 use egui::text::CCursor;
-use egui::{Align2, Color32, FontId, Galley, Pos2, Rect, Rounding};
+use egui::{Align2, Color32, FontId, Galley, Pos2, Rect, CornerRadius};
 use std::sync::Arc;
 
 /// 한 줄을 그릴 때 필요한 값 묶음(인자 폭발 방지).
@@ -23,12 +23,12 @@ pub(crate) struct RowCtx<'a> {
 
 /// 줄의 표시 문자열을 갤리로 만든다(egui 내부 갤리 캐시가 같은 줄을 재사용한다).
 pub(crate) fn layout(ui: &egui::Ui, text: &str, font: &FontId, col: Color32) -> Arc<Galley> {
-    ui.fonts(|f| f.layout_no_wrap(text.to_owned(), font.clone(), col))
+    ui.fonts_mut(|f| f.layout_no_wrap(text.to_owned(), font.clone(), col))
 }
 
 /// 갤리 안에서 표시 char 인덱스의 x 좌표.
 pub(crate) fn x_at(g: &Galley, disp: usize) -> f32 {
-    g.pos_from_cursor(&g.from_ccursor(CCursor::new(disp))).min.x
+    g.pos_from_cursor(CCursor::new(disp)).min.x
 }
 
 /// 한 줄(본문 + 선택 배경 + 줄 번호)을 그린다.
@@ -56,7 +56,7 @@ fn paint_sel(ctx: &RowCtx, g: &Galley, d: &DispLine, y: f32, s: usize, e: usize,
         x1 += ctx.row_h * 0.3; // 개행까지 선택됨 표시.
     }
     let r = Rect::from_min_max(Pos2::new(x0, y), Pos2::new(x1, y + ctx.row_h));
-    ctx.painter.rect_filled(r, Rounding::ZERO, ctx.sel_col);
+    ctx.painter.rect_filled(r, CornerRadius::ZERO, ctx.sel_col);
 }
 
 /// 포인터 위치 → 문서 char 인덱스(갤리 기준 + grapheme 경계로 스냅).
@@ -67,7 +67,7 @@ pub(crate) fn hit(ui: &egui::Ui, eb: &EditBuf, p: Pos2, top: f32, text_left: f32
     let d = DispLine::new(&src, eb.tab);
     let g = layout(ui, &d.text, font, Color32::WHITE);
     let cur = g.cursor_from_pos(egui::vec2(p.x - text_left, row_h * 0.5));
-    let off = crate::editbufcol::grapheme_snap(&src, d.to_src(cur.ccursor.index));
+    let off = crate::editbufcol::grapheme_snap(&src, d.to_src(cur.index));
     eb.rope.line_to_char(line) + off
 }
 
@@ -81,7 +81,7 @@ mod tests {
         let _ = ctx.run(egui::RawInput::default(), |_| {});
         let d = DispLine::new(src, 4);
         let font = egui::FontId::monospace(14.0);
-        let g = ctx.fonts(|f| f.layout_no_wrap(d.text.clone(), font, egui::Color32::WHITE));
+        let g = ctx.fonts_mut(|f| f.layout_no_wrap(d.text.clone(), font, egui::Color32::WHITE));
         (d, g)
     }
 
@@ -94,7 +94,7 @@ mod tests {
             for i in 0..=d.chars() {
                 let x = x_at(&g, d.to_disp(i));
                 let cur = g.cursor_from_pos(egui::vec2(x + 0.1, 0.0));
-                assert_eq!(d.to_src(cur.ccursor.index), i, "{src:?}의 {i}번째에서 왕복 실패");
+                assert_eq!(d.to_src(cur.index), i, "{src:?}의 {i}번째에서 왕복 실패");
             }
         }
     }

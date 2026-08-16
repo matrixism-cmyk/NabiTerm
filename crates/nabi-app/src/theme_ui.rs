@@ -3,7 +3,7 @@
 //! egui 크롬(패널·메뉴·탭·버튼·창·상태바)만 스타일링한다. 터미널 셀 영역은
 //! `nabi_render::paint(.. &self.theme ..)`가 `nabi_vt::Theme`로 그리므로 영향 없음.
 
-use egui::{Color32, Rounding, Stroke};
+use egui::{Color32, CornerRadius, Stroke};
 
 // --- 공유 팔레트(크롬 전용; 호출부 재사용 위해 pub) ----------------------
 /// 강조색(시안-애저) — 링크·선택·포커스·활성 탭. 유일한 액센트.
@@ -59,8 +59,8 @@ const TEXT_STRONG: Color32 = Color32::from_rgb(236, 242, 248); // 강조 텍스�
 
 /// 시작 시 한 번 적용(NabiApp::new에서 fonts 설치 옆에 호출).
 pub fn apply_theme(ctx: &egui::Context) {
-    let round_w = Rounding::same(5.0);
-    let round_win = Rounding::same(8.0);
+    let round_w = CornerRadius::same(5);
+    let round_win = CornerRadius::same(8);
     let mut v = egui::Visuals::dark();
 
     // 배경(쿨 슬레이트-네이비)
@@ -76,9 +76,9 @@ pub fn apply_theme(ctx: &egui::Context) {
     v.selection.stroke = Stroke::new(1.0, ACCENT);
 
     // 창/팝업 테두리
-    v.window_rounding = round_win;
+    v.window_corner_radius = round_win;
     v.window_stroke = Stroke::new(1.0, W_HOVERED);
-    v.menu_rounding = round_w;
+    v.menu_corner_radius = round_w;
     v.window_shadow.color = Color32::from_black_alpha(120);
     v.popup_shadow.color = Color32::from_black_alpha(96);
 
@@ -92,33 +92,33 @@ pub fn apply_theme(ctx: &egui::Context) {
     w.noninteractive.weak_bg_fill = PANEL;
     w.noninteractive.bg_stroke = Stroke::new(1.0, HAIRLINE);
     w.noninteractive.fg_stroke = Stroke::new(1.0, TEXT);
-    w.noninteractive.rounding = round_w;
+    w.noninteractive.corner_radius = round_w;
     // 비활성: 유휴 버튼/콤보
     w.inactive.bg_fill = W_INACTIVE;
     w.inactive.weak_bg_fill = W_INACTIVE;
     w.inactive.bg_stroke = Stroke::NONE;
     w.inactive.fg_stroke = Stroke::new(1.0, TEXT);
-    w.inactive.rounding = round_w;
+    w.inactive.corner_radius = round_w;
     // 호버: 시안 테두리 + 약간 부상
     w.hovered.bg_fill = W_HOVERED;
     w.hovered.weak_bg_fill = W_HOVERED;
     w.hovered.bg_stroke = Stroke::new(1.0, ACCENT);
     w.hovered.fg_stroke = Stroke::new(1.5, TEXT_STRONG);
-    w.hovered.rounding = round_w;
+    w.hovered.corner_radius = round_w;
     w.hovered.expansion = 1.0;
     // 활성: 눌림/선택 — 어두운 강조 채움
     w.active.bg_fill = ACCENT_DIM;
     w.active.weak_bg_fill = ACCENT_DIM;
     w.active.bg_stroke = Stroke::new(1.0, ACCENT);
     w.active.fg_stroke = Stroke::new(1.5, TEXT_STRONG);
-    w.active.rounding = round_w;
+    w.active.corner_radius = round_w;
     w.active.expansion = 1.0;
     // 열림: 콤보/메뉴 펼침 — 호버 계열
     w.open.bg_fill = W_HOVERED;
     w.open.weak_bg_fill = W_HOVERED;
     w.open.bg_stroke = Stroke::new(1.0, ACCENT);
     w.open.fg_stroke = Stroke::new(1.0, TEXT_STRONG);
-    w.open.rounding = round_w;
+    w.open.corner_radius = round_w;
 
     // OS 라이트 모드가 테마를 뒤집지 못하게 다크 고정 + 양쪽 테마 슬롯 모두에
     // 우리 팔레트 주입(시스템 테마 이벤트가 set_visuals 한쪽만 덮는 사고 방지).
@@ -135,39 +135,34 @@ pub fn apply_theme(ctx: &egui::Context) {
         s.spacing.item_spacing = egui::vec2(8.0, 6.0);
         s.spacing.button_padding = egui::vec2(10.0, 5.0);
         s.spacing.interact_size.y = 24.0; // 버튼/콤보 최소 높이(클릭 타깃 확대).
-        s.spacing.menu_margin = egui::Margin::same(8.0);
-        s.spacing.window_margin = egui::Margin::same(10.0);
+        s.spacing.menu_margin = egui::Margin::same(8);
+        s.spacing.window_margin = egui::Margin::same(10);
     });
 }
 
 /// egui_dock(탭바·분할) 스타일 — 크롬 테마와 일관된 현대식 탭.
 /// 탭바는 어두운 띠, 활성 탭은 패널색으로 떠오르고 포커스 탭은 시안 윤곽.
 pub fn dock_style(base: &egui::Style) -> egui_dock::Style {
-    let round_tab = Rounding {
-        nw: 6.0,
-        ne: 6.0,
-        sw: 0.0,
-        se: 0.0,
-    };
+    let round_tab = CornerRadius { nw: 6, ne: 6, sw: 0, se: 0 };
     let mut s = egui_dock::Style::from_egui(base);
     s.tab_bar.bg_fill = EXTREME; // 탭 띠는 작업영역보다 깊게.
     s.tab_bar.height = 30.0;
     s.tab_bar.hline_color = HAIRLINE;
-    s.tab_bar.rounding = Rounding::ZERO;
+    s.tab_bar.corner_radius = CornerRadius::ZERO;
     // 활성/포커스 탭: 패널색으로 본문과 이어지게, 포커스는 시안 윤곽.
     s.tab.active.bg_fill = PANEL;
     s.tab.active.outline_color = HAIRLINE;
-    s.tab.active.rounding = round_tab;
+    s.tab.active.corner_radius = round_tab;
     s.tab.active.text_color = TEXT;
     s.tab.focused.bg_fill = PANEL;
     s.tab.focused.outline_color = ACCENT;
-    s.tab.focused.rounding = round_tab;
+    s.tab.focused.corner_radius = round_tab;
     s.tab.focused.text_color = TEXT_BRIGHT;
     s.tab.hovered.bg_fill = W_HOVERED;
-    s.tab.hovered.rounding = round_tab;
+    s.tab.hovered.corner_radius = round_tab;
     s.tab.hovered.text_color = TEXT_BRIGHT;
     s.tab.inactive.bg_fill = W_INACTIVE;
-    s.tab.inactive.rounding = round_tab;
+    s.tab.inactive.corner_radius = round_tab;
     s.tab.inactive.text_color = TEXT;
     s.tab.tab_body.bg_fill = PANEL;
     s.tab.tab_body.stroke = Stroke::NONE;

@@ -50,7 +50,7 @@ fn set_range(ctx: &egui::Context, id: egui::Id, a: usize, b: usize) {
 pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang, readonly: bool, act: &mut crate::editor::EditorAct) {
     let id = out.response.id;
     let range = out.cursor_range.map(|cr| {
-        let (a, b) = (cr.primary.ccursor.index, cr.secondary.ccursor.index);
+        let (a, b) = (cr.primary.index, cr.secondary.index);
         (a.min(b), a.max(b))
     });
     let has_sel = range.is_some_and(|(a, b)| b > a);
@@ -64,13 +64,13 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                 doc.dirty = true;
                 set_range(&ctx, id, a, a);
             }
-            ui.close_menu();
+            ui.close();
         }
         if ui.add_enabled(has_sel, egui::Button::new(tr(lang, "ctx.copy"))).clicked() {
             if let Some(t) = sel_text(doc) {
                 ctx.copy_text(t);
             }
-            ui.close_menu();
+            ui.close();
         }
         // AI 복사(바이브코딩): 선택/파일 전체를 마크다운 코드블록으로, 또는 현재 위치를 경로:줄로 — 한 서브메뉴로 정리.
         ui.menu_button(tr(lang, "ctx.aicopy"), |ui| {
@@ -78,15 +78,15 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
             let hint = doc.lang_ext(); // 코드펜스 언어 힌트 — 구문 언어 모드(syntax_ext) 우선.
             if ui.add_enabled(has_sel, egui::Button::new(tr(lang, "ctx.copymd"))).clicked() {
                 if let Some(t) = sel_text(doc) { ctx.copy_text(format!("{hdr}```{hint}\n{}\n```", t.trim_end())); }
-                ui.close_menu();
+                ui.close();
             }
-            if ui.add_enabled(!doc.text.is_empty(), egui::Button::new(tr(lang, "ctx.copyfilemd"))).clicked() { ctx.copy_text(format!("{hdr}```{hint}\n{}\n```", doc.text.trim_end())); ui.close_menu(); }
+            if ui.add_enabled(!doc.text.is_empty(), egui::Button::new(tr(lang, "ctx.copyfilemd"))).clicked() { ctx.copy_text(format!("{hdr}```{hint}\n{}\n```", doc.text.trim_end())); ui.close(); }
             let has_path = !doc.path.as_os_str().is_empty();
             if ui.add_enabled(has_path, egui::Button::new(tr(lang, "ctx.copyloc"))).clicked() {
                 // 파일:줄[-줄] — 선택이 있으면 그 줄 범위까지 붙는다.
                 let spec = crate::editorloc::loc_linespec(&doc.text, range, doc.cur_line);
                 ctx.copy_text(format!("{}:{}", doc.path.display(), spec));
-                ui.close_menu();
+                ui.close();
             }
         });
         // 선택을 터미널에서 실행(에디터에 명령 작성→첫 터미널 pane에 전송+Enter, AI 바이브코딩).
@@ -94,7 +94,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
             if let Some(t) = sel_text(doc) {
                 act.run_in_term = Some(t);
             }
-            ui.close_menu();
+            ui.close();
         }
         // 선택 영역을 새 파일로 저장(EmEditor식 발췌).
         if ui.add_enabled(has_sel, egui::Button::new(tr(lang, "ctx.savesel"))).clicked() {
@@ -103,7 +103,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                     let _ = std::fs::write(p, t);
                 }
             }
-            ui.close_menu();
+            ui.close();
         }
         // 선택 변환은 "변환" 서브메뉴 → 카테고리별 하위 그룹(editorxform)으로 정리. 선택 함수만 받아 일괄 적용.
         let mut chosen: Option<fn(&str) -> String> = None;
@@ -125,7 +125,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                         doc.dirty = true;
                         set_range(&ctx, id, a, end);
                     }
-                    ui.close_menu();
+                    ui.close();
                 }
                 // 선택을 괄호/따옴표 쌍으로 감싸기(코드·마크다운 편집). 라벨이 기호라 i18n 불필요.
                 ui.menu_button(tr(lang, "ctx.surround"), |ui| {
@@ -139,7 +139,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                                 doc.dirty = true;
                                 set_range(&ctx, id, a, end);
                             }
-                            ui.close_menu();
+                            ui.close();
                         }
                     }
                 });
@@ -158,11 +158,11 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
         ui.add_enabled_ui(!readonly, |ui| {
             ui.menu_button(tr(lang, "ctx.insert"), |ui| {
                 let mut ins: Option<String> = None;
-                if ui.button(tr(lang, "ctx.uuid")).clicked() { ins = Some(crate::editoruuid::gen_uuid_v4()); ui.close_menu(); }
-                if ui.button(tr(lang, "ctx.datetime")).clicked() { ins = Some(crate::editoruuid::now_datetime()); ui.close_menu(); }
-                if ui.button(tr(lang, "ctx.unixts")).clicked() { ins = Some(crate::editoruuid::now_unix()); ui.close_menu(); }
-                if ui.button(tr(lang, "ctx.password")).clicked() { ins = Some(crate::editoruuid::gen_password(16)); ui.close_menu(); }
-                if ui.button(tr(lang, "ctx.lorem")).clicked() { ins = Some(crate::editoruuid::lorem()); ui.close_menu(); }
+                if ui.button(tr(lang, "ctx.uuid")).clicked() { ins = Some(crate::editoruuid::gen_uuid_v4()); ui.close(); }
+                if ui.button(tr(lang, "ctx.datetime")).clicked() { ins = Some(crate::editoruuid::now_datetime()); ui.close(); }
+                if ui.button(tr(lang, "ctx.unixts")).clicked() { ins = Some(crate::editoruuid::now_unix()); ui.close(); }
+                if ui.button(tr(lang, "ctx.password")).clicked() { ins = Some(crate::editoruuid::gen_password(16)); ui.close(); }
+                if ui.button(tr(lang, "ctx.lorem")).clicked() { ins = Some(crate::editoruuid::lorem()); ui.close(); }
                 if let (Some(s), Some((a, b))) = (ins, range) {
                     let (ba, bb) = (byte_at(&doc.text, a), byte_at(&doc.text, b));
                     let end = a + s.chars().count();
@@ -174,12 +174,12 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
         });
         // 괄호 짝으로 커서 이동(VS Code). 커서 위치 괄호의 짝 char 인덱스로 점프.
         if ui.button(tr(lang, "ctx.gotobracket")).clicked() {
-            if let Some(cidx) = out.cursor_range.map(|cr| cr.primary.ccursor.index) {
+            if let Some(cidx) = out.cursor_range.map(|cr| cr.primary.index) {
                 if let Some((_, j)) = crate::editorextra::match_bracket(&doc.text, cidx) {
                     set_range(&ctx, id, j, j);
                 }
             }
-            ui.close_menu();
+            ui.close();
         }
         // 선택 복제: 선택 바로 뒤에 사본을 삽입하고 사본을 선택(VS Code Ctrl+D 상당).
         if ui.add_enabled(has_sel && !readonly, egui::Button::new(tr(lang, "ctx.dupsel"))).clicked() {
@@ -189,7 +189,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                 doc.dirty = true;
                 set_range(&ctx, id, b, b + t.chars().count());
             }
-            ui.close_menu();
+            ui.close();
         }
         if ui.add_enabled(!readonly, egui::Button::new(tr(lang, "ctx.paste"))).clicked() {
             if let Some(t) = crate::paneio::clipboard_text() {
@@ -199,7 +199,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                 let end = a + t.chars().count();
                 set_range(&ctx, id, end, end);
             }
-            ui.close_menu();
+            ui.close();
         }
         if ui.add_enabled(has_sel && !readonly, egui::Button::new(tr(lang, "ctx.delete"))).clicked() {
             if let Some((a, b)) = range {
@@ -207,7 +207,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                 doc.dirty = true;
                 set_range(&ctx, id, a, a);
             }
-            ui.close_menu();
+            ui.close();
         }
         ui.separator();
         // 줄 편집(복제/삭제/이동)은 "줄" 서브메뉴로 묶는다(메뉴 정리). 커서가 속한 줄 대상.
@@ -227,7 +227,7 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
                         doc.text = out.0;
                         doc.dirty = true;
                         set_range(&ctx, id, out.1, out.1);
-                        ui.close_menu();
+                        ui.close();
                     }
                 }
             });
@@ -235,11 +235,11 @@ pub(crate) fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lan
         ui.separator();
         if ui.button(tr(lang, "ctx.selectall")).clicked() {
             set_range(&ctx, id, 0, doc.text.chars().count());
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(tr(lang, "menu.find")).clicked() {
             doc.find.open = true; // 찾기 바 열기(Ctrl+F와 동일).
-            ui.close_menu();
+            ui.close();
         }
         ui.separator();
         // 보기 토글(빠른 전환) — 줄바꿈·공백 표시·구문 강조.

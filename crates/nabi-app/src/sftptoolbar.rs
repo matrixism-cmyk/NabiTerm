@@ -83,17 +83,17 @@ fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], a: &mut Sf
     ui.menu_button("\u{2b50}", |ui| {
         if ui.button(tr(lang, "sftp.addbookmark")).clicked() {
             a.bookmark_add = true;
-            ui.close_menu();
+            ui.close();
         }
         for b in bookmarks {
             ui.horizontal(|ui| {
                 if ui.button(b).clicked() {
                     a.bookmark_go = Some(b.clone());
-                    ui.close_menu();
+                    ui.close();
                 }
                 if ui.small_button("\u{2715}").clicked() {
                     a.bookmark_del = Some(b.clone());
-                    ui.close_menu();
+                    ui.close();
                 }
             });
         }
@@ -107,20 +107,20 @@ fn sync_menu(ui: &mut egui::Ui, lang: Lang, a: &mut SftpAct) {
     ui.menu_button(format!("\u{21c5} {}", tr(lang, "sftp.syncgroup")), |ui| {
         if ui.button(format!("\u{21c6} {}", tr(lang, "sftp.compare"))).clicked() {
             a.toggle_compare = true;
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(format!("\u{1f517} {}", tr(lang, "sftp.sync"))).clicked() {
             a.toggle_sync = true;
-            ui.close_menu();
+            ui.close();
         }
         ui.separator();
         if ui.button(format!("\u{2191}\u{21c5} {}", tr(lang, "sftp.syncup"))).clicked() {
             a.sync_up = true;
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(format!("\u{2193}\u{21c5} {}", tr(lang, "sftp.syncdown"))).clicked() {
             a.sync_down = true;
-            ui.close_menu();
+            ui.close();
         }
     });
 }
@@ -131,12 +131,12 @@ fn view_menu(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, sort_desc: boo
         let arrow = if sort_desc { "\u{25bc}" } else { "\u{25b2}" };
         if ui.button(format!("{arrow} {}", tr(lang, "sftp.sort"))).clicked() {
             a.cycle_sort = true;
-            ui.close_menu();
+            ui.close();
         }
         let hidden = crate::viewmenu::check(sftp.show_hidden, tr(lang, "sftp.hidden"));
         if ui.selectable_label(sftp.show_hidden, hidden).clicked() {
             sftp.show_hidden = !sftp.show_hidden;
-            ui.close_menu();
+            ui.close();
         }
     });
 }
@@ -146,15 +146,15 @@ fn tools_menu(ui: &mut egui::Ui, lang: Lang, a: &mut SftpAct) {
     ui.menu_button(format!("\u{1f527} {}", tr(lang, "sftp.tools")), |ui| {
         if ui.button(format!("\u{1f50d} {}", tr(lang, "sftp.search"))).clicked() {
             a.search = true;
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(format!("\u{1f524} {}", tr(lang, "sftp.batchrename"))).clicked() {
             a.batch_toggle = true;
-            ui.close_menu();
+            ui.close();
         }
         if ui.button(format!("\u{2b07} {}", tr(lang, "sftp.downloaddir"))).clicked() {
             a.dl_cur = true;
-            ui.close_menu();
+            ui.close();
         }
     });
 }

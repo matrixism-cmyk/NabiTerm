@@ -36,7 +36,7 @@ pub(crate) fn apply_keys(ui: &egui::Ui, eb: &mut EditBuf, page: i64, readonly: b
     }
     if let Some(t) = copy {
         if !t.is_empty() {
-            ui.output_mut(|o| o.copied_text = t);
+            ui.ctx().copy_text(t);
         }
     }
 }

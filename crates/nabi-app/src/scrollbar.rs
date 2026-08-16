@@ -45,10 +45,10 @@ pub(crate) fn draw(ui: &egui::Ui, rect: egui::Rect, pane: PaneId, model: &mut na
     let painter = ui.painter_at(rect);
     let active = resp.hovered() || resp.dragged();
     if active {
-        painter.rect_filled(track, egui::Rounding::same(3.0), egui::Color32::from_black_alpha(60));
+        painter.rect_filled(track, egui::CornerRadius::same(3), egui::Color32::from_black_alpha(60));
     }
     let alpha = if active { 200 } else { 120 };
-    painter.rect_filled(thumb, egui::Rounding::same(4.0), egui::Color32::from_white_alpha(alpha));
+    painter.rect_filled(thumb, egui::CornerRadius::same(4), egui::Color32::from_white_alpha(alpha));
 
     // 드래그/클릭 → 클릭 지점을 창 중앙으로 맞춰 스크롤.
     if (resp.dragged() || resp.clicked()) && track.height() > 1.0 {

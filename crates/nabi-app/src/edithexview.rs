@@ -80,8 +80,8 @@ pub(crate) fn hex_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Ed
 fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
     let mono = egui::FontId::monospace(fsize);
-    let row_h = ui.fonts(|f| f.row_height(&mono)).max(1.0);
-    let cw = ui.fonts(|f| f.glyph_width(&mono, '0')).max(6.0);
+    let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
+    let cw = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let Some(h) = doc.hex.as_mut() else { return };
     let rows = h.rows();
     let scroll_off = h.scroll_to.take().map(|r| r as f32 * row_h); // 오프셋 이동 스크롤.
@@ -161,8 +161,8 @@ fn paint_cursor(painter: &egui::Painter, h: &HexBuf, top: f32, left: f32, x_hex:
     let hx = left + x_hex + hex_col(c) * cw;
     let ax = left + x_ascii + c as f32 * cw;
     let (hcol, acol) = if h.ascii { (CUR_OFF, CUR_ON) } else { (CUR_ON, CUR_OFF) };
-    painter.rect_filled(egui::Rect::from_min_size(egui::pos2(hx, y), egui::vec2(cw * 2.0, row_h)), egui::Rounding::ZERO, hcol);
-    painter.rect_filled(egui::Rect::from_min_size(egui::pos2(ax, y), egui::vec2(cw, row_h)), egui::Rounding::ZERO, acol);
+    painter.rect_filled(egui::Rect::from_min_size(egui::pos2(hx, y), egui::vec2(cw * 2.0, row_h)), egui::CornerRadius::ZERO, hcol);
+    painter.rect_filled(egui::Rect::from_min_size(egui::pos2(ax, y), egui::vec2(cw, row_h)), egui::CornerRadius::ZERO, acol);
 }
 
 /// 보이는 선택 바이트 [lo,hi)의 HEX·ASCII 칸 배경을 칠한다.
@@ -180,8 +180,8 @@ fn paint_selection(painter: &egui::Painter, lo: usize, hi: usize, first: usize, 
         let hw = if bridge { cw * 3.0 } else { cw * 2.0 };
         let hx = left + x_hex + hex_col(c) * cw;
         let ax = left + x_ascii + c as f32 * cw;
-        painter.rect_filled(egui::Rect::from_min_size(egui::pos2(hx, y), egui::vec2(hw, row_h)), egui::Rounding::ZERO, SEL);
-        painter.rect_filled(egui::Rect::from_min_size(egui::pos2(ax, y), egui::vec2(cw, row_h)), egui::Rounding::ZERO, SEL);
+        painter.rect_filled(egui::Rect::from_min_size(egui::pos2(hx, y), egui::vec2(hw, row_h)), egui::CornerRadius::ZERO, SEL);
+        painter.rect_filled(egui::Rect::from_min_size(egui::pos2(ax, y), egui::vec2(cw, row_h)), egui::CornerRadius::ZERO, SEL);
     }
 }
 
@@ -232,7 +232,7 @@ fn apply_keys(ui: &egui::Ui, h: &mut HexBuf, page: isize, readonly: bool) {
     }
     if let Some(t) = copy {
         if !t.is_empty() {
-            ui.output_mut(|o| o.copied_text = t);
+            ui.ctx().copy_text(t);
         }
     }
 }

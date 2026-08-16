@@ -10,7 +10,7 @@ pub(crate) fn perms_menu(ui: &mut egui::Ui, name: &str, is_dir: bool, lang: Lang
     for (lbl, m) in [("755", 0o755u32), ("700", 0o700), ("644", 0o644), ("600", 0o600)] {
         if ui.button(lbl).clicked() {
             click = Some(EClick::Chmod(name.to_string(), m));
-            ui.close_menu();
+            ui.close();
         }
     }
     // 디렉터리: 하위 포함 재귀 적용(WinSCP식 "모든 하위에 적용").
@@ -19,7 +19,7 @@ pub(crate) fn perms_menu(ui: &mut egui::Ui, name: &str, is_dir: bool, lang: Lang
             for (lbl, m) in [("755", 0o755u32), ("700", 0o700), ("644", 0o644), ("600", 0o600)] {
                 if ui.button(lbl).clicked() {
                     click = Some(EClick::ChmodRecursive(name.to_string(), m));
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         });
@@ -42,7 +42,7 @@ pub(crate) fn perms_menu(ui: &mut egui::Ui, name: &str, is_dir: bool, lang: Lang
             if let Some(m) = parsed {
                 click = Some(EClick::Chmod(name.to_string(), m));
             }
-            ui.close_menu();
+            ui.close();
         }
     });
     ui.data_mut(|d| d.insert_temp(id, txt));

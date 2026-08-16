@@ -114,7 +114,7 @@ pub(crate) fn paint_floating_term(
 
     let over = ui.rect_contains_pointer(rect);
     let (ctrl, shift, wheel) = ui.input(|i| {
-        (i.modifiers.command, i.modifiers.shift, i.raw_scroll_delta.y)
+        (i.modifiers.command, i.modifiers.shift, crate::paneio::raw_wheel(i).y)
     });
     let ctrl_wheel = over && ctrl && wheel != 0.0;
     let shift_wheel = over && shift && !ctrl && wheel != 0.0;
@@ -171,8 +171,9 @@ pub(crate) fn paint_floating_term(
             if broadcast {
                 ui.painter_at(rect).rect_stroke(
                     rect.shrink(1.0),
-                    egui::Rounding::ZERO,
+                    egui::CornerRadius::ZERO,
                     egui::Stroke::new(2.0, egui::Color32::from_rgb(0xff, 0x8c, 0x00)),
+                    egui::StrokeKind::Inside,
                 );
             }
             crate::paneurl::hover_url_cursor(ui, rect, cw, ch, &model, theme);

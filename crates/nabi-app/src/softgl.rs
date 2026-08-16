@@ -121,15 +121,17 @@ fn register_dll_dir(_dir: &Path) {}
 /// 지정 백엔드로 어댑터를 요청한다(렌더 없이 정보 조회만 → 크래시 경로를 건드리지 않음).
 fn request_adapter(backends: Backends) -> Option<eframe::wgpu::Adapter> {
     use eframe::wgpu;
-    let inst = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends,
-        ..Default::default()
-    });
+    // wgpu 29: InstanceDescriptor는 from_env_or_default 기반, Instance::new는 참조를 받고
+    // request_adapter는 Result를 돌려준다.
+    let mut desc = wgpu::InstanceDescriptor::new_without_display_handle();
+    desc.backends = backends;
+    let inst = wgpu::Instance::new(desc);
     pollster::block_on(inst.request_adapter(&wgpu::RequestAdapterOptions {
         power_preference: wgpu::PowerPreference::LowPower,
         compatible_surface: None,
         force_fallback_adapter: false,
     }))
+    .ok()
 }
 
 /// 실제 하드웨어 GPU가 있는지 — GL을 제외한 DX12/Vulkan로만 프로브해 Mesa d3d12 크래시 경로를

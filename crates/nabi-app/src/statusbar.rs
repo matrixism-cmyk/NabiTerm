@@ -86,9 +86,9 @@ impl NabiApp {
         let mut set_enc: Option<String> = None;
         let mut focus_sftp = false;
 
-        let sbar = egui::Frame::none()
+        let sbar = egui::Frame::NONE
             .fill(crate::theme_ui::STATUS_FILL)
-            .inner_margin(egui::Margin::symmetric(8.0, 2.0));
+            .inner_margin(egui::Margin::symmetric(8, 2));
         egui::TopBottomPanel::bottom("statusbar").frame(sbar).show(ctx, |ui| {
             // 배경이 하드코딩 네이비라 텍스트도 밝게 강제(테마 무관 가독성).
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
@@ -168,10 +168,10 @@ impl NabiApp {
                     // 클릭 시 탭/창/사이드바 중 선택해서 열기(기본 탭).
                     ui.menu_button(short_path(c), |ui| {
                         for (key, m) in [("status.opentab", 0u8), ("status.openwin", 1), ("status.openside", 2)] {
-                            if ui.button(tr(lang, key)).clicked() { open_browser = Some(m); ui.close_menu(); }
+                            if ui.button(tr(lang, key)).clicked() { open_browser = Some(m); ui.close(); }
                         }
                         ui.separator();
-                        if ui.button(tr(lang, "status.copypath")).clicked() { ui.ctx().copy_text(crate::workspace::strip_uri_slash(c)); ui.close_menu(); } // cwd 경로 복사.
+                        if ui.button(tr(lang, "status.copypath")).clicked() { ui.ctx().copy_text(crate::workspace::strip_uri_slash(c)); ui.close(); } // cwd 경로 복사.
                     })
                     .response
                     .on_hover_text(format!("{}\n{c}", tr(lang, "status.opencwd")));
@@ -232,7 +232,7 @@ impl NabiApp {
         if focus_sftp {
             if let Some(p) = self.sftp_pane {
                 if let Some(loc) = self.dock.find_tab(&p) {
-                    self.dock.set_active_tab(loc);
+                    let _ = self.dock.set_active_tab(loc);
                 }
             }
         }

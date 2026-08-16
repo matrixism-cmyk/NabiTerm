@@ -96,7 +96,7 @@ impl NabiApp {
             PaletteAction::PasteClip(t) => self.paste_text_to_focused(t),
             PaletteAction::FocusPane(p) => {
                 if let Some(loc) = self.dock.find_tab(&p) {
-                    self.dock.set_active_tab(loc);
+                    let _ = self.dock.set_active_tab(loc);
                 }
             }
             PaletteAction::DuplicateConnection => self.duplicate_connection(),

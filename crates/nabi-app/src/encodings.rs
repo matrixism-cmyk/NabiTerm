@@ -27,7 +27,7 @@ pub(crate) fn encoding_menu(ui: &mut egui::Ui, current: &str) -> Option<String> 
             for &e in *labels {
                 if ui.selectable_label(current == e, e).clicked() {
                     picked = Some(e.to_string());
-                    ui.close_menu();
+                    ui.close();
                 }
             }
         }
