@@ -15,15 +15,15 @@ pub(crate) fn is_ai_command_strict(cmd: &str) -> bool {
     matches!(name.as_str(), "claude" | "aider" | "codex" | "gemini" | "llm" | "goose" | "cursor")
 }
 
-/// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보. UI 언어를 따른다.
-pub(crate) fn failure_prompt(lang: nabi_i18n::Lang, cmd: &str, exit: i32, tail: &str) -> String {
-    use nabi_i18n::tr;
+/// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보.
+///
+/// **주입 텍스트는 항상 ASCII 영어**(사용자 긴급 보고 2026-08-17 "Don't Input HANGUL"):
+/// Windows의 일부 AI TUI(claude CLI 등)가 붙여넣은 한글을 깨뜨리거나 입력을 막는 사례가
+/// 있어, pane에 "타이핑되는" 텍스트에는 한글을 절대 넣지 않는다(UI 라벨은 3어 유지).
+/// AI는 영어 프롬프트에도 한국어로 답할 수 있으므로 기능 손실이 없다.
+pub(crate) fn failure_prompt(_lang: nabi_i18n::Lang, cmd: &str, exit: i32, tail: &str) -> String {
     format!(
-        "{}\n\n{} `{cmd}`\n{} {exit}\n\n{}\n```\n{}\n```",
-        tr(lang, "handoff.p.ask"),
-        tr(lang, "handoff.p.cmd"),
-        tr(lang, "handoff.p.exit"),
-        tr(lang, "handoff.p.out"),
+        "This command failed. Explain why and how to fix it.\n\nCommand: `{cmd}`\nExit code: {exit}\n\nOutput:\n```\n{}\n```",
         tail.trim_end()
     )
 }
@@ -35,7 +35,7 @@ impl NabiApp {
         if exit == 0 {
             return None;
         }
-        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned().unwrap_or_else(|| "(알 수 없음)".into());
+        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned().unwrap_or_else(|| "(unknown)".into());
         // 셸 통합(OSC 133)이 있으면 "그 명령의 실제 출력"을, 없으면 화면 마지막 30줄 폴백.
         let tail = self
             .orch
@@ -72,11 +72,10 @@ impl NabiApp {
         let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned()?;
         let exit = self.last_exit.get(&p).copied().unwrap_or(0);
         let tail = self.pane_cmd_output(p)?;
-        use nabi_i18n::tr;
+        // 주입 텍스트는 항상 ASCII 영어(failure_prompt 주석 참조 — "Don't Input HANGUL").
         Some(format!(
-            "{}\n\n{} `{cmd}`\n{} {exit}\n\n{}\n```\n{}\n```",
-            tr(self.lang, "handoff.p.see"), tr(self.lang, "handoff.p.cmd"), tr(self.lang, "handoff.p.exit"),
-            tr(self.lang, "handoff.p.out"), tail.trim_end()
+            "Here's a command I ran and its output. Take a look.\n\nCommand: `{cmd}`\nExit code: {exit}\n\nOutput:\n```\n{}\n```",
+            tail.trim_end()
         ))
     }
 
@@ -130,6 +129,7 @@ mod tests {
         assert!(p.contains("`cargo build`"));
         assert!(p.contains("101"));
         assert!(p.contains("E0308"));
-        assert!(p.ends_with("```"), "코드펜스 닫힘: {p}");
+        assert!(p.ends_with("```"), "code fence closed: {p}");
+        assert!(p.is_ascii(), "주입 프롬프트는 ASCII 전용(Don't Input HANGUL): {p}");
     }
 }
