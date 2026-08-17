@@ -110,6 +110,7 @@ pub(crate) fn tab_context_menu(
     is_ssh: bool,
     tear_off: &mut Option<PaneId>,
     sftp_open: &mut Option<PaneId>,
+    ai_handoff: &mut Option<(PaneId, bool)>,
     dock_float: Option<&mut Option<PaneId>>,
 ) {
     ui.label(tr(lang, "tab.rename"));
@@ -133,6 +134,15 @@ pub(crate) fn tab_context_menu(
         if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) {
             if let Ok(mut md) = v.model.lock() { md.clear_scrollback(); }
         }
+        ui.close();
+    }
+    // 터미널→AI 동선(팔레트와 동일 기능 — 표면 정합): 마지막 명령을 AI에/클립보드로.
+    if ui.button(tr(lang, "handoff.last")).clicked() {
+        *ai_handoff = Some((*tab, false));
+        ui.close();
+    }
+    if ui.button(tr(lang, "handoff.copymd")).clicked() {
+        *ai_handoff = Some((*tab, true));
         ui.close();
     }
     // 출력(히스토리+화면)을 파일로 저장(세션 로그).

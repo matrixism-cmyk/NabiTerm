@@ -17,6 +17,7 @@ impl NabiApp {
         let mut resized: Option<nabi_types::GridSize> = None;
         // 탭 우클릭 신호: tear_off=새 OS 창, dock_float=창 안에 띄우기(P3), sftp_open=SFTP 열기.
         let (mut tear_off, mut dock_float, mut sftp_open): (Option<nabi_types::PaneId>, _, _) = (None, None, None);
+        let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None; // 탭 메뉴 AI 동선(표면 정합).
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
         let mut browser_closed: Option<nabi_types::PaneId> = None;
@@ -148,6 +149,7 @@ impl NabiApp {
                 zoom_req: &mut zoom_req,
                 resized: &mut resized,
                 tear_off: &mut tear_off,
+                ai_handoff: &mut ai_handoff,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,
                 browser_act: &mut browser_act,
@@ -187,6 +189,21 @@ impl NabiApp {
         // 포커스 pane 리사이즈 시 크기 배지를 잠시 띄운다(현대 터미널 관례).
         if let Some(g) = resized {
             self.resize_badge = Some((g, std::time::Instant::now()));
+        }
+        // 탭 메뉴 AI 동선 적용(팔레트 dispatch와 동일 규칙).
+        if let Some((p, copy_only)) = ai_handoff {
+            if copy_only {
+                match self.command_markdown(p) {
+                    Some(md) => ctx.copy_text(md),
+                    None => self.notify = Some((nabi_i18n::tr(self.lang, "handoff.nocmd").to_string(), std::time::Instant::now())),
+                }
+            } else {
+                match (self.command_context(p), self.find_ai_pane(p)) {
+                    (Some(prompt), Some(ai)) => self.inject_prompt(ai, &prompt),
+                    (Some(_), None) => self.notify = Some((nabi_i18n::tr(self.lang, "handoff.noai").to_string(), std::time::Instant::now())),
+                    _ => self.notify = Some((nabi_i18n::tr(self.lang, "handoff.nocmd").to_string(), std::time::Instant::now())),
+                }
+            }
         }
         // 탭을 도크에서 빼 별도 OS 창(tear_off)·메인 창 내 오버레이(dock_float, P3)로. 닫으면 재도킹.
         if let Some(p) = tear_off.or(dock_float) {

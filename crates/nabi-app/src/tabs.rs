@@ -109,6 +109,8 @@ pub struct TermTabViewer<'a> {
     /// pane 출처(SSH 여부 판정 — 탭 우클릭 'SFTP 열기' 노출용) + SFTP 열기 신호.
     pub pane_origins: &'a HashMap<PaneId, nabi_session::SessionKind>,
     pub sftp_open: &'a mut Option<PaneId>,
+    /// 탭 메뉴 'AI에 넘기기/마크다운 복사' 신호: (pane, copy_only).
+    pub ai_handoff: &'a mut Option<(PaneId, bool)>,
 }
 
 impl egui_dock::TabViewer for TermTabViewer<'_> {
@@ -204,7 +206,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             self.tab_names, self.broadcast_group, self.wheel_keys, self.wheel_keys_off,
             self.run_cmd.get(tab).is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
             self.tab_colors,
-            is_ssh, self.tear_off, self.sftp_open,
+            is_ssh, self.tear_off, self.sftp_open, self.ai_handoff,
             if is_term { Some(&mut *self.dock_float) } else { None },
         );
     }
