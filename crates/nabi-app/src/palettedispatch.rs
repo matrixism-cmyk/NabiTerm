@@ -66,6 +66,22 @@ impl NabiApp {
             PaletteAction::LspFormat => { if let Some(p) = self.focused_pane() { self.lsp_format_for(p); } }
             PaletteAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             PaletteAction::OpenSync => self.open_sync_dialog(),
+            PaletteAction::HandoffLast => {
+                if let Some(p) = self.focused_pane() {
+                    match (self.command_context(p), self.find_ai_pane(p)) {
+                        (Some(prompt), Some(ai)) => self.inject_prompt(ai, &prompt),
+                        (Some(_), None) => self.notify = Some((nabi_i18n::tr(self.lang, "handoff.noai").to_string(), std::time::Instant::now())),
+                        _ => self.notify = Some((nabi_i18n::tr(self.lang, "handoff.nocmd").to_string(), std::time::Instant::now())),
+                    }
+                }
+            }
+            PaletteAction::CopyLastMd => {
+                if let Some(md) = self.focused_pane().and_then(|p| self.command_markdown(p)) {
+                    ctx.copy_text(md);
+                } else {
+                    self.notify = Some((nabi_i18n::tr(self.lang, "handoff.nocmd").to_string(), std::time::Instant::now()));
+                }
+            }
             PaletteAction::XferHistory => self.xfer_history_open = true,
             PaletteAction::BroadcastResults => self.bcast_view_open = true,
             PaletteAction::OpenAiCli => {

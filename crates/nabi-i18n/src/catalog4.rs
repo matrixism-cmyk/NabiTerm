@@ -77,4 +77,8 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("handoff.p.ask", "This command failed. Explain why and how to fix it.", "다음 명령이 실패했어. 원인을 설명하고 고치는 방법을 알려줘.", "このコマンドが失敗した。原因と修正方法を教えて。"),
     ("handoff.p.cmd", "Command:", "명령:", "コマンド:"), ("handoff.p.exit", "Exit code:", "종료코드:", "終了コード:"),
     ("handoff.p.out", "Output:", "출력:", "出力:"),
+    ("handoff.p.see", "Here's a command I ran and its output. Take a look.", "방금 실행한 명령과 출력이야. 살펴봐줘.", "実行したコマンドと出力です。見てください。"),
+    ("handoff.last", "Send last command output to AI pane", "마지막 명령 출력을 AI pane에 넘기기", "直前のコマンド出力をAIペインへ"),
+    ("handoff.copymd", "Copy last command+output (markdown)", "마지막 명령+출력 복사(마크다운)", "直前のコマンド+出力をコピー(markdown)"),
+    ("handoff.nocmd", "No finished command in this pane yet", "이 pane에 완료된 명령이 아직 없습니다", "このペインに完了したコマンドがまだありません"),
 ];

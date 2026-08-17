@@ -65,6 +65,8 @@ pub(crate) enum PaletteAction {
     OpenKeygen,
     /// 폴더 동기화 다이얼로그(S6-51).
     OpenSync,
+    /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
+    HandoffLast, CopyLastMd,
     /// SFTP 전송 히스토리 창(S6-60).
     XferHistory,
 }

@@ -60,9 +60,45 @@ impl NabiApp {
             })
     }
 
-    /// 실패 컨텍스트를 AI pane에 브래킷 붙여넣기로 주입하고 그 탭을 활성화한다.
+    /// 실패 컨텍스트를 AI pane에 넘긴다(상태바 ✗ 칩).
     pub(crate) fn handoff_failure_to_ai(&mut self, src: PaneId, ai: PaneId) {
-        let Some(prompt) = self.failure_context(src) else { return };
+        if let Some(prompt) = self.failure_context(src) {
+            self.inject_prompt(ai, &prompt);
+        }
+    }
+
+    /// 마지막 명령 컨텍스트(성공 포함) — 실패 여부와 무관하게 "이 결과 봐줘" 동선(팔레트).
+    pub(crate) fn command_context(&self, p: PaneId) -> Option<String> {
+        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned()?;
+        let exit = self.last_exit.get(&p).copied().unwrap_or(0);
+        let tail = self.pane_cmd_output(p)?;
+        use nabi_i18n::tr;
+        Some(format!(
+            "{}\n\n{} `{cmd}`\n{} {exit}\n\n{}\n```\n{}\n```",
+            tr(self.lang, "handoff.p.see"), tr(self.lang, "handoff.p.cmd"), tr(self.lang, "handoff.p.exit"),
+            tr(self.lang, "handoff.p.out"), tail.trim_end()
+        ))
+    }
+
+    /// 마지막 명령+출력을 마크다운 코드블록으로(클립보드용 — AI 채팅/이슈에 붙여넣기).
+    pub(crate) fn command_markdown(&self, p: PaneId) -> Option<String> {
+        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned()?;
+        let out = self.pane_cmd_output(p)?;
+        Some(format!("```console\n$ {cmd}\n{}\n```", out.trim_end()))
+    }
+
+    /// pane의 마지막 명령 출력(OSC 133 우선, 폴백=화면 마지막 30줄).
+    fn pane_cmd_output(&self, p: PaneId) -> Option<String> {
+        self.orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&p).map(|v| v.model.clone()))
+            .and_then(|md| md.lock().ok().map(|m| m.last_command_output().unwrap_or_else(|| m.visible_bottom_text(30))))
+    }
+
+    /// 프롬프트를 AI pane에 브래킷 붙여넣기로 주입하고 그 탭을 활성화한다(공용).
+    pub(crate) fn inject_prompt(&mut self, ai: PaneId, prompt: &str) {
         // 여러 줄 프롬프트가 줄마다 제출되지 않게 브래킷 붙여넣기로 감싼다(AI TUI는 지원).
         let mut data = Vec::with_capacity(prompt.len() + 16);
         data.extend_from_slice(b"\x1b[200~");
