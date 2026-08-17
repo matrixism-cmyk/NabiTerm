@@ -53,6 +53,10 @@ impl NabiApp {
         let enc_suggest = focused.and_then(|p| self.enc_suggestion(p, &encoding)); let clock = self.config.appearance.show_clock.then(|| chrono::Local::now().format("%H:%M").to_string());
         let group_n = self.broadcast_group.len();
         let watch = self.sync_watch_label(); // 원격 최신유지 칩(S6-54).
+        // 실패 명령 AI 인계(사전 캡처 — 렌더 클로저 안에서 self 재차용 금지).
+        let ai_pane = focused.and_then(|p| self.find_ai_pane(p));
+        let mut do_handoff: Option<nabi_types::PaneId> = None;
+        let mut do_copy_prompt = false;
         let mut stop_watch = false;
         let sel_info = self.selection.filter(|s| !s.is_empty()).map(|s| {
             let (sr, sc, er, ec) = s.span();
@@ -99,24 +103,7 @@ impl NabiApp {
                 // 연결 종류별 색 점: SSH=시안, 로컬=녹색.
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
                 ui.colored_label(dc, format!("\u{25cf} {title}"));
-                if is_ssh {
-                    // T1-2: 협상된 KEX가 PQ(ML-KEM 하이브리드)면 방패 배지 + 상세 툴팁.
-                    let kex = focused.and_then(nabi_ssh::kexinfo::get);
-                    let (label, tip) = match &kex {
-                        Some(k) => {
-                            let detail = format!("{}: {}\n{}: {}", tr(lang, "status.kex"), k.kex, tr(lang, "status.cipher"), k.cipher);
-                            if k.is_pq() {
-                                ("SSH \u{1f6e1}PQ".to_string(), format!("{}\n{detail}", tr(lang, "status.pq")))
-                            } else {
-                                ("SSH".to_string(), detail)
-                            }
-                        }
-                        None => ("SSH".to_string(), String::new()),
-                    };
-                    let color = if kex.as_ref().is_some_and(|k| k.is_pq()) { crate::theme_ui::OK } else { crate::theme_ui::ACCENT };
-                    let r = ui.colored_label(color, label);
-                    if !tip.is_empty() { r.on_hover_text(tip); }
-                }
+                if is_ssh { crate::statuschips::ssh_badge(ui, lang, focused); }
                 ui.separator();
                 ui.label(format!("{}: {count}", tr(lang, "status.sessions")));
                 if xfers > 0 {
@@ -155,7 +142,16 @@ impl NabiApp {
                     if code == 0 {
                         ui.colored_label(crate::theme_ui::OK, "\u{2713}");
                     } else {
-                        ui.colored_label(crate::theme_ui::ERR, format!("\u{2717} {code}"));
+                        // 실패 칩 = 메뉴: AI pane에 컨텍스트 인계 / 프롬프트 복사(2026 벤치마킹).
+                        let chip = egui::RichText::new(format!("\u{2717} {code}")).color(crate::theme_ui::ERR);
+                        ui.menu_button(chip, |ui| {
+                            if let Some(ai) = ai_pane {
+                                if ui.button(tr(lang, "handoff.ask")).clicked() { do_handoff = Some(ai); ui.close(); }
+                            } else {
+                                ui.weak(tr(lang, "handoff.noai"));
+                            }
+                            if ui.button(tr(lang, "handoff.copy")).clicked() { do_copy_prompt = true; ui.close(); }
+                        });
                     }
                 }
                 if let Some(ms) = dur {
@@ -237,6 +233,14 @@ impl NabiApp {
         }
         if let Some(e) = set_enc {
             self.apply_encoding(e);
+        }
+        if let (Some(ai), Some(p)) = (do_handoff, focused) {
+            self.handoff_failure_to_ai(p, ai);
+        }
+        if let (true, Some(p)) = (do_copy_prompt, focused) {
+            if let Some(prompt) = self.failure_context(p) {
+                ctx.copy_text(prompt);
+            }
         }
         if stop_watch {
             self.sync_watch = None; // 상태바 칩 클릭 = 최신유지 중지.

@@ -70,4 +70,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("watch.on", "keeping up to date", "최신유지 중", "最新維持中"),
     ("watch.stophint", "Click to stop", "클릭하면 중지", "クリックで停止"),
     ("watch.toobig", "Folder too large to watch (>20k files) — watch stopped", "감시하기에 폴더가 너무 큽니다(2만 파일 초과) — 감시를 중지했습니다", "監視対象が大きすぎます(2万ファイル超) — 監視を停止しました"),
+    ("handoff.ask", "Ask the AI pane about this failure", "이 실패를 AI pane에 물어보기", "この失敗をAIペインに質問"),
+    ("handoff.noai", "(no AI CLI running in another pane)", "(다른 pane에 실행 중인 AI CLI 없음)", "(他ペインで実行中のAI CLIなし)"),
+    ("handoff.copy", "Copy failure prompt", "실패 프롬프트 복사", "失敗プロンプトをコピー"),
 ];
