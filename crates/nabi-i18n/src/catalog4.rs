@@ -74,4 +74,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("handoff.noai", "(no AI CLI running in another pane)", "(다른 pane에 실행 중인 AI CLI 없음)", "(他ペインで実行中のAI CLIなし)"),
     ("handoff.copy", "Copy failure prompt", "실패 프롬프트 복사", "失敗プロンプトをコピー"),
     ("sync.badlocal", "Local path is not a folder — check the path", "로컬 경로가 폴더가 아닙니다 — 경로를 확인하세요", "ローカルパスがフォルダではありません — パスを確認してください"),
+    ("handoff.p.ask", "This command failed. Explain why and how to fix it.", "다음 명령이 실패했어. 원인을 설명하고 고치는 방법을 알려줘.", "このコマンドが失敗した。原因と修正方法を教えて。"),
+    ("handoff.p.cmd", "Command:", "명령:", "コマンド:"), ("handoff.p.exit", "Exit code:", "종료코드:", "終了コード:"),
+    ("handoff.p.out", "Output:", "출력:", "出力:"),
 ];

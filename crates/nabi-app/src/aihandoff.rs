@@ -15,10 +15,15 @@ pub(crate) fn is_ai_command_strict(cmd: &str) -> bool {
     matches!(name.as_str(), "claude" | "aider" | "codex" | "gemini" | "llm" | "goose" | "cursor")
 }
 
-/// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보.
-pub(crate) fn failure_prompt(cmd: &str, exit: i32, tail: &str) -> String {
+/// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보. UI 언어를 따른다.
+pub(crate) fn failure_prompt(lang: nabi_i18n::Lang, cmd: &str, exit: i32, tail: &str) -> String {
+    use nabi_i18n::tr;
     format!(
-        "다음 명령이 실패했어. 원인을 설명하고 고치는 방법을 알려줘.\n\n명령: `{cmd}`\n종료코드: {exit}\n\n마지막 출력:\n```\n{}\n```",
+        "{}\n\n{} `{cmd}`\n{} {exit}\n\n{}\n```\n{}\n```",
+        tr(lang, "handoff.p.ask"),
+        tr(lang, "handoff.p.cmd"),
+        tr(lang, "handoff.p.exit"),
+        tr(lang, "handoff.p.out"),
         tail.trim_end()
     )
 }
@@ -31,15 +36,16 @@ impl NabiApp {
             return None;
         }
         let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned().unwrap_or_else(|| "(알 수 없음)".into());
+        // 셸 통합(OSC 133)이 있으면 "그 명령의 실제 출력"을, 없으면 화면 마지막 30줄 폴백.
         let tail = self
             .orch
             .panes
             .read()
             .ok()
             .and_then(|m| m.get(&p).map(|v| v.model.clone()))
-            .and_then(|md| md.lock().ok().map(|m| m.visible_bottom_text(30)))
+            .and_then(|md| md.lock().ok().map(|m| m.last_command_output().unwrap_or_else(|| m.visible_bottom_text(30))))
             .unwrap_or_default();
-        Some(failure_prompt(&cmd, exit, &tail))
+        Some(failure_prompt(self.lang, &cmd, exit, &tail))
     }
 
     /// AI CLI가 돌고 있는 다른 pane(첫 번째)을 찾는다.
@@ -84,7 +90,7 @@ mod tests {
 
     #[test]
     fn prompt_contains_essentials() {
-        let p = failure_prompt("cargo build", 101, "error[E0308]: mismatched types\n");
+        let p = failure_prompt(nabi_i18n::Lang::Ko, "cargo build", 101, "error[E0308]: mismatched types\n");
         assert!(p.contains("`cargo build`"));
         assert!(p.contains("101"));
         assert!(p.contains("E0308"));

@@ -5,7 +5,7 @@
 //! 않는다(v1 안전 — 지우는 일은 사람이 명시적으로).
 
 use crate::app::NabiApp;
-use crate::syncplan::{plan, to_map, walk_local, SyncAction, SyncBy};
+use crate::syncplan::{plan, to_map, walk_local, walk_local_capped, SyncAction, SyncBy};
 use nabi_proto::Command;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -48,12 +48,12 @@ impl NabiApp {
             return;
         }
         w.next_scan = Instant::now() + INTERVAL;
-        let cur_list = walk_local(std::path::Path::new(&w.local));
-        if cur_list.len() > WATCH_CAP {
+        // 상한 초과는 순회 중 즉시 중단(대형 트리 UI 프리즈 방지 — 리뷰 후속).
+        let Some(cur_list) = walk_local_capped(std::path::Path::new(&w.local), WATCH_CAP) else {
             self.notify = Some((nabi_i18n::tr(self.lang, "watch.toobig").to_string(), Instant::now()));
             self.sync_watch = None;
             return;
-        }
+        };
         let cur = to_map(&cur_list);
         // 새 파일=Copy, 변경=Update(±2초 관용) — 동기화 계획 로직 그대로(SSOT).
         let acts = plan(&cur, &w.last, SyncBy::SizeAndTime, false);

@@ -144,7 +144,7 @@ impl NabiApp {
         up: bool,
         size: u64,
         make: impl FnOnce(u64) -> Command,
-    ) {
+    ) -> u64 {
         self.xfer_seq += 1;
         let xfer = self.xfer_seq;
         let mut t = Transfer::new(xfer, name, up, size);
@@ -153,6 +153,7 @@ impl NabiApp {
         if let Some(id) = self.sftp.id {
             self.pump_transfers(id);
         }
+        xfer
     }
 
     /// 대기 중인 항목을 동시 실행 한도까지 시작한다.

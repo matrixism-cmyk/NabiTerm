@@ -90,20 +90,32 @@ pub fn safe_rel(rel: &str) -> bool {
 
 /// 로컬 디렉터리 트리를 (상대경로, 크기, mtime)로 수집(원격 list_tree와 짝).
 pub fn walk_local(root: &std::path::Path) -> Vec<(String, u64, u64)> {
-    let mut out = Vec::new();
-    walk(root, "", &mut out);
-    out.sort();
-    out
+    walk_local_capped(root, usize::MAX).unwrap_or_default()
 }
 
-fn walk(dir: &std::path::Path, prefix: &str, out: &mut Vec<(String, u64, u64)>) {
-    let Ok(rd) = std::fs::read_dir(dir) else { return };
+/// 상한부 수집 — cap 초과를 발견한 즉시 중단하고 None(대형 트리 UI 프리즈 방지).
+pub fn walk_local_capped(root: &std::path::Path, cap: usize) -> Option<Vec<(String, u64, u64)>> {
+    let mut out = Vec::new();
+    if !walk_capped(root, "", &mut out, cap) {
+        return None;
+    }
+    out.sort();
+    Some(out)
+}
+
+fn walk_capped(dir: &std::path::Path, prefix: &str, out: &mut Vec<(String, u64, u64)>, cap: usize) -> bool {
+    let Ok(rd) = std::fs::read_dir(dir) else { return true };
     for e in rd.flatten() {
+        if out.len() >= cap {
+            return false; // 상한 도달 — 즉시 중단(전체 순회 금지).
+        }
         let name = e.file_name().to_string_lossy().into_owned();
         let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };
         let Ok(meta) = e.metadata() else { continue };
         if meta.is_dir() {
-            walk(&e.path(), &rel, out);
+            if !walk_capped(&e.path(), &rel, out, cap) {
+                return false;
+            }
         } else {
             let mtime = meta
                 .modified()
@@ -114,6 +126,7 @@ fn walk(dir: &std::path::Path, prefix: &str, out: &mut Vec<(String, u64, u64)>) 
             out.push((rel, meta.len(), mtime));
         }
     }
+    true
 }
 
 #[cfg(test)]

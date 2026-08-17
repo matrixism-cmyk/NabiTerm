@@ -94,6 +94,11 @@ impl Folds {
         }
         let delta = new_total as i64 - old as i64;
         self.unfold_containing(at);
+        // 여러 줄 삭제가 폴드 경계를 걸치면 그 폴드도 해제(밀기만으로는 어긋난다).
+        if delta < 0 {
+            let cut_end = at + delta.unsigned_abs() as usize;
+            self.ranges.retain(|(s, e)| *e < at || *s > cut_end);
+        }
         for r in &mut self.ranges {
             if r.0 > at {
                 r.0 = (r.0 as i64 + delta).max(0) as usize;

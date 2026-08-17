@@ -11,8 +11,8 @@ use std::collections::HashMap;
 /// 진행 중인 제어평면 SFTP 요청의 상관 상태.
 #[derive(Default)]
 pub struct CtlSftp {
-    /// 목록 대기: 원격 경로 → 요청 seq. SftpListing(path)이 오면 회신.
-    pub list: HashMap<String, u64>,
+    /// 목록 대기: (원격 경로, 요청 seq) — 같은 경로 동시 요청도 각자 회신받게 Vec.
+    pub list: Vec<(String, u64)>,
     /// 전송 대기: 큐 xfer id → 요청 seq. TransferDone(xfer)이 오면 회신.
     pub xfers: HashMap<u64, u64>,
 }
@@ -26,16 +26,16 @@ impl NabiApp {
         };
         match op {
             SftpCtlOp::List { path } => {
-                // 절대경로 권장. 같은 경로를 UI가 동시에 요청하는 드문 경우, 제어 회신을 우선한다.
-                self.ctl_sftp.list.insert(path.clone(), seq);
+                // 같은 경로를 UI가 동시에 요청하는 드문 경우, 제어 회신을 우선한다.
+                self.ctl_sftp.list.push((path.clone(), seq));
                 self.orch.send(Command::SftpList { id, path });
             }
             SftpCtlOp::Get { remote, local } => {
                 let name = crate::sftppath::remote_basename(&remote).to_string();
-                self.push_xfer(name, false, 0, |xfer| Command::SftpDownload {
+                let x = self.push_xfer(name, false, 0, |xfer| Command::SftpDownload {
                     id, xfer, remote, local, resume: 0,
                 });
-                self.ctl_sftp.xfers.insert(self.xfer_seq, seq);
+                self.ctl_sftp.xfers.insert(x, seq);
             }
             SftpCtlOp::Put { local, remote } => {
                 let meta = std::fs::metadata(&local);
@@ -44,17 +44,23 @@ impl NabiApp {
                     return;
                 };
                 let name = crate::sftppath::remote_basename(&remote).to_string();
-                self.push_xfer(name, true, meta.len(), |xfer| Command::SftpUpload { id, xfer, local, remote });
-                self.ctl_sftp.xfers.insert(self.xfer_seq, seq);
+                let x = self.push_xfer(name, true, meta.len(), |xfer| Command::SftpUpload { id, xfer, local, remote });
+                self.ctl_sftp.xfers.insert(x, seq);
             }
         }
     }
 
     /// SftpListing 이벤트가 제어 요청의 회신인가 — 맞으면 JSON으로 회신하고 true(UI 갱신 생략).
     pub(crate) fn sftp_ctl_take_listing(&mut self, path: &str, entries: &[nabi_proto::SftpEntry]) -> bool {
-        let Some(seq) = self.ctl_sftp.list.remove(path) else { return false };
+        let (hit, rest): (Vec<_>, Vec<_>) = std::mem::take(&mut self.ctl_sftp.list).into_iter().partition(|(p, _)| p == path);
+        self.ctl_sftp.list = rest;
+        if hit.is_empty() {
+            return false;
+        }
         let data = serde_json::to_string(entries).unwrap_or_else(|_| "[]".into());
-        self.sftp_ctl_reply(seq, true, data);
+        for (_, seq) in hit {
+            self.sftp_ctl_reply(seq, true, data.clone());
+        }
         true
     }
 
@@ -72,6 +78,7 @@ impl NabiApp {
         for (_, seq) in std::mem::take(&mut self.ctl_sftp.list) {
             self.sftp_ctl_reply(seq, false, message.to_string());
         }
+        // (list는 Vec — take로 비웠으니 신규 요청은 이후 자유롭게 쌓인다.)
         if let Some(dlg) = &mut self.sync_dlg {
             dlg.pending = None;
         }
