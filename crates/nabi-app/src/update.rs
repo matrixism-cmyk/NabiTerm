@@ -151,6 +151,7 @@ impl eframe::App for NabiApp {
         self.show_xfer_history(ctx); // SFTP 전송 히스토리(S6-60).
         self.show_keygen_modal(ctx); // SSH 키 생성(ed25519).
         self.show_sync_dialog(ctx); // 폴더 동기화(S6-51).
+        self.sync_watch_tick(ctx); // 원격 최신유지(S6-54).
         self.tick_scheduler(); // 내장 스케줄러(C3, 2초 스로틀).
         self.show_toast(ctx);
         self.show_resize_badge(ctx);

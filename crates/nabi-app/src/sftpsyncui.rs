@@ -63,6 +63,8 @@ impl NabiApp {
         let mut open = true;
         let mut do_preview = false;
         let mut do_run = false;
+        let (mut do_watch, mut stop_watch) = (false, false);
+        let watch_on = self.sync_watch.is_some();
         egui::Window::new(tr(lang, "sync.title"))
             .open(&mut open).collapsible(false).resizable(true).default_size([620.0, 420.0])
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -86,6 +88,14 @@ impl NabiApp {
                 });
                 ui.horizontal(|ui| {
                     if ui.button(format!("\u{1f50d} {}", tr(lang, "sync.preview"))).clicked() { do_preview = true; }
+                    // 원격 최신유지(S6-54): 로컬→원격 방향에서 감시 시작/중지.
+                    if watch_on {
+                        if ui.button(format!("\u{23f9} {}", tr(lang, "watch.stop"))).clicked() { stop_watch = true; }
+                    } else if dlg.dir == SyncDir::Up
+                        && ui.button(format!("\u{1f441} {}", tr(lang, "watch.start"))).on_hover_text(tr(lang, "watch.hint")).clicked()
+                    {
+                        do_watch = true;
+                    }
                     if dlg.pending.is_some() { ui.spinner(); ui.label(tr(lang, "sync.scanning")); }
                     if let Some(items) = &dlg.items {
                         let on = items.iter().filter(|(_, c)| *c).count();
@@ -122,6 +132,13 @@ impl NabiApp {
         }
         if do_run {
             self.run_sync(&mut dlg);
+        }
+        if do_watch {
+            self.sync_watch = Some(crate::sftpwatch::SyncWatch::new(dlg.local.clone(), dlg.remote.clone()));
+            self.notify = Some((tr(self.lang, "watch.started").to_string(), std::time::Instant::now()));
+        }
+        if stop_watch {
+            self.sync_watch = None;
         }
         if open {
             self.sync_dlg = Some(dlg);

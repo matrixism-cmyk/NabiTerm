@@ -63,4 +63,11 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("fold.close", "Fold this block", "이 블록 접기", "このブロックを折りたたむ"),
     ("fold.open", "Unfold this block", "이 블록 펼치기", "このブロックを展開"),
     ("fold.openall", "Unfold all", "모두 펼치기", "すべて展開"),
+    ("watch.start", "Keep remote up to date", "원격 최신유지 시작", "リモートを最新に保つ"),
+    ("watch.stop", "Stop keeping up to date", "최신유지 중지", "最新維持を停止"),
+    ("watch.hint", "Watches the local folder (5s polling) and auto-uploads new/changed files. Deletions are not propagated.", "로컬 폴더를 5초 주기로 감시해 새/변경 파일을 자동 업로드합니다. 삭제는 전파하지 않습니다.", "ローカルフォルダを5秒間隔で監視し、新規/変更ファイルを自動アップロードします。削除は反映しません。"),
+    ("watch.started", "Keeping remote up to date — changes will upload automatically", "원격 최신유지 시작 — 변경 사항이 자동 업로드됩니다", "リモート最新維持を開始 — 変更は自動アップロードされます"),
+    ("watch.on", "keeping up to date", "최신유지 중", "最新維持中"),
+    ("watch.stophint", "Click to stop", "클릭하면 중지", "クリックで停止"),
+    ("watch.toobig", "Folder too large to watch (>20k files) — watch stopped", "감시하기에 폴더가 너무 큽니다(2만 파일 초과) — 감시를 중지했습니다", "監視対象が大きすぎます(2万ファイル超) — 監視を停止しました"),
 ];

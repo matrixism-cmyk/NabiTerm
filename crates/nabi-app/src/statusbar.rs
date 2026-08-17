@@ -52,6 +52,8 @@ impl NabiApp {
         // P4: 보이는 화면의 치환문자(U+FFFD) 비율로 인코딩 오류 감지 → 전환 제안 칩.
         let enc_suggest = focused.and_then(|p| self.enc_suggestion(p, &encoding)); let clock = self.config.appearance.show_clock.then(|| chrono::Local::now().format("%H:%M").to_string());
         let group_n = self.broadcast_group.len();
+        let watch = self.sync_watch_label(); // 원격 최신유지 칩(S6-54).
+        let mut stop_watch = false;
         let sel_info = self.selection.filter(|s| !s.is_empty()).map(|s| {
             let (sr, sc, er, ec) = s.span();
             if s.rect {
@@ -164,6 +166,12 @@ impl NabiApp {
                     ui.separator();
                     ui.label(format!("\u{23f3} {pct}%"));
                 }
+                if let Some(wl) = &watch {
+                    ui.separator();
+                    if ui.selectable_label(false, wl).on_hover_text(tr(lang, "watch.stophint")).clicked() {
+                        stop_watch = true;
+                    }
+                }
                 if let Some(c) = &cwd {
                     ui.separator();
                     // 클릭 시 탭/창/사이드바 중 선택해서 열기(기본 탭).
@@ -229,6 +237,9 @@ impl NabiApp {
         }
         if let Some(e) = set_enc {
             self.apply_encoding(e);
+        }
+        if stop_watch {
+            self.sync_watch = None; // 상태바 칩 클릭 = 최신유지 중지.
         }
         if focus_sftp {
             if let Some(p) = self.sftp_pane {

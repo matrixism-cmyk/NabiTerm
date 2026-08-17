@@ -109,6 +109,8 @@ pub struct NabiApp {
     /// 폴더 동기화 다이얼로그(S6-51) + 트리 수집 상관 seq.
     pub sync_dlg: Option<crate::sftpsyncui::SyncDlg>,
     pub sync_seq: u64,
+    /// 원격 최신유지 감시(S6-54, Some=켜짐).
+    pub sync_watch: Option<crate::sftpwatch::SyncWatch>,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

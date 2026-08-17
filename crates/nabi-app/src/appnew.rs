@@ -125,7 +125,7 @@ impl NabiApp {
             xfer_history: Vec::new(), xfer_history_open: false,
             ctl_sftp: Default::default(),
             keygen: None,
-            sync_dlg: None, sync_seq: 0,
+            sync_dlg: None, sync_seq: 0, sync_watch: None,
             onboarding_open: first_run,
             palette_query: String::new(),
             find_open: false,
