@@ -111,6 +111,8 @@ pub struct NabiApp {
     pub sync_seq: u64,
     /// 원격 최신유지 감시(S6-54, Some=켜짐).
     pub sync_watch: Option<crate::sftpwatch::SyncWatch>,
+    /// 방금 끝난 명령(pane별) — 실패 AI 인계 컨텍스트(run_cmd는 종료 시 비워짐).
+    pub last_run_cmd: std::collections::HashMap<nabi_types::PaneId, String>,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,

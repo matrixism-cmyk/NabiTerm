@@ -175,7 +175,7 @@ impl NabiApp {
                     self.fulfill_telegram(pane); // 텔레그램 보류 요청에 명령 출력 회신.
                     // 명령이 끝나면 진행률 표시도 정리(미해제 시퀀스 대비).
                     self.progress.remove(&pane);
-                    self.run_cmd.remove(&pane); // 명령 종료 — 실행 중 명령에서 제거.
+                    if let Some(c) = self.run_cmd.remove(&pane) { self.last_run_cmd.insert(pane, c); } // 종료 후에도 AI 인계용 보존.
                 }
                 Event::Notify { pane, text } => {
                     // pane 제목 귀속(어느 탭/세션의 알림인지) — 에이전트 완료/입력대기 식별.

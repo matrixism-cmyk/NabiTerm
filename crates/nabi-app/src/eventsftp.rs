@@ -26,7 +26,10 @@ impl NabiApp {
                     ctx.request_repaint();
                 }
             }
-            Event::SftpError { id, message } => self.set_sftp_status(id, message, ctx),
+            Event::SftpError { id, message } => {
+                self.sftp_ctl_fail_pending(&message); // 제어 목록·동기화 스캔 대기 해제(S6-55/51).
+                self.set_sftp_status(id, message, ctx);
+            }
             Event::SftpSearchResults { id, results } => {
                 if let Some(p) = self.remote_panel_mut(id) {
                     p.search_results = results;
@@ -132,8 +135,8 @@ impl NabiApp {
             let refresh = crate::sftpxfer::take_refresh(quiet, &mut p.dir_stale);
             (refresh, p.path.clone(), drained, rec)
         });
+        self.sftp_ctl_take_xfer(xfer, ok, &message, &name); // 제어평면 회신은 패널 유무와 무관(닫혀도 CLI가 기다린다).
         let Some((refresh, path, drained, rec)) = res else { return };
-        self.sftp_ctl_take_xfer(xfer, ok, &message, &name); // 제어평면 전송 회신(S6-55).
         if let Some((up, size, secs)) = rec {
             self.record_xfer(&name, up, ok, size, secs, &message); // 전송 히스토리(S6-60).
         }

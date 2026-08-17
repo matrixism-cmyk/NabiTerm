@@ -58,11 +58,11 @@ pub fn plan(
         match dst.get(p) {
             None => out.push(SyncAction::Copy(p.clone())),
             Some((ds, dm)) => {
-                let differs = match by {
-                    SyncBy::Size => ss != ds,
-                    SyncBy::SizeAndTime => ss != ds || sm.saturating_sub(*dm) > 2,
-                };
-                if differs && (by == SyncBy::Size || *sm > *dm) {
+                // 크기가 다르면 무조건 갱신(시각 보존 도구·mtime 되돌림도 놓치지 않게).
+                // 크기가 같고 시각만 다르면 원본이 더 최신일 때만(±2초 관용, 대상 최신 보호).
+                let update = ss != ds
+                    || (by == SyncBy::SizeAndTime && sm.saturating_sub(*dm) > 2);
+                if update {
                     out.push(SyncAction::Update(p.clone()));
                 }
             }
@@ -76,6 +76,16 @@ pub fn plan(
         }
     }
     out
+}
+
+/// 동기화에 안전한 상대경로인가 — `..`/절대경로/드라이브 문자를 거부한다.
+/// 원격 서버가 준 이름을 로컬 경로에 join하기 전 반드시 통과시킬 것(경로 탈출 차단).
+pub fn safe_rel(rel: &str) -> bool {
+    !rel.is_empty()
+        && !rel.starts_with('/')
+        && !rel.starts_with('\\')
+        && !rel.contains(':')
+        && rel.split(['/', '\\']).all(|c| !c.is_empty() && c != "..")
 }
 
 /// 로컬 디렉터리 트리를 (상대경로, 크기, mtime)로 수집(원격 list_tree와 짝).
@@ -133,12 +143,22 @@ mod tests {
         let src = m(&[("x", 4, 102)]);
         let dst = m(&[("x", 4, 100)]);
         assert!(plan(&src, &dst, SyncBy::SizeAndTime, false).is_empty(), "2초 차=동일");
-        // 대상이 더 최신이면 덮어쓰지 않는다(크기 달라도 시각 기준에서 보호).
+        // 크기가 다르면 대상이 최신이어도 갱신한다(변경 누락이 더 위험 — 리뷰 #8).
         let src2 = m(&[("y", 9, 100)]);
         let dst2 = m(&[("y", 4, 999)]);
-        assert!(plan(&src2, &dst2, SyncBy::SizeAndTime, false).is_empty(), "대상 최신 보호");
-        // 크기 기준은 시각 무관하게 갱신.
-        assert_eq!(plan(&src2, &dst2, SyncBy::Size, false).len(), 1);
+        assert_eq!(plan(&src2, &dst2, SyncBy::SizeAndTime, false).len(), 1, "크기 불일치=갱신");
+        // 크기가 같고 대상이 더 최신이면 보호(덮어쓰지 않음).
+        let src3 = m(&[("z", 7, 100)]);
+        let dst3 = m(&[("z", 7, 999)]);
+        assert!(plan(&src3, &dst3, SyncBy::SizeAndTime, false).is_empty(), "동일 크기+대상 최신 보호");
+    }
+
+    #[test]
+    fn rejects_unsafe_relative_paths() {
+        assert!(safe_rel("a/b.txt") && safe_rel("한글/파일.rs"));
+        for bad in ["../x", "a/../b", "/etc/passwd", "..", "C:evil", "a\\..\\b", ""] {
+            assert!(!safe_rel(bad), "{bad}");
+        }
     }
 
     #[test]

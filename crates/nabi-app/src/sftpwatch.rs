@@ -42,8 +42,9 @@ impl NabiApp {
             self.sync_watch = None;
             return;
         };
+        // 어떤 분기로 끝나든 다음 주기에 깨어나야 한다(비포커스 중 감시 정지 방지 — 리뷰 #5).
+        ctx.request_repaint_after(INTERVAL);
         if Instant::now() < w.next_scan {
-            ctx.request_repaint_after(INTERVAL); // 유휴 시에도 주기 도래 시 깨어나게.
             return;
         }
         w.next_scan = Instant::now() + INTERVAL;
@@ -62,12 +63,27 @@ impl NabiApp {
             .iter()
             .filter(|a| matches!(a, SyncAction::Copy(_) | SyncAction::Update(_)))
             .map(|a| a.path().to_string())
+            .filter(|r| crate::syncplan::safe_rel(r))
             .collect();
         if rels.is_empty() {
             return;
         }
         if let Some(w) = &mut self.sync_watch {
             w.pushed += rels.len();
+        }
+        // 새 하위 폴더의 파일이 개별 실패하지 않게 원격 부모 폴더를 먼저 만든다(리뷰 #6).
+        let mut dirs: Vec<String> = Vec::new();
+        for r in &rels {
+            let mut acc = String::new();
+            for seg in r.split('/').collect::<Vec<_>>().split_last().map(|(_, init)| init).unwrap_or(&[]) {
+                acc = if acc.is_empty() { (*seg).to_string() } else { format!("{acc}/{seg}") };
+                if !dirs.contains(&acc) {
+                    dirs.push(acc.clone());
+                }
+            }
+        }
+        for d in dirs {
+            self.orch.send(Command::SftpMkdir { id, path: format!("{rroot}/{d}") });
         }
         for rel in rels {
             let lpath = std::path::Path::new(&lroot).join(rel.replace('/', "\\"));

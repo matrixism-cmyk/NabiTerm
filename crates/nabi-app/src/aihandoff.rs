@@ -7,6 +7,14 @@
 use crate::app::NabiApp;
 use nabi_types::PaneId;
 
+/// 엄격한 AI CLI 판정: basename이 목록과 정확히 일치할 때만(aistatus의 부분문자열 폴백 배제).
+/// 프롬프트를 "주입"할 대상 선정이라 오탐이 위험하다(리뷰 #10 — grep 'claude ' 따위 배제).
+pub(crate) fn is_ai_command_strict(cmd: &str) -> bool {
+    let base = cmd.split_whitespace().next().unwrap_or("");
+    let name = base.rsplit(['\\', '/']).next().unwrap_or(base).trim_end_matches(".exe").to_ascii_lowercase();
+    matches!(name.as_str(), "claude" | "aider" | "codex" | "gemini" | "llm" | "goose" | "cursor")
+}
+
 /// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보.
 pub(crate) fn failure_prompt(cmd: &str, exit: i32, tail: &str) -> String {
     format!(
@@ -22,7 +30,7 @@ impl NabiApp {
         if exit == 0 {
             return None;
         }
-        let cmd = self.run_cmd.get(&p).cloned().unwrap_or_else(|| "(알 수 없음)".into());
+        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned().unwrap_or_else(|| "(알 수 없음)".into());
         let tail = self
             .orch
             .panes
@@ -42,7 +50,7 @@ impl NabiApp {
             .chain(self.floating.iter().copied())
             .find(|p| {
                 *p != except
-                    && self.run_cmd.get(p).is_some_and(|c| crate::aistatus::is_ai_command(c))
+                    && self.run_cmd.get(p).is_some_and(|c| is_ai_command_strict(c))
             })
     }
 
@@ -64,6 +72,15 @@ impl NabiApp {
 #[cfg(test)]
 mod tests {
     use super::failure_prompt;
+
+    #[test]
+    fn strict_rejects_substring_mentions() {
+        use super::is_ai_command_strict as f;
+        assert!(f("claude --resume") && f(r"C:\Users\u\claude.exe") && f("codex"));
+        assert!(!f("grep -r 'claude ' src/"), "부분문자열 언급은 배제");
+        assert!(!f("tail -f claude.log"));
+        assert!(!f(""));
+    }
 
     #[test]
     fn prompt_contains_essentials() {

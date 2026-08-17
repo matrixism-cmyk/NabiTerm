@@ -46,8 +46,16 @@ impl NabiApp {
             return;
         }
         dlg.pending = None;
+        // 로컬 루트가 폴더가 아니면(오타 등) 계획을 만들지 않는다 — Up+미러에서 빈 src로
+        // 원격 전체가 삭제 후보가 되는 사고 차단(리뷰 #2).
+        if !std::path::Path::new(&dlg.local).is_dir() {
+            self.notify = Some((tr(self.lang, "sync.badlocal").to_string(), std::time::Instant::now()));
+            return;
+        }
         let local = to_map(&walk_local(std::path::Path::new(&dlg.local)));
-        let remote = to_map(&files);
+        // 원격 서버가 준 상대경로는 신뢰하지 않는다 — `..` 등 탈출 경로 제거(리뷰 #1).
+        let safe: Vec<_> = files.into_iter().filter(|(r, _, _)| crate::syncplan::safe_rel(r)).collect();
+        let remote = to_map(&safe);
         let (src, dst) = match dlg.dir {
             SyncDir::Up => (&local, &remote),
             SyncDir::Down => (&remote, &local),
@@ -65,6 +73,8 @@ impl NabiApp {
         let mut do_run = false;
         let (mut do_watch, mut stop_watch) = (false, false);
         let watch_on = self.sync_watch.is_some();
+        // 방향/기준/미러/경로가 바뀌면 기존 미리보기는 무효 — 스테일 계획 실행 차단(리뷰 #3).
+        let key_before = (dlg.dir, dlg.by, dlg.mirror, dlg.local.clone(), dlg.remote.clone());
         egui::Window::new(tr(lang, "sync.title"))
             .open(&mut open).collapsible(false).resizable(true).default_size([620.0, 420.0])
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
@@ -122,6 +132,9 @@ impl NabiApp {
                     });
                 }
             });
+        if key_before != (dlg.dir, dlg.by, dlg.mirror, dlg.local.clone(), dlg.remote.clone()) {
+            dlg.items = None;
+        }
         if do_preview {
             if let Some(id) = self.sftp.id {
                 self.sync_seq += 1;
@@ -149,7 +162,30 @@ impl NabiApp {
     fn run_sync(&mut self, dlg: &mut SyncDlg) {
         let Some(id) = self.sftp.id else { return };
         let (lroot, rroot) = (dlg.local.clone(), dlg.remote.trim_end_matches('/').to_string());
-        let items: Vec<_> = dlg.items.take().into_iter().flatten().filter(|(_, c)| *c).map(|(a, _)| a).collect();
+        let items: Vec<_> = dlg
+            .items
+            .take()
+            .into_iter()
+            .flatten()
+            .filter(|(a, c)| *c && crate::syncplan::safe_rel(a.path()))
+            .map(|(a, _)| a)
+            .collect();
+        // 업로드 전 원격 부모 폴더를 얕은→깊은 순으로 만들어 둔다(리뷰 #6 — 없으면 개별 실패).
+        if dlg.dir == SyncDir::Up {
+            let mut dirs: Vec<String> = Vec::new();
+            for a in items.iter().filter(|a| matches!(a, SyncAction::Copy(_) | SyncAction::Update(_))) {
+                let mut acc = String::new();
+                for seg in a.path().split('/').collect::<Vec<_>>().split_last().map(|(_, init)| init).unwrap_or(&[]) {
+                    acc = if acc.is_empty() { (*seg).to_string() } else { format!("{acc}/{seg}") };
+                    if !dirs.contains(&acc) {
+                        dirs.push(acc.clone());
+                    }
+                }
+            }
+            for d in dirs {
+                self.orch.send(Command::SftpMkdir { id, path: format!("{rroot}/{d}") });
+            }
+        }
         let mut n = 0usize;
         for a in items {
             let rel = a.path().to_string();

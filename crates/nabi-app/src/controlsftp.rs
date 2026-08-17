@@ -66,6 +66,17 @@ impl NabiApp {
         }
     }
 
+    /// SFTP 오류 발생 시: 대기 중인 제어 목록 요청을 실패 회신하고, 동기화 스캔 대기도 푼다.
+    /// (오류 이벤트에는 경로가 없어 개별 상관이 불가 — 짧은 수명의 대기라 일괄 해제가 안전.)
+    pub(crate) fn sftp_ctl_fail_pending(&mut self, message: &str) {
+        for (_, seq) in std::mem::take(&mut self.ctl_sftp.list) {
+            self.sftp_ctl_reply(seq, false, message.to_string());
+        }
+        if let Some(dlg) = &mut self.sync_dlg {
+            dlg.pending = None;
+        }
+    }
+
     fn sftp_ctl_reply(&self, seq: u64, ok: bool, data: String) {
         self.control_events.publish(&nabi_proto::Event::SftpCtlDone { seq, ok, data });
     }

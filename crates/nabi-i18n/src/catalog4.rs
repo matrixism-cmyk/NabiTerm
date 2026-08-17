@@ -73,4 +73,5 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("handoff.ask", "Ask the AI pane about this failure", "이 실패를 AI pane에 물어보기", "この失敗をAIペインに質問"),
     ("handoff.noai", "(no AI CLI running in another pane)", "(다른 pane에 실행 중인 AI CLI 없음)", "(他ペインで実行中のAI CLIなし)"),
     ("handoff.copy", "Copy failure prompt", "실패 프롬프트 복사", "失敗プロンプトをコピー"),
+    ("sync.badlocal", "Local path is not a folder — check the path", "로컬 경로가 폴더가 아닙니다 — 경로를 확인하세요", "ローカルパスがフォルダではありません — パスを確認してください"),
 ];
