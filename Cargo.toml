@@ -33,7 +33,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.443"
+version = "0.1.444"
 edition = "2021"
 license = "Apache-2.0"
 authors = ["aeo <the@aeokorea.com>"]
@@ -132,3 +132,7 @@ opt-level = 2        # 의존성은 더 최적화(빌드 1회 후 캐시)
 [profile.release]
 lto = "fat"          # 전체 LTO: 크레이트 간 인라인+죽은코드 제거 최대(thin보다 크기↓). 링크 시간↑(일회성).
 strip = "symbols"    # 디버그 심볼 제거(바이너리 크기↓)
+
+[patch.crates-io]
+# SFTP v3 파일명 인코딩(CP949 등) 벤더 패치 — vendor/russh-sftp-2.3.0/src/charset.rs.
+russh-sftp = { path = "vendor/russh-sftp-2.3.0" }

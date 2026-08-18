@@ -5,7 +5,7 @@ use nabi_i18n::{tr, Lang};
 
 /// 좌측 내비게이션 항목(i18n 키). 인덱스가 `page()`의 페이지 번호.
 // 외관 그룹(글꼴·색상·커서·테마)을 앞쪽에 인접 배치 → 그 뒤 터미널·동작·에디터·강조·스니펫.
-pub(crate) const PAGE_KEYS: [&str; 11] = [
+pub(crate) const PAGE_KEYS: [&str; 12] = [
     "settings.sec.font",
     "settings.sec.colors",
     "settings.sec.cursor",
@@ -15,6 +15,7 @@ pub(crate) const PAGE_KEYS: [&str; 11] = [
     "settings.sec.editor",
     "settings.sec.highlights",
     "settings.sec.snippets",
+    "settings.sec.aiprof",
     "settings.sec.schedule",
     "settings.sec.telegram",
 ];
@@ -46,7 +47,8 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, editor: &mut EditorCo
         6 => grid(ui, "sec_editor", |ui| editor_rows(ui, editor, lang)),
         7 => crate::settingslists::highlight_rows(ui, cfg, lang),
         8 => crate::settingslists::snippet_rows(ui, cfg, lang),
-        9 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
+        9 => crate::aiprofileui::ai_profile_rows(ui, cfg, lang),
+        10 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
         _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending)),
     }
 }
@@ -223,14 +225,7 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.searchlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.search_limit).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
     ui.label(tr(lang, "settings.sshkeepalive")); ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s")).on_hover_text(tr(lang, "settings.sshkeepalivehint")); ui.end_row();
-    ui.label(tr(lang, "settings.speedlimit"));
-    ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
-    ui.label(tr(lang, "settings.maxparallel"));
-    ui.add(egui::Slider::new(&mut cfg.terminal.max_parallel_transfers, 1..=4));
-    ui.end_row();
-    ui.label(tr(lang, "settings.verifyhash"));
-    ui.checkbox(&mut cfg.terminal.sftp_verify_hash, "").on_hover_text(tr(lang, "settings.verifyhashhint"));
-    ui.end_row();
+    crate::settingsui2::sftp_rows(ui, cfg, lang); // SFTP 전송·인코딩 그룹(분리 — 라인 한도).
     // 원격이 로컬 클립보드에 쓰는 것(OSC 52) — 차단/알림/조용히 허용.
     ui.label(tr(lang, "settings.osc52"));
     ui.horizontal(|ui| {

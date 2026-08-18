@@ -8,6 +8,7 @@ impl NabiApp {
     pub(crate) fn apply(&mut self, ctx: &egui::Context, a: MenuAction) {
         match a {
             MenuAction::Spawn(s) => self.spawn_local(s),
+            MenuAction::SpawnAiProfile(i) => self.spawn_ai_profile(i),
             MenuAction::Find => self.find_open = true,
             MenuAction::ResetTerm => self.reset_focused(),
             MenuAction::SendSnippet(cmd) => self.send_snippet(&cmd),

@@ -8,6 +8,8 @@ use nabi_session::SavedSession;
 
 pub(crate) enum MenuAction {
     Spawn(ShellKind),
+    /// AI 터미널 프로필 i번으로 새 터미널(세션▸새 AI 터미널 — aiprof.rs).
+    SpawnAiProfile(usize),
     Copy,
     Paste,
     SelectAll,
@@ -105,14 +107,7 @@ impl NabiApp {
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button(tr(lang, "menu.file"), |ui| {
-                    ui.menu_button(tr(lang, "menu.newlocal"), |ui| {
-                        for (label, shell) in installed_shells() {
-                            if ui.button(label).clicked() {
-                                action = Some(MenuAction::Spawn(shell));
-                                ui.close();
-                            }
-                        }
-                    });
+                    // '새 로컬 터미널'은 세션 메뉴로 통합(2026-08-18 사용자 요청 — 새로 열기 축 일원화).
                     // 파일 브라우저 탭 — "여는" 동작이라 보기 토글이 아닌 파일 메뉴에.
                     if ui.button(tr(lang, "menu.newpad")).clicked() { action = Some(MenuAction::OpenNabiPad); }
                     if ui.button(tr(lang, "menu.browsertab")).clicked() {
@@ -132,6 +127,34 @@ impl NabiApp {
                     }
                 });
                 ui.menu_button(tr(lang, "menu.sessions"), |ui| {
+                    // 새로 열기 축 통합: 새 로컬 터미널 + 새 AI 터미널(프로필) + 저장 세션 관리.
+                    ui.menu_button(tr(lang, "menu.newlocal"), |ui| {
+                        for (label, shell) in installed_shells() {
+                            if ui.button(label).clicked() {
+                                action = Some(MenuAction::Spawn(shell));
+                                ui.close();
+                            }
+                        }
+                    });
+                    ui.menu_button(tr(lang, "menu.newai"), |ui| {
+                        let profiles = &self.config.terminal.ai_profiles;
+                        for (i, p) in profiles.iter().enumerate() {
+                            let label = format!("{} — {}", p.name, p.cmd);
+                            if ui.button(label).clicked() {
+                                action = Some(MenuAction::SpawnAiProfile(i));
+                                ui.close();
+                            }
+                        }
+                        if profiles.is_empty() {
+                            ui.weak(tr(lang, "aiprof.none"));
+                        }
+                        ui.separator();
+                        if ui.button(tr(lang, "aiprof.manage")).clicked() {
+                            action = Some(MenuAction::OpenSettings);
+                            ui.close();
+                        }
+                    });
+                    ui.separator();
                     // 로컬 포워딩은 sessions_menu → manage_menu(공용)에 포함 — 사이드바 ⋯와 동일.
                     if let Some(a) = crate::sessionsmenu::sessions_menu(ui, lang, &saved, &last_conn, &active) {
                         action = Some(a);

@@ -34,11 +34,13 @@ fn cap(limit: Option<u64>) -> usize {
 }
 
 /// SFTP 문자열 두 개를 확장 요청 페이로드로 직렬화한다(길이 u32 BE + 바이트).
+/// 경로는 세션 파일명 인코딩(charset 벤더 패치)으로 재인코딩한다 — ser.rs 경로와 동일 규칙.
 pub(crate) fn ext_two_strings(a: &str, b: &str) -> Vec<u8> {
     let mut v = Vec::with_capacity(8 + a.len() + b.len());
     for s in [a, b] {
-        v.extend_from_slice(&(s.len() as u32).to_be_bytes());
-        v.extend_from_slice(s.as_bytes());
+        let bytes = russh_sftp::charset::encode_path(s);
+        v.extend_from_slice(&(bytes.len() as u32).to_be_bytes());
+        v.extend_from_slice(&bytes);
     }
     v
 }

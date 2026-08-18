@@ -3318,6 +3318,7 @@ name = "nabi-sftp"
 version = "0.1.443"
 dependencies = [
  "async-trait",
+ "encoding_rs",
  "futures-util",
  "nabi-fs",
  "nabi-i18n",
@@ -4982,13 +4983,12 @@ dependencies = [
 [[package]]
 name = "russh-sftp"
 version = "2.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ed8949eca4163c18a8f59ff96d32cf61e9c13b9735e21ef32b3907f4aafa1a9"
 dependencies = [
  "bitflags 2.13.1",
  "bytes",
  "chrono",
  "dashmap",
+ "encoding_rs",
  "gloo-timers",
  "log",
  "serde",

@@ -21,4 +21,5 @@ futures-util = { workspace = true }
 sha2 = { workspace = true }
 
 [dev-dependencies]
+encoding_rs = { workspace = true }  # charset_test: CP949 표본 생성용.
 tokio = { workspace = true }

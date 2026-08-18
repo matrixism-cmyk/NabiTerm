@@ -1,5 +1,7 @@
 //! serde 타입 설정 스키마.
 
+use crate::aiprofile::AiProfileCfg;
+use crate::telegram::TelegramCfg;
 use serde::{Deserialize, Serialize};
 
 /// 기본 글꼴 크기(px) — 설정 기본값과 Ctrl+0 줌 리셋이 공유하는 단일 진실원.
@@ -13,45 +15,6 @@ pub struct AppConfig {
     pub appearance: Appearance,
     pub terminal: TerminalCfg,
     pub telegram: TelegramCfg,
-}
-
-/// 텔레그램 브리지 설정(봇 토큰은 keyring에 별도 저장 — 여기엔 비밀 미포함).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct TelegramCfg {
-    /// 브리지 마스터 on/off(끄면 폴링 안 함).
-    pub enabled: bool,
-    /// 허용 chat ID 화이트리스트(비면 모두 거부 — 보안).
-    pub allowed_chats: Vec<i64>,
-    /// 텔레그램에 모든 권한 부여(목록/캡처/입력/스폰 전부 — 화이트리스트 chat 한정).
-    pub grant_all: bool,
-    /// 회신에 포함할 출력 줄 수.
-    pub reply_lines: usize,
-    /// 명령 후 출력 대기 한도(ms).
-    pub idle_timeout_ms: u64,
-    /// getUpdates 롱폴링 timeout(초).
-    pub poll_secs: u64,
-    /// 미지 DM 처리: "allowlist"(무시, 기존 동작) | "pairing"(만료 코드 발급→앱에서 승인).
-    /// OpenClaw DM pairing 벤치마킹(C1). open(전체 허용)은 만들지 않는다 — 사고 벡터.
-    pub dm_policy: String,
-    /// 하트비트 주기(분, 0=끄기) — 에이전트 상태 요약을 오너 chat에 발신(C5).
-    /// 변화가 없으면 발신하지 않는다(OpenClaw HEARTBEAT_OK 억제 패턴 — 스팸·비용 방지).
-    pub heartbeat_mins: u64,
-}
-
-impl Default for TelegramCfg {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            allowed_chats: Vec::new(),
-            grant_all: false,
-            reply_lines: 40,
-            dm_policy: "allowlist".into(),
-            heartbeat_mins: 0,
-            idle_timeout_ms: 8000,
-            poll_secs: 30,
-        }
-    }
 }
 
 /// 외형/언어 설정.
@@ -121,6 +84,7 @@ pub struct Appearance {
 }
 
 fn default_true() -> bool { true }
+fn default_sftp_charset() -> String { "auto".into() }
 
 impl Default for Appearance {
     fn default() -> Self {
@@ -192,6 +156,11 @@ pub struct TerminalCfg {
     #[serde(default)] pub speed_limit_kbps: u32,
     /// 전송 후 SHA-256 해시 검증(rclone식). 원격에 해시 명령이 없으면 크기 비교로 폴백.
     #[serde(default)] pub sftp_verify_hash: bool,
+    /// SFTP 파일명 인코딩(auto/utf8/euc-kr/shift_jis/gbk). v3 서버는 파일명을 서버 로컬
+    /// 인코딩 raw 바이트로 보내므로(한국 서버 CP949 등) auto가 무손실 감지·역인코딩한다.
+    #[serde(default = "default_sftp_charset")] pub sftp_name_charset: String,
+    /// AI 터미널 프로필 목록(세션▸새 AI 터미널). 설정▸AI 터미널에서 편집.
+    #[serde(default)] pub ai_profiles: Vec<AiProfileCfg>,
     /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
     pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
@@ -323,6 +292,8 @@ impl Default for TerminalCfg {
             snippets: Vec::new(),
             speed_limit_kbps: 0,
             sftp_verify_hash: false,
+            sftp_name_charset: default_sftp_charset(),
+            ai_profiles: Vec::new(),
             max_parallel_transfers: 2,
             download_dir: String::new(),
             download_ask: true,

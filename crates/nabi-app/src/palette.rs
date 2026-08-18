@@ -12,6 +12,8 @@ pub(crate) enum PaletteAction {
     WorktreeCreate,
     WorktreeList,
     NewLocal(ShellKind),
+    /// AI 터미널 프로필 i번으로 새 터미널(aiprof.rs).
+    NewAiProfile(usize),
     OpenRecentFile(PathBuf),
     ConnectSession(nabi_session::SavedSession),
     OpenSftp(nabi_session::SavedSession),
@@ -98,6 +100,10 @@ impl NabiApp {
             &t.cmd_history,
             &self.clip_history,
         );
+        // 새 AI 터미널 프로필(세션 메뉴와 동일 동선 — 드리프트 금지).
+        for (i, p) in t.ai_profiles.iter().enumerate() {
+            cmds.push((format!("{}: {} — {}", tr(lang, "menu.newai"), p.name, p.cmd), PaletteAction::NewAiProfile(i)));
+        }
         if let Ok(ps) = self.orch.panes.read() {
             // F2 열린 pane 전환 — SFTP 전용 pane은 탭이 아니라 패널이라 제외한다.
             for (p, v) in ps.iter() {

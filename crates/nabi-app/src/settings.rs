@@ -139,6 +139,7 @@ impl NabiApp {
         nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
         // SFTP 해시 검증 스위치 — 워커 풀 연결까지 전역으로 즉시 적용.
         nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
+        nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩 라이브 반영.
         // nabiPad 설정은 분리 파일(nabipad.toml)에 별도 저장(독립 프로그램화 대비).
         let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
         // 구문 강조 테마·확장자 매핑을 라이브 반영(다음 하이라이트부터 적용).
