@@ -11,7 +11,7 @@ const MESA_DLLS: [(&str, &str); 2] = [
     ("opengl32.dll", "12499866437a161d2b250d5105188ae00732dd74b4bebbcdf972e6145af00f9e"),
     ("libgallium_wgl.dll", "1895f8c19ede5efd0497f9dfab463b19bf4377e3af7c06c2d4d073e4680c5f69"),
 ];
-const MESA_ASSET_URL: &str = "https://github.com/matrixism-cmyk/NabiTermPub/releases/download/mesa-runtime/nabiTerm-mesa-software-gl.zip";
+const MESA_ASSET_URL: &str = "https://github.com/matrixism-cmyk/NabiTerm/releases/download/mesa-runtime/nabiTerm-mesa-software-gl.zip";
 
 /// 시작 시 사용할 wgpu 백엔드를 결정한다. 실제 하드웨어 GPU가 있으면 all, 없으면 소프트웨어
 /// GL(Mesa llvmpipe)로만 제한, Mesa가 없으면 확인 후 받아 GL. 못 받으면 안내 후 종료한다.

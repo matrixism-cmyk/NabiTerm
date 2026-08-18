@@ -29,11 +29,16 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
             c("/compact", "aicb.claude.compact"),
             c("/clear", "aicb.claude.clear"),
             c("/context", "aicb.claude.context"),
+            // 별칭·단계는 공식 CLI 레퍼런스 기준(2026-08: fable/opus/sonnet/haiku,
+            // effort low~ultracode). 첫 항목은 대화식 선택창.
             BarCmd { cmd: "/model", desc: "aicb.claude.model", sub: &[
-                ("/model", "/model"), ("opus", "/model opus"), ("sonnet", "/model sonnet"), ("haiku", "/model haiku"),
+                ("/model", "/model"), ("fable", "/model fable"), ("opus", "/model opus"),
+                ("sonnet", "/model sonnet"), ("haiku", "/model haiku"),
             ] },
             BarCmd { cmd: "/effort", desc: "aicb.claude.effort", sub: &[
-                ("low", "/effort low"), ("medium", "/effort medium"), ("high", "/effort high"), ("max", "/effort max"),
+                ("/effort", "/effort"), ("low", "/effort low"), ("medium", "/effort medium"),
+                ("high", "/effort high"), ("xhigh", "/effort xhigh"), ("max", "/effort max"),
+                ("ultracode", "/effort ultracode"),
             ] },
             c("/resume", "aicb.claude.resume"),
             c("/usage", "aicb.claude.usage"),

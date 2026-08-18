@@ -1,7 +1,9 @@
 //! 자동 업데이트 — GitHub Releases 확인 + 인스톨러 다운로드 + 실행.
 //!
 //! nabidrive의 검증된 구조 이식. 네트워크 계층은 [`net`], 여기는 공개 타입과
-//! 다운로드/설치 상태기계를 소유한다. 저장소는 `matrixism-cmyk/NabiTermPub`.
+//! 다운로드/설치 상태기계를 소유한다. 저장소는 `matrixism-cmyk/NabiTerm`(소스+릴리스 통합,
+//! 2026-08-19 오픈소스 전환). 구 저장소 NabiTermPub은 전환기 동안 이중 게시 후 일몰 —
+//! v0.1.446 이하 클라이언트는 Pub을 보므로, 전환기에는 두 곳 모두에 릴리스를 올린다.
 
 mod net;
 mod netparse;
@@ -13,11 +15,11 @@ use std::sync::{Arc, Mutex};
 pub(crate) const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// GitHub 릴리스 자산 접두 — `nabiTerm-setup*.exe`만 인스톨러로 인정.
 pub(crate) const ASSET_PREFIX: &str = "nabiTerm-setup";
-/// 공개 배포 저장소(릴리스가 올라오는 곳).
-pub(crate) const REPO_PATH: &str = "/repos/matrixism-cmyk/NabiTermPub/releases/latest";
+/// 공개 배포 저장소(릴리스가 올라오는 곳) — 소스와 같은 NabiTerm 레포.
+pub(crate) const REPO_PATH: &str = "/repos/matrixism-cmyk/NabiTerm/releases/latest";
 
 /// 사용자가 릴리스 페이지를 직접 열 수 있는 URL.
-pub const RELEASES_URL: &str = "https://github.com/matrixism-cmyk/NabiTermPub/releases";
+pub const RELEASES_URL: &str = "https://github.com/matrixism-cmyk/NabiTerm/releases";
 
 #[derive(Clone, Debug)]
 pub struct ReleaseInfo {
