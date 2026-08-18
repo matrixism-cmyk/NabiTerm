@@ -15,6 +15,8 @@ pub(crate) struct ViewStates {
     pub sessions_panel: bool,
     pub qcbar: bool,
     pub ai_dash: bool,
+    /// AI 명령 바(aicmdbar) 표시.
+    pub ai_cmd_bar: bool,
     pub float_on_top: bool,
 }
 
@@ -53,6 +55,7 @@ pub(crate) fn view_menu(
     sel(ui, st.browser, "menu.browser", "Ctrl+Shift+E", MenuAction::ToggleBrowser);
     sel(ui, st.sessions_panel, "menu.sessionspanel", "", MenuAction::ToggleSessionsPanel);
     sel(ui, st.qcbar, "menu.qcbar", "", MenuAction::ToggleQcBar);
+    sel(ui, st.ai_cmd_bar, "menu.aicmdbar", "", MenuAction::ToggleAiCmdBar);
     sel(ui, st.ai_dash, "ai.dashboard", "", MenuAction::ToggleAiDashboard);
     ui.separator();
     // ── 창/탭 배열 ── 분할·분리·배열·탭배열을 한 "배열" 서브메뉴로 묶어 최상위를 간결화(F11).

@@ -47,6 +47,8 @@ pub(crate) enum MenuAction {
     OpenBrowserTab,
     ToggleSessionsPanel,
     ToggleQcBar,
+    /// AI 명령 바 표시 토글(terminal.ai_cmd_bar).
+    ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
     RenameGroup(String, String), DisbandGroup(String), OpenKeygen, TestConnection(String, u16), TogglePin(String), EditNote(String),
     TearOff,
@@ -63,6 +65,8 @@ pub(crate) enum MenuAction {
     RestoreWorkspace,
     OpenConfigDir,
     OpenSettings,
+    /// AI 터미널 프로필 관리 독립창(aiprofileui.rs).
+    OpenAiProfiles,
     OpenVault,
     OpenForward,
     OpenAbout,
@@ -90,6 +94,7 @@ impl NabiApp {
             browser: self.browser.open,
             sessions_panel: self.config.appearance.show_sessions_panel,
             qcbar: self.config.appearance.show_quickconnect_bar,
+            ai_cmd_bar: self.config.terminal.ai_cmd_bar,
             ai_dash: self.ai_dash_open,
             float_on_top: self.floating_on_top,
         };
@@ -150,7 +155,7 @@ impl NabiApp {
                         }
                         ui.separator();
                         if ui.button(tr(lang, "aiprof.manage")).clicked() {
-                            action = Some(MenuAction::OpenSettings);
+                            action = Some(MenuAction::OpenAiProfiles);
                             ui.close();
                         }
                     });

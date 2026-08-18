@@ -9,6 +9,7 @@ impl NabiApp {
         match a {
             MenuAction::Spawn(s) => self.spawn_local(s),
             MenuAction::SpawnAiProfile(i) => self.spawn_ai_profile(i),
+            MenuAction::OpenAiProfiles => self.ai_prof_open = true,
             MenuAction::Find => self.find_open = true,
             MenuAction::ResetTerm => self.reset_focused(),
             MenuAction::SendSnippet(cmd) => self.send_snippet(&cmd),
@@ -174,6 +175,10 @@ impl NabiApp {
                 let _ = nabi_config::save(&self.config_path, &self.config);
             }
             MenuAction::ToggleAiDashboard => self.ai_dash_open = !self.ai_dash_open,
+            MenuAction::ToggleAiCmdBar => {
+                self.config.terminal.ai_cmd_bar = !self.config.terminal.ai_cmd_bar;
+                let _ = nabi_config::save(&self.config_path, &self.config);
+            }
             MenuAction::OpenNabiPad => self.open_empty_pad(),
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
             MenuAction::RenameGroup(old, new) => self.rename_folder(&old, &new),

@@ -14,6 +14,8 @@ pub(crate) enum PaletteAction {
     NewLocal(ShellKind),
     /// AI 터미널 프로필 i번으로 새 터미널(aiprof.rs).
     NewAiProfile(usize),
+    /// AI 터미널 프로필 관리 독립창.
+    AiProfiles,
     OpenRecentFile(PathBuf),
     ConnectSession(nabi_session::SavedSession),
     OpenSftp(nabi_session::SavedSession),

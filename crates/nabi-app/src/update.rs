@@ -99,6 +99,7 @@ impl eframe::App for NabiApp {
         self.show_browser(ui);
         self.central(ui);
         self.show_quick_connect(ctx);
+        self.show_ai_profiles(ctx); // AI 터미널 프로필 관리 독립창.
         self.show_forward(ctx);
         self.show_settings(ctx);
         self.show_onboarding(ctx); // 첫 실행 환영 화면(T3-3).

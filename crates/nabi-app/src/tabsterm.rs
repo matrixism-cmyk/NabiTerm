@@ -10,6 +10,9 @@ impl TermTabViewer<'_> {
     /// 한 터미널 pane을 렌더하고 입력/마우스/선택/스크롤을 처리한다.
     pub(crate) fn paint_term(&mut self, ui: &mut egui::Ui, pane: PaneId) {
         let is_focused = self.focused == Some(pane); // 분할 시 입력/스크롤은 포커스 pane에만.
+        // AI 명령 바: AI CLI 실행 중이면 pane 최상단에 슬래시 명령 버튼 줄(클릭=주입).
+        // 터미널 rect 계산 '앞'에 그려 세로 공간을 차지한다(grid가 자동으로 줄어듦).
+        self.ai_bar(ui, pane);
         let font =
             egui::FontId::monospace(self.pane_font.get(&pane).copied().unwrap_or(self.font_size));
         let (cw, ch) = nabi_render::cell_size(ui, &font);

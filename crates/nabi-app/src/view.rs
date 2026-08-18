@@ -127,6 +127,7 @@ impl NabiApp {
                 activity: &self.activity,
                 pane_status: &self.pane_status,
                 run_cmd: &self.run_cmd,
+                ai_cmd_bar: self.config.terminal.ai_cmd_bar,
                 running: &self.cmd_start,
                 ime_preedit: &mut self.ime_preedit,
                 add_requested: &mut self.add_requested,

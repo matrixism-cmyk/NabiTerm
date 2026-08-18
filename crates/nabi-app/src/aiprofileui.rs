@@ -7,6 +7,31 @@ use crate::aiprof::{extra_args_string, preset_switches, set_extra_args, toggle_a
 use nabi_config::{AiProfileCfg, AppConfig};
 use nabi_i18n::{tr, Lang};
 
+impl crate::app::NabiApp {
+    /// 프로필 관리 독립창(새 SSH 연결과 같은 패턴). 닫을 때 설정을 파일로 영속한다.
+    pub(crate) fn show_ai_profiles(&mut self, ctx: &egui::Context) {
+        if !self.ai_prof_open {
+            return;
+        }
+        let mut open = true;
+        let lang = self.lang;
+        egui::Window::new(tr(lang, "settings.sec.aiprof"))
+            .id(egui::Id::new("ai_prof_win"))
+            .open(&mut open)
+            .default_width(440.0)
+            .collapsible(false)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical().max_height(480.0).show(ui, |ui| {
+                    ai_profile_rows(ui, &mut self.config, lang);
+                });
+            });
+        if !open {
+            self.ai_prof_open = false;
+            let _ = nabi_config::save(&self.config_path, &self.config);
+        }
+    }
+}
+
 pub(crate) fn ai_profile_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "aiprof.hint"));
     ui.add_space(4.0);
@@ -72,16 +97,18 @@ fn profile_editor(ui: &mut egui::Ui, p: &mut AiProfileCfg, lang: Lang, i: usize)
         });
         ui.end_row();
 
-        // 알려진 CLI의 스위치 체크박스(제품 옵션명 — 번역 없음).
+        // 알려진 CLI의 스위치 체크박스(제품 옵션명 — 번역 없음) + 아래 설명(선택 도움).
         let presets = preset_switches(&p.cmd);
         if !presets.is_empty() {
             ui.label(tr(lang, "aiprof.switches"));
             ui.vertical(|ui| {
-                for sw in presets {
+                for (sw, desc_key) in presets {
                     let mut on = p.args.iter().any(|a| a == sw);
                     if ui.checkbox(&mut on, *sw).changed() {
                         toggle_arg(&mut p.args, sw, on);
                     }
+                    ui.indent((sw, "d"), |ui| ui.weak(tr(lang, desc_key)));
+                    ui.add_space(2.0);
                 }
             });
             ui.end_row();

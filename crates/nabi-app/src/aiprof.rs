@@ -6,16 +6,50 @@
 use crate::app::NabiApp;
 use nabi_config::AiProfileCfg;
 
-/// CLI별 잘 알려진 스위치 프리셋(설정 UI 체크박스). 제품 옵션명이라 번역하지 않는다.
-/// 알려지지 않은 CLI(agy 등)는 빈 목록 — 추가 인자 입력으로 쓴다.
-pub(crate) fn preset_switches(cmd: &str) -> &'static [&'static str] {
+/// CLI별 불리언 스위치 프리셋: (스위치, 설명 i18n 키). 스위치명은 제품 옵션이라 번역하지
+/// 않고, 설명을 체크박스 아래 흐린 글씨로 보여 선택을 돕는다(사용자 요청 2026-08-18).
+/// 값이 필요한 옵션(--model 등)은 "추가 인자"로 넣는다. 미지 CLI(agy 등)는 빈 목록.
+pub(crate) fn preset_switches(cmd: &str) -> &'static [(&'static str, &'static str)] {
     match cmd {
-        "claude" => &["--dangerously-skip-permissions", "--continue", "--resume", "--verbose"],
-        "codex" => &["--full-auto", "--dangerously-bypass-approvals-and-sandbox", "--search"],
-        "gemini" => &["--yolo", "--sandbox"],
-        "aider" => &["--yes-always", "--watch-files"],
+        // 2026-08-18 공식 CLI 레퍼런스(code.claude.com/docs/en/cli-reference)로 검증.
+        "claude" => &[
+            ("--dangerously-skip-permissions", "aiopt.claude.skipperm"),
+            ("--allow-dangerously-skip-permissions", "aiopt.claude.allowskip"),
+            ("--continue", "aiopt.claude.continue"),
+            ("--resume", "aiopt.claude.resume"),
+            ("--ide", "aiopt.claude.ide"),
+            ("--chrome", "aiopt.claude.chrome"),
+            ("--bare", "aiopt.claude.bare"),
+            ("--fork-session", "aiopt.claude.fork"),
+            ("--remote-control", "aiopt.claude.rc"),
+        ],
+        "codex" => &[
+            ("--full-auto", "aiopt.codex.fullauto"),
+            ("--dangerously-bypass-approvals-and-sandbox", "aiopt.codex.bypass"),
+            ("--search", "aiopt.codex.search"),
+            ("--oss", "aiopt.codex.oss"),
+        ],
+        "gemini" => &[
+            ("--yolo", "aiopt.gemini.yolo"),
+            ("--sandbox", "aiopt.gemini.sandbox"),
+            ("--checkpointing", "aiopt.gemini.checkpoint"),
+            ("--debug", "aiopt.gemini.debug"),
+        ],
+        "aider" => &[
+            ("--yes-always", "aiopt.aider.yes"),
+            ("--watch-files", "aiopt.aider.watch"),
+            ("--no-auto-commits", "aiopt.aider.nocommit"),
+            ("--cache-prompts", "aiopt.aider.cache"),
+            ("--dry-run", "aiopt.aider.dryrun"),
+            ("--vim", "aiopt.aider.vim"),
+        ],
         _ => &[],
     }
+}
+
+/// 프리셋 스위치 이름 포함 여부(설명 키 무시) — extra/preset 분리 판정용.
+fn is_preset(cmd: &str, arg: &str) -> bool {
+    preset_switches(cmd).iter().any(|(sw, _)| *sw == arg)
 }
 
 /// 설정 UI의 CLI 종류 선택지(마지막 "custom"은 자유 입력).
@@ -33,14 +67,12 @@ pub(crate) fn toggle_arg(args: &mut Vec<String>, sw: &str, on: bool) {
 
 /// 프리셋에 없는 인자들(자유 입력분)을 한 줄로 합친다(설정 UI 표시용).
 pub(crate) fn extra_args_string(args: &[String], cmd: &str) -> String {
-    let presets = preset_switches(cmd);
-    args.iter().filter(|a| !presets.contains(&a.as_str())).cloned().collect::<Vec<_>>().join(" ")
+    args.iter().filter(|a| !is_preset(cmd, a)).cloned().collect::<Vec<_>>().join(" ")
 }
 
 /// 자유 입력 한 줄을 공백 분리해 args의 비프리셋 부분을 교체한다(프리셋 체크는 유지).
 pub(crate) fn set_extra_args(args: &mut Vec<String>, cmd: &str, text: &str) {
-    let presets = preset_switches(cmd);
-    args.retain(|a| presets.contains(&a.as_str()));
+    args.retain(|a| is_preset(cmd, a));
     args.extend(text.split_whitespace().map(str::to_string));
 }
 

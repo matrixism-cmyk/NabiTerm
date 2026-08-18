@@ -75,6 +75,7 @@ impl NabiApp {
             theme,
             lang,
             quick_connect: crate::connect::QuickConnect::default(),
+            ai_prof_open: false,
             forward: crate::forwardui::ForwardForm::default(),
             sftp: crate::sftppanel::SftpPanel::default(),
             sftp_pane: None,

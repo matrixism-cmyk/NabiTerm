@@ -89,6 +89,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "sftp.history").to_string(), PaletteAction::XferHistory),
         (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
         (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),
+        (tr(lang, "aiprof.manage").to_string(), PaletteAction::AiProfiles),
     ];
     for (label, shell) in crate::menu::installed_shells() {
         v.push((format!("{}: {label}", tr(lang, "menu.newlocal")), PaletteAction::NewLocal(shell)));

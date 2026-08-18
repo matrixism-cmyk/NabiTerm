@@ -13,6 +13,7 @@ impl NabiApp {
         match a {
             PaletteAction::NewLocal(s) => self.spawn_local(s),
             PaletteAction::NewAiProfile(i) => self.spawn_ai_profile(i),
+            PaletteAction::AiProfiles => self.ai_prof_open = true,
             PaletteAction::OpenRecentFile(p) => self.open_editor_local(p),
             PaletteAction::ConnectSession(s) => self.connect_saved(s),
             PaletteAction::OpenSftp(s) => self.open_sftp_saved(s, false),

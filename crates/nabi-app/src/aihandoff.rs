@@ -7,12 +7,21 @@
 use crate::app::NabiApp;
 use nabi_types::PaneId;
 
-/// 엄격한 AI CLI 판정: basename이 목록과 정확히 일치할 때만(aistatus의 부분문자열 폴백 배제).
-/// 프롬프트를 "주입"할 대상 선정이라 오탐이 위험하다(리뷰 #10 — grep 'claude ' 따위 배제).
-pub(crate) fn is_ai_command_strict(cmd: &str) -> bool {
+/// 엄격한 AI CLI 판정: basename이 목록과 정확히 일치할 때만 그 이름을 돌려준다
+/// (aistatus의 부분문자열 폴백 배제 — 리뷰 #10, grep 'claude ' 따위 오탐 방지).
+/// 주입 대상 선정(handoff)과 AI 명령 바(aicmdbar)가 공유하는 단일 판정원.
+pub(crate) fn ai_command_name(cmd: &str) -> Option<&'static str> {
     let base = cmd.split_whitespace().next().unwrap_or("");
     let name = base.rsplit(['\\', '/']).next().unwrap_or(base).trim_end_matches(".exe").to_ascii_lowercase();
-    matches!(name.as_str(), "claude" | "aider" | "codex" | "gemini" | "llm" | "goose" | "cursor")
+    ["claude", "aider", "codex", "gemini", "llm", "goose", "cursor"]
+        .iter()
+        .find(|n| **n == name)
+        .copied()
+}
+
+/// [`ai_command_name`]의 불리언 뷰(기존 호출부 유지).
+pub(crate) fn is_ai_command_strict(cmd: &str) -> bool {
+    ai_command_name(cmd).is_some()
 }
 
 /// 실패 컨텍스트 프롬프트(순수) — AI가 바로 진단할 수 있는 최소 정보.
