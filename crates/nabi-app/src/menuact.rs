@@ -160,7 +160,6 @@ impl NabiApp {
                     }
                 }
             }
-            MenuAction::ToggleBrowser => self.toggle_browser(),
             MenuAction::OpenBrowserTab => {
                 self.open_browser_tab();
             }

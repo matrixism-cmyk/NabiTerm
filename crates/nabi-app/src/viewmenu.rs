@@ -11,7 +11,6 @@ pub(crate) struct ViewStates {
     pub broadcast: bool,
     pub on_top: bool,
     pub fullscreen: bool,
-    pub browser: bool,
     pub sessions_panel: bool,
     pub qcbar: bool,
     pub ai_dash: bool,
@@ -52,7 +51,8 @@ pub(crate) fn view_menu(
         }
     };
     // ── 패널 표시 토글 ──
-    sel(ui, st.browser, "menu.browser", "Ctrl+Shift+E", MenuAction::ToggleBrowser);
+    // '파일 브라우저' 토글은 제거(2026-08-19 사용자 요청) — 파일▸파일 브라우저 탭과 중복.
+    // 패널 토글 자체는 Ctrl+Shift+E 단축키와 팔레트(menu.browser)로 계속 가능.
     sel(ui, st.sessions_panel, "menu.sessionspanel", "", MenuAction::ToggleSessionsPanel);
     sel(ui, st.qcbar, "menu.qcbar", "", MenuAction::ToggleQcBar);
     sel(ui, st.ai_cmd_bar, "menu.aicmdbar", "", MenuAction::ToggleAiCmdBar);
