@@ -5,3 +5,10 @@
 
 /dist
 
+
+# 내부 기획/운영 문서 — 공개 레포 제외(로컬 전용, 2026-08-19 오픈소스 공개 결정)
+.claude/
+nabiterm-*-plan*.md
+nabiterm-sftp-upgrade.md
+UPGRADE_PLAN.md
+nabiTerm-*.md
