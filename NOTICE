@@ -1,0 +1,26 @@
+nabiTerm (나비텀)
+Copyright 2025-2026 aeo (nabisori) <the@aeokorea.com>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this work except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+This product includes software developed by third parties; see the
+"오픈소스 사용 고지" section of README.md and the in-app Help ▸ Open Source
+page for the full list of components and their licenses.
+
+Modified third-party code bundled in this repository:
+
+  * vendor/russh-sftp-2.3.0 — russh-sftp 2.3.0 (Apache-2.0),
+    Copyright russh-sftp contributors.
+    Modifications by the nabiTerm authors (2026): added a filename
+    charset module (src/charset.rs) and routed wire string
+    encode/decode through it (src/buf.rs, src/ser.rs) to support
+    SFTPv3 servers using legacy filename encodings (CP949 etc.).
+    Changed lines are marked with "nabiTerm 벤더 패치" comments.
+
+The optional software-OpenGL runtime asset (Mesa llvmpipe,
+distributed separately as nabiTerm-mesa-software-gl.zip) is built from
+Mesa 3D, licensed under the MIT license, Copyright Mesa contributors.

@@ -63,11 +63,16 @@ nabiTerm은 GPU(wgpu: DX12→Vulkan→GL)로 그립니다. **GPU가 전혀 없�
 - **SSH/SFTP:** russh / russh-sftp · **로컬 PTY:** portable-pty(ConPTY)
 - **플랫폼:** Windows 10 / 11 (x64)
 
-## 라이선스
+## 라이선스 · 기여
 
-nabiTerm 자체는 **Apache License 2.0**으로 배포됩니다(루트 [`LICENSE`](LICENSE) 참조).
+nabiTerm은 **Apache License 2.0**으로 공개된 오픈소스입니다(루트 [`LICENSE`](LICENSE) · [`NOTICE`](NOTICE) 참조).
 
-사용한 오픈소스 구성요소와 각 라이선스는 앱 내 **도움말 ▸ 오픈소스** 탭에 표기되어 있으며, 아래 [오픈소스 사용 고지](#오픈소스-사용-고지)에도 정리했습니다.
+- **소스 저장소**: <https://github.com/matrixism-cmyk/NabiTerm>
+- **릴리스(설치본·자동 업데이트)**: <https://github.com/matrixism-cmyk/NabiTermPub/releases>
+- **기여**: 이슈·PR 환영 — [`CONTRIBUTING.md`](CONTRIBUTING.md) (DCO sign-off) 참조
+- "nabiTerm/나비텀" 이름·로고는 별도 보호됩니다(Apache-2.0 §6 — 상표권 미포함).
+
+사용한 오픈소스 구성요소와 각 라이선스는 앱 내 **도움말 ▸ 오픈소스** 탭에 표기되어 있으며, 아래 [오픈소스 사용 고지](#오픈소스-사용-고지)에도 정리했습니다. `vendor/russh-sftp-2.3.0`은 SFTP 파일명 인코딩 지원을 위해 수정한 벤더 사본입니다(변경 내역은 `NOTICE`와 소스 주석에 고지).
 
 ## 오픈소스 사용 고지
 

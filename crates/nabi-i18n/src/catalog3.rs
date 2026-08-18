@@ -43,9 +43,9 @@ pub(crate) const CATALOG3: &[(&str, &str, &str, &str)] = &[
     ),
     (
         "help.lic.note",
-        "Most are under MIT and/or Apache-2.0. Bundled egui fonts are under OFL-1.1/UFL-1.0. nabiTerm's own license is not yet decided.",
-        "대부분 MIT 및/또는 Apache-2.0입니다. egui 번들 폰트는 OFL-1.1/UFL-1.0. nabiTerm 자체 라이선스는 아직 미정입니다.",
-        "多くはMIT/Apache-2.0です。egui同梱フォントはOFL-1.1/UFL-1.0。nabiTerm自体のライセンスは未定です。",
+        "Most are under MIT and/or Apache-2.0. Bundled egui fonts are under OFL-1.1/UFL-1.0. nabiTerm itself is open source under Apache-2.0 (github.com/matrixism-cmyk/NabiTerm).",
+        "대부분 MIT 및/또는 Apache-2.0입니다. egui 번들 폰트는 OFL-1.1/UFL-1.0. nabiTerm 자체는 Apache-2.0 오픈소스입니다(github.com/matrixism-cmyk/NabiTerm).",
+        "多くはMIT/Apache-2.0です。egui同梱フォントはOFL-1.1/UFL-1.0。nabiTerm自体はApache-2.0のオープンソースです(github.com/matrixism-cmyk/NabiTerm)。",
     ),
     ("help.privacy",
         "\u{1f512} No telemetry, no external communication. Works fully offline (air-gapped). Auto-update checks are opt-in only.",
