@@ -22,6 +22,10 @@ OutputBaseFilename=nabiTerm-setup
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
+; 실행 중인 nabiTerm이 이 뮤텍스를 잡고 있으면 설치 '시작 전에' 종료를 요청한다 —
+; 파일 교체 중 "DeleteFile failed; code 5"(잠금) 오류를 사전에 차단(2026-08-18 사용자 발생).
+; 앱(main.rs)이 시작 시 같은 이름의 뮤텍스를 만든다. 여러 인스턴스가 떠 있어도 전부 감지.
+AppMutex=nabiTermRunning
 UninstallDisplayIcon={app}\nabiTerm.exe
 WizardStyle=modern
 

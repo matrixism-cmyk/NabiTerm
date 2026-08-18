@@ -219,6 +219,15 @@ fn main() -> eframe::Result<()> {
     if args.get(1).map(String::as_str) == Some("mcp") {
         std::process::exit(nabi_control::mcp::run());
     }
+    // 앱 뮤텍스: 인스톨러(AppMutex=nabiTermRunning)가 설치 '시작 전에' 실행 중 앱을
+    // 감지해 종료를 요청하게 한다 — 파일 교체 중 잠금 오류(code 5) 예방. GUI 프로세스만
+    // 잡는다(cli/mcp 단명 모드는 위에서 이미 종료). 핸들은 종료까지 유지(의도적 누수).
+    // (로컬 mod windows가 crate를 가리므로 ::windows 절대 경로 사용. HANDLE은 Copy라
+    // Drop이 없어 CloseHandle 없이 프로세스 종료까지 열려 있다 — 그게 정확히 원하는 것.)
+    unsafe {
+        use ::windows::Win32::System::Threading::CreateMutexW;
+        let _ = CreateMutexW(None, false, ::windows::core::w!("nabiTermRunning"));
+    }
     // 제어 평면 디스커버리: 자식 셸들이 상속할 파이프/토큰(서버는 NabiApp::new에서).
     // 이미 설정돼 있으면 존중(외부 테스트 하니스용 — 같은 사용자 권한이라 보안 동등).
     if std::env::var_os("NABI_CONTROL_PIPE").is_none() {

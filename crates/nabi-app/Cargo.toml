@@ -67,6 +67,8 @@ windows = { version = "0.58", features = [
     "implement",
     "Win32_Foundation",
     "Win32_System_Memory",
+    "Win32_System_Threading", # 앱 뮤텍스(인스톨러 AppMutex 감지용 CreateMutexW).
+    "Win32_Security", # CreateMutexW의 SECURITY_ATTRIBUTES 파라미터 타입.
     "Win32_System_LibraryLoader",
     "Win32_System_DataExchange",
     "Win32_System_Ole",
