@@ -1,4 +1,4 @@
-﻿//! SFTP 다운로드 — 목적지 선택(rfd) + 파일/폴더/DnD 다운로드 경로. sftpxfer(큐)에서 분리.
+//! SFTP 다운로드 — 목적지 선택(rfd) + 파일/폴더/DnD 다운로드 경로. sftpxfer(큐)에서 분리.
 
 use crate::app::NabiApp;
 use crate::sftppath::join_path;

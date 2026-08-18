@@ -1,4 +1,4 @@
-﻿//! 오케스트레이터 이벤트 처리(pane 생성/종료/출력/클립보드/cwd).
+//! 오케스트레이터 이벤트 처리(pane 생성/종료/출력/클립보드/cwd).
 
 use crate::app::NabiApp;
 use nabi_proto::Event;

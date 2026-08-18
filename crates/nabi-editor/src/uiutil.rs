@@ -26,6 +26,18 @@ pub fn clipboard_text() -> Option<String> {
     arboard::Clipboard::new().ok()?.get_text().ok()
 }
 
+/// 포커스가 없을 때만 요청한다(입력창 자동 포커스용).
+///
+/// egui 0.36부터 `request_focus()`는 IME 조합을 중단시킨다(Memory::interrupt_ime) —
+/// 이미 포커스인 위젯에 매 프레임 재요청하면 한글/CJK 초성·중성·종성 조합이 프레임마다
+/// 파괴돼 그 입력창에서 한글 타이핑이 불가능해진다(2026-08-18 긴급 버그의 결함 클래스).
+/// 자동 포커스가 필요한 모든 곳은 `resp.request_focus()` 대신 이 함수를 쓸 것.
+pub fn focus_once(resp: &egui::Response) {
+    if !resp.has_focus() {
+        resp.request_focus();
+    }
+}
+
 pub fn ctrl_wheel_zoom(ui: &egui::Ui, over: bool) -> f32 {
     if !over {
         return 0.0;

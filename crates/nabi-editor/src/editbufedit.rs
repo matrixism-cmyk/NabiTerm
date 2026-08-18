@@ -1,4 +1,4 @@
-﻿//! 편집 버퍼(E6) 변경 연산 + undo/redo(연속 편집 묶음 coalescing). editbuf.rs의 EditBuf impl.
+//! 편집 버퍼(E6) 변경 연산 + undo/redo(연속 편집 묶음 coalescing). editbuf.rs의 EditBuf impl.
 //!
 //! 같은 종류(삽입/삭제) 연속 편집은 한 undo 단위로 묶어 Ctrl+Z가 글자별이 아니라 구간별로 동작한다.
 //! 커서 이동·종류 전환·선택 대체·줄바꿈은 묶음 경계.

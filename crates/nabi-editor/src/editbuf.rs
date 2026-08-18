@@ -1,4 +1,4 @@
-﻿//! 대용량 파일 편집 엔진(E6) 모델 — ropey rope + 커서/선택 + 인코딩·EOL. 편집·undo는 editbufedit.
+//! 대용량 파일 편집 엔진(E6) 모델 — ropey rope + 커서/선택 + 인코딩·EOL. 편집·undo는 editbufedit.
 //!
 //! 내부는 **LF 정규화** 텍스트만 보관(열/줄 계산 단순화). 원본 EOL은 따로 기억해 저장 시 복원한다.
 

@@ -116,7 +116,7 @@ pub(crate) fn tab_context_menu(
     ui.label(tr(lang, "tab.rename"));
     let name = tab_names.entry(*tab).or_default();
     // 포커스를 확실히 잡아 키 입력이 터미널로 새지 않게 한다.
-    ui.text_edit_singleline(name).request_focus();
+    nabi_editor::uiutil::focus_once(&ui.text_edit_singleline(name)); // 매 프레임 재요청 금지(IME).
     if ui.button(tr(lang, "tab.reset")).clicked() {
         tab_names.remove(tab);
         ui.close();

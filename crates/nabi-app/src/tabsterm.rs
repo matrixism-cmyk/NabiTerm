@@ -35,6 +35,9 @@ impl TermTabViewer<'_> {
         };
 
         let events = ui.input(|i| i.events.clone());
+        if is_focused {
+            crate::paneio::trace_input_events(&events, pane); // IME 회귀 진단(nabi_input=trace).
+        }
         let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll, kitty) = self
             .orch
             .panes

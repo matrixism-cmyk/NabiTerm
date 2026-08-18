@@ -40,7 +40,7 @@ impl NabiApp {
             ui.strong(tr(lang, "wt.create"));
             ui.label(tr(lang, "wt.branch"));
             let r = ui.add(egui::TextEdit::singleline(&mut branch).hint_text("feat/my-change").desired_width(260.0));
-            r.request_focus();
+            nabi_editor::uiutil::focus_once(&r);
             ui.horizontal(|ui| {
                 if ui.button(tr(lang, "wt.make")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
                     go = true;

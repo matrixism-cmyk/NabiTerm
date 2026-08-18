@@ -135,6 +135,28 @@ fn term_focus_sink() -> egui::Id {
 ///
 /// 싱크는 **실제 위젯으로 할당**해야 한다 — egui end_pass의 dead-man 스위치가 그 프레임에
 /// 할당되지 않은 포커스 위젯의 포커스를 지우기 때문(영(0) 크기라 레이아웃·마우스에 무영향).
+/// 포커스 pane에 도달한 키/텍스트/IME 이벤트 진단(`NABI_LOG=nabi_input=trace`).
+///
+/// 한글 조합 파괴 회귀(2026-08-18, egui 0.36 request_focus→interrupt_ime) 추적에 쓴 계측 —
+/// 기본 필터(info)에선 침묵하므로 상시 켜 둔다. IME 문제 보고가 오면 trace로 재현을 받는다.
+pub(crate) fn trace_input_events(events: &[egui::Event], pane: nabi_types::PaneId) {
+    if events.is_empty() || !tracing::enabled!(target: "nabi_input", tracing::Level::TRACE) {
+        return;
+    }
+    let mut s = String::new();
+    for ev in events {
+        match ev {
+            egui::Event::Key { key, pressed, .. } => s.push_str(&format!("Key({key:?},p={pressed}) ")),
+            egui::Event::Text(t) => s.push_str(&format!("Text({t:?}) ")),
+            egui::Event::Ime(i) => s.push_str(&format!("Ime({i:?}) ")),
+            _ => {}
+        }
+    }
+    if !s.is_empty() {
+        tracing::trace!(target: "nabi_input", "pane={pane:?} {s}");
+    }
+}
+
 pub(crate) fn grab_term_focus(ui: &mut egui::Ui, active: bool) {
     if !active {
         return;
@@ -143,8 +165,13 @@ pub(crate) fn grab_term_focus(ui: &mut egui::Ui, active: bool) {
     let zero = egui::Rect::from_min_size(ui.min_rect().min, egui::Vec2::ZERO);
     ui.interact(zero, sink, egui::Sense::focusable_noninteractive());
     ui.memory_mut(|m| {
-        if m.focused().is_none_or(|f| f == sink) {
+        // egui 0.36부터 request_focus()가 IME 조합을 중단시킨다(Memory::interrupt_ime).
+        // 이미 싱크가 포커스인데 매 프레임 재요청하면 한글 초성·중성·종성 조합이
+        // 프레임마다 파괴돼 한글 타이핑이 전멸한다(2026-08-18 긴급 버그) — 비었을 때만 잡는다.
+        if m.focused().is_none() {
             m.request_focus(sink);
+        }
+        if m.has_focus(sink) {
             m.set_focus_lock_filter(
                 sink,
                 egui::EventFilter {

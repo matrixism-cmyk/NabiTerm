@@ -39,7 +39,7 @@ impl RenameUi<'_> {
         };
         let resp = ui.put(rect, egui::TextEdit::singleline(buf).margin(egui::vec2(2.0, 0.0)));
         if *self.focus {
-            resp.request_focus();
+            nabi_editor::uiutil::focus_once(&resp);
             // 포커스 시 기본 이름(확장자 제외)을 선택 — 바로 새 이름 타이핑(탐색기식).
             if let Some(mut st) = egui::text_edit::TextEditState::load(ui.ctx(), resp.id) {
                 let end = buf.rfind('.').filter(|&i| i > 0).map_or_else(|| buf.chars().count(), |i| buf[..i].chars().count());

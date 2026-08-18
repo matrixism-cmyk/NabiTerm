@@ -1,4 +1,4 @@
-﻿//! SFTP 원격 파일 → 탐색기 드래그-아웃(가상 파일, 드롭 시 다운로드).
+//! SFTP 원격 파일 → 탐색기 드래그-아웃(가상 파일, 드롭 시 다운로드).
 //!
 //! 원격 파일은 로컬 실파일이 없으므로 CFSTR_FILEDESCRIPTORW(이름·크기) +
 //! CFSTR_FILECONTENTS(IStream)를 제공한다. 탐색기가 드롭 시 FILECONTENTS를 읽을 때

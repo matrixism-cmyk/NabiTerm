@@ -20,7 +20,7 @@ impl NabiApp {
             ui.heading(tr(lang, "snap.save"));
             ui.add_space(6.0);
             let r = ui.add(egui::TextEdit::singleline(&mut self.snap_name).hint_text(tr(lang, "snap.namehint")).desired_width(f32::INFINITY));
-            r.request_focus();
+            nabi_editor::uiutil::focus_once(&r);
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 if ui.button(tr(lang, "settings.save")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {

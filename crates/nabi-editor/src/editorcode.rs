@@ -107,7 +107,7 @@ pub fn show_code_popups(ui: &egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mu
         egui::Window::new(tr(lang, "lsp.rename.title")).id(sid.with("w"))
             .open(&mut open).collapsible(false).resizable(false).show(&ctx, |ui| {
                 let r = ui.add(egui::TextEdit::singleline(&mut name).hint_text(tr(lang, "lsp.rename.hint")).desired_width(220.0));
-                r.request_focus();
+                crate::uiutil::focus_once(&r); // 매 프레임 request_focus는 IME 조합 파괴(egui 0.36).
                 let go = (r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))) || ui.button(tr(lang, "common.ok")).clicked();
                 if go && !name.trim().is_empty() {
                     act.lsp_rename = Some(name.trim().to_string());

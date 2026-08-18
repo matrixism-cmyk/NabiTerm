@@ -1,4 +1,4 @@
-﻿//! 커맨드 팔레트(Ctrl+Shift+P): 메뉴 액션을 퍼지 검색으로 즉시 실행.
+//! 커맨드 팔레트(Ctrl+Shift+P): 메뉴 액션을 퍼지 검색으로 즉시 실행.
 //!
 //! 메뉴 액션을 라벨 목록으로 노출하고, 부분 문자열 필터 + Enter(첫 결과)/클릭으로 실행한다.
 
@@ -131,7 +131,7 @@ impl NabiApp {
                         .hint_text(tr(lang, "palette.hint"))
                         .desired_width(f32::INFINITY),
                 );
-                resp.request_focus();
+                nabi_editor::uiutil::focus_once(&resp); // 매 프레임 request_focus는 IME 조합 파괴(egui 0.36).
                 enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.separator();
                 egui::ScrollArea::vertical().id_salt("palette_scroll").max_height(320.0).show(ui, |ui| {

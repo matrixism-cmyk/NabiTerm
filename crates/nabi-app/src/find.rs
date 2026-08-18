@@ -77,7 +77,7 @@ impl NabiApp {
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     let resp = ui.add(egui::TextEdit::singleline(&mut self.find_query).hint_text(tr(lang, "find.hint")).desired_width(180.0));
-                    resp.request_focus();
+                    nabi_editor::uiutil::focus_once(&resp); // 매 프레임 request_focus는 IME 조합 파괴(egui 0.36).
                     let (e, sh) = ui.input(|i| (i.key_pressed(egui::Key::Enter), i.modifiers.shift));
                     enter = e;
                     forward = sh;
