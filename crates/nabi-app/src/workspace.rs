@@ -28,6 +28,8 @@ pub(crate) struct PendingLayout {
     pub colors: Vec<[u8; 4]>,
     /// 먼저 생성된 브라우저 탭 pane들(레이아웃 서수 1000+i 매핑).
     pub browser_panes: Vec<nabi_types::PaneId>,
+    /// 먼저 재연결한 원격(SFTP/FTP) 탭 pane들(레이아웃 서수 2000+i 매핑).
+    pub sftp_panes: Vec<nabi_types::PaneId>,
 }
 
 /// OSC 7 file URI 디코드가 "/C:/.." 형태면 앞 슬래시를 제거(Windows 경로화).
@@ -193,8 +195,11 @@ impl NabiApp {
         while self.sftp_pane.is_some() {
             self.close_sftp(); // 복원 전 모든 원격 탭/연결 정리(stale 방지).
         }
+        // 원격 탭은 여기서 재연결한다 — 볼트 잠금해제 이후여야 자격증명을 꺼낼 수 있고,
+        // start_sftp가 pane을 동기적으로 만들어 주므로 레이아웃 매핑(2000+i)에 바로 쓸 수 있다.
+        let sftp_panes = self.restore_sftp_tabs();
         let tree = nabi_session::load_tree(&self.workspace_path);
-        let restored = !tree.sessions.is_empty();
+        let restored = !tree.sessions.is_empty() || !sftp_panes.is_empty(); // 원격 탭만 있어도 복원으로 친다(기본 셸 자동스폰 방지).
         // 즉시 스폰되는 세션(로컬·키/볼트-해제 SSH)의 ordinal만 레이아웃에 매핑한다. 로그인 필요
         // 세션(자격증명 없음·볼트 잠김)은 분할에서 빼 로컬 분할을 보존하고, 나중에 연결되면 합류.
         let spawn_ords: Vec<usize> = tree
@@ -230,6 +235,7 @@ impl NabiApp {
                     names,
                     colors,
                     browser_panes,
+                    sftp_panes,
                 });
             }
         }

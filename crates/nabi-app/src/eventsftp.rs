@@ -85,15 +85,20 @@ impl NabiApp {
     /// 연결 완료 — 상태 표시 후 홈 디렉터리 목록을 요청한다.
     fn on_sftp_connected(&mut self, id: SftpId, ctx: &egui::Context) {
         let connected = nabi_i18n::tr(self.lang, "sftp.connected").to_string();
+        // 워크스페이스 복원이면 저장된 경로로 바로 들어간다(없으면 서버 기본 ".").
+        let mut listpath = ".".to_string();
         let found = self
             .remote_panel_mut(id)
             .map(|p| {
                 p.status = connected;
-                p.path = ".".to_string();
+                if let Some(want) = p.restore_path.take().filter(|s| !s.trim().is_empty()) {
+                    listpath = want;
+                }
+                p.path = listpath.clone();
             })
             .is_some();
         if found {
-            self.orch.send(nabi_proto::Command::SftpList { id, path: ".".to_string() });
+            self.orch.send(nabi_proto::Command::SftpList { id, path: listpath });
             ctx.request_repaint();
         }
     }

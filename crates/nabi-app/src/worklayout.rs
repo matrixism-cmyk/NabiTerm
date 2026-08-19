@@ -172,6 +172,7 @@ impl NabiApp {
         let mut placed = std::collections::HashSet::new();
         self.dock = pl.saved.filter_map_tabs(|&ord| {
             let pane = match ord {
+                o if o >= 2000 => pl.sftp_panes.get(o - 2000).copied(),
                 o if o >= 1000 => pl.browser_panes.get(o - 1000).copied(),
                 o => pl.arrived.get(&o).copied(),
             }?;
@@ -213,11 +214,14 @@ impl NabiApp {
             .enumerate()
             .map(|(i, p)| (*p, i))
             .collect();
-        let mut bi = 0usize;
+        let (mut bi, mut si) = (0usize, 0usize);
         for p in ordered {
             if self.browser_tabs.contains_key(p) {
                 index.insert(*p, 1000 + bi); // save_browser_tabs와 같은 도크 순서.
                 bi += 1;
+            } else if self.sftp_panel_at(*p).is_some() {
+                index.insert(*p, 2000 + si); // save_sftp_tabs와 같은 도크 순서(원격 탭).
+                si += 1;
             }
         }
         let layout = self.dock.map_tabs(|p| *index.get(p).unwrap_or(&0));

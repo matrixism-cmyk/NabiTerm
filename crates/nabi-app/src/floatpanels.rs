@@ -104,7 +104,7 @@ impl NabiApp {
         let lang = self.lang;
         let active = Some(pane) == self.sftp_pane;
         let bm = self.config.terminal.sftp_bookmarks.clone();
-        let sd = self.browser.sort_desc; // 클로저가 self를 가변 차용하므로 미리 캡처.
+        let sd = (self.browser.sort, self.browser.sort_desc); // 클로저가 self를 가변 차용하므로 미리 캡처.
         let mut act = crate::sftptab::SftpAct::default();
         egui::CentralPanel::default().show(ui, |ui| {
             let panel = if active {

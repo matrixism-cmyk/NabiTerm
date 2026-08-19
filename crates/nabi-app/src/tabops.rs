@@ -148,17 +148,23 @@ impl NabiApp {
     /// 포커스된 탭을 동일한 출처(로컬 셸/SSH)로 복제한다.
     pub(crate) fn duplicate_focused(&mut self) {
         if let Some(p) = self.focused_pane() {
-            if let Some(kind) = self.pane_origins.get(&p).cloned() {
-                self.connect_saved(SavedSession {
-                    name: String::new(),
-                    folder: None,
-                    kind,
-                    on_connect: None,
-                    cwd: None,
-                    is_ftp: false,
-                    open_sftp: false,
-                });
-            }
+            self.duplicate_pane(p);
+        }
+    }
+
+    /// 지정 pane과 같은 출처(셸 종류 또는 SSH 세션)로 탭을 하나 더 연다.
+    /// 팔레트(DuplicateTab)와 탭 우클릭 메뉴가 이 한 곳을 공유한다(SSOT).
+    pub(crate) fn duplicate_pane(&mut self, p: nabi_types::PaneId) {
+        if let Some(kind) = self.pane_origins.get(&p).cloned() {
+            self.connect_saved(SavedSession {
+                name: String::new(),
+                folder: None,
+                kind,
+                on_connect: None,
+                cwd: None,
+                is_ftp: false,
+                open_sftp: false,
+            });
         }
     }
 

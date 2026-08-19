@@ -159,6 +159,8 @@ pub(crate) fn show_entries(
     selected: Option<&str>,
     multi: &std::collections::HashSet<String>,
     scroll_to: bool,
+    // 현재 정렬 기준·방향 — 표 헤더에 활성 표시(▴/▾)를 그리는 데 쓴다.
+    sort: (crate::browserfs::Sort, bool),
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     let now = std::time::UNIX_EPOCH.elapsed().map(|d| d.as_secs()).unwrap_or(0);
@@ -180,12 +182,12 @@ pub(crate) fn show_entries(
     }
     // 자세히(Details)는 탐색기식 컬럼 테이블(자체 스크롤). 그 외 모드는 격자/내용을 스크롤 영역에.
     if matches!(mode, crate::sftpview::ViewMode::Details) {
-        crate::sftptable::table(ui, &visible, cur_path, lang, compare, selected, multi, scroll_to, ren)
+        crate::sftptable::table(ui, &visible, cur_path, lang, compare, selected, multi, scroll_to, sort, ren)
     } else {
         egui::ScrollArea::vertical()
             .id_salt("sftp_entries")
             .show(ui, |ui| {
-                crate::sftpview::render(ui, &visible, cur_path, lang, mode, now, compare, selected)
+                crate::sftpview::render(ui, &visible, cur_path, lang, mode, now, compare, selected, multi)
             })
             .inner
     }

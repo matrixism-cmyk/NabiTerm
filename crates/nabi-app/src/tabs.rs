@@ -95,7 +95,8 @@ pub struct TermTabViewer<'a> {
     pub sftp_act: &'a mut crate::sftptab::SftpAct,
     /// SFTP 원격 경로 북마크(FileZilla식).
     pub sftp_bookmarks: &'a [String],
-    pub sort_desc: bool,
+    /// 현재 정렬 기준·방향(원격 목록 헤더 표시용) — 로컬 브라우저와 공유하는 상태.
+    pub sort: (crate::browserfs::Sort, bool),
     /// 닫힌 원격 탭의 PaneId(있으면 central에서 정리).
     pub sftp_closed: &'a mut Option<PaneId>,
     /// Ctrl+휠 확대/축소 요청 (포인터가 올라간 pane, 휠 부호). central에서 적용·포커스.
@@ -104,6 +105,8 @@ pub struct TermTabViewer<'a> {
     pub resized: &'a mut Option<GridSize>,
     /// 탭을 창 바깥으로 끌어다 놓아 분리(tear-off)할 pane(central이 floating으로 이동).
     pub tear_off: &'a mut Option<PaneId>,
+    /// 탭 우클릭 ▸ 탭 복제 요청(central에서 duplicate_pane 호출).
+    pub dup_tab: &'a mut Option<PaneId>,
     /// "창 안에 띄우기" 신호 — 메인 창 안 오버레이(docked_float)로 이동할 pane(P3).
     pub dock_float: &'a mut Option<PaneId>,
     /// 탭으로 열린 브라우저들(독립 상태) + 수집 액션/닫힘 신호 + 비교맵/업로드 가능 여부.
@@ -217,6 +220,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             && !self.browser_tabs.contains_key(tab)
             && !self.editors.contains_key(tab)
             && self.remote_host(*tab).is_none();
+        let mut dup = false;
         crate::tabmenu::tab_context_menu(
             ui, tab, self.orch, self.lang,
             self.tab_names, self.broadcast_group, self.wheel_keys, self.wheel_keys_off,
@@ -224,7 +228,11 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             self.tab_colors,
             is_ssh, self.tear_off, self.sftp_open, self.ai_handoff,
             if is_term { Some(&mut *self.dock_float) } else { None },
+            &mut dup,
         );
+        if dup {
+            *self.dup_tab = Some(*tab);
+        }
     }
 
     fn tab_style_override(
@@ -248,7 +256,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             return;
         }
         if Some(pane) == self.sftp_pane {
-            *self.sftp_act = crate::sftptab::render_sftp_tab(ui, self.sftp, self.lang, self.sftp_bookmarks, self.sort_desc);
+            *self.sftp_act = crate::sftptab::render_sftp_tab(ui, self.sftp, self.lang, self.sftp_bookmarks, self.sort);
             return;
         }
         if let Some(p) = self.sftp_bg.get(&pane) {

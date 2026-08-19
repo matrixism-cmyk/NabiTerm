@@ -17,6 +17,7 @@ impl NabiApp {
         let mut resized: Option<nabi_types::GridSize> = None;
         // 탭 우클릭 신호: tear_off=새 OS 창, dock_float=창 안에 띄우기(P3), sftp_open=SFTP 열기.
         let (mut tear_off, mut dock_float, mut sftp_open): (Option<nabi_types::PaneId>, _, _) = (None, None, None);
+        let mut dup_tab: Option<nabi_types::PaneId> = None;
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None; // 탭 메뉴 AI 동선(표면 정합).
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
@@ -154,11 +155,12 @@ impl NabiApp {
                 sftp_bg: &self.sftp_bg,
                 sftp_act: &mut sftp_act,
                 sftp_bookmarks: &self.config.terminal.sftp_bookmarks,
-                sort_desc: self.browser.sort_desc,
+                sort: (self.browser.sort, self.browser.sort_desc),
                 sftp_closed: &mut sftp_closed,
                 zoom_req: &mut zoom_req,
                 resized: &mut resized,
                 tear_off: &mut tear_off,
+                dup_tab: &mut dup_tab,
                 ai_handoff: &mut ai_handoff,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,
@@ -230,9 +232,8 @@ impl NabiApp {
             if dock_float == Some(p) { self.docked_float.push(p); } else { self.floating.push(p); }
         }
         self.open_terminal_pathline(); // 터미널 `파일:줄` 더블클릭 → 에디터로 점프(pending 처리).
-        if let Some(p) = sftp_open {
-            self.open_sftp_from_pane(p);
-        }
+        if let Some(p) = sftp_open { self.open_sftp_from_pane(p); }
+        if let Some(p) = dup_tab { self.duplicate_pane(p); } // 탭 우클릭 ▸ 탭 복제(팔레트와 같은 경로).
         self.apply_browser_tab_acts(ctx, browser_act, browser_closed);
         self.apply_editor_tab_acts(editor_act, editor_closed);
         // 도크 에디터가 연 nabiPad 설정 창은 메인 ctx에 렌더(분리 창은 floating_editor에서 vctx).

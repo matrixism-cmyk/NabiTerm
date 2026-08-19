@@ -5,12 +5,9 @@ use nabi_session::{SavedSession, SessionKind, SessionTree};
 
 impl NabiApp {
     pub(crate) fn save_workspace(&self) {
-        let ordered: Vec<nabi_types::PaneId> = self
-            .dock
-            .iter_all_tabs()
-            .map(|(_, p)| *p)
-            .filter(|p| Some(*p) != self.sftp_pane && !self.sftp_bg.contains_key(p)) // 원격 탭 제외.
-            .collect();
+        // 원격(SFTP/FTP) 탭은 .stabs로 따로 복원되므로 세션 목록에서만 빠지고,
+        // 도크 순서(ordered)엔 남긴다 — 레이아웃 서수(2000+i) 매핑에 필요하다.
+        let ordered: Vec<nabi_types::PaneId> = self.dock.iter_all_tabs().map(|(_, p)| *p).collect();
         let pairs: Vec<(SavedSession, nabi_types::PaneId)> = ordered
             .iter()
             .filter_map(|p| {
@@ -39,6 +36,7 @@ impl NabiApp {
             .iter()
             .copied()
             .filter(|p| !self.browser_tabs.contains_key(p))
+            .filter(|p| self.sftp_panel_at(*p).is_none()) // 원격 탭은 글꿴/이름/색 사이드카 대상이 아니다.
             .collect();
         let sessions: Vec<SavedSession> = pairs.iter().map(|(s, _)| s.clone()).collect();
         let count = sessions.len();
@@ -70,6 +68,7 @@ impl NabiApp {
         // 분할 레이아웃 + pane 사이드카(글꼴·이름·색) 저장(worklayout.rs).
         self.save_layout_sidecars(&ordered, &term_ordered, count);
         self.save_browser_tabs(); // 브라우저 탭 상태(경로·보기·정렬)도 저장.
+        self.save_sftp_tabs(); // 원격 SFTP/FTP 탭(호스트·경로·보기) — 비밀번호는 저장하지 않는다.
         self.save_floating(); // 분리 OS 창 위치·크기·출처(P10).
     }
 }

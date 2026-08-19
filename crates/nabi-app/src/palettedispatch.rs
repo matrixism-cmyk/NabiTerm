@@ -49,17 +49,11 @@ impl NabiApp {
                 let _ = nabi_config::save(&self.config_path, &self.config); // 다른 토글과 동일하게 영속.
             }
             PaletteAction::OpenSettings => self.settings_open = true,
-            PaletteAction::OpenTelegram => {
+            // 스케줄·텔레그램은 한 페이지('자동화')로 합쳌다 — 키로 찾아 눈다(인덱스 하드코딩 금지).
+            PaletteAction::OpenTelegram | PaletteAction::OpenSchedule => {
                 self.settings_open = true;
-                let tg = crate::settingsui::PAGE_KEYS.len() - 1; // 텔레그램은 마지막 페이지.
-                ctx.data_mut(|d| d.insert_temp(egui::Id::new("settings_cat"), tg));
-            }
-            PaletteAction::OpenSchedule => {
-                self.settings_open = true;
-                // 인덱스 하드코딩 대신 키 검색 — 페이지가 늘어도 안 어긋난다.
-                if let Some(i) = crate::settingsui::PAGE_KEYS.iter().position(|k| *k == "settings.sec.schedule") {
-                    ctx.data_mut(|d| d.insert_temp(egui::Id::new("settings_cat"), i));
-                }
+                let i = crate::settingsui::page_index("settings.sec.automation");
+                ctx.data_mut(|d| d.insert_temp(egui::Id::new("settings_cat"), i));
             }
             PaletteAction::SnapshotSave => { self.snap_name.clear(); self.snap_save_open = true; }
             PaletteAction::SnapshotList => self.snap_list_open = true,

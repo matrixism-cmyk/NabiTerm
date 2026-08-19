@@ -168,19 +168,17 @@ pub(crate) fn table(
     selected: Option<&str>,
     multi: &std::collections::HashSet<String>,
     scroll_to: bool,
+    sort: (crate::browserfs::Sort, bool),
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     use crate::browserfs::Sort;
     use egui_extras::{Column, TableBuilder};
     let mut click: Option<EClick> = None;
     let mut set_sort: Option<Sort> = None;
+    // 헤더 셀은 로컬 브라우저와 같은 구현을 쓴다(DRY) — 그래야 정렬 방향 화살표와
+    // 활성 컬럼 표시가 두 목록에서 똑같이 보인다(원격만 표시가 없던 문제 수정).
     let hdr = |ui: &mut egui::Ui, label: &str, s: Sort, set: &mut Option<Sort>| {
-        if ui
-            .add(egui::Label::new(egui::RichText::new(label).strong()).sense(egui::Sense::click()))
-            .clicked()
-        {
-            *set = Some(s);
-        }
+        crate::browsercols::header_cell(ui, label, Some(s), sort.0 == s, sort.1, set);
     };
     let rh = crate::browsercols::row_h(ui); // 글꼴 크기에 따른 행 높이(Ctrl+휠 줌).
     let mut tb = TableBuilder::new(ui)

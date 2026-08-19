@@ -66,7 +66,7 @@ pub(crate) struct SftpAct {
 }
 
 /// SFTP 패널 본문을 ui에 그리고 액션을 모은다(사이드 패널/탭 공용).
-pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, bookmarks: &[String], sort_desc: bool) -> SftpAct {
+pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, bookmarks: &[String], sort: (crate::browserfs::Sort, bool)) -> SftpAct {
     let mut a = SftpAct {
         // max_rect 기준(시작 시점 min_rect는 비어 있음) — 엄지 버튼/드롭 판정용.
         over: ui.rect_contains_pointer(ui.max_rect()),
@@ -82,7 +82,7 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
     if dz != 0.0 {
         sftp.font_size = (sftp.font_size + dz).clamp(9.0, 28.0);
     }
-    crate::sftptoolbar::render_toolbar(ui, sftp, lang, bookmarks, sort_desc, &mut a);
+    crate::sftptoolbar::render_toolbar(ui, sftp, lang, bookmarks, sort.1, &mut a);
     if !sftp.status.is_empty() {
         ui.horizontal(|ui| {
             // 진행 중(연결/전송/검색은 '…'로 끝남)이면 스피너 표시.
@@ -177,7 +177,7 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
         });
         return a;
     }
-    crate::sftplist::list_zone(ui, sftp, lang, details, &mut a);
+    crate::sftplist::list_zone(ui, sftp, lang, details, sort, &mut a);
     a.rect = Some(ui.min_rect().union(ui.max_rect())); // OS 드롭 위치 판정용.
     a
 }

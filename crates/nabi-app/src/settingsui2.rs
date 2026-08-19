@@ -164,8 +164,42 @@ fn lang_choices() -> [(&'static str, &'static str); 4] {
     ]
 }
 
-/// SFTP 전송·파일명 인코딩 그룹(터미널 페이지에서 호출 — settingsui.rs 라인 한도로 분리).
-pub(crate) fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+/// SSH 페이지 — 접속 유지·통계 경고처럼 "연결 자체"에 걸리는 설정만 모은다
+/// (예전에는 만물상 '터미널' 페이지에 섞여 있었다 — 사용자 요청 2026-08-19로 분리).
+pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    ui.label(tr(lang, "settings.sshkeepalive"));
+    ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s"))
+        .on_hover_text(tr(lang, "settings.sshkeepalivehint"));
+    ui.end_row();
+    ui.label(tr(lang, "settings.statsalert"));
+    ui.add(egui::Slider::new(&mut cfg.terminal.ssh_stats_alert_pct, 50..=100).suffix("%"));
+    ui.end_row();
+}
+
+/// 전송·SFTP 페이지 — 속도/병렬/무결성/파일명 인코딩 + 다운로드 폴더를 한자리에.
+pub(crate) fn transfer_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    sftp_rows(ui, cfg, lang);
+    // SFTP 다운로드 기본 폴더(비우면 로컬 창/홈) + 매번 물어보기 여부.
+    ui.label(tr(lang, "settings.downloaddir"));
+    ui.horizontal(|ui| {
+        let edit = egui::TextEdit::singleline(&mut cfg.terminal.download_dir)
+            .desired_width(220.0)
+            .hint_text(tr(lang, "settings.downloaddirhint"));
+        ui.add(edit);
+        if ui.button("\u{1f4c1}").clicked() {
+            if let Some(d) = rfd::FileDialog::new().pick_folder() {
+                cfg.terminal.download_dir = d.to_string_lossy().into_owned();
+            }
+        }
+    });
+    ui.end_row();
+    ui.label(tr(lang, "settings.downloadask"));
+    ui.checkbox(&mut cfg.terminal.download_ask, tr(lang, "settings.downloadaskhint"));
+    ui.end_row();
+}
+
+/// SFTP 전송·파일명 인코딩 그룹(전송 페이지에서 호출 — settingsui.rs 라인 한도로 분리).
+fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.speedlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
     ui.label(tr(lang, "settings.maxparallel"));

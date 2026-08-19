@@ -232,4 +232,11 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("aicb.aider.test", "Run the configured test command", "설정된 테스트 명령 실행", "設定済みテストコマンドを実行"),
     ("aicb.aider.lint", "Lint and fix files", "파일 린트·수정", "ファイルをリントして修正"),
     ("aicb.aider.settings", "Print current settings", "현재 설정 출력", "現在の設定を表示"),
+    // 설정 다이얼로그 카테고리 재편(사용자 요청 2026-08-19: 종류별로 통합·분리).
+    ("settings.sec.general", "General", "일반", "一般"),
+    ("settings.sec.ssh", "SSH", "SSH", "SSH"),
+    ("settings.sec.transfer", "Transfers (SFTP)", "전송·SFTP", "転送・SFTP"),
+    ("settings.sec.rules", "Highlights & snippets", "강조·스니펫", "強調・スニペット"),
+    ("settings.sec.automation", "Automation", "자동화", "自動化"),
+    ("editor.fontsize", "Font size", "글꼴 크기", "フォントサイズ"),
 ];

@@ -116,6 +116,7 @@ mod sftpact;
 mod sftpentries; mod sftpentryfmt;
 mod sftpnav;
 mod sftppanel;
+mod sftprestore;
 mod sftptab;
 mod shellinteg;
 mod sidebar;

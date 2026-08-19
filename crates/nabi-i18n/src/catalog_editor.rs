@@ -17,7 +17,6 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("nabipad.menu.view", "View", "보기", "表示"),
     ("nabipad.menu.search", "Search", "검색", "検索"),
     ("nabipad.menu.encoding", "Encoding", "인코딩", "エンコード"),
-    ("nabipad.menu.tools", "Tools", "도구", "ツール"),
     ("nabipad.menu.help", "Help", "도움말", "ヘルプ"),
     ("nabipad.menu.show", "Show menu bar", "메뉴바 표시", "メニューバーを表示"),
     ("nabipad.openinwindow", "Open editor in a window", "에디터를 창으로 열기", "エディタをウィンドウで開く"),

@@ -4,19 +4,22 @@ use nabi_config::{AppConfig, EditorConfig};
 use nabi_i18n::{tr, Lang};
 
 /// 좌측 내비게이션 항목(i18n 키). 인덱스가 `page()`의 페이지 번호.
-// 외관 그룹(글꼴·색상·커서·테마)을 앞쪽에 인접 배치 → 그 뒤 터미널·동작·에디터·강조·스니펫.
-pub(crate) const PAGE_KEYS: [&str; 11] = [
+//
+// 종류별로 묶고 나눈다(사용자 요청 2026-08-19):
+//   일반 → 모양(글꼴·색상·커서) → 연결(터미널·SSH·전송) → 규칙·AI → 자동화.
+// • 분리: 만물상이던 '터미널'에서 SSH와 전송(SFTP)을 띄어냈다.
+// • 통합: 테마 가져오기→색상, 강조+스니펫→규칙, 스케줄+텔레그램→자동화.
+pub(crate) const PAGE_KEYS: [&str; 10] = [
+    "settings.sec.general",
     "settings.sec.font",
     "settings.sec.colors",
     "settings.sec.cursor",
-    "settings.sec.import",
     "settings.sec.terminal",
-    "settings.sec.behavior",
-    "settings.sec.highlights",
-    "settings.sec.snippets",
+    "settings.sec.ssh",
+    "settings.sec.transfer",
+    "settings.sec.rules",
     "settings.sec.aiprof",
-    "settings.sec.schedule",
-    "settings.sec.telegram",
+    "settings.sec.automation",
 ];
 
 /// 페이지에 필요한 앱 핸들(설정 외 상태) 묶음 — 승인 정책 + 폰트 설치기.
@@ -34,24 +37,54 @@ pub(crate) struct PageCtx<'a> {
 /// (nabiPad 설정은 편집기 창 메뉴로 이동 — 여기서는 편집기 설정을 다루지 않는다.)
 pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorConfig, lang: Lang, idx: usize, cx: &PageCtx) {
     match idx {
-        // 외관 그룹: 글꼴(0)·색상(1)·커서(2)·테마(3).
-        0 => grid(ui, "sec_font", |ui| font_rows(ui, cfg, lang, cx)),
-        1 => grid(ui, "sec_colors", |ui| color_rows(ui, cfg, lang)),
-        2 => grid(ui, "sec_cursor", |ui| cursor_rows(ui, cfg, lang)),
-        3 => crate::themeimport::import_section(ui, cfg, lang),
-        4 => grid(ui, "sec_terminal", |ui| terminal_rows(ui, cfg, lang)),
-        5 => grid(ui, "sec_behavior", |ui| {
+        // 일반(0): 언어·단축키·복원·승인 정책 — 예전 '동작' 페이지.
+        0 => grid(ui, "sec_general", |ui| {
             crate::settingsui2::behavior_rows(ui, cfg, lang);
             crate::controlui::approvals_ui(ui, cx.policy, lang);
         }),
+        // 모양 그룹: 글꼴(1)·색상+테마 가져오기(2)·커서(3).
+        1 => grid(ui, "sec_font", |ui| font_rows(ui, cfg, lang, cx)),
+        2 => {
+            grid(ui, "sec_colors", |ui| color_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.import");
+            crate::themeimport::import_section(ui, cfg, lang);
+        }
+        3 => grid(ui, "sec_cursor", |ui| cursor_rows(ui, cfg, lang)),
+        // 연결 그룹: 터미널(4)·SSH(5)·전송·SFTP(6).
+        4 => grid(ui, "sec_terminal", |ui| terminal_rows(ui, cfg, lang)),
+        5 => grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang)),
+        6 => grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang)),
         // nabiPad 설정은 **nabiPad 자체 메뉴**(편집기 창 ▸ 설정)로 옮겼다(사용자 요청
         // 2026-08-19) — 편집기 설정은 nabipad.toml에 별도 저장되고, 편집기에서 바로 여는 편이 자연스럽다.
-        6 => crate::settingslists::highlight_rows(ui, cfg, lang),
-        7 => crate::settingslists::snippet_rows(ui, cfg, lang),
+        // 사용자 규칙(7): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
+        7 => {
+            group(ui, lang, "settings.sec.highlights");
+            crate::settingslists::highlight_rows(ui, cfg, lang);
+            group(ui, lang, "settings.sec.snippets");
+            crate::settingslists::snippet_rows(ui, cfg, lang);
+        }
         8 => crate::aiprofileui::ai_profile_rows(ui, cfg, lang),
-        9 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
-        _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending)),
+        // 자동화(9): 내장 스케줄러 + 텔레그램 브리지(둘 다 알아서 돌아가는 기능).
+        _ => {
+            group(ui, lang, "settings.sec.schedule");
+            crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path);
+            group(ui, lang, "settings.sec.telegram");
+            grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending));
+        }
     }
+}
+
+/// 카테고리 키 → 좌측 내비 인덱스. 팔레트/메뉴가 특정 설정 페이지로 바로 뛸 때 쓴다
+/// (인덱스 하드코딩 금지 — 페이지를 통합·분리해도 어긋나지 않는다).
+pub(crate) fn page_index(key: &str) -> usize {
+    PAGE_KEYS.iter().position(|k| *k == key).unwrap_or(0)
+}
+
+/// 한 페이지에 둘 이상의 그룹을 담을 때 쓰는 소제목(통합 페이지의 경계).
+fn group(ui: &mut egui::Ui, lang: Lang, key: &str) {
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new(tr(lang, key)).strong());
+    ui.separator();
 }
 
 /// nabiPad 자체 설정 창 본문(메인 설정의 에디터 페이지와 동일 UI 재사용, DRY).
@@ -225,8 +258,6 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.add(egui::DragValue::new(&mut cfg.terminal.scrollback).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
     ui.label(tr(lang, "settings.searchlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.search_limit).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
-    ui.label(tr(lang, "settings.sshkeepalive")); ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s")).on_hover_text(tr(lang, "settings.sshkeepalivehint")); ui.end_row();
-    crate::settingsui2::sftp_rows(ui, cfg, lang); // SFTP 전송·인코딩 그룹(분리 — 라인 한도).
     crate::settingsui2::tip_rows(ui, cfg, lang); // 영문 팁 한글 오버레이.
     // 원격이 로컬 클립보드에 쓰는 것(OSC 52) — 차단/알림/조용히 허용.
     ui.label(tr(lang, "settings.osc52"));
@@ -238,24 +269,6 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     .response
     .on_hover_text(tr(lang, "settings.osc52hint"));
     ui.end_row();
-    // SFTP 다운로드 기본 폴더(비우면 로컬 창/홈) + 매번 물어보기 여부.
-    ui.label(tr(lang, "settings.downloaddir"));
-    ui.horizontal(|ui| {
-        let edit = egui::TextEdit::singleline(&mut cfg.terminal.download_dir)
-            .desired_width(220.0)
-            .hint_text(tr(lang, "settings.downloaddirhint"));
-        ui.add(edit);
-        if ui.button("\u{1f4c1}").clicked() {
-            if let Some(d) = rfd::FileDialog::new().pick_folder() {
-                cfg.terminal.download_dir = d.to_string_lossy().into_owned();
-            }
-        }
-    });
-    ui.end_row();
-    ui.label(tr(lang, "settings.downloadask"));
-    ui.checkbox(&mut cfg.terminal.download_ask, tr(lang, "settings.downloadaskhint")); ui.end_row();
-    ui.label(tr(lang, "settings.statsalert"));
-    ui.add(egui::Slider::new(&mut cfg.terminal.ssh_stats_alert_pct, 50..=100).suffix("%")); ui.end_row();
 }
 
 // behavior_rows·lang_choices는 settingsui2.rs로 분리(파일 크기 규율).

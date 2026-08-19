@@ -116,14 +116,17 @@ pub(crate) fn render(
     now: u64,
     compare: Option<&HashMap<String, (bool, u64)>>,
     selected: Option<&str>,
+    // 다중 선택 집합 — 자세히 보기만 강조하고 아이콘·타일은 빠져 있던 것을 맞춘다.
+    multi: &std::collections::HashSet<String>,
 ) -> Option<EClick> {
+    let sel = |n: &str| Some(n) == selected || multi.contains(n);
     match mode {
         ViewMode::Details => details(ui, entries, cur, lang, now, compare, false),
         ViewMode::Content => details(ui, entries, cur, lang, now, compare, true),
-        ViewMode::List => grid(ui, entries, cur, lang, 150.0, 18.0, 13.0, false, selected),
-        ViewMode::LargeIcons => grid(ui, entries, cur, lang, 96.0, 78.0, 22.0, true, selected),
-        ViewMode::SmallIcons => grid(ui, entries, cur, lang, 70.0, 54.0, 15.0, true, selected),
-        ViewMode::Tile => grid(ui, entries, cur, lang, 168.0, 22.0, 13.0, false, selected),
+        ViewMode::List => grid(ui, entries, cur, lang, 150.0, 18.0, 13.0, false, &sel),
+        ViewMode::LargeIcons => grid(ui, entries, cur, lang, 96.0, 78.0, 22.0, true, &sel),
+        ViewMode::SmallIcons => grid(ui, entries, cur, lang, 70.0, 54.0, 15.0, true, &sel),
+        ViewMode::Tile => grid(ui, entries, cur, lang, 168.0, 22.0, 13.0, false, &sel),
     }
 }
 
@@ -205,7 +208,8 @@ fn grid(
     ch: f32,
     txt: f32,
     with_size: bool,
-    selected: Option<&str>,
+    // 이 항목이 선택되었는가(단일 선택 + 다중 선택 합치기).
+    selected: &dyn Fn(&str) -> bool,
 ) -> Option<EClick> {
     let mut click = None;
     let big = ch > 40.0; // 아이콘 모드: 아이콘 위 / 이름 아래(2줄).
@@ -234,7 +238,7 @@ fn grid(
                 .color(color);
             // click_and_drag로 직접 센스(드래그 커서로 클릭 막히는 문제 방지). 로컬 격자와 동일.
             let mut btn = egui::Button::new(label).sense(egui::Sense::click_and_drag());
-            if Some(e.name.as_str()) == selected {
+            if selected(&e.name) {
                 btn = btn.fill(ui.visuals().selection.bg_fill); // 선택 항목 강조.
             }
             let resp = ui.add_sized([cw, ch], btn);

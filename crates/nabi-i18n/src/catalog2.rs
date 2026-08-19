@@ -53,7 +53,6 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
         "PowerShellプロファイルへ導入",
     ),
     ("settings.sec.import", "Import theme", "테마 가져오기", "テーマ取込"),
-    ("settings.sec.editor", "nabiPad (editor)", "나비패드(에디터)", "nabiPad(エディタ)"),
     (
         "settings.import.hint",
         "Paste a color scheme: Windows Terminal, Alacritty, WezTerm, Konsole, Xresources, or iTerm2.",

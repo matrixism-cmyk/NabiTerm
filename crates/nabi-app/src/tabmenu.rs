@@ -112,6 +112,8 @@ pub(crate) fn tab_context_menu(
     sftp_open: &mut Option<PaneId>,
     ai_handoff: &mut Option<(PaneId, bool)>,
     dock_float: Option<&mut Option<PaneId>>,
+    // 같은 출처로 탭을 하나 더 여는 요청(명령 팔레트에만 있던 기능을 메뉴에도 노출).
+    duplicate: &mut bool,
 ) {
     ui.label(tr(lang, "tab.rename"));
     let name = tab_names.entry(*tab).or_default();
@@ -234,6 +236,11 @@ pub(crate) fn tab_context_menu(
             *dock_float = Some(*tab);
             ui.close();
         }
+    }
+    // 같은 셸/SSH 세션을 하나 더 열기 — 팔레트(DuplicateTab)와 같은 동작을 한다(SSOT).
+    if ui.button(tr(lang, "tab.duplicate")).clicked() {
+        *duplicate = true;
+        ui.close();
     }
     // SSH 탭이면 같은 연결로 SFTP 파일 브라우저 열기(자격증명 재사용).
     if is_ssh && ui.button(tr(lang, "tab.opensftp")).clicked() {

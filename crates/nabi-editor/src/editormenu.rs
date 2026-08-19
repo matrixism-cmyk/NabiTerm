@@ -165,6 +165,19 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                 });
                 ui.separator();
             }
+            // 글꼴 크기는 Ctrl+휠로만 바꿀 수 있었다 — 메뉴에도 노출해 마우스 없이도 쓸 수 있게.
+            ui.menu_button(tr(lang, "editor.fontsize"), |ui| {
+                if ui.button(tr(lang, "menu.zoomin")).clicked() { doc.font_size = (doc.font_size + 1.0).min(40.0); }
+                if ui.button(tr(lang, "menu.zoomout")).clicked() { doc.font_size = (doc.font_size - 1.0).max(8.0); }
+                if ui.button(tr(lang, "settings.reset")).clicked() { doc.font_size = 14.0; ui.close(); }
+            });
+            // HEX↔텍스트는 내용이 아니라 **보는 방식**의 전환이라 '보기'에 둔다(사용자 요청 2026-08-19).
+            // 일반 텍스트/HEX 문서에서만 — 대용량 rope/뷰어는 전환 불가.
+            if plain || is_hex {
+                let label = if is_hex { "nabipad.textmode" } else { "nabipad.hexmode" };
+                if ui.button(tr(lang, label)).clicked() { act.toggle_hex = true; ui.close(); }
+                ui.separator();
+            }
             // 체크 해제 시 메뉴바 숨김(토글). 표시 상태에선 항상 체크되어 보인다.
             let mut shown = true;
             if ui.checkbox(&mut shown, tr(lang, "nabipad.menu.show")).clicked() {
@@ -190,13 +203,6 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                 for eol in EOLS {
                     if ui.selectable_label(doc.eol == eol, eol).clicked() { act.set_eol = Some(eol); ui.close(); }
                 }
-            });
-        }
-        // HEX↔텍스트 전환은 일반 텍스트/HEX 문서에서만(대용량 rope/뷰어는 전환 불가).
-        if plain || is_hex {
-            ui.menu_button(tr(lang, "nabipad.menu.tools"), |ui| {
-                let label = if is_hex { "nabipad.textmode" } else { "nabipad.hexmode" };
-                if ui.button(tr(lang, label)).clicked() { act.toggle_hex = true; ui.close(); }
             });
         }
         if ui.button(tr(lang, "menu.settings")).clicked() { act.open_settings = true; ui.close(); }

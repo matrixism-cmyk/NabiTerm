@@ -5,6 +5,14 @@ use crate::sftpxfer::Transfer;
 use nabi_i18n::tr;
 use nabi_proto::{Command, SftpEntry, SftpId, SshParams};
 
+/// SFTP 탭의 재연결 출처(비밀 없음) — start_sftp → SftpPanel → workspace .stabs.
+#[derive(Default)]
+pub(crate) struct SftpOrigin {
+    pub cred_ref: Option<String>,
+    pub key_path: Option<String>,
+    pub jump: Option<String>,
+}
+
 #[derive(Default)]
 pub(crate) struct SftpPanel {
     pub open: bool,
@@ -15,6 +23,14 @@ pub(crate) struct SftpPanel {
     pub conn_host: String,
     pub conn_user: String,
     pub conn_port: String,
+    /// 워크스페이스 복원용 출처(비밀 아님): 볼트 키 참조·키 파일 경로·점프 호스트·FTP 여부.
+    /// 비밀번호 자체는 절대 담지 않는다 — 볼트 키로만 참조한다.
+    pub cred_ref: Option<String>,
+    pub key_path: Option<String>,
+    pub jump: Option<String>,
+    pub is_ftp: bool,
+    /// 재시작 복원 시 돌아갈 원격 경로(연결 완료 이벤트에서 1회 소비). None이면 서버 기본.
+    pub restore_path: Option<String>,
     pub path: String,
     pub entries: Vec<SftpEntry>,
     pub status: String,
@@ -78,11 +94,13 @@ impl NabiApp {
         let pw = self.quick_connect.password.clone();
         let key = self.quick_connect.key_path.trim().to_string();
         let params = crate::sshauth::params_for(host, port, user, pw, &key, ftp);
-        self.start_sftp(params, ftp);
+        // 키 파일로 붙었으면 그 경로만 출처로 남긴다(비밀번호는 저장하지 않으므로 복원 시 재입력).
+        let org = SftpOrigin { key_path: (!key.is_empty()).then(|| key.clone()), ..Default::default() };
+        self.start_sftp(params, ftp, org);
     }
 
     /// SFTP/FTP 연결을 시작하고 새 도킹 탭으로 연다(매번 고유 PaneId — 멀티 탭).
-    pub(crate) fn start_sftp(&mut self, params: SshParams, ftp: bool) {
+    pub(crate) fn start_sftp(&mut self, params: SshParams, ftp: bool, org: SftpOrigin) {
         // 현재 활성 원격 패널이 열려 있으면 배경으로 보관(다른 탭으로 유지).
         if self.sftp.open {
             if let Some(old) = self.sftp_pane {
@@ -105,6 +123,10 @@ impl NabiApp {
             conn_host: params.host.clone(),
             conn_user: params.user.clone(),
             conn_port: params.port.to_string(),
+            cred_ref: org.cred_ref,
+            key_path: org.key_path,
+            jump: org.jump,
+            is_ftp: ftp,
             status: tr(self.lang, "sftp.connecting").to_string(),
             view_mode: crate::sftpview::ViewMode::from_u8(self.config.terminal.sftp_view),
             ..Default::default()

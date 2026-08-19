@@ -42,6 +42,8 @@ impl NabiApp {
         else {
             return;
         };
+        // 복원 재연결에 쓸 출처를 먼저 복제해 둔다(아래에서 params로 move되기 때문).
+        let org = crate::sftppanel::SftpOrigin { cred_ref: credential_ref.clone(), key_path: key_path.clone(), jump: jump.clone() };
         let params = if let Some(pw) = credential_ref.as_ref().and_then(|k| self.vault_get(k)) {
             SshParams::password(host, port, user.clone(), pw)
         } else if let Some(kp) = key_path {
@@ -55,7 +57,7 @@ impl NabiApp {
             Some(chain) => params.with_jump(chain),
             None => params,
         };
-        self.start_sftp(params, ftp);
+        self.start_sftp(params, ftp, org);
     }
 
     /// 저장된 SSH 세션을 Quick Connect에 불러와 수정(이름/호스트/포트/사용자/키)하게 한다.

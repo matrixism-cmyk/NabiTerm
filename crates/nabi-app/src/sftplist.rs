@@ -11,6 +11,7 @@ pub(crate) fn list_zone(
     sftp: &mut SftpPanel,
     lang: Lang,
     details: bool,
+    sort: (crate::browserfs::Sort, bool),
     a: &mut SftpAct,
 ) {
     crate::browsercols::apply_list_font(ui, sftp.font_size); // 이 SFTP 목록만 글꼴 적용.
@@ -68,6 +69,7 @@ pub(crate) fn list_zone(
             sftp.selected.as_deref(),
             &sftp.multi,
             sftp.scroll,
+            sort,
             &mut ren,
         )
     });
