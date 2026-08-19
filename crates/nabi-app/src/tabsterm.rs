@@ -207,9 +207,11 @@ impl TermTabViewer<'_> {
                     *self.link_menu = Some((url, pos));
                 }
                 nabi_render::paint(
-                    ui, rect, font, &model, &self.theme, self.find.as_deref(),
+                    ui, rect, font.clone(), &model, &self.theme, self.find.as_deref(),
                     self.highlights, sel_norm, sel_rect, focused, self.blink_on, preedit,
                 );
+                // 영문 팁(Tip:/Note:) 줄 위에 한글 번역을 덧그린다(그리드는 불변 — tipoverlay.rs).
+                self.tip_overlay(ui, rect, ch, &font, pane, &model);
                 model.set_cell_px(ch); // 이미지 높이→줄 변환 기준(폰트 줌 반영).
                 model.set_query_colors(&self.theme); // OSC 10/11 색 질의에 현재 테마로 답하도록.
                 self.draw_inline_images(ui, rect, ch, &model);

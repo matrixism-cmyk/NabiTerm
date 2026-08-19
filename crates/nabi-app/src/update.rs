@@ -70,6 +70,10 @@ impl eframe::App for NabiApp {
             self.maybe_prompt_shellinteg(); // 셸 통합 미설치면 설치 권장 모달.
         }
         self.poll_ai_cli_auto_update();
+        // 팁 AI 번역이 끝났으면 캐시에 넣고 한 번 다시 그린다(오버레이 갱신).
+        if self.tip_ai.poll() {
+            ctx.request_repaint();
+        }
         self.tick_agent_watch(); // 화면 규칙 에이전트 상태 감시(600ms 스로틀).
         // 업데이트 인스톨러가 실행됐으면 이 앱을 즉시 종료(설치 진행).
         // 확인 대화상자를 거치지 않고 바로 quit() — 인스톨러가 파일 교체를 빨리 시작하도록.

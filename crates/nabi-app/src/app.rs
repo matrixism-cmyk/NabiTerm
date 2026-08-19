@@ -22,6 +22,10 @@ pub struct NabiApp {
     pub ai_prof_open: bool,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
     pub ai_picks: std::collections::HashMap<PaneId, crate::aicmdbar::AiPicks>,
+    /// pane별 영문 팁 감지 결과(번역 오버레이 — tipoverlay.rs).
+    pub tip_cache: std::collections::HashMap<PaneId, crate::tipoverlay::TipHit>,
+    /// 팁 AI 번역 캐시(선택 기능, 디스크 영속).
+    pub tip_ai: crate::tipai::TipAi,
     /// 명령 바에서 방금 고른 값 신호 ("model"|"effort", 값) — view가 설정에 저장한다
     /// (뷰어가 config를 가변 차용할 수 없어 out-param으로 넘긴다).
     pub ai_pick_out: Option<(String, String)>,

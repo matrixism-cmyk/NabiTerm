@@ -78,6 +78,8 @@ impl NabiApp {
             ai_prof_open: false,
             ai_picks: std::collections::HashMap::new(),
             ai_pick_out: None,
+            tip_cache: std::collections::HashMap::new(),
+            tip_ai: crate::tipai::TipAi::load(&layout.base),
             enc_cache: None,
             compare_at: None,
             forward: crate::forwardui::ForwardForm::default(),

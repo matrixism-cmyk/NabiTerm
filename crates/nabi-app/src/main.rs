@@ -69,7 +69,7 @@ mod worklayout;
 mod updatemodal;
 mod shellintegprompt;
 mod agentguide;
-mod aicli; mod aiclipage; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aimode;
+mod aicli; mod aiclipage; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aimode; mod tiptrans; mod tipai; mod tipoverlay;
 mod aistatus; mod agentwatch;
 mod aidash;
 

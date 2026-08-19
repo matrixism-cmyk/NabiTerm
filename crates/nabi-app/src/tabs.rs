@@ -61,6 +61,11 @@ pub struct TermTabViewer<'a> {
     pub ai_last_effort: &'a str,
     /// 이번 프레임에 고른 값 신호 — app이 설정에 저장한다.
     pub ai_pick_out: &'a mut Option<(String, String)>,
+    /// 영문 팁 한글 오버레이 설정 + 캐시(tipoverlay.rs).
+    pub tip_overlay: bool,
+    pub tip_ai_on: bool,
+    pub tip_cache: &'a mut HashMap<PaneId, crate::tipoverlay::TipHit>,
+    pub tip_ai: &'a mut crate::tipai::TipAi,
     /// 명령 실행 중(OSC 133;C~D) pane — 탭에 ⚙ 상태 배지(CP-6).
     pub running: &'a std::collections::HashMap<PaneId, std::time::Instant>,
     /// 포커스 pane의 IME 조합 중 텍스트(커서에 오버레이 — 한글 조합 표시).

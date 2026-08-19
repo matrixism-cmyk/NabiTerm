@@ -226,6 +226,7 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.add(egui::DragValue::new(&mut cfg.terminal.search_limit).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
     ui.label(tr(lang, "settings.sshkeepalive")); ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s")).on_hover_text(tr(lang, "settings.sshkeepalivehint")); ui.end_row();
     crate::settingsui2::sftp_rows(ui, cfg, lang); // SFTP 전송·인코딩 그룹(분리 — 라인 한도).
+    crate::settingsui2::tip_rows(ui, cfg, lang); // 영문 팁 한글 오버레이.
     // 원격이 로컬 클립보드에 쓰는 것(OSC 52) — 차단/알림/조용히 허용.
     ui.label(tr(lang, "settings.osc52"));
     ui.horizontal(|ui| {

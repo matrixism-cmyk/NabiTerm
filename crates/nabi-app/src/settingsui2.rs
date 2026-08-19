@@ -188,3 +188,15 @@ pub(crate) fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
         .on_hover_text(tr(lang, "settings.sftpcharsethint"));
     ui.end_row();
 }
+
+/// 영문 팁 한글 오버레이 설정(터미널 페이지) — 사전 기반 + 선택적 AI 번역.
+pub(crate) fn tip_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    ui.label(tr(lang, "settings.tipoverlay"));
+    ui.checkbox(&mut cfg.terminal.tip_overlay, "")
+        .on_hover_text(tr(lang, "settings.tipoverlayhint"));
+    ui.end_row();
+    ui.label(tr(lang, "settings.tipai"));
+    ui.add_enabled(cfg.terminal.tip_overlay, egui::Checkbox::new(&mut cfg.terminal.tip_translate_ai, ""))
+        .on_hover_text(tr(lang, "settings.tipaihint"));
+    ui.end_row();
+}
