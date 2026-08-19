@@ -69,6 +69,8 @@ pub fn lineops_menu(ui: &mut egui::Ui, lang: Lang) -> Option<Xf> {
         ("editor.dedupeci", l::dedupe_ci),
         ("editor.uniqadj", l::uniq_adjacent),
         ("editor.keepuniq", l::keep_unique),
+        ("editor.keepdup", l::keep_duplicates),
+        ("editor.duplines", l::duplicate_lines),
         ("editor.reverselines", reverse_lines),
         ("editor.joinlines", l::join_lines),
         ("editor.revchars", l::reverse_line_chars),

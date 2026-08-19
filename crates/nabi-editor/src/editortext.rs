@@ -115,9 +115,26 @@ pub fn strip_ansi(t: &str) -> String {
     out
 }
 
-/// 각 줄을 폭 80에 맞춰 단어 단위로 줄바꿈.
-pub fn hard_wrap_80(t: &str) -> String {
-    t.split('\n').map(|l| wrap_line(l, 80)).collect::<Vec<_>>().join("\n")
+/// "줄바꿈" 변환이 쓸 칸 수(설정에서 주입). 변환 함수는 `fn(&str) -> String` 포인터라
+/// 설정을 인자로 받을 수 없어, 다른 라이브 설정(구문 테마·업로드 권한)과 같은 방식으로 전역에 둔다.
+static WRAP_COL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(80);
+
+/// 줄바꿈 칸 수를 설정한다(0이나 지나치게 작은 값은 무시 — 한 글자씩 쪼개지는 사고 방지).
+pub fn set_wrap_col(n: usize) {
+    if n >= 20 {
+        WRAP_COL.store(n, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// 현재 줄바꿈 칸 수.
+pub fn wrap_col() -> usize {
+    WRAP_COL.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+/// 각 줄을 설정된 폭에 맞춰 단어 단위로 줄바꿈.
+pub fn hard_wrap(t: &str) -> String {
+    let w = wrap_col();
+    t.split('\n').map(|l| wrap_line(l, w)).collect::<Vec<_>>().join("\n")
 }
 
 fn wrap_line(line: &str, width: usize) -> String {
@@ -187,7 +204,7 @@ pub fn texttools_menu(ui: &mut egui::Ui, lang: Lang) -> Option<fn(&str) -> Strin
     });
     ui.menu_button(tr(lang, "editor.txtwrap"), |ui| {
         picked = picked.or(pick(ui, lang, &[
-            ("editor.hardwrap", hard_wrap_80), ("editor.unwrap", unwrap_paragraphs),
+            ("editor.hardwrap", hard_wrap), ("editor.unwrap", unwrap_paragraphs),
             ("editor.full2half", crate::editorwidth::full_to_half),
             ("editor.half2full", crate::editorwidth::half_to_full),
         ]));

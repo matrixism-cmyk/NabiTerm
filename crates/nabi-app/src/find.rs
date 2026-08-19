@@ -3,7 +3,7 @@
 use crate::app::NabiApp;
 use nabi_i18n::tr;
 
-/// 검색 매처: 리터럴(스마트케이스) 또는 정규식.
+/// 검색 매처: 리터럴(스마트케이스) 또는 정규식. 단어 단위는 두 경우 모두 정규식으로 만든다.
 enum Matcher {
     Lit { needle: String, cs: bool },
     Re(regex::Regex),
@@ -24,12 +24,20 @@ impl Matcher {
     }
 }
 
-/// 쿼리+정규식 여부로 매처를 만든다. 빈 쿼리/잘못된 정규식이면 None. 스마트케이스(소문자=무시).
-fn build_matcher(query: &str, regex: bool) -> Option<Matcher> {
+/// 쿼리 옵션으로 매처를 만든다. 빈 쿼리/잘못된 정규식이면 None. 스마트케이스(소문자=무시).
+///
+/// 단어 단위(whole)는 리터럴이든 정규식이든 `\b…\b`로 감싼 정규식이 된다 — 리터럴은
+/// escape해서 넣으므로 `a.b` 같은 쿼리가 갑자기 정규식처럼 동작하지 않는다.
+fn build_matcher(query: &str, regex: bool, whole: bool) -> Option<Matcher> {
     if query.is_empty() {
         return None;
     }
     let cs = query.chars().any(|c| c.is_uppercase());
+    if whole {
+        let inner = if regex { query.to_string() } else { regex::escape(query) };
+        return regex::RegexBuilder::new(&format!(r"\b(?:{inner})\b"))
+            .case_insensitive(!cs).build().ok().map(Matcher::Re);
+    }
     if regex {
         regex::RegexBuilder::new(query).case_insensitive(!cs).build().ok().map(Matcher::Re)
     } else {
@@ -38,6 +46,15 @@ fn build_matcher(query: &str, regex: bool) -> Option<Matcher> {
 }
 
 impl NabiApp {
+    /// 셀 하이라이트에 쓸 검색어 — **리터럴 모드일 때만**.
+    ///
+    /// 하이라이트는 리터럴 셀 매칭이라 정규식·단어 단위 결과와 어긋난다(엉뚱한 셀을 칠한다).
+    /// 탭·분리 창·창 안에 띄우기가 모두 이 한 함수를 쓴다 — 예전엔 탭만 정규식을 걸러냈다.
+    pub(crate) fn find_highlight(&self) -> Option<String> {
+        (self.find_open && !self.find_regex && !self.find_whole && !self.find_query.is_empty())
+            .then(|| self.find_query.clone())
+    }
+
     /// Ctrl+F 토글(shortcuts에서 consume 후 호출 — 터미널로 ^F 누수 방지). 단일 줄 선택을 검색어로.
     pub(crate) fn toggle_find(&mut self) {
         self.find_open = !self.find_open;
@@ -68,7 +85,7 @@ impl NabiApp {
         let lang = self.lang;
         let count = self.find_match_count();
         let total = self.find_total_cached();
-        let bad_re = self.find_regex && !self.find_query.is_empty() && build_matcher(&self.find_query, true).is_none();
+        let bad_re = self.find_regex && !self.find_query.is_empty() && build_matcher(&self.find_query, true, self.find_whole).is_none();
         let mut open = true;
         let (mut enter, mut forward, mut up, mut down) = (false, false, false, false);
         egui::Window::new(tr(lang, "find.title"))
@@ -92,6 +109,8 @@ impl NabiApp {
                     if ui.small_button("\u{25b2}").clicked() { up = true; }
                     if ui.small_button("\u{25bc}").clicked() { down = true; }
                     ui.toggle_value(&mut self.find_regex, ".*").on_hover_text(tr(lang, "find.regex"));
+                    // 단어 단위 — 에디터 찾기에는 있고 터미널에만 없던 옵션(표면 통일).
+                    ui.toggle_value(&mut self.find_whole, "ab").on_hover_text(tr(lang, "find.whole"));
                     // 스마트케이스 표시: 대문자 있으면 구분(Aa), 없으면 무시(aa).
                     let cs = self.find_query.chars().any(|c| c.is_uppercase());
                     ui.label(if cs { "Aa" } else { "aa" }).on_hover_text(tr(lang, "find.smartcase"));
@@ -178,7 +197,7 @@ impl NabiApp {
     }
 
     fn scroll_focused_match(&mut self, forward: bool) {
-        let Some(m) = build_matcher(&self.find_query, self.find_regex) else { return };
+        let Some(m) = build_matcher(&self.find_query, self.find_regex, self.find_whole) else { return };
         let limit = self.config.terminal.search_limit;
         let Some(p) = self.focused_pane() else { return };
         if let Some(view) = self.orch.panes.read().ok().and_then(|mp| mp.get(&p).cloned()) {
@@ -204,7 +223,7 @@ impl NabiApp {
     }
 
     fn find_total_count(&mut self) -> usize {
-        let Some(m) = build_matcher(&self.find_query, self.find_regex) else { return 0 };
+        let Some(m) = build_matcher(&self.find_query, self.find_regex, self.find_whole) else { return 0 };
         let limit = self.config.terminal.search_limit;
         let Some(p) = self.focused_pane() else { return 0 };
         let Some(view) = self.orch.panes.read().ok().and_then(|mp| mp.get(&p).cloned()) else { return 0 };
@@ -216,7 +235,7 @@ impl NabiApp {
 
     /// 포커스된 pane의 화면에서 현재 검색어 일치 수를 센다(매처=리터럴/정규식).
     fn find_match_count(&mut self) -> usize {
-        let Some(m) = build_matcher(&self.find_query, self.find_regex) else { return 0 };
+        let Some(m) = build_matcher(&self.find_query, self.find_regex, self.find_whole) else { return 0 };
         let Some(p) = self.focused_pane() else { return 0 };
         let Some(view) = self.orch.panes.read().ok().and_then(|mp| mp.get(&p).cloned()) else { return 0 };
         let Ok(model) = view.model.lock() else { return 0 };
@@ -237,15 +256,27 @@ mod tests {
 
     #[test]
     fn matcher_literal_and_regex() {
-        let m = build_matcher("err", false).unwrap();
+        let m = build_matcher("err", false, false).unwrap();
         assert!(m.is_match("an error here"));
         assert_eq!(m.count("err err"), 2);
-        assert!(build_matcher("err", false).unwrap().is_match("ERR")); // 소문자→무시
-        assert!(!build_matcher("ERR", false).unwrap().is_match("err")); // 대문자→구분
-        let re = build_matcher("e.*r", true).unwrap();
+        assert!(build_matcher("err", false, false).unwrap().is_match("ERR")); // 소문자→무시
+        assert!(!build_matcher("ERR", false, false).unwrap().is_match("err")); // 대문자→구분
+        let re = build_matcher("e.*r", true, false).unwrap();
         assert!(re.is_match("eXXr"));
         assert_eq!(re.count("eXr eYr"), 1); // 탐욕적 → 한 번
-        assert!(build_matcher("(", true).is_none()); // 잘못된 정규식
-        assert!(build_matcher("", false).is_none());
+        assert!(build_matcher("(", true, false).is_none()); // 잘못된 정규식
+        assert!(build_matcher("", false, false).is_none());
     }
+
+    #[test]
+    fn whole_word_matches_only_full_words() {
+        let m = build_matcher("err", false, true).unwrap();
+        assert!(m.is_match("an err here"));
+        assert!(!m.is_match("error here")); // 단어 일부는 제외.
+        // 리터럴은 escape되므로 정규식 메타문자가 그대로 글자로 취급된다.
+        let dot = build_matcher("a.b", false, true).unwrap();
+        assert!(dot.is_match("x a.b y"));
+        assert!(!dot.is_match("x axb y"));
+    }
+
 }

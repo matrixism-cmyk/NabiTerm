@@ -17,6 +17,15 @@ pub fn needs_paste_confirm(warn_enabled: bool, text: &str) -> bool {
     warn_enabled && text.contains(['\n', '\r'])
 }
 
+/// 개행 위험(설정 연동) **또는** 유니코드 속임(항상)이면 확인을 받는다.
+///
+/// 속임 경고는 개행 경고와 별개 스위치다 — 개행 확인을 꺼 둔 사람도 눈에 안 보이는
+/// 문자가 섞인 붙여넣기는 봐야 한다(위험의 성격이 다르다).
+pub fn needs_confirm_any(warn_newline: bool, warn_unicode: bool, text: &str) -> bool {
+    needs_paste_confirm(warn_newline, text)
+        || (warn_unicode && !crate::pastedeceive::scan(text).is_empty())
+}
+
 /// 붙여넣기 개행을 CR 한 형태로 정규화한다(`\r\n`·`\n`·`\r` → `\r`). 셸은 Enter=CR을 기대하므로
 /// 멀티라인 붙여넣기 시 줄마다 정확히 한 번 실행되도록 통일한다.
 pub fn normalize_newlines(text: &str) -> String {
@@ -61,5 +70,20 @@ mod tests {
         assert!(needs_paste_confirm(true, "a\r"), "CR도 실행을 부른다");
         assert!(!needs_paste_confirm(true, "one line"));
         assert!(!needs_paste_confirm(false, "a\nb"), "설정이 꺼져 있으면 묻지 않는다");
+    }
+}
+
+#[cfg(test)]
+mod confirm_tests {
+    use super::needs_confirm_any;
+
+    /// 개행 경고를 꺼 둬도 유니코드 속임은 확인을 받는다(위험의 성격이 다르다).
+    #[test]
+    fn unicode_risk_confirms_even_with_newline_warning_off() {
+        let zwsp = "cu\u{200b}rl https://example.com/install.sh";
+        assert!(needs_confirm_any(false, true, zwsp));
+        assert!(!needs_confirm_any(false, false, zwsp)); // 속임 경고까지 끄면 통과.
+        assert!(!needs_confirm_any(false, true, "curl https://example.com")); // 깨끗한 한 줄.
+        assert!(needs_confirm_any(true, false, "a\nb")); // 개행 경고는 그대로.
     }
 }

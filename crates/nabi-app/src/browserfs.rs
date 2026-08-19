@@ -72,31 +72,6 @@ impl Sort {
 }
 
 /// 폴더 우선 + 지정 기준으로 행을 정렬한다(순수 — 테스트 가능).
-/// 간단 glob 매칭(*=임의 길이, ?=한 글자). 대소문자는 호출측에서 맞춘다.
-fn glob_match(pat: &[char], s: &[char]) -> bool {
-    match pat.first() {
-        None => s.is_empty(),
-        Some('*') => glob_match(&pat[1..], s) || (!s.is_empty() && glob_match(pat, &s[1..])),
-        Some('?') => !s.is_empty() && glob_match(&pat[1..], &s[1..]),
-        Some(&c) => !s.is_empty() && s[0] == c && glob_match(&pat[1..], &s[1..]),
-    }
-}
-
-/// 필터가 이름과 맞는지: '*'/'?'가 있으면 glob, 없으면 부분일치(둘 다 대소문자 무시). 빈 필터=전체.
-pub(crate) fn name_matches(filter: &str, name: &str) -> bool {
-    if filter.is_empty() {
-        return true;
-    }
-    let f = filter.to_lowercase();
-    let n = name.to_lowercase();
-    if f.contains('*') || f.contains('?') {
-        glob_match(&f.chars().collect::<Vec<_>>(), &n.chars().collect::<Vec<_>>())
-    } else {
-        // glob이 아니면 공백 토큰 전부 매칭(AND, 순서 무관) — "main rs"로 "main.rs"도 검색(세션 필터와 일관).
-        f.split_whitespace().all(|w| n.contains(w))
-    }
-}
-
 /// 자연 정렬 비교: 숫자 런은 수치로(file2 < file10), 나머지는 대소문자 무시.
 pub(crate) fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     use std::cmp::Ordering;
@@ -223,16 +198,6 @@ mod tests {
         assert!(!super::is_hidden("readme.txt", None)); // 평범한 파일.
     }
 
-    #[test]
-    fn name_matches_glob_and_substr() {
-        use super::name_matches;
-        assert!(name_matches("", "anything"));
-        assert!(name_matches("rs", "main.rs")); // 부분일치.
-        assert!(name_matches("main rs", "main.rs") && !name_matches("main txt", "main.rs")); // 다중 단어 AND.
-        assert!(name_matches("*.rs", "main.rs") && !name_matches("*.rs", "main.txt")); // glob.
-        assert!(name_matches("te?t", "test"));
-        assert!(name_matches("MAIN*", "main.rs")); // 대소문자 무시.
-    }
 
     #[test]
     fn natural_cmp_numbers() {
@@ -288,4 +253,5 @@ mod tests {
         sort_rows(&mut v, Sort::Date, false); // 오래된 것 먼저(100 < 200).
         assert_eq!(v.iter().map(|r| r.name.as_str()).collect::<Vec<_>>(), ["dir", "b.txt", "a.txt"]);
     }
+
 }

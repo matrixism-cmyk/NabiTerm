@@ -93,6 +93,7 @@ mod win {
         context_record: *mut c_void,
     }
 
+    // SAFETY: Win32 예외 필터의 ABI 정의(타입 별칭). 호출 규약을 맞추기 위한 선언이다.
     type Filter = unsafe extern "system" fn(*mut ExceptionPointers) -> i32;
 
     extern "system" {
@@ -100,6 +101,8 @@ mod win {
     }
 
     /// 미처리 네이티브 예외를 crash.log에 기록한 뒤 기존 처리(WER 등)로 넘긴다.
+    // SAFETY: OS가 예외 시점에 유효한 포인터를 준다. as_ref로 null을 걸러 역참조하고,
+    // 기록만 한 뒤 CONTINUE_SEARCH로 기본 처리에 넘긴다(상태를 바꾸지 않는다).
     unsafe extern "system" fn handler(info: *mut ExceptionPointers) -> i32 {
         if let Some(p) = info.as_ref() {
             if let Some(rec) = p.exception_record.as_ref() {
@@ -116,6 +119,7 @@ mod win {
     }
 
     pub fn install() {
+        // SAFETY: 프로세스 전역 필터를 설치한다. handler는 'static 함수 포인터라 항상 유효하다.
         unsafe {
             SetUnhandledExceptionFilter(Some(handler));
         }

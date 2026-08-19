@@ -7,6 +7,7 @@ pub mod catalog;
 mod catalog2;
 mod catalog3;
 mod catalog4;
+mod catalog5;
 mod catalog_agent;
 mod catalog_editor;
 mod catalog_editor2;
@@ -109,6 +110,7 @@ fn os_locale() -> Option<String> {
     }
     let mut buf = [0u16; MAX];
     // 반환값은 NUL을 포함한 문자 수(실패 시 0).
+    // SAFETY: buf는 MAX개짜리 스택 배열이고 같은 길이를 인자로 넘긴다 — API가 그 이상 쓰지 않는다.
     let n = unsafe { GetUserDefaultLocaleName(buf.as_mut_ptr(), MAX as i32) };
     if n <= 1 {
         return None;

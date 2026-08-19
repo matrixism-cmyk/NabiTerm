@@ -98,6 +98,7 @@ impl NabiApp {
             })
             .is_some();
         if found {
+            self.restore_xfer_queue(id); // 재시작 전 남아 있던 대기 큐를 이 연결로 되살린다.
             self.orch.send(nabi_proto::Command::SftpList { id, path: listpath });
             ctx.request_repaint();
         }

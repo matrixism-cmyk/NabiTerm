@@ -163,6 +163,26 @@ pub fn to_crlf(text: &str) -> String {
     to_lf(text).replace('\n', "\r\n")
 }
 
+/// 중복으로 나타난 줄만 남긴다(각 줄은 원래 순서·횟수 그대로).
+///
+/// `keep_unique`의 정확한 반대다. 로그에서 반복 발생 항목만 뽑거나, 두 목록을 이어 붙여
+/// 교집합을 볼 때 쓴다(고유 줄만 남기는 기능은 있었는데 그 반대가 없었다).
+pub fn keep_duplicates(text: &str) -> String {
+    let lines: Vec<&str> = text.split('\n').collect();
+    let mut count = std::collections::HashMap::new();
+    for l in &lines {
+        *count.entry(*l).or_insert(0u32) += 1;
+    }
+    lines.iter().filter(|l| count[**l] > 1).copied().collect::<Vec<_>>().join("\n")
+}
+
+/// 각 줄을 바로 아래에 한 번 더 복제한다(선택이 있으면 그 구간만 — 호출측 규칙).
+///
+/// 설정 파일이나 표 데이터를 손으로 늘릴 때 쓰는 기본 편집 동작인데 빠져 있었다.
+pub fn duplicate_lines(text: &str) -> String {
+    text.split('\n').flat_map(|l| [l, l]).collect::<Vec<_>>().join("\n")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -230,4 +250,19 @@ mod tests {
         assert_eq!(squeeze_blanks("a\n  \n\t\nb"), "a\n\nb"); // 공백만 있는 줄도 빈 줄.
         assert_eq!(squeeze_blanks("a\nb"), "a\nb"); // 빈 줄 없으면 그대로.
     }
+    /// 중복 줄만 남기기 — 원래 순서와 등장 횟수를 그대로 지킨다.
+    #[test]
+    fn keep_duplicates_is_inverse_of_keep_unique() {
+        let t = "a\nb\na\nc\nb";
+        assert_eq!(super::keep_duplicates(t), "a\nb\na\nb");
+        assert_eq!(super::keep_unique(t), "c");
+        assert_eq!(super::keep_duplicates("x\ny"), ""); // 전부 고유하면 빈 결과.
+    }
+
+    #[test]
+    fn duplicate_lines_doubles_each_line() {
+        assert_eq!(super::duplicate_lines("a\nb"), "a\na\nb\nb");
+        assert_eq!(super::duplicate_lines("solo"), "solo\nsolo");
+    }
+
 }

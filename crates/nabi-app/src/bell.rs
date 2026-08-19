@@ -8,6 +8,8 @@ pub(crate) fn system_beep() {
     extern "system" {
         fn MessageBeep(u_type: u32) -> i32;
     }
+    // SAFETY: 인자 없는 Win32 호출. MessageBeep은 상수 하나만 받고 포인터를 다루지 않으며,
+    // 실패해도 0을 돌려줄 뿐 프로세스 상태를 건드리지 않는다.
     unsafe {
         let _ = MessageBeep(0x30); // MB_ICONEXCLAMATION — 주의 환기 톤.
     }

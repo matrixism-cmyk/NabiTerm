@@ -25,6 +25,8 @@ pub struct EditorConfig {
     pub show_whitespace: bool,
     /// 탭 폭(공백 칸 수).
     pub tab_size: usize,
+    /// "줄바꿈" 변환이 쓸 칸 수. 80은 관례일 뿐이고 요즘은 100·120도 흔하다.
+    #[serde(default = "default_wrap_col")] pub wrap_col: usize,
     /// 탭 대신 공백으로 들여쓰기.
     pub indent_spaces: bool,
     /// 현재 줄 강조.
@@ -55,6 +57,7 @@ impl Default for EditorConfig {
             word_wrap: false,
             show_whitespace: false,
             tab_size: 4,
+            wrap_col: 80,
             indent_spaces: true,
             highlight_current_line: true,
             trim_on_save: false,
@@ -66,3 +69,6 @@ impl Default for EditorConfig {
         }
     }
 }
+
+/// 줄바꿈 기본 칸 수(오래 쓰인 관례값).
+fn default_wrap_col() -> usize { 80 }

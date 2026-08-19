@@ -70,7 +70,7 @@ pub(crate) fn keyboard_nav(
     let filt = filter.to_lowercase();
     let vis: Vec<&Row> = entries
         .iter()
-        .filter(|r| crate::browserfs::name_matches(&filt, &r.name))
+        .filter(|r| crate::browserfilter::name_matches(&filt, &r.name))
         .collect();
     let cur = selected
         .as_ref()

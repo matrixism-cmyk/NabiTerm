@@ -110,6 +110,8 @@ fn register_dll_dir(dir: &Path) {
     use windows::Win32::System::LibraryLoader::SetDllDirectoryW;
     let _ = std::fs::create_dir_all(dir);
     let h = HSTRING::from(dir.to_string_lossy().as_ref());
+    // SAFETY: HSTRING이 NUL로 끝나는 UTF-16 버퍼를 보증하고 호출이 끝날 때까지 살아 있다.
+    // SetDllDirectoryW는 문자열을 복사해 보관한다.
     unsafe {
         let _ = SetDllDirectoryW(&h);
     }

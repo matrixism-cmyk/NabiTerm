@@ -10,13 +10,14 @@ use nabi_i18n::tr;
 impl NabiApp {
     pub(crate) fn run_palette(&mut self, ctx: &egui::Context, a: PaletteAction) {
         use crate::arrange::ArrangeMode;
+        // 메뉴에도 있는 명령은 메뉴 구현 하나만 쓴다 — 같은 기능을 두 곳에서 고치다
+        // 한쪽만 바뀌는 드리프트를 없앤다(19건).
+        if let Some(m) = crate::palconv::to_menu(&a) {
+            self.apply(ctx, m);
+            return;
+        }
         match a {
-            PaletteAction::NewLocal(s) => self.spawn_local(s),
-            PaletteAction::NewAiProfile(i) => self.spawn_ai_profile(i),
-            PaletteAction::AiProfiles => self.ai_prof_open = true,
             PaletteAction::OpenRecentFile(p) => self.open_editor_local(p),
-            PaletteAction::ConnectSession(s) => self.connect_saved(s),
-            PaletteAction::OpenSftp(s) => self.open_sftp_saved(s, false),
             PaletteAction::DuplicateTab => self.duplicate_focused(),
             PaletteAction::ReopenClosed => self.reopen_closed(),
             PaletteAction::CloseOthers => self.close_other_tabs(),
@@ -28,11 +29,7 @@ impl NabiApp {
             PaletteAction::ZoomPane => self.toggle_pane_zoom(),
             PaletteAction::PrevPrompt => self.jump_prompt(false),
             PaletteAction::NextPrompt => self.jump_prompt(true),
-            PaletteAction::ResetTerm => self.reset_focused(),
             PaletteAction::QuickConnect => self.open_quick_connect(),
-            PaletteAction::ToggleBroadcast => self.broadcast = !self.broadcast,
-            PaletteAction::TearOff => self.tear_off_focused(),
-            PaletteAction::DockFloat => self.dock_float_focused(),
             PaletteAction::ArrangeTile => self.pending_arrange = Some(ArrangeMode::Tile),
             PaletteAction::ArrangeCascade => self.pending_arrange = Some(ArrangeMode::Cascade),
             PaletteAction::ToggleBrowser => self.toggle_browser(),
@@ -48,7 +45,6 @@ impl NabiApp {
                 self.config.appearance.show_statusbar = !self.config.appearance.show_statusbar;
                 let _ = nabi_config::save(&self.config_path, &self.config); // 다른 토글과 동일하게 영속.
             }
-            PaletteAction::OpenSettings => self.settings_open = true,
             // 스케줄·텔레그램은 한 페이지('자동화')로 합쳌다 — 키로 찾아 눈다(인덱스 하드코딩 금지).
             PaletteAction::OpenTelegram | PaletteAction::OpenSchedule => {
                 self.settings_open = true;
@@ -61,7 +57,6 @@ impl NabiApp {
             PaletteAction::LspHover => self.lsp_hover(),
             PaletteAction::LspRefs => self.lsp_refs(),
             PaletteAction::LspFormat => { if let Some(p) = self.focused_pane() { self.lsp_format_for(p); } }
-            PaletteAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             PaletteAction::OpenSync => self.open_sync_dialog(),
             PaletteAction::HandoffLast => {
                 if let Some(p) = self.focused_pane() {
@@ -85,12 +80,9 @@ impl NabiApp {
                 self.about_open = true;
                 ctx.data_mut(|d| d.insert_temp(egui::Id::new("help_cat"), 3usize)); // AI 제어 페이지.
             }
-            PaletteAction::OpenVault => self.vault_unlock_open = true,
             PaletteAction::OpenKnownHosts => self.known_hosts_open = true,
             PaletteAction::SaveOutput => self.save_focused_output(),
             PaletteAction::EditScrollback => self.edit_scrollback_in_pad(),
-            PaletteAction::OpenForward => self.open_forward(),
-            PaletteAction::SaveWorkspace => self.save_workspace(),
             PaletteAction::RestoreWorkspace => {
                 let b = self.dock_browser_panes();
                 self.restore_workspace(b);
@@ -110,10 +102,6 @@ impl NabiApp {
             PaletteAction::ZoomIn => self.set_font_size(self.font_size + 1.0),
             PaletteAction::ZoomOut => self.set_font_size(self.font_size - 1.0),
             PaletteAction::SetLang(l) => self.lang = l,
-            PaletteAction::SendSnippet(cmd) => self.send_snippet(&cmd),
-            PaletteAction::AiDashboard => self.ai_dash_open = !self.ai_dash_open,
-            PaletteAction::ToggleFloatOnTop => self.floating_on_top = !self.floating_on_top,
-            PaletteAction::CopyLastOutput => self.copy_last_output(ctx),
             PaletteAction::JumpDir(d) => self.spawn_local_at(d),
             PaletteAction::WorktreeCreate => self.open_worktree_prompt(),
             PaletteAction::WorktreeList => self.open_worktree_list(),
@@ -145,7 +133,6 @@ impl NabiApp {
                 let msg = format!("{} {n}", tr(self.lang, "cmd.savedall"));
                 self.notify = Some((msg, std::time::Instant::now()));
             }
-            PaletteAction::NewPad => self.open_empty_pad(),
             PaletteAction::OpenFileDialog => {
                 if let Some(fp) = rfd::FileDialog::new().pick_file() {
                     self.open_editor_local(fp);
@@ -156,6 +143,9 @@ impl NabiApp {
             PaletteAction::ReplaceInFiles => self.replace_open = true,
             PaletteAction::DirTree => self.open_dir_tree(),
             PaletteAction::DirStats => self.open_dir_stats(),
+            // 위 to_menu가 이미 메뉴 구현으로 보낸 항목들. 여기까지 왔다면 변환 표에서
+            // 빠진 새 명령이라는 뜻이라 디버그 빌드에서 바로 드러나게 한다.
+            other => debug_assert!(crate::palconv::to_menu(&other).is_some(), "팔레트 명령 미처리"),
         }
     }
 

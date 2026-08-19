@@ -106,6 +106,12 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         tr(lang, "settings.warnpaste"),
         &mut cfg.terminal.warn_paste_newline,
     );
+    // 개행 경고와 별개 스위치 — 눈에 보이지 않는 문자는 개행 확인을 꺼 둔 사람도 봐야 한다.
+    chk(
+        ui,
+        tr(lang, "settings.warnpasteunicode"),
+        &mut cfg.terminal.warn_paste_unicode,
+    );
 
     // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
     ui.label(tr(lang, "settings.shellinteg"));
@@ -192,6 +198,11 @@ pub(crate) fn transfer_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
             }
         }
     });
+    ui.end_row();
+    // 업로드 권한 정규화 — 빈 값=끄기(기본). auto면 스크립트에 실행 비트.
+    ui.label(tr(lang, "settings.uploadmode"));
+    ui.add(egui::TextEdit::singleline(&mut cfg.terminal.sftp_upload_mode).desired_width(120.0).hint_text("off / auto / 644"))
+        .on_hover_text(tr(lang, "settings.uploadmodehint"));
     ui.end_row();
     ui.label(tr(lang, "settings.downloadask"));
     ui.checkbox(&mut cfg.terminal.download_ask, tr(lang, "settings.downloadaskhint"));

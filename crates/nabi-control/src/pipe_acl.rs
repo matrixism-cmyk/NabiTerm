@@ -42,6 +42,8 @@ struct SecurityAttributes {
 
 /// 현재 프로세스 토큰의 사용자 SID 문자열("S-1-5-21-…").
 pub fn current_user_sid() -> Option<String> {
+    // SAFETY: 토큰 핸들과 크기 변수는 모두 스택 지역이고, 각 호출의 반환값을 확인한 뒤
+    // 다음 단계로 넘어간다(실패 시 조기 반환).
     unsafe {
         let mut token = 0isize;
         if OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token) == 0 {
@@ -90,6 +92,8 @@ impl PipeSecurity {
         // P=보호(상속 차단), 현재 사용자만 GA.
         let sddl: Vec<u16> = format!("D:P(A;;GA;;;{sid})").encode_utf16().chain([0]).collect();
         let mut sd: *mut c_void = std::ptr::null_mut();
+        // SAFETY: sddl은 NUL로 끝나는 UTF-16이고, sd는 스택 지역 포인터의 주소다. 성공 여부와
+        // sd null 여부를 아래에서 모두 확인한 뒤에만 사용한다.
         let ok = unsafe {
             ConvertStringSecurityDescriptorToSecurityDescriptorW(
                 sddl.as_ptr(),
@@ -119,6 +123,8 @@ impl PipeSecurity {
 impl Drop for PipeSecurity {
     fn drop(&mut self) {
         if !self.sa.descriptor.is_null() {
+            // SAFETY: descriptor는 ConvertStringSecurityDescriptorToSecurityDescriptorW가 준 것이고,
+            // null이 아님을 위에서 확인했다. Drop은 한 번만 돌므로 이중 해제가 없다.
             unsafe { LocalFree(self.sa.descriptor) };
         }
     }

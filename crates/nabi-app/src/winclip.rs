@@ -29,6 +29,8 @@ pub(crate) fn build_hdrop(paths: &[PathBuf]) -> Option<windows::Win32::Foundatio
     list.push(0);
     let df = std::mem::size_of::<DROPFILES>();
     let bytes = df + list.len() * 2;
+    // SAFETY: GlobalAlloc이 준 bytes 크기 블록에만 쓴다 — DROPFILES 헤더(df) + 목록(list)이
+    // 정확히 bytes다. ptr이 null이면 쓰기 전에 반환하고, 복사량도 list.len()로 제한한다.
     unsafe {
         let hg = GlobalAlloc(GMEM_MOVEABLE, bytes).ok()?;
         let ptr = GlobalLock(hg);
@@ -50,6 +52,8 @@ pub(crate) fn copy_paths(paths: &[PathBuf]) -> bool {
     let Some(hg) = build_hdrop(paths) else {
         return false;
     };
+    // SAFETY: OpenClipboard 성공을 확인한 뒤에만 이어 간다. SetClipboardData가 성공하면
+    // hglobal 소유권이 클립보드로 넘어가므로 우리가 해제하지 않는다(이중 해제 없음).
     unsafe {
         if OpenClipboard(None).is_err() {
             return false;
@@ -65,6 +69,8 @@ pub(crate) fn copy_paths(paths: &[PathBuf]) -> bool {
 /// 클립보드의 CF_HDROP 파일 목록을 읽는다(탐색기에서 복사한 파일 → nabi 붙여넣기).
 pub(crate) fn paste_paths() -> Vec<PathBuf> {
     let mut out = Vec::new();
+    // SAFETY: 클립보드는 열기→읽기→닫기를 이 블록 안에서 끝낸다. DragQueryFileW에 넘기는
+    // 버퍼는 같은 호출이 알려 준 길이로 미리 잡고, 실패 시 조기 반환한다.
     unsafe {
         if OpenClipboard(None).is_err() {
             return out;

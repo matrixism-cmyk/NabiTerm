@@ -11,11 +11,32 @@ pub mod raw;
 mod recurse;
 pub mod session;
 mod xfer;
+pub mod uploadmode;
 
 pub use fs::SftpFs;
 pub use hashcheck::SFTP_VERIFY_HASH;
 pub use recurse::DirProgress;
 pub use session::connect_sftp;
+
+/// 업로드 권한 정규화 설정(전역, 빈 문자열=끄기). UI 설정에서 즉시 반영한다.
+///
+/// 문자열 그대로 두는 이유: `auto`와 8진수 리터럴을 한 칸에서 받기 때문이다
+/// (`uploadmode::mode_for`가 해석한다).
+pub static UPLOAD_MODE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
+
+/// 업로드 권한 정규화 설정을 적용한다(설정 창에서 저장할 때).
+pub fn set_upload_mode(setting: &str) {
+    if let Ok(mut w) = UPLOAD_MODE.write() {
+        if *w != setting {
+            *w = setting.to_string();
+        }
+    }
+}
+
+/// 현재 설정값(잠금 실패 시 끄기로 간주 — 권한 설정은 실패해도 전송엔 지장이 없다).
+pub fn upload_mode() -> String {
+    UPLOAD_MODE.read().map(|r| r.clone()).unwrap_or_default()
+}
 
 /// SFTP 파일명 인코딩 설정을 적용한다(설정 문자열 → 벤더 패치 charset).
 ///

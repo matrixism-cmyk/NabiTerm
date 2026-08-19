@@ -31,6 +31,8 @@ pub(crate) fn hwnd_of(cc: &eframe::CreationContext<'_>) -> Option<isize> {
 
 /// OLE 초기화(드래그-아웃에 필요). winit도 호출하나 방어적으로 한 번 더(멱등).
 pub(crate) fn init_ole() {
+    // SAFETY: OleInitialize는 인자 없이 현재 스레드를 초기화한다. 여러 번 불러도 안전하며(멱등),
+    // 실패해도 무시한다.
     unsafe {
         let _ = OleInitialize(None);
     }
@@ -41,6 +43,8 @@ pub(crate) fn cursor_client_px(hwnd: isize) -> Option<(i32, i32)> {
     use windows::Win32::Foundation::{HWND, POINT};
     use windows::Win32::Graphics::Gdi::ScreenToClient;
     use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
+    // SAFETY: 모두 스택 지역 POINT의 가변 참조를 넘기고, 각 호출의 성공 여부를 확인한 뒤에만
+    // 값을 쓴다. hwnd는 winit이 준 살아 있는 창 핸들이다.
     unsafe {
         let mut p = POINT::default();
         GetCursorPos(&mut p).ok()?;
@@ -70,6 +74,8 @@ fn is_hdrop(f: &FORMATETC) -> bool {
 
 impl IDataObject_Impl for FileData_Impl {
     fn GetData(&self, pformatetcin: *const FORMATETC) -> Result<STGMEDIUM> {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         let f = unsafe { &*pformatetcin };
         if !is_hdrop(f) {
             return Err(DV_E_FORMATETC.into());
@@ -88,6 +94,8 @@ impl IDataObject_Impl for FileData_Impl {
     }
 
     fn QueryGetData(&self, pformatetc: *const FORMATETC) -> HRESULT {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         if is_hdrop(unsafe { &*pformatetc }) {
             S_OK
         } else {
@@ -97,6 +105,7 @@ impl IDataObject_Impl for FileData_Impl {
 
     fn GetCanonicalFormatEtc(&self, _i: *const FORMATETC, pout: *mut FORMATETC) -> HRESULT {
         if !pout.is_null() {
+            // SAFETY: 바로 위에서 null이 아님을 확인했고, OLE가 준 out 파라미터는 호출 동안 쓰기 가능하다.
             unsafe { (*pout).ptd = std::ptr::null_mut() };
         }
         DATA_S_SAMEFORMATETC
@@ -115,6 +124,7 @@ impl IDataObject_Impl for FileData_Impl {
             lindex: -1,
             tymed: TYMED_HGLOBAL.0 as u32,
         };
+        // SAFETY: 슬라이스는 포인터+길이로 함께 전달되고, 셸이 내용을 복사해 열거자를 만든다.
         unsafe { SHCreateStdEnumFmtEtc(&[fmt]) }
     }
 
@@ -156,6 +166,8 @@ pub(crate) fn drag_out(paths: &[PathBuf]) -> bool {
     let data: IDataObject = FileData { paths: paths.to_vec() }.into();
     let src: IDropSource = DropSrc.into();
     let mut effect = DROPEFFECT::default();
+    // SAFETY: data·src는 이 함수가 잡고 있는 COM 객체라 호출이 끝날 때까지 살아 있다.
+    // effect는 스택 지역의 가변 참조다. OLE 초기화는 init_ole이 보장한다.
     let hr = unsafe { DoDragDrop(&data, &src, DROPEFFECT_COPY, &mut effect) };
     hr == DRAGDROP_S_DROP
 }

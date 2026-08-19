@@ -94,6 +94,8 @@ pub fn patch(exe: &Path) -> Result<(), String> {
         grp.extend_from_slice(&(i as u16 + 1).to_le_bytes());
     }
     let wide: Vec<u16> = exe.as_os_str().encode_wide().chain([0]).collect();
+    // SAFETY: wide는 NUL로 끝나는 UTF-16이고, 자원 갱신 핸들은 이 블록 안에서 열고 닫는다.
+    // 실패 시 조기 반환해 열린 핸들을 남기지 않는다.
     unsafe {
         let h = BeginUpdateResourceW(wide.as_ptr(), 0);
         if h == 0 {

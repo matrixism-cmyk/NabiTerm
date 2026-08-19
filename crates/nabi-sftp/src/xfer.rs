@@ -5,7 +5,7 @@
 
 use crate::fs::{throttle_delay, SftpFs};
 use crate::pipeline::{depth, download_stream, resume_offset, upload_stream};
-use russh_sftp::protocol::OpenFlags;
+use russh_sftp::protocol::{FileAttributes, OpenFlags};
 use std::io::{Read, Seek, Write};
 
 impl SftpFs {
@@ -182,9 +182,16 @@ impl SftpFs {
                 }
             }
         }
-        raw.rename(&part, remote).await
+        raw.rename(&part, remote).await?;
+        // 권한 정규화(옵션, 기본 꺼짐): 올린 스크립트에 실행 비트를 준다.
+        // 실패는 무시한다 — 전송은 이미 끝났고, SETSTAT을 막는 서버도 있다.
+        if let Some(mode) = crate::uploadmode::mode_for(&crate::upload_mode(), remote) {
+            let _ = raw.setstat(remote, FileAttributes { permissions: Some(mode), ..Default::default() }).await;
+        }
+        Ok(())
         // 업로드 mtime 보존은 하지 않는다: 일부 서버(Windows OpenSSH sftp-server)가 SETSTAT(mtime)에서
         // 파일을 0바이트로 truncate하는 버그가 있어 데이터 손실 위험. 다운로드 mtime 보존만 제공한다.
+        // 권한만 담은 SETSTAT은 chmod 기능에서 이미 쓰고 있어(같은 요청) 그 위험이 없다.
     }
 
     /// 올리기 전에 여유 공간을 확인한다(statvfs 지원 서버만). 전송 도중 ENOSPC로 죽는 대신

@@ -58,6 +58,8 @@ pub fn canon_uri(uri: &str) -> String {
     if s.len() > 9 && s.starts_with("file:///") && b[9] == b':' && b[8].is_ascii_alphabetic() {
         let mut out = s.clone();
         // 안전: 8번째 바이트는 ASCII 알파벳임을 위에서 확인.
+        // SAFETY: 바꾸는 바이트는 위에서 ASCII 알파벳임을 확인했고, 결과도 ASCII라 UTF-8 불변식이
+        // 유지된다(멀티바이트 경계를 건드리지 않는다).
         unsafe { out.as_bytes_mut()[8] = b[8].to_ascii_lowercase() };
         return out;
     }

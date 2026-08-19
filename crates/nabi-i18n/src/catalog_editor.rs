@@ -92,7 +92,7 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("editor.striphtml", "Strip HTML tags", "HTML 태그 제거", "HTMLタグを除去"),
     ("editor.hexdump", "Hex dump", "HEX 덤프", "HEXダンプ"),
     ("editor.stripansi", "Strip ANSI escapes", "ANSI 이스케이프 제거", "ANSIエスケープ除去"),
-    ("editor.hardwrap", "Hard wrap (80 cols)", "줄바꿈(80칸)", "ハードラップ(80桁)"),
+    ("editor.hardwrap", "Hard wrap (set width)", "줄바꿈(설정 폭)", "ハードラップ(設定幅)"),
     ("editor.unwrap", "Unwrap paragraphs", "문단 줄바꿈 풀기", "段落の折返し解除"),
     ("editor.sortnum", "Sort lines (numeric)", "줄 정렬(숫자값)", "行を並べ替え(数値)"),
     ("editor.listmenu", "List/quote", "목록/인용", "リスト/引用"),

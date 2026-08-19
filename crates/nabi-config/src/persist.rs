@@ -43,6 +43,8 @@ fn replace_file(tmp: &Path, path: &Path) -> std::io::Result<()> {
     }
     let dst: Vec<u16> = path.as_os_str().encode_wide().chain([0]).collect();
     let src: Vec<u16> = tmp.as_os_str().encode_wide().chain([0]).collect();
+    // SAFETY: dst·src는 NUL로 끝나는 UTF-16 벡터이고 호출 동안 살아 있다. 나머지 인자는
+    // 규격상 선택이라 null을 넘긴다(백업 파일·예약 필드 없음).
     let ok = unsafe {
         ReplaceFileW(
             dst.as_ptr(),

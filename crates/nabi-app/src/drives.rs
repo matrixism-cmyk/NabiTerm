@@ -22,6 +22,7 @@ pub(crate) fn drive_roots() -> Vec<String> {
     extern "system" {
         fn GetLogicalDrives() -> u32;
     }
+    // SAFETY: 인자 없는 Win32 호출. 비트마스크 한 개를 돌려줄 뿐 포인터를 다루지 않는다.
     let mask = unsafe { GetLogicalDrives() };
     (0u8..26)
         .filter(|i| mask & (1 << i) != 0)
@@ -37,6 +38,8 @@ pub(crate) fn disk_space(path: &str) -> Option<DiskSpace> {
     }
     let wide: Vec<u16> = path.encode_utf16().chain(std::iter::once(0)).collect();
     let (mut avail, mut total, mut free) = (0u64, 0u64, 0u64);
+    // SAFETY: wide는 NUL로 끝나는 UTF-16 버퍼이고 호출 동안 살아 있다. 나머지 세 인자는
+    // 스택 지역 u64의 가변 참조라 정렬·크기가 맞고 겹치지 않는다.
     let ok = unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut avail, &mut total, &mut free) };
     (ok != 0 && total > 0).then_some(DiskSpace { total, free })
 }

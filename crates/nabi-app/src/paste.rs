@@ -13,6 +13,12 @@ impl NabiApp {
         self.clip_history.truncate(30);
     }
 
+    /// 붙여넣기 전에 확인을 받아야 하는가 — 개행(설정 연동) 또는 유니코드 속임.
+    fn paste_needs_confirm(&self, text: &str) -> bool {
+        let t = &self.config.terminal;
+        nabi_render::paste::needs_confirm_any(t.warn_paste_newline, t.warn_paste_unicode, text)
+    }
+
     /// pane이 bracketed paste 모드인가(모르면 false).
     fn pane_bracketed(&self, pane: nabi_types::PaneId) -> bool {
         self.orch
@@ -35,8 +41,8 @@ impl NabiApp {
         }
         let Some(pane) = self.focused_pane() else { return };
         let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
-        // 여러 줄 붙여넣기는 설정 시 확인 대화상자로 미룬다(붙여넣기 안전).
-        if self.config.terminal.warn_paste_newline && text.contains('\n') {
+        // 확인 판단은 공용 함수 하나로 — 입구마다 규칙이 다르면 안전장치가 아니다.
+        if self.paste_needs_confirm(&text) {
             self.pending_paste = Some((pane, data));
             return;
         }
@@ -53,7 +59,7 @@ impl NabiApp {
             return;
         }
         let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
-        if nabi_render::paste::needs_paste_confirm(self.config.terminal.warn_paste_newline, &text) {
+        if self.paste_needs_confirm(&text) {
             self.pending_paste = Some((pane, data));
             return;
         }
@@ -68,20 +74,23 @@ impl NabiApp {
         self.paste_text_to_focused(text);
     }
 
-    /// 키보드 직접 붙여넣기(Event::Paste, 예: Ctrl+V)도 여러 줄이고 경고 설정이 켜져 있으면
-    /// 터미널로 새기 전에 가로채 확인 경로로 보낸다. 입력 위젯/팝업 포커스 중에는 양보한다.
+    /// 키보드 직접 붙여넣기(Event::Paste, 예: Ctrl+V)를 **확인이 필요한 내용이면** 가로챈다.
+    /// 입력 위젯/팝업 포커스 중에는 양보한다.
+    ///
+    /// 판단은 `paste_needs_confirm` 하나로 한다. 예전엔 여기만 "개행이 있을 때"라는 **다른**
+    /// 조건을 썼는데, 그 탓에 한 줄짜리 붙여넣기는 확인을 전혀 거치지 않았다 —
+    /// 유니코드 속임(제로폭·방향 재정의)은 대부분 한 줄이라 정확히 이 구멍으로 새어 나갔다.
+    /// 안전장치는 입구마다 조건이 같아야 안전장치다.
     pub(crate) fn intercept_keyboard_paste(&mut self, ctx: &egui::Context) {
-        if !self.config.terminal.warn_paste_newline
-            || ctx.memory(|m| m.focused().is_some()) || egui::Popup::is_any_open(ctx)
-        {
+        if ctx.memory(|m| m.focused().is_some()) || egui::Popup::is_any_open(ctx) {
             return;
         }
-        let multiline = ctx.input(|i| {
+        let risky = ctx.input(|i| {
             i.events
                 .iter()
-                .any(|e| matches!(e, egui::Event::Paste(s) if s.contains('\n')))
+                .any(|e| matches!(e, egui::Event::Paste(s) if self.paste_needs_confirm(s)))
         });
-        if !multiline {
+        if !risky {
             return;
         }
         // 포커스가 터미널 pane일 때만(원격 SFTP 패널 제외).
@@ -96,36 +105,56 @@ impl NabiApp {
         self.paste_to_focused();
     }
 
-    /// 여러 줄 붙여넣기 확인 대화상자(Paste/Cancel·Esc 취소).
+    /// 붙여넣기 확인 대화상자 — 줄 수·미리보기 + **유니코드 속임 경고**(있으면).
+    ///
+    /// 속임이 있으면 "위험 문자 제거 후 붙여넣기"를 함께 준다. 자동으로 지울 수 있는 것은
+    /// 보이지 않는 문자뿐이라(호모글리프는 판단 불가) 제거 후에도 경고 문구는 남겨 둔다.
     pub(crate) fn show_paste_confirm(&mut self, ctx: &egui::Context) {
         let Some((pane, data)) = self.pending_paste.clone() else {
             return;
         };
         let lang = self.lang;
         let lines = data.iter().filter(|&&b| b == b'\n').count() + 1;
-        let mut paste = false;
-        let mut cancel = false;
+        let clean = String::from_utf8_lossy(&data).replace("\x1b[200~", "").replace("\x1b[201~", "");
+        let risks = nabi_render::pastedeceive::scan(&clean);
+        let (mut paste, mut strip, mut cancel) = (false, false, false);
         // 분리 창 위로 확실히 띄운다 — 공통 Foreground 모달(z-order 일관화).
         crate::modal::foreground_modal(ctx, "paste_confirm", |ui| {
-            ui.heading(nabi_i18n::tr(lang, "paste.title"));
-            ui.label(format!("{} ({} lines)", nabi_i18n::tr(lang, "paste.body"), lines));
-            let clean = String::from_utf8_lossy(&data).replace("\x1b[200~", "").replace("\x1b[201~", "");
+            // 한 줄인데 "여러 줄" 문구가 나오면 안 된다 — 속임 문자 경고는 한 줄에서도 뜬다.
+            ui.heading(nabi_i18n::tr(lang, if lines > 1 { "paste.title" } else { "paste.title.one" }));
+            if lines > 1 {
+                ui.label(format!("{} ({} lines)", nabi_i18n::tr(lang, "paste.body"), lines));
+            }
+            if !risks.is_empty() {
+                ui.add_space(4.0);
+                ui.colored_label(crate::theme_ui::ERR, format!("\u{26a0} {}", nabi_i18n::tr(lang, "paste.risk.title")));
+                for r in &risks {
+                    ui.label(format!("\u{2022} {}", nabi_i18n::tr(lang, r.key())));
+                }
+                ui.add_space(4.0);
+            }
             let preview: String = clean.lines().next().unwrap_or("").chars().take(60).collect();
             ui.monospace(preview);
             ui.horizontal(|ui| {
                 if ui.button(nabi_i18n::tr(lang, "paste.do")).clicked() { paste = true; }
+                if !risks.is_empty() && ui.button(nabi_i18n::tr(lang, "paste.strip")).clicked() { strip = true; }
                 if ui.button(nabi_i18n::tr(lang, "qc.cancel")).clicked() { cancel = true; }
             });
             if ui.input(|i| i.key_pressed(egui::Key::Escape)) { cancel = true; }
         });
-        if paste {
-            self.orch.send(nabi_proto::Command::WriteInput {
-                pane,
-                data: bytes::Bytes::from(data),
-            });
+        if paste || strip {
+            // 제거를 골랐으면 보이지 않는 문자만 걷어낸 바이트로 보낸다.
+            let out = if strip { strip_invisible(&data) } else { data };
+            self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(out) });
             self.pending_paste = None;
         } else if cancel {
             self.pending_paste = None;
         }
     }
+}
+
+/// 붙여넣기 바이트에서 보이지 않는 문자(방향 재정의·제로폭)만 제거한다.
+/// bracketed 마커는 ASCII라 그대로 살아남는다.
+fn strip_invisible(data: &[u8]) -> Vec<u8> {
+    nabi_render::pastedeceive::strip(&String::from_utf8_lossy(data)).into_bytes()
 }

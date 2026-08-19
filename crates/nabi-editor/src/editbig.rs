@@ -23,6 +23,8 @@ impl BigFile {
     /// 파일을 매핑하고 백그라운드 줄 인덱싱을 시작한다(실패 시 None).
     pub fn open(path: &Path) -> Option<BigFile> {
         let file = std::fs::File::open(path).ok()?;
+        // SAFETY: 메모리 매핑은 매핑 도중 다른 프로세스가 파일을 줄이면 UB다. 대용량 뷰어는
+        // 읽기 전용으로만 열고 우리가 쓰지 않으며, 편집하려면 일반 경로로 다시 연다.
         let map = Arc::new(unsafe { Mmap::map(&file).ok()? });
         let bytes = map.len();
         let enc = crate::editload::detect_encoding(&map[..bytes.min(64 * 1024)]);

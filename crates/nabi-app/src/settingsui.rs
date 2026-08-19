@@ -104,6 +104,10 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     ui.label(tr(lang, "editor.tabsize"));
     ui.add(egui::Slider::new(&mut e.tab_size, 1..=8));
     ui.end_row();
+    // '줄바꿈' 변환이 쓸 폭 — 예전엔 80으로 박혀 있었다.
+    ui.label(tr(lang, "editor.wrapcol"));
+    ui.add(egui::Slider::new(&mut e.wrap_col, 40..=200));
+    ui.end_row();
     crate::editorsyntax::settings_ui(ui, e, lang);
 }
 

@@ -118,11 +118,7 @@ impl NabiApp {
         }
         let font_size = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
         let blink_on = self.blink_on();
-        let find = if self.find_open && !self.find_query.is_empty() {
-            Some(self.find_query.clone())
-        } else {
-            None
-        };
+        let find = self.find_highlight(); // 탭과 같은 규칙(정규식·단어 단위는 강조 생략).
         let mut zoom = None;
         let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산(차용 충돌 회피).
         // 명령 바가 쓰는 설정 문자열도 미리 복사한다(아래에서 self를 가변 차용하므로).
@@ -187,7 +183,7 @@ impl NabiApp {
             return;
         }
         let blink_on = self.blink_on();
-        let find = (self.find_open && !self.find_query.is_empty()).then(|| self.find_query.clone());
+        let find = self.find_highlight();
         let mut closed = Vec::new();
         for pane in self.docked_float.clone() {
             let title = self

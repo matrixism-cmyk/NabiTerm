@@ -134,7 +134,7 @@ pub struct NabiApp {
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
     pub palette_query: String,
-    pub find_open: bool, pub find_query: String, pub find_regex: bool, pub replace_open: bool, pub replace_find: String, pub replace_to: String, pub replace_count: Option<(usize, usize)>,
+    pub find_open: bool, pub find_query: String, pub find_regex: bool, pub find_whole: bool, pub replace_open: bool, pub replace_find: String, pub replace_to: String, pub replace_count: Option<(usize, usize)>,
     pub tab_names: HashMap<PaneId, String>,
     pub tab_colors: HashMap<PaneId, egui::Color32>,
     /// 터미널 `파일:줄` 더블클릭 시 (경로, 0기반 줄) — 모델 락 해제 후 에디터로 연다(deferred).

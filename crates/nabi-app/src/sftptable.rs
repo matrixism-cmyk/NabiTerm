@@ -23,7 +23,7 @@ fn visible(sftp: &SftpPanel) -> Vec<&SftpEntry> {
         .iter()
         .filter(|e| {
             (sftp.show_hidden || !e.name.starts_with('.'))
-                && crate::browserfs::name_matches(&sftp.filter, &e.name)
+                && crate::browserfilter::name_matches(&sftp.filter, &e.name)
         })
         .collect()
 }

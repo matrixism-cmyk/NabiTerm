@@ -14,7 +14,10 @@ impl NabiApp {
         let first_run = !layout.config_file.exists(); // OOBE: 설정 파일이 없으면 첫 실행.
         let config = nabi_config::load(&layout);
         // 구문 강조 자산 등록(사용자 폴더 base/nabipad/{syntaxes,themes}·테마·확장자 매핑).
-        let editor_config = nabi_config::load_editor(&layout); let editor_config_path = layout.editor_file.clone(); crate::editorsyntax::init(&layout.base, editor_config.theme.clone(), editor_config.ext_map.clone());
+        let editor_config = nabi_config::load_editor(&layout);
+        let editor_config_path = layout.editor_file.clone();
+        crate::editorsyntax::init(&layout.base, editor_config.theme.clone(), editor_config.ext_map.clone());
+        nabi_editor::editortext::set_wrap_col(editor_config.wrap_col); // '줄바꿈' 변환 폭.
         crate::fonts::install_cjk_fonts(&cc.egui_ctx, &config.appearance.font_family);
         crate::theme_ui::apply_theme(&cc.egui_ctx);
         // egui의 ID 충돌 디버그 경고("First use of … ID …")는 개발자 진단용 UI 오버레이로,
@@ -137,7 +140,7 @@ impl NabiApp {
             onboarding_open: first_run,
             palette_query: String::new(),
             find_open: false,
-            find_query: String::new(), find_regex: false, replace_open: false, replace_find: String::new(), replace_to: String::new(), replace_count: None,
+            find_query: String::new(), find_regex: false, find_whole: false, replace_open: false, replace_find: String::new(), replace_to: String::new(), replace_count: None,
             tab_names: HashMap::new(),
             tab_colors: HashMap::new(), pending_pathline: None,
             bell_flash: None,

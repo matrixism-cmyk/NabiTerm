@@ -165,7 +165,7 @@ pub(crate) fn browser_rows(
     let mut acts = RowActs::default();
     let visible: Vec<&Row> = entries
         .iter()
-        .filter(|r| crate::browserfs::name_matches(filt, &r.name))
+        .filter(|r| crate::browserfilter::name_matches(filt, &r.name))
         .collect();
     // 빈 폴더/검색 결과 없음 — '..'(상위 이동)는 그대로 제공.
     if visible.is_empty() {

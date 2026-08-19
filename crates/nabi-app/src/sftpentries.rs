@@ -168,7 +168,7 @@ pub(crate) fn show_entries(
         .iter()
         .filter(|e| {
             (show_hidden || !e.name.starts_with('.'))
-                && crate::browserfs::name_matches(filter, &e.name)
+                && crate::browserfilter::name_matches(filter, &e.name)
         })
         .collect();
     // 빈 폴더/검색 결과 없음 — '..'(상위 이동)는 그대로 제공.

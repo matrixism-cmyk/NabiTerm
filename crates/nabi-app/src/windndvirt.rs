@@ -34,6 +34,7 @@ use windows::Win32::UI::Shell::{
 
 /// 등록된 클립보드 포맷 ID(런타임 등록).
 fn cf(name: PCWSTR) -> u16 {
+    // SAFETY: name은 호출자가 넘긴 'static 와이드 문자열 상수(PCWSTR)다. 등록 실패는 0을 돌려준다.
     unsafe { RegisterClipboardFormatW(name) as u16 }
 }
 fn cf_descriptor() -> u16 {
@@ -62,6 +63,8 @@ impl VirtData {
     /// FILEGROUPDESCRIPTORW(파일 1개) HGLOBAL.
     fn descriptor(&self) -> Result<STGMEDIUM> {
         let bytes = std::mem::size_of::<FILEGROUPDESCRIPTORW>();
+        // SAFETY: GlobalAlloc이 준 FILEGROUPDESCRIPTORW 한 개 크기 블록에만 쓴다. 잠금이 실패하면
+        // 쓰기 전에 Err로 반환한다.
         unsafe {
             let hg = GlobalAlloc(GMEM_MOVEABLE, bytes).map_err(|_| windows::core::Error::from(E_FAIL))?;
             let p = GlobalLock(hg) as *mut FILEGROUPDESCRIPTORW;
@@ -103,6 +106,8 @@ impl VirtData {
         }
         let mut wide: Vec<u16> = temp.to_string_lossy().encode_utf16().collect();
         wide.push(0);
+        // SAFETY: wide는 NUL로 끝나는 UTF-16이고 호출 동안 살아 있다. 실패하면 Err로 돌아가
+        // 반환된 스트림을 쓰지 않는다.
         let stream: IStream = unsafe {
             SHCreateStreamOnFileEx(
                 PCWSTR(wide.as_ptr()),
@@ -155,6 +160,8 @@ fn is_fmt(f: &FORMATETC, cfmt: u16, tymed: u32) -> bool {
 
 impl IDataObject_Impl for VirtData_Impl {
     fn GetData(&self, pformatetcin: *const FORMATETC) -> Result<STGMEDIUM> {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         let f = unsafe { &*pformatetcin };
         if is_fmt(f, cf_descriptor(), TYMED_HGLOBAL.0 as u32) {
             self.descriptor()
@@ -168,6 +175,8 @@ impl IDataObject_Impl for VirtData_Impl {
         Err(E_NOTIMPL.into())
     }
     fn QueryGetData(&self, pformatetc: *const FORMATETC) -> HRESULT {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         let f = unsafe { &*pformatetc };
         if is_fmt(f, cf_descriptor(), TYMED_HGLOBAL.0 as u32)
             || is_fmt(f, cf_contents(), TYMED_ISTREAM.0 as u32)
@@ -179,6 +188,7 @@ impl IDataObject_Impl for VirtData_Impl {
     }
     fn GetCanonicalFormatEtc(&self, _i: *const FORMATETC, pout: *mut FORMATETC) -> HRESULT {
         if !pout.is_null() {
+            // SAFETY: 바로 위에서 null이 아님을 확인했고, OLE가 준 out 파라미터는 호출 동안 쓰기 가능하다.
             unsafe { (*pout).ptd = std::ptr::null_mut() };
         }
         DATA_S_SAMEFORMATETC
@@ -198,6 +208,7 @@ impl IDataObject_Impl for VirtData_Impl {
             mk(cf_descriptor(), TYMED_HGLOBAL.0 as u32),
             mk(cf_contents(), TYMED_ISTREAM.0 as u32),
         ];
+        // SAFETY: 슬라이스는 포인터+길이로 함께 전달되고, 셸이 내용을 복사해 열거자를 만든다.
         unsafe { SHCreateStdEnumFmtEtc(&fmts) }
     }
     fn DAdvise(&self, _f: *const FORMATETC, _a: u32, _s: Option<&IAdviseSink>) -> Result<u32> {
@@ -234,6 +245,8 @@ pub(crate) fn drag_out_remote(file: RemoteFile, sftp_id: SftpId, cmd_tx: Sender<
     let data: IDataObject = VirtData { file, sftp_id, cmd_tx }.into();
     let src: IDropSource = VirtSrc.into();
     let mut effect = DROPEFFECT::default();
+    // SAFETY: data·src는 이 함수가 잡고 있는 COM 객체라 호출이 끝날 때까지 살아 있다.
+    // effect는 스택 지역의 가변 참조다. OLE 초기화는 init_ole이 보장한다.
     let hr = unsafe { DoDragDrop(&data, &src, DROPEFFECT_COPY, &mut effect) };
     hr == DRAGDROP_S_DROP
 }

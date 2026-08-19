@@ -150,6 +150,12 @@ pub struct TerminalCfg {
     pub search_limit: usize,
     /// 여러 줄 클립보드 붙여넣기 전 확인 대화상자(붙여넣기 안전).
     pub warn_paste_newline: bool,
+    /// 붙여넣기에 유니코드 속임(방향 재정의·제로폭·호모글리프)이 섞이면 확인 대화상자.
+    /// 개행 경고와 별개 스위치 — 위험의 성격이 다르고, 오탐이 거의 없어 기본 켜짐.
+    #[serde(default = "default_true")] pub warn_paste_unicode: bool,
+    /// 업로드한 파일의 Unix 권한 정규화(빈 값=끄기, "auto"=일반 644·스크립트 755, "755" 같은 8진수).
+    /// Windows 로컬 파일에는 Unix 모드가 없어 '보존'이 불가능하다 — 그래서 정규화로 푼다.
+    #[serde(default)] pub sftp_upload_mode: String,
     /// 자주 쓰는 명령 스니펫(메뉴에서 클릭하면 포커스 pane에 전송+실행).
     pub snippets: Vec<String>,
     /// SFTP 전송 속도 제한(KB/s, 0=무제한).
@@ -302,6 +308,8 @@ impl Default for TerminalCfg {
             last_port: "22".into(),
             search_limit: 5000,
             warn_paste_newline: false,
+            warn_paste_unicode: true,
+            sftp_upload_mode: String::new(),
             snippets: Vec::new(),
             speed_limit_kbps: 0,
             sftp_verify_hash: false,

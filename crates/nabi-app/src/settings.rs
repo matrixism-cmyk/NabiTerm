@@ -140,6 +140,7 @@ impl NabiApp {
         // SFTP 해시 검증 스위치 — 워커 풀 연결까지 전역으로 즉시 적용.
         nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
         nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩 라이브 반영.
+        nabi_sftp::set_upload_mode(&self.config.terminal.sftp_upload_mode); // 업로드 권한 정규화.
         // 팁 번역 캐시 경로 변경을 즉시 반영(다른 파일이면 새로 읽는다).
         let base = self.config_path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
         self.tip_ai.retarget(&base, &self.config.terminal.tip_cache_path);
@@ -148,6 +149,7 @@ impl NabiApp {
         // 구문 강조 테마·확장자 매핑을 라이브 반영(다음 하이라이트부터 적용).
         crate::editorsyntax::set_theme(self.editor_config.theme.clone());
         crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());
+        nabi_editor::editortext::set_wrap_col(self.editor_config.wrap_col); // 줄바꿈 칸 수.
         // 탭 폭·들여쓰기는 이미 열린 편집 버퍼에도 바로 반영한다(재시작/재열기 불필요).
         let (tab, spaces) = (self.editor_config.tab_size.max(1), self.editor_config.indent_spaces);
         for d in self.editors.values_mut() {

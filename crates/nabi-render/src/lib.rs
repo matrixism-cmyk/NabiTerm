@@ -15,6 +15,7 @@ mod overlay;
 pub mod mouse;
 pub mod painter;
 pub mod paste;
+pub mod pastedeceive;
 pub mod urls;
 mod urlspath;
 mod fileref;

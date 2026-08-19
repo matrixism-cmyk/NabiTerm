@@ -24,7 +24,7 @@ mod encodings { pub use nabi_editor::encodings::*; }
 mod humanfmt { pub use nabi_editor::humanfmt::*; }
  mod appicon; mod gpu; mod softgl;
 mod arrange; mod bell;
-mod browser; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
+mod browser; mod browserfilter; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
 mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell;
 mod controlui; mod controlapp;
 mod filetype;
@@ -96,7 +96,7 @@ mod hostkeyui;
 mod knownhostsui;
 mod menu;
 mod menuact; mod menuactio;
-mod palette; mod palettecmds; mod palettedispatch; mod pathline;
+mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod pathline;
 mod quake;
 mod qcparse;
 mod paneio; mod panewheel;
@@ -132,7 +132,7 @@ mod sftpview;
 mod syncbrowse;
 mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; 
 mod sftppath;
-mod sftpxfer; mod sftphistory; mod controlsftp; mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqact;
+mod sftpxfer; mod sftphistory; mod controlsftp; mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact;
 mod sftpdownload;
 mod sftpperms;
 mod sftptoolbar;
@@ -180,6 +180,8 @@ fn attach_parent_console() {
     // 이미 콘솔이 있으면 그대로 사용. 없을 때만 부모 콘솔에 붙이기 시도하고,
     // 실패(부모도 콘솔 없음/리다이렉트)하면 조용히 포기한다 — 표준출력이 파일/파이프로
     // 리다이렉트돼 있으면 그쪽으로 정상 출력되고, 아무 데도 없으면 run_cli_safe가 보호한다.
+    // SAFETY: 둘 다 인자가 상수인 kernel32 호출이다. GetConsoleWindow는 핸들만 읽고,
+    // AttachConsole은 실패 시 0을 돌려줄 뿐 우리 메모리를 건드리지 않는다.
     unsafe {
         if GetConsoleWindow().is_null() {
             let _ = AttachConsole(u32::MAX); // ATTACH_PARENT_PROCESS(-1)
@@ -225,6 +227,8 @@ fn main() -> eframe::Result<()> {
     // 잡는다(cli/mcp 단명 모드는 위에서 이미 종료). 핸들은 종료까지 유지(의도적 누수).
     // (로컬 mod windows가 crate를 가리므로 ::windows 절대 경로 사용. HANDLE은 Copy라
     // Drop이 없어 CloseHandle 없이 프로세스 종료까지 열려 있다 — 그게 정확히 원하는 것.)
+    // SAFETY: CreateMutexW에 이름만 넘긴다(보안 속성 None). 실패해도 무시하며, 반환 핸들은
+    // 프로세스 종료까지 유지할 목적으로 일부러 버린다(위 주석 참고).
     unsafe {
         use ::windows::Win32::System::Threading::CreateMutexW;
         let _ = CreateMutexW(None, false, ::windows::core::w!("nabiTermRunning"));

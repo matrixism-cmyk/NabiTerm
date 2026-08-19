@@ -210,7 +210,7 @@ pub fn tr(lang: Lang, key: &str) -> &'static str {
         .chain(crate::catalog_editor::CATALOG_EDITOR)
         .chain(crate::catalog_editor2::CATALOG_EDITOR2)
         .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN)
-        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4)
+        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4).chain(crate::catalog5::CATALOG5)
     {
         if *k == key {
             return match lang {
@@ -243,7 +243,7 @@ mod tests {
             .chain(crate::catalog3::CATALOG3).chain(crate::catalog_agent::CATALOG_AGENT)
             .chain(crate::catalog_editor::CATALOG_EDITOR).chain(crate::catalog_editor2::CATALOG_EDITOR2)
         .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN)
-        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4) {
+        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4).chain(crate::catalog5::CATALOG5) {
             assert!(seen.insert(*k), "중복 키: {k}");
             assert!(
                 !en.is_empty() && !ko.is_empty() && !ja.is_empty(),

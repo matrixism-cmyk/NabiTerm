@@ -63,6 +63,8 @@ impl VirtFolder {
 
 impl IDataObject_Impl for VirtFolder_Impl {
     fn GetData(&self, pformatetcin: *const FORMATETC) -> Result<STGMEDIUM> {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         if is_hdrop(unsafe { &*pformatetcin }) {
             self.hdrop()
         } else {
@@ -73,6 +75,8 @@ impl IDataObject_Impl for VirtFolder_Impl {
         Err(E_NOTIMPL.into())
     }
     fn QueryGetData(&self, pformatetc: *const FORMATETC) -> HRESULT {
+        // SAFETY: OLE 런타임이 IDataObject 계약에 따라 호출 동안 유효한 FORMATETC를 준다.
+        // 참조를 이 호출 밖으로 내보내지 않는다.
         if is_hdrop(unsafe { &*pformatetc }) {
             S_OK
         } else {
@@ -81,6 +85,7 @@ impl IDataObject_Impl for VirtFolder_Impl {
     }
     fn GetCanonicalFormatEtc(&self, _i: *const FORMATETC, pout: *mut FORMATETC) -> HRESULT {
         if !pout.is_null() {
+            // SAFETY: 바로 위에서 null이 아님을 확인했고, OLE가 준 out 파라미터는 호출 동안 쓰기 가능하다.
             unsafe { (*pout).ptd = std::ptr::null_mut() };
         }
         DATA_S_SAMEFORMATETC
@@ -96,6 +101,7 @@ impl IDataObject_Impl for VirtFolder_Impl {
             lindex: -1,
             tymed: TYMED_HGLOBAL.0 as u32,
         };
+        // SAFETY: 슬라이스는 포인터+길이로 함께 전달되고, 셸이 내용을 복사해 열거자를 만든다.
         unsafe { SHCreateStdEnumFmtEtc(&[fmt]) }
     }
     fn DAdvise(&self, _f: *const FORMATETC, _a: u32, _s: Option<&IAdviseSink>) -> Result<u32> {
@@ -137,6 +143,8 @@ pub(crate) fn drag_out_remote_dir(
     let data: IDataObject = VirtFolder { name, remote_path, sftp_id, cmd_tx }.into();
     let src: IDropSource = FolderSrc.into();
     let mut effect = DROPEFFECT::default();
+    // SAFETY: data·src는 이 함수가 잡고 있는 COM 객체라 호출이 끝날 때까지 살아 있다.
+    // effect는 스택 지역의 가변 참조다. OLE 초기화는 init_ole이 보장한다.
     let hr = unsafe { DoDragDrop(&data, &src, DROPEFFECT_COPY, &mut effect) };
     hr == DRAGDROP_S_DROP
 }

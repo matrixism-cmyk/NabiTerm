@@ -68,6 +68,7 @@ impl NabiApp {
         // 분할 레이아웃 + pane 사이드카(글꼴·이름·색) 저장(worklayout.rs).
         self.save_layout_sidecars(&ordered, &term_ordered, count);
         self.save_browser_tabs(); // 브라우저 탭 상태(경로·보기·정렬)도 저장.
+        self.save_xfer_queues(); // 끝나지 않은 전송 큐(경로만) — 재연결 후 되살린다.
         self.save_sftp_tabs(); // 원격 SFTP/FTP 탭(호스트·경로·보기) — 비밀번호는 저장하지 않는다.
         self.save_floating(); // 분리 OS 창 위치·크기·출처(P10).
     }

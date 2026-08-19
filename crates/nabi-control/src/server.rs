@@ -52,6 +52,8 @@ async fn serve(pipe: String, token: String, ctx: ServerCtx) {
         return;
     };
     loop {
+        // SAFETY: attrs_ptr는 sec가 살아 있는 동안 유효한 SECURITY_ATTRIBUTES를 가리킨다.
+        // sec는 이 루프 바깥에 있어 파이프 생성보다 오래 산다.
         let made = unsafe {
             ServerOptions::new().create_with_security_attributes_raw(&pipe, sec.attrs_ptr())
         };

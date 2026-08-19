@@ -99,6 +99,7 @@ impl NabiApp {
                         && !self.sftp_bg.contains_key(p)
                 })
                 .collect();
+            let find_hl = self.find_highlight(); // 가변 차용 전에 먼저 계산(빌림 충돌 회피).
             let mut viewer = crate::tabs::TermTabViewer {
                 orch: &self.orch,
                 theme: self.theme,
@@ -106,12 +107,7 @@ impl NabiApp {
                 last_grid: &mut self.last_grid,
                 broadcast: self.broadcast,
                 show_pane_ids: self.config.appearance.show_pane_ids,
-                // 하이라이트는 리터럴 셀 매칭만(정규식 모드는 탐색·카운트만, 하이라이트 생략 — B7).
-                find: if self.find_open && !self.find_regex && !self.find_query.is_empty() {
-                    Some(self.find_query.clone())
-                } else {
-                    None
-                },
+                find: find_hl, // 리터럴 모드에서만 셀 강조(SSOT).
                 highlights: &self.config.terminal.highlight_keywords,
                 tab_names: &mut self.tab_names,
                 lang: self.lang,

@@ -2,6 +2,7 @@
 //!
 //! 현재 작업:
 //! - `lines` : 소스 파일 라인 수 게이트(소프트 250 경고 / 하드 400 실패).
+//! - `unsafe-audit` : 모든 unsafe에 SAFETY 근거 주석이 붙어 있는지 검사.
 //! - `dist`  : 정기 배포 산출물(Inno Setup 설치본) 생성.
 //! - `dist-standalone` : 요청 시에만 포터블 zip 생성.
 //! - `dist-mesa` : 고정 Mesa 런타임 zip 수동 생성.
@@ -16,7 +17,7 @@ mod icon;
 mod lines;
 mod overrides;
 mod prerelease;
-mod soak; mod postverify;
+mod soak; mod postverify; mod unsafeaudit;
 
 use std::process::ExitCode;
 
@@ -24,6 +25,7 @@ fn main() -> ExitCode {
     let task = std::env::args().nth(1).unwrap_or_default();
     match task.as_str() {
         "lines" => lines::run(),
+        "unsafe-audit" => unsafeaudit::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

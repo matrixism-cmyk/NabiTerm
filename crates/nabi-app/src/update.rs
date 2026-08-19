@@ -24,6 +24,7 @@ impl eframe::App for NabiApp {
             nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
             nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
             nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩(CP949 서버 한글).
+            nabi_sftp::set_upload_mode(&self.config.terminal.sftp_upload_mode); // 업로드 권한 정규화.
             // 과거 영속된 egui zoom_factor가 초기 창을 축소했을 수 있으므로
             // 줌 리셋 후 저장된 크기를 다시 적용 + 최소화 해제 + 전면 포커스.
             ctx.set_zoom_factor(1.0);
