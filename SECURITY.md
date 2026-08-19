@@ -5,7 +5,7 @@
 보안 취약점은 공개 이슈 대신 아래로 신고해 주세요:
 
 - **GitHub 비공개 신고**: [Security ▸ Report a vulnerability](https://github.com/matrixism-cmyk/NabiTerm/security/advisories/new) (권장)
-- **이메일**: the@aeokorea.com
+- **이메일**: matrixism@gmail.com
 
 Please report security vulnerabilities privately via GitHub's
 "Report a vulnerability" (preferred) or by email — not as public issues.

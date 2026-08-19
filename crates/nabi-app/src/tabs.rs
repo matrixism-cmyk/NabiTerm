@@ -56,6 +56,11 @@ pub struct TermTabViewer<'a> {
     pub ai_cmd_bar: bool,
     /// pane별 모델·노력 선택 기억(명령 바 버튼에 현재 상태 표시).
     pub ai_picks: &'a mut HashMap<PaneId, crate::aicmdbar::AiPicks>,
+    /// 설정에 저장된 마지막 선택(재시작 후 초기 표시값).
+    pub ai_last_model: &'a str,
+    pub ai_last_effort: &'a str,
+    /// 이번 프레임에 고른 값 신호 — app이 설정에 저장한다.
+    pub ai_pick_out: &'a mut Option<(String, String)>,
     /// 명령 실행 중(OSC 133;C~D) pane — 탭에 ⚙ 상태 배지(CP-6).
     pub running: &'a std::collections::HashMap<PaneId, std::time::Instant>,
     /// 포커스 pane의 IME 조합 중 텍스트(커서에 오버레이 — 한글 조합 표시).

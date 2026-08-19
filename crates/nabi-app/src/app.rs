@@ -22,6 +22,14 @@ pub struct NabiApp {
     pub ai_prof_open: bool,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
     pub ai_picks: std::collections::HashMap<PaneId, crate::aicmdbar::AiPicks>,
+    /// 명령 바에서 방금 고른 값 신호 ("model"|"effort", 값) — view가 설정에 저장한다
+    /// (뷰어가 config를 가변 차용할 수 없어 out-param으로 넘긴다).
+    pub ai_pick_out: Option<(String, String)>,
+    /// 인코딩 제안 메모이즈 (pane, render_gen, 현재 인코딩, 결과) — 매 프레임 화면 60줄
+    /// 덤프를 피한다(성능 리뷰 2026-08-19, encsuggest.rs).
+    pub enc_cache: Option<(PaneId, u64, String, Option<&'static str>)>,
+    /// 디렉터리 비교 맵을 마지막으로 읽은 시각(0.5초 스로틀 — editsftp.rs).
+    pub compare_at: Option<std::time::Instant>,
     pub forward: crate::forwardui::ForwardForm,
     pub sftp: crate::sftppanel::SftpPanel, // 현재 활성(포커스) 원격 패널.
     pub sftp_pane: Option<nabi_types::PaneId>, // 활성 원격 패널의 도킹 PaneId.

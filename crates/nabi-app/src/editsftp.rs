@@ -128,8 +128,17 @@ impl NabiApp {
     }
 
     /// 디렉터리 비교 모드일 때 로컬 폴더 맵을 만들어 SFTP 비교 색칠에 쓴다.
+    ///
+    /// **스로틀**(성능 리뷰 2026-08-19): 매 프레임 호출되는데 내용은 동기 `read_dir`+stat다.
+    /// 비교 색칠은 실시간일 필요가 없으므로 0.5초마다만 다시 읽는다(경로·정렬이 바뀌면
+    /// 다음 틱에 반영). 60fps 디스크 스캔을 없애 SFTP+브라우저 동시 사용 시 체감이 달라진다.
     pub(crate) fn update_compare_map(&mut self) {
+        const REFRESH: std::time::Duration = std::time::Duration::from_millis(500);
         if self.compare_on && self.sftp.open && self.browser.open {
+            if self.sftp.compare.is_some() && self.compare_at.is_some_and(|t| t.elapsed() < REFRESH) {
+                return; // 아직 신선하다 — 디스크를 다시 읽지 않는다.
+            }
+            self.compare_at = Some(std::time::Instant::now());
             let map = crate::browserfs::read_entries(
                 &self.browser.path,
                 self.browser.sort,

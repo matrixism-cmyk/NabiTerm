@@ -122,6 +122,13 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("aiopt.aider.vim", "Vim keybindings in the chat input", "입력창에 vim 키 바인딩 사용", "入力欄でvimキーバインドを使用"),
     ("aiprof.ascii", "AI profile args must be ASCII (terminal injection rule)", "AI 프로필 인자는 ASCII만 가능합니다(터미널 주입 규칙)", "AIプロファイルの引数はASCIIのみです(ターミナル注入ルール)"),
     ("menu.aicmdbar", "AI command bar", "AI 명령 바", "AIコマンドバー"),
+    ("help.about.intro", "nabiTerm is a single-executable Windows terminal that brings local shells, SSH/SFTP/FTP, a file browser, a code editor (nabiPad) and an AI agent control plane into one window. Written from scratch in Rust, it needs no runtime, works fully offline, and sends no telemetry.", "나비텀은 로컬 셸·SSH/SFTP/FTP·파일 브라우저·편집기(nabiPad)·AI 에이전트 제어를 창 하나에 담은 단일 실행 파일 터미널입니다. Rust로 처음부터 만들어 별도 런타임이 필요 없고, 폐쇄망에서도 완전히 동작하며, 어떤 사용 정보도 외부로 보내지 않습니다.", "nabiTermはローカルシェル・SSH/SFTP/FTP・ファイルブラウザ・エディタ(nabiPad)・AIエージェント制御を一つのウィンドウにまとめた単一実行ファイルの端末です。Rustでゼロから作られ、ランタイム不要・完全オフライン動作・テレメトリ送信なし。"),
+    ("help.about.oss", "Open source under Apache License 2.0 - source, releases and issues:", "Apache License 2.0 오픈소스 - 소스·릴리스·이슈:", "Apache License 2.0のオープンソース - ソース・リリース・課題:"),
+    ("help.about.issues", "Report a bug or request a feature", "버그 제보·기능 요청", "バグ報告・機能リクエスト"),
+    ("help.about.contact", "Contact", "연락처", "連絡先"),
+    ("help.about.security", "Security issues: please report privately (see SECURITY.md in the repository).", "보안 취약점은 저장소의 SECURITY.md 안내에 따라 비공개로 알려 주세요.", "セキュリティ脆弱性はリポジトリのSECURITY.mdに従い非公開でご連絡ください。"),
+    ("help.about.madeby", "Made in Korea by aeo (nabisori).", "만든 곳: 나비소리(aeo), 대한민국.", "制作: nabisori(aeo)、韓国。"),
+    ("aicb.close", "Close this screen (sends Esc)", "이 화면 닫기(Esc 전송)", "この画面を閉じる(Esc送信)"),
     ("aicb.more", "More commands", "더 많은 명령", "その他のコマンド"),
     // AI 명령 바 버튼의 짧은 요약명(사용자 요청 2026-08-19 — 슬래시 명령 대신 한눈에 읽히게).
     ("aicb.l.compact", "Summarize", "대화 요약", "会話を要約"),

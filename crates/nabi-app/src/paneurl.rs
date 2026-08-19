@@ -22,9 +22,20 @@ pub(crate) fn screen_url_at(
     if let Some((s, e, uri)) = model.hyperlink_span_at(row as u16, col) {
         return Some(nabi_render::ScreenUrl { segs: vec![(row, s, e)], url: uri });
     }
-    let rows = model.render_rows(theme);
-    let wrapped: Vec<bool> = (0..rows.len()).map(|r| model.row_wrapped(r as u16)).collect();
-    nabi_render::screen_urls(&rows, &wrapped).into_iter().find(|su| su.contains(row, col))
+    // 캐시된 행을 빌려 쓰고(전체 화면 재구축 금지), 링크 목록도 (모델,세대,스크롤) 캐시에서
+    // 가져온다 — 포인터가 pane 위에 있기만 해도 매 프레임 전 화면을 스캔하던 비용 제거.
+    let rows = model.rows_cached(theme);
+    let key = std::ptr::from_ref(model) as usize;
+    nabi_render::with_screen_urls(
+        key,
+        model.render_gen(),
+        model.scrollback_offset(),
+        || {
+            let wrapped: Vec<bool> = (0..rows.len()).map(|r| model.row_wrapped(r as u16)).collect();
+            nabi_render::screen_urls(&rows, &wrapped)
+        },
+        |urls| urls.iter().find(|su| su.contains(row, col)).cloned(),
+    )
 }
 
 /// 포인터가 URL 셀 위에 있으면 손가락 커서를 표시한다(하이퍼링크 어포던스).

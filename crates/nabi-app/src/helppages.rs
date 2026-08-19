@@ -119,6 +119,28 @@ pub(crate) fn about_page(
     ui.heading("\u{1f98b} nabiTerm (나비텀)");
     ui.label(tr(lang, "help.desc"));
     ui.label(concat!("v", env!("CARGO_PKG_VERSION")));
+    ui.add_space(6.0);
+    // 프로그램 소개 + 공개 저장소/연락처(오픈소스 전환 후 문의 창구를 앱 안에서 안내).
+    ui.label(tr(lang, "help.about.intro"));
+    ui.add_space(6.0);
+    ui.label(tr(lang, "help.about.oss"));
+    ui.horizontal(|ui| {
+        if ui.link("github.com/matrixism-cmyk/NabiTerm").clicked() {
+            crate::paneurl::os_open("https://github.com/matrixism-cmyk/NabiTerm");
+        }
+        ui.label("\u{b7}");
+        if ui.link(tr(lang, "help.about.issues")).clicked() {
+            crate::paneurl::os_open("https://github.com/matrixism-cmyk/NabiTerm/issues");
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.label(format!("{}:", tr(lang, "help.about.contact")));
+        if ui.link("matrixism@gmail.com").clicked() {
+            crate::paneurl::os_open("mailto:matrixism@gmail.com");
+        }
+    });
+    ui.weak(tr(lang, "help.about.security"));
+    ui.weak(tr(lang, "help.about.madeby"));
     ui.add_space(8.0);
     crate::updateui::update_section(ui, lang, updater, update_quit); // 업데이트(설정에서 이동).
     ui.add_space(8.0);

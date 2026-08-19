@@ -1,7 +1,6 @@
 //! 화면 전체의 소프트랩-인지 링크 감지 — 줄바꿈된 URL/경로도 한 링크로 이어 잡는다.
 #![allow(clippy::needless_range_loop)]
 
-use crate::urls::row_urls;
 use nabi_vt::RenderCell;
 
 /// 화면의 링크 한 개 — 소프트랩으로 여러 시각 행에 걸칠 수 있어 행별 세그먼트로 보관.
@@ -23,23 +22,30 @@ impl ScreenUrl {
 /// 한 논리 줄로 이어 붙여 감지하므로, 줄바꿈된 URL/경로도 끊기지 않는다.
 pub fn screen_urls(rows: &[Vec<RenderCell>], wrapped: &[bool]) -> Vec<ScreenUrl> {
     let mut out = Vec::new();
+    // 그룹 간 재사용 스크래치(할당 재사용).
+    let (mut chars, mut owner, mut map): (Vec<char>, Vec<usize>, Vec<(usize, usize)>) =
+        (Vec::new(), Vec::new(), Vec::new());
     let mut r = 0;
     while r < rows.len() {
         let mut end = r;
         while *wrapped.get(end).unwrap_or(&false) && end + 1 < rows.len() {
             end += 1; // 소프트랩 그룹 확장.
         }
-        // URL 후보(':'·'.')가 있는 그룹만 처리(없으면 스캔·복제 생략 — 성능).
+        // URL 후보(':'·'.')가 있는 그룹만 처리(없으면 스캔 생략 — 성능).
         let hint = (r..=end).any(|gr| rows[gr].iter().any(|c| c.text.contains([':', '.'])));
         if hint {
-            let (mut cells, mut map) = (Vec::new(), Vec::new());
+            // 셀을 복제하지 않고 곧바로 (문자, 소유 셀 인덱스)로 평탄화한다. 버퍼는 그룹마다
+            // 비워 재사용 — 예전엔 후보 그룹마다 RenderCell(문자열 포함)을 통째로 복제했다.
+            chars.clear();
+            owner.clear();
+            map.clear();
             for gr in r..=end {
                 for (c, cell) in rows[gr].iter().enumerate() {
-                    cells.push(cell.clone());
+                    crate::urls::push_cell(cell, map.len(), &mut chars, &mut owner);
                     map.push((gr, c));
                 }
             }
-            for sp in row_urls(&cells) {
+            for sp in crate::urls::row_urls_from(&chars, &owner) {
                 let mut segs: Vec<(usize, usize, usize)> = Vec::new();
                 // map이 비면 `len-1`이 0으로 포화해 `0..=0`이 되고 인덱싱이 패닉한다.
                 for k in sp.start..=sp.end.min(map.len().saturating_sub(1)) {
@@ -57,6 +63,45 @@ pub fn screen_urls(rows: &[Vec<RenderCell>], wrapped: &[bool]) -> Vec<ScreenUrl>
         r = end + 1;
     }
     out
+}
+
+/// (모델 주소, 세대, 스크롤)로 화면 URL 목록을 캐시해 빌려준다.
+///
+/// 호버 커서 판정이 매 프레임 화면 전체를 다시 스캔하던 비용을 없앤다(성능 리뷰 2026-08-19).
+/// 페인터의 밑줄 맵 계산도 같은 캐시를 쓰므로, 한 프레임에 스캔은 최대 한 번이다.
+/// ⚠️ `f`는 캐시 빌림 상태에서 실행된다 — 그 안에서 이 함수를 다시 부르지 말 것.
+pub fn with_screen_urls<R>(
+    key: usize,
+    gen: u64,
+    offset: usize,
+    build: impl FnOnce() -> Vec<ScreenUrl>,
+    f: impl FnOnce(&[ScreenUrl]) -> R,
+) -> R {
+    let fresh = URL_CACHE
+        .with(|c| c.borrow().get(&key).is_some_and(|(g, o, _)| *g == gen && *o == offset));
+    if !fresh {
+        let urls = build();
+        URL_CACHE.with(|c| {
+            let mut m = c.borrow_mut();
+            if m.len() > 32 {
+                m.clear(); // 닫힌 pane의 잔여 항목 정리(주소 재사용도 세대 키로 걸러진다).
+            }
+            m.insert(key, (gen, offset, urls));
+        });
+    }
+    URL_CACHE.with(|c| {
+        let b = c.borrow();
+        f(b.get(&key).map_or(&[][..], |(_, _, v)| v.as_slice()))
+    })
+}
+
+/// 모델별 캐시 항목: (세대, 스크롤 오프셋, 그 상태의 링크 목록).
+type UrlEntry = (u64, usize, Vec<ScreenUrl>);
+
+thread_local! {
+    /// 페인트·호버는 모두 UI 스레드에서 일어난다(잠금 불필요). 키=모델 주소.
+    static URL_CACHE: std::cell::RefCell<std::collections::HashMap<usize, UrlEntry>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
 }
 
 #[cfg(test)]

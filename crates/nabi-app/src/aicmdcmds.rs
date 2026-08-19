@@ -15,10 +15,19 @@ pub(crate) struct BarCmd {
     pub desc: &'static str,
     /// 하위 선택지[(표시, 전송 명령)] — 비면 클릭 즉시 `cmd` 전송.
     pub sub: &'static [(&'static str, &'static str)],
+    /// 이 명령이 CLI 안에 **화면/선택창을 여는가**. true면 바 버튼이 활성색으로 바뀌고,
+    /// 다시 누르면 ESC를 보내 닫는다(사용자 요청 2026-08-19). 즉시 끝나는 작업은 false.
+    pub opens_ui: bool,
 }
 
+/// 즉시 끝나는 명령(대화 요약·새 대화 등).
 const fn c(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
-    BarCmd { cmd, label, desc, sub: &[] }
+    BarCmd { cmd, label, desc, sub: &[], opens_ui: false }
+}
+
+/// 화면/선택창을 여는 명령(재클릭 시 ESC로 닫는다).
+const fn u(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
+    BarCmd { cmd, label, desc, sub: &[], opens_ui: true }
 }
 
 /// 실행 명령 → 명령 바를 아는 CLI 종류(판정은 aihandoff::ai_command_name과 공유 — SSOT).
@@ -34,20 +43,20 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
             static A: &[BarCmd] = &[
                 c("/compact", "aicb.l.compact", "aicb.claude.compact"),
                 c("/clear", "aicb.l.clear", "aicb.claude.clear"),
-                c("/context", "aicb.l.context", "aicb.claude.context"),
+                u("/context", "aicb.l.context", "aicb.claude.context"),
                 // 별칭·단계는 공식 CLI 레퍼런스 기준(fable/opus/sonnet/haiku, low~ultracode).
                 // 첫 항목은 CLI의 대화식 선택창.
                 BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.claude.model", sub: &[
                     ("/model", "/model"), ("fable", "/model fable"), ("opus", "/model opus"),
                     ("sonnet", "/model sonnet"), ("haiku", "/model haiku"),
-                ] },
+                ], opens_ui: true },
                 BarCmd { cmd: "/effort", label: "aicb.l.effort", desc: "aicb.claude.effort", sub: &[
                     ("/effort", "/effort"), ("low", "/effort low"), ("medium", "/effort medium"),
                     ("high", "/effort high"), ("xhigh", "/effort xhigh"), ("max", "/effort max"),
                     ("ultracode", "/effort ultracode"),
-                ] },
-                c("/resume", "aicb.l.resume", "aicb.claude.resume"),
-                c("/usage", "aicb.l.usage", "aicb.claude.usage"),
+                ], opens_ui: true },
+                u("/resume", "aicb.l.resume", "aicb.claude.resume"),
+                u("/usage", "aicb.l.usage", "aicb.claude.usage"),
             ];
             A
         }
@@ -55,10 +64,10 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
             static A: &[BarCmd] = &[
                 c("/compact", "aicb.l.compact", "aicb.codex.compact"),
                 c("/clear", "aicb.l.clear", "aicb.codex.clear"),
-                c("/permissions", "aicb.l.permissions", "aicb.codex.permissions"),
-                c("/diff", "aicb.l.diff", "aicb.codex.diff"),
-                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.codex.model", sub: &[] },
-                c("/status", "aicb.l.status", "aicb.codex.status"),
+                u("/permissions", "aicb.l.permissions", "aicb.codex.permissions"),
+                u("/diff", "aicb.l.diff", "aicb.codex.diff"),
+                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.codex.model", sub: &[], opens_ui: true },
+                u("/status", "aicb.l.status", "aicb.codex.status"),
             ];
             A
         }
@@ -66,21 +75,21 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
             static A: &[BarCmd] = &[
                 c("/compress", "aicb.l.compact", "aicb.gemini.compress"),
                 c("/clear", "aicb.l.clear", "aicb.gemini.clear"),
-                c("/stats", "aicb.l.usage", "aicb.gemini.stats"),
-                c("/tools", "aicb.l.tools", "aicb.gemini.tools"),
+                u("/stats", "aicb.l.usage", "aicb.gemini.stats"),
+                u("/tools", "aicb.l.tools", "aicb.gemini.tools"),
                 BarCmd { cmd: "/memory", label: "aicb.l.memory", desc: "aicb.gemini.memory", sub: &[
                     ("show", "/memory show"), ("refresh", "/memory refresh"),
-                ] },
+                ], opens_ui: true },
                 BarCmd { cmd: "/chat", label: "aicb.l.chat", desc: "aicb.gemini.chat", sub: &[
                     ("list", "/chat list"), ("save", "/chat save"), ("resume", "/chat resume"),
-                ] },
+                ], opens_ui: true },
             ];
             A
         }
         _ => {
             static A: &[BarCmd] = &[
                 c("/undo", "aicb.l.undo", "aicb.aider.undo"),
-                c("/diff", "aicb.l.diff", "aicb.aider.diff"),
+                u("/diff", "aicb.l.diff", "aicb.aider.diff"),
                 c("/commit", "aicb.l.commit", "aicb.aider.commit"),
                 c("/clear", "aicb.l.clear", "aicb.aider.clear"),
                 c("/tokens", "aicb.l.tokens", "aicb.aider.tokens"),
@@ -96,51 +105,51 @@ pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
     match kind {
         "claude" => {
             static A: &[BarCmd] = &[
-                c("/permissions", "aicb.l.permissions", "aicb.claude.permissions"),
-                c("/mcp", "aicb.l.mcp", "aicb.claude.mcp"),
-                c("/memory", "aicb.l.memory", "aicb.claude.memory"),
-                c("/plan", "aicb.l.plan", "aicb.claude.plan"),
-                c("/rewind", "aicb.l.rewind", "aicb.claude.rewind"),
-                c("/diff", "aicb.l.diff", "aicb.claude.diff"),
+                u("/permissions", "aicb.l.permissions", "aicb.claude.permissions"),
+                u("/mcp", "aicb.l.mcp", "aicb.claude.mcp"),
+                u("/memory", "aicb.l.memory", "aicb.claude.memory"),
+                u("/plan", "aicb.l.plan", "aicb.claude.plan"),
+                u("/rewind", "aicb.l.rewind", "aicb.claude.rewind"),
+                u("/diff", "aicb.l.diff", "aicb.claude.diff"),
                 c("/init", "aicb.l.init", "aicb.claude.init"),
-                c("/doctor", "aicb.l.doctor", "aicb.claude.doctor"),
-                c("/export", "aicb.l.export", "aicb.claude.export"),
-                c("/help", "aicb.l.help", "aicb.help"),
+                u("/doctor", "aicb.l.doctor", "aicb.claude.doctor"),
+                u("/export", "aicb.l.export", "aicb.claude.export"),
+                u("/help", "aicb.l.help", "aicb.help"),
             ];
             A
         }
         "codex" => {
             static A: &[BarCmd] = &[
-                c("/approve", "aicb.l.approve", "aicb.codex.approve"),
-                c("/memories", "aicb.l.memory", "aicb.codex.memories"),
-                c("/skills", "aicb.l.skills", "aicb.codex.skills"),
-                c("/ide", "aicb.l.ide", "aicb.codex.ide"),
+                u("/approve", "aicb.l.approve", "aicb.codex.approve"),
+                u("/memories", "aicb.l.memory", "aicb.codex.memories"),
+                u("/skills", "aicb.l.skills", "aicb.codex.skills"),
+                u("/ide", "aicb.l.ide", "aicb.codex.ide"),
                 c("/copy", "aicb.l.copy", "aicb.codex.copy"),
-                c("/rename", "aicb.l.rename", "aicb.codex.rename"),
+                u("/rename", "aicb.l.rename", "aicb.codex.rename"),
                 c("/init", "aicb.l.init", "aicb.codex.init"),
             ];
             A
         }
         "gemini" => {
             static A: &[BarCmd] = &[
-                c("/mcp", "aicb.l.mcp", "aicb.gemini.mcp"),
-                c("/restore", "aicb.l.restore", "aicb.gemini.restore"),
+                u("/mcp", "aicb.l.mcp", "aicb.gemini.mcp"),
+                u("/restore", "aicb.l.restore", "aicb.gemini.restore"),
                 c("/init", "aicb.l.init", "aicb.gemini.init"),
-                c("/settings", "aicb.l.settings", "aicb.gemini.settings"),
-                c("/extensions", "aicb.l.extensions", "aicb.gemini.extensions"),
+                u("/settings", "aicb.l.settings", "aicb.gemini.settings"),
+                u("/extensions", "aicb.l.extensions", "aicb.gemini.extensions"),
                 c("/copy", "aicb.l.copy", "aicb.gemini.copy"),
-                c("/help", "aicb.l.help", "aicb.help"),
+                u("/help", "aicb.l.help", "aicb.help"),
             ];
             A
         }
         _ => {
             static A: &[BarCmd] = &[
                 c("/drop", "aicb.l.drop", "aicb.aider.drop"),
-                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.aider.model", sub: &[] },
+                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.aider.model", sub: &[], opens_ui: true },
                 c("/test", "aicb.l.test", "aicb.aider.test"),
                 c("/lint", "aicb.l.lint", "aicb.aider.lint"),
-                c("/settings", "aicb.l.settings", "aicb.aider.settings"),
-                c("/help", "aicb.l.help", "aicb.help"),
+                u("/settings", "aicb.l.settings", "aicb.aider.settings"),
+                u("/help", "aicb.l.help", "aicb.help"),
             ];
             A
         }

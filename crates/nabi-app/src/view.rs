@@ -129,6 +129,9 @@ impl NabiApp {
                 run_cmd: &self.run_cmd,
                 ai_cmd_bar: self.config.terminal.ai_cmd_bar,
                 ai_picks: &mut self.ai_picks,
+                ai_last_model: &self.config.terminal.ai_last_model,
+                ai_last_effort: &self.config.terminal.ai_last_effort,
+                ai_pick_out: &mut self.ai_pick_out,
                 running: &self.cmd_start,
                 ime_preedit: &mut self.ime_preedit,
                 add_requested: &mut self.add_requested,
@@ -187,6 +190,15 @@ impl NabiApp {
             // 포인터가 떠 있는 창(창 안에 띄우기 오버레이·메뉴 등) 위면 전역 줌을 막는다
             // — 오버레이가 자기 pane만 줌하므로 뒤 도크까지 함께 확대되지 않게(P3 누수 수정).
             self.set_font_size(self.font_size + ctrl_wheel.signum());
+        }
+        // 명령 바에서 고른 모델·노력을 설정에 남긴다(재시작 후에도 버튼에 그대로 — 사용자 요청).
+        if let Some((kind, val)) = self.ai_pick_out.take() {
+            if kind == "model" {
+                self.config.terminal.ai_last_model = val;
+            } else {
+                self.config.terminal.ai_last_effort = val;
+            }
+            let _ = nabi_config::save(&self.config_path, &self.config);
         }
         // 포커스 pane 리사이즈 시 크기 배지를 잠시 띄운다(현대 터미널 관례).
         if let Some(g) = resized {

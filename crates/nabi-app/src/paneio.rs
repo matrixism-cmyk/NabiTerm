@@ -135,6 +135,19 @@ fn term_focus_sink() -> egui::Id {
 ///
 /// 싱크는 **실제 위젯으로 할당**해야 한다 — egui end_pass의 dead-man 스위치가 그 프레임에
 /// 할당되지 않은 포커스 위젯의 포커스를 지우기 때문(영(0) 크기라 레이아웃·마우스에 무영향).
+/// 포커스 pane의 입력 이벤트만 복제해 돌려준다(비포커스는 빈 목록).
+///
+/// 비포커스 pane은 어차피 `typed` 판정에서 걸러지는데도 매 프레임 이벤트 목록을 복제하고
+/// 키 인코딩까지 돌던 낭비를 없앤다(성능 리뷰 2026-08-19). 진단 로그도 여기서 한 번에.
+pub(crate) fn focused_events(ui: &egui::Ui, is_focused: bool, pane: nabi_types::PaneId) -> Vec<egui::Event> {
+    if !is_focused {
+        return Vec::new();
+    }
+    let events = ui.input(|i| i.events.clone());
+    trace_input_events(&events, pane); // IME 회귀 진단(nabi_input=trace).
+    events
+}
+
 /// 포커스 pane에 도달한 키/텍스트/IME 이벤트 진단(`NABI_LOG=nabi_input=trace`).
 ///
 /// 한글 조합 파괴 회귀(2026-08-18, egui 0.36 request_focus→interrupt_ime) 추적에 쓴 계측 —

@@ -163,6 +163,10 @@ pub struct TerminalCfg {
     #[serde(default)] pub ai_profiles: Vec<AiProfileCfg>,
     /// AI 명령 바: AI CLI 실행 pane 상단에 슬래시 명령 버튼 줄 표시(aicmdbar.rs).
     #[serde(default = "default_true")] pub ai_cmd_bar: bool,
+    /// 명령 바에서 마지막으로 고른 모델·노력 수준(재시작 후에도 버튼에 그대로 보이게).
+    /// CLI가 상태줄로 실제 값을 알려주면 그쪽이 우선한다.
+    #[serde(default)] pub ai_last_model: String,
+    #[serde(default)] pub ai_last_effort: String,
     /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
     pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
@@ -297,6 +301,8 @@ impl Default for TerminalCfg {
             sftp_name_charset: default_sftp_charset(),
             ai_profiles: Vec::new(),
             ai_cmd_bar: true,
+            ai_last_model: String::new(),
+            ai_last_effort: String::new(),
             max_parallel_transfers: 2,
             download_dir: String::new(),
             download_ask: true,

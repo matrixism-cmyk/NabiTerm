@@ -10,29 +10,39 @@ pub struct UrlSpan {
     pub url: String,
 }
 
-/// 한 행에서 http(s):// URL들을 셀 인덱스 기준으로 찾는다.
-pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
-    let mut chars: Vec<char> = Vec::new();
-    let mut owner: Vec<usize> = Vec::new();
-    for (ci, cell) in row.iter().enumerate() {
-        if cell.text.is_empty() {
-            chars.push(' ');
-            owner.push(ci);
-        } else {
-            for c in cell.text.chars() {
-                chars.push(c);
-                owner.push(ci);
-            }
+/// 셀 하나를 (문자, 소유 셀 인덱스)로 평탄화해 버퍼에 넣는다.
+/// 버퍼를 호출측이 들고 재사용할 수 있어 **셀 복제 없이** 여러 행을 이어 붙일 수 있다
+/// (성능 리뷰 2026-08-19: screen_urls가 후보 그룹마다 RenderCell을 통째로 복제했다).
+pub fn push_cell(cell: &RenderCell, index: usize, chars: &mut Vec<char>, owner: &mut Vec<usize>) {
+    if cell.text.is_empty() {
+        chars.push(' ');
+        owner.push(index);
+    } else {
+        for c in cell.text.chars() {
+            chars.push(c);
+            owner.push(index);
         }
     }
+}
 
+/// 한 행에서 http(s):// URL들을 셀 인덱스 기준으로 찾는다.
+pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
+    let (mut chars, mut owner) = (Vec::new(), Vec::new());
+    for (ci, cell) in row.iter().enumerate() {
+        push_cell(cell, ci, &mut chars, &mut owner);
+    }
+    row_urls_from(&chars, &owner)
+}
+
+/// 평탄화된 (문자, 소유 셀 인덱스)에서 URL을 찾는다 — 반환 span은 **셀 인덱스** 기준.
+pub fn row_urls_from(chars: &[char], owner: &[usize]) -> Vec<UrlSpan> {
     let mut spans = Vec::new();
     let n = chars.len();
     let mut i = 0;
     while i < n {
         let scheme = ["https://", "http://", "ftp://", "file://", "ssh://", "sftp://", "git://"]
             .iter()
-            .find(|s| starts_with(&chars, i, s));
+            .find(|s| starts_with(chars, i, s));
         if let Some(s) = scheme {
             let mut j = i + s.chars().count();
             // 대괄호 IPv6 리터럴 호스트(`[::1]`)는 `]`까지 통째로 포함(is_url_char가 `]` 제외하므로).
@@ -45,14 +55,14 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
             while j > i + 1 && matches!(chars[j - 1], '.' | ',' | ';' | ':' | '!' | '?') { j -= 1; }
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: chars[i..j].iter().collect() });
             i = j;
-        } else if (i == 0 || chars[i - 1].is_whitespace()) && starts_with(&chars, i, "mailto:") {
+        } else if (i == 0 || chars[i - 1].is_whitespace()) && starts_with(chars, i, "mailto:") {
             // 이메일 하이퍼링크(mailto:user@host).
             let mut j = i + 7;
             while j < n && is_url_char(chars[j]) { j += 1; }
             while j > i + 1 && matches!(chars[j - 1], '.' | ',' | ';' | ':' | '!' | '?') { j -= 1; }
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: chars[i..j].iter().collect() });
             i = j;
-        } else if (i == 0 || chars[i - 1].is_whitespace()) && starts_with(&chars, i, "www.") {
+        } else if (i == 0 || chars[i - 1].is_whitespace()) && starts_with(chars, i, "www.") {
             // 스킴 없는 www. 도메인: 열 때 https://를 보정.
             let mut j = i;
             while j < n && is_url_char(chars[j]) {
@@ -65,7 +75,7 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
             let text: String = chars[i..j].iter().collect();
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: format!("https://{text}") });
             i = j;
-        } else if let Some(hlen) = devhost_at(&chars, i) {
+        } else if let Some(hlen) = crate::urlspath::devhost_at(chars, i) {
             // 스킴 없는 로컬 개발 서버(localhost/loopback + :포트) → http:// 보정.
             let mut j = i + hlen;
             while j < n && is_url_char(chars[j]) {
@@ -81,21 +91,21 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
                 url: format!("http://{text}"),
             });
             i = j;
-        } else if let Some(j) = crate::urls_scp::scp_match(&chars, i) {
+        } else if let Some(j) = crate::urls_scp::scp_match(chars, i) {
             // scp/git 단축 주소(`git@host:path`) → ssh:// 링크. 경로에 `/`가 있어야 인정(포트 오탐 방지).
             let raw: String = chars[i..j].iter().collect();
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: crate::urls_scp::scp_to_ssh(&raw) });
             i = j;
-        } else if let Some(j) = crate::urls_email::email_at(&chars, i) {
+        } else if let Some(j) = crate::urls_email::email_at(chars, i) {
             // 스킴 없는 이메일 주소(user@host.tld) → mailto: 링크(클릭=메일 클라이언트).
             let addr: String = chars[i..j].iter().collect();
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: format!("mailto:{addr}") });
             i = j;
-        } else if let Some((j, url)) = crate::urls_pytrace::pytrace_at(&chars, i) {
+        } else if let Some((j, url)) = crate::urls_pytrace::pytrace_at(chars, i) {
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url }); i = j; // Python 트레이스백→nabiPad.
-        } else if let Some(j) = crate::fileref::file_ref_at(&chars, i) {
+        } else if let Some(j) = crate::fileref::file_ref_at(chars, i) {
             spans.push(UrlSpan { start: owner[i], end: owner[j - 1], url: chars[i..j].iter().collect() }); i = j; // 파일참조→nabiPad.
-        } else if is_path_start(&chars, i) {
+        } else if crate::urlspath::is_path_start(chars, i) {
             // 절대 파일 경로(드라이브 `C:\…`·`C:/…` 또는 UNC `\\server\…`).
             // Ctrl+클릭으로 OS 기본 앱에서 열린다. `:line` 참조는 경로에서 제외.
             let mut j = i + 2; // 드라이브/UNC 접두 다음부터 수집.
@@ -105,14 +115,14 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
             while j > i + 2 && chars[j - 1] == '.' {
                 j -= 1; // 문장 끝 마침표 제외.
             }
-            j = crate::fileref::line_col_end(&chars, j); // `:줄[:열]` 접미 포함(클릭 시 nabiPad 해당 줄).
+            j = crate::fileref::line_col_end(chars, j); // `:줄[:열]` 접미 포함(클릭 시 nabiPad 해당 줄).
             spans.push(UrlSpan {
                 start: owner[i],
                 end: owner[j - 1],
                 url: chars[i..j].iter().collect(),
             });
             i = j;
-        } else if is_unix_path_start(&chars, i) {
+        } else if crate::urlspath::is_unix_path_start(chars, i) {
             // 유닉스 절대경로(`/usr/...`) — SSH 리눅스 세션에서 흔하다. 오탐을 줄이려
             // 경계에서 시작 + 슬래시 2개 이상(`/a/b` 최소)일 때만 링크로 인정한다.
             let mut j = i + 1;
@@ -124,7 +134,7 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
             }
             let text: String = chars[i..j].iter().collect();
             if text.matches('/').count() >= 2 {
-                let je = crate::fileref::line_col_end(&chars, j); // 확장자 없는 경로도 `:줄[:열]` 포함.
+                let je = crate::fileref::line_col_end(chars, j); // 확장자 없는 경로도 `:줄[:열]` 포함.
                 spans.push(UrlSpan { start: owner[i], end: owner[je - 1], url: chars[i..je].iter().collect() });
                 i = je;
             } else {
@@ -138,55 +148,6 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
 }
 
 /// 위치 i에서 스킴 없는 로컬 개발 서버(localhost/loopback + `:` + 숫자)면 호스트 길이를 돌려준다.
-fn devhost_at(chars: &[char], i: usize) -> Option<usize> {
-    let boundary = i == 0
-        || chars[i - 1].is_whitespace()
-        || matches!(chars[i - 1], '"' | '\'' | '(' | '[' | '=');
-    if !boundary {
-        return None;
-    }
-    for host in ["localhost", "127.0.0.1", "0.0.0.0"] {
-        let hl = host.chars().count();
-        if starts_with(chars, i, host)
-            && chars.get(i + hl) == Some(&':')
-            && chars.get(i + hl + 1).is_some_and(|c| c.is_ascii_digit())
-        {
-            return Some(hl);
-        }
-    }
-    None
-}
-
-/// 위치 i에서 절대 경로가 시작하는가(앞이 경계이고 드라이브/UNC 접두).
-fn is_path_start(chars: &[char], i: usize) -> bool {
-    let boundary = i == 0
-        || chars[i - 1].is_whitespace()
-        || matches!(chars[i - 1], '"' | '\'' | '(' | '[' | '=');
-    if !boundary {
-        return false;
-    }
-    let n = chars.len();
-    // 드라이브 경로: [A-Za-z] ':' ('\\' | '/').
-    let drive = i + 2 < n
-        && chars[i].is_ascii_alphabetic()
-        && chars[i + 1] == ':'
-        && matches!(chars[i + 2], '\\' | '/');
-    // UNC 경로: '\\' '\\'.
-    let unc = i + 2 < n && chars[i] == '\\' && chars[i + 1] == '\\';
-    drive || unc
-}
-
-/// 위치 i에서 유닉스 절대경로가 시작하는가(앞이 경계이고 `/` 다음이 이름 글자).
-/// `//`·`/ `(슬래시 뒤 비이름)은 제외 — 나눗셈/주석 등 오탐 방지.
-fn is_unix_path_start(chars: &[char], i: usize) -> bool {
-    let boundary = i == 0
-        || chars[i - 1].is_whitespace()
-        || matches!(chars[i - 1], '"' | '\'' | '(' | '[' | '=');
-    boundary
-        && chars.get(i) == Some(&'/')
-        && chars.get(i + 1).is_some_and(|c| c.is_alphanumeric() || matches!(c, '.' | '_' | '-' | '~'))
-}
-
 /// 경로에 포함되는 글자(공백·괄호·따옴표·`:`(line 참조)·`;`·`,`는 경계).
 pub(crate) fn is_path_char(c: char) -> bool {
     !c.is_whitespace()
@@ -196,7 +157,7 @@ pub(crate) fn is_path_char(c: char) -> bool {
         )
 }
 
-fn starts_with(chars: &[char], i: usize, pat: &str) -> bool {
+pub(crate) fn starts_with(chars: &[char], i: usize, pat: &str) -> bool {
     let p: Vec<char> = pat.chars().collect();
     i + p.len() <= chars.len() && chars[i..i + p.len()] == p[..]
 }

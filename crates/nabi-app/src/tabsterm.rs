@@ -37,10 +37,8 @@ impl TermTabViewer<'_> {
             (0, false, false)
         };
 
-        let events = ui.input(|i| i.events.clone());
-        if is_focused {
-            crate::paneio::trace_input_events(&events, pane); // IME 회귀 진단(nabi_input=trace).
-        }
+        // 키 입력은 포커스 pane만 수집·인코딩한다(비포커스 낭비 제거 — 성능 리뷰 2026-08-19).
+        let events = crate::paneio::focused_events(ui, is_focused, pane);
         let (app_cursor, bracketed, mouse_on, mouse_release, mouse_sgr, mouse_motion, alt_screen, alt_scroll, kitty) = self
             .orch
             .panes
@@ -76,6 +74,7 @@ impl TermTabViewer<'_> {
             || (!self.wheel_keys_off.contains(&pane)
                 && self.run_cmd.get(&pane).is_some_and(|c| crate::panewheel::is_tui_history_app(c)));
         if typed {
+            self.clear_ai_active(pane); // 키보드로 화면을 닫았을 수 있다 — 바의 열림 표시 해제.
             if self.broadcast {
                 if self.broadcast_group.is_empty() {
                     // 그룹 미지정 = "이 창의 터미널 전부". 테두리로 표시하는 대상과 정확히 일치시킨다.
