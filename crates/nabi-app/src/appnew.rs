@@ -76,6 +76,7 @@ impl NabiApp {
             lang,
             quick_connect: crate::connect::QuickConnect::default(),
             ai_prof_open: false,
+            ai_picks: std::collections::HashMap::new(),
             forward: crate::forwardui::ForwardForm::default(),
             sftp: crate::sftppanel::SftpPanel::default(),
             sftp_pane: None,

@@ -128,6 +128,7 @@ impl NabiApp {
                 pane_status: &self.pane_status,
                 run_cmd: &self.run_cmd,
                 ai_cmd_bar: self.config.terminal.ai_cmd_bar,
+                ai_picks: &mut self.ai_picks,
                 running: &self.cmd_start,
                 ime_preedit: &mut self.ime_preedit,
                 add_requested: &mut self.add_requested,

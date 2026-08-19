@@ -22,7 +22,6 @@ nabi-ssh = { workspace = true }
 nabi-ssh-ext = { workspace = true }
 nabi-sftp = { workspace = true }  # 해시 검증 전역 스위치(SFTP_VERIFY_HASH) 설정용.
 nabi-editor = { workspace = true }  # nabiPad 편집기 코어(T5-1 분리).
-rand = { workspace = true }
 nabi-secret = { workspace = true }
 nabi-telegram = { workspace = true }
 nabi-i18n = { workspace = true }

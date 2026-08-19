@@ -37,6 +37,24 @@ pub(crate) fn failure_prompt(_lang: nabi_i18n::Lang, cmd: &str, exit: i32, tail:
     )
 }
 
+/// 주입 텍스트를 ASCII로 위생 처리한다(영구 규칙 "Don't Input HANGUL" — 일부 AI TUI가
+/// 붙여넣은 비ASCII로 깨진다). 템플릿만 ASCII였고 **명령·출력은 그대로 주입**되던 구멍을
+/// 막는다(2026-08-19 리뷰). 비ASCII 연속 구간은 물음표 하나로 접어 구조를 보존한다.
+pub(crate) fn ascii_sanitize(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut dropped = false;
+    for ch in s.chars() {
+        if ch.is_ascii() {
+            out.push(ch);
+            dropped = false;
+        } else if !dropped {
+            out.push('?');
+            dropped = true;
+        }
+    }
+    out
+}
+
 impl NabiApp {
     /// 포커스 pane의 실패 컨텍스트를 만든다(명령·종료코드·화면 마지막 30줄).
     pub(crate) fn failure_context(&self, p: PaneId) -> Option<String> {
@@ -44,7 +62,9 @@ impl NabiApp {
         if exit == 0 {
             return None;
         }
-        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned().unwrap_or_else(|| "(unknown)".into());
+        // 종료코드·출력은 **끝난 명령**의 것이다 — 지금 다른 명령이 돌고 있어도(run_cmd)
+        // 짝이 맞는 last_run_cmd를 쓴다(리뷰 2026-08-19: 실행 중 명령에 남의 종료코드가 붙던 버그).
+        let cmd = self.last_run_cmd.get(&p).or_else(|| self.run_cmd.get(&p)).cloned().unwrap_or_else(|| "(unknown)".into());
         // 셸 통합(OSC 133)이 있으면 "그 명령의 실제 출력"을, 없으면 화면 마지막 30줄 폴백.
         let tail = self
             .orch
@@ -58,11 +78,14 @@ impl NabiApp {
     }
 
     /// AI CLI가 돌고 있는 다른 pane(첫 번째)을 찾는다.
+    /// 탭·분리 창뿐 아니라 **창 안에 띄운 pane(docked_float)**도 본다 — 그쪽으로 옮겨 둔
+    /// AI pane을 "AI 없음"이라고 하던 버그(리뷰 2026-08-19).
     pub(crate) fn find_ai_pane(&self, except: PaneId) -> Option<PaneId> {
         self.dock
             .iter_all_tabs()
             .map(|(_, p)| *p)
             .chain(self.floating.iter().copied())
+            .chain(self.docked_float.iter().copied())
             .find(|p| {
                 *p != except
                     && self.run_cmd.get(p).is_some_and(|c| is_ai_command_strict(c))
@@ -77,8 +100,9 @@ impl NabiApp {
     }
 
     /// 마지막 명령 컨텍스트(성공 포함) — 실패 여부와 무관하게 "이 결과 봐줘" 동선(팔레트).
+    /// 출력·종료코드와 짝이 맞는 **끝난 명령**을 우선한다(failure_context와 같은 규칙).
     pub(crate) fn command_context(&self, p: PaneId) -> Option<String> {
-        let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned()?;
+        let cmd = self.last_run_cmd.get(&p).or_else(|| self.run_cmd.get(&p)).cloned()?;
         let exit = self.last_exit.get(&p).copied().unwrap_or(0);
         let tail = self.pane_cmd_output(p)?;
         // 주입 텍스트는 항상 ASCII 영어(failure_prompt 주석 참조 — "Don't Input HANGUL").
@@ -108,6 +132,8 @@ impl NabiApp {
     /// 프롬프트를 AI pane에 브래킷 붙여넣기로 주입하고 그 탭을 활성화한다(공용).
     pub(crate) fn inject_prompt(&mut self, ai: PaneId, prompt: &str) {
         // 여러 줄 프롬프트가 줄마다 제출되지 않게 브래킷 붙여넣기로 감싼다(AI TUI는 지원).
+        // 주입 직전 단일 지점에서 ASCII 위생 처리 — 명령·출력에 섞인 비ASCII를 차단한다.
+        let prompt = ascii_sanitize(prompt);
         let mut data = Vec::with_capacity(prompt.len() + 16);
         data.extend_from_slice(b"\x1b[200~");
         data.extend_from_slice(prompt.as_bytes());
@@ -130,6 +156,16 @@ mod tests {
         assert!(!f("grep -r 'claude ' src/"), "부분문자열 언급은 배제");
         assert!(!f("tail -f claude.log"));
         assert!(!f(""));
+    }
+
+    /// 주입 직전 위생 처리(리뷰 2026-08-19): 명령·출력에 섞인 비ASCII도 차단된다.
+    #[test]
+    fn sanitize_strips_non_ascii_but_keeps_structure() {
+        use super::ascii_sanitize as f;
+        // 공백은 ASCII라 그대로 남는다 — 단어 경계가 보존돼 AI가 구조를 읽을 수 있다.
+        assert_eq!(f("error: 파일을 찾을 수 없습니다 (code 2)"), "error: ? ? ? ? (code 2)");
+        assert_eq!(f("plain ascii\nline2"), "plain ascii\nline2");
+        assert!(f("한글만").is_ascii());
     }
 
     #[test]

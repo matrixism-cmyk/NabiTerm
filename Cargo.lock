@@ -3088,7 +3088,6 @@ dependencies = [
  "nabi-types",
  "nabi-vt",
  "pollster 0.3.0",
- "rand 0.8.6",
  "raw-window-handle",
  "regex",
  "rfd",

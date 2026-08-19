@@ -88,7 +88,7 @@ impl NabiApp {
         }
         // Ctrl+Shift+B: 상태바 표시 토글.
         if ctx.input_mut(|i| i.consume_key(cs, Key::B)) {
-            self.config.appearance.show_statusbar = !self.config.appearance.show_statusbar;
+            self.run_palette(ctx, crate::palette::PaletteAction::ToggleStatusBar); // 영속까지 한곳에서.
         }
         // Ctrl+Shift+N: Quick Connect(새 SSH 연결).
         if ctx.input_mut(|i| i.consume_key(cs, Key::N)) {

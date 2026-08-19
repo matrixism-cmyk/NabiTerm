@@ -28,6 +28,11 @@ impl crate::app::NabiApp {
         if !open {
             self.ai_prof_open = false;
             let _ = nabi_config::save(&self.config_path, &self.config);
+            // 설정 대화상자가 열려 있으면 그 취소 스냅샷에도 반영한다 — 그러지 않으면
+            // 설정을 Esc로 닫는 순간 여기서 추가한 프로필이 되돌려져 사라진다(리뷰 2026-08-19).
+            if let Some(b) = self.settings_backup.as_mut() {
+                b.terminal.ai_profiles = self.config.terminal.ai_profiles.clone();
+            }
         }
     }
 }
@@ -115,11 +120,21 @@ fn profile_editor(ui: &mut egui::Ui, p: &mut AiProfileCfg, lang: Lang, i: usize)
         }
 
         // 자유 인자 한 줄(공백 분리) — 프리셋 체크 상태는 유지된다.
+        //
+        // 편집 중 텍스트는 egui 임시 메모리에 둔다. args(토큰 목록)에서 매 프레임 다시
+        // 만들면 **공백을 칠 수 없다**(“--model ” → join으로 꼬리 공백이 사라져 다음 글자가
+        // 붙어버림 — 리뷰 2026-08-19). 외부에서 args가 바뀌면(프로필/CLI 교체) 다시 맞춘다.
         ui.label(tr(lang, "aiprof.extra"));
-        let mut extra = extra_args_string(&p.args, &p.cmd);
+        let derived = extra_args_string(&p.args, &p.cmd);
+        let bid = ui.id().with(("aiprof_extra", i));
+        let mut extra: String = ui.data(|d| d.get_temp(bid)).unwrap_or_else(|| derived.clone());
+        if extra.split_whitespace().ne(derived.split_whitespace()) {
+            extra = derived; // 버퍼와 실제 인자가 어긋남 = 외부 변경 → 버퍼 재동기화.
+        }
         if ui.add(egui::TextEdit::singleline(&mut extra).desired_width(260.0).hint_text("--model opus …")).changed() {
             set_extra_args(&mut p.args, &p.cmd, &extra);
         }
+        ui.data_mut(|d| d.insert_temp(bid, extra));
         ui.end_row();
     });
 }

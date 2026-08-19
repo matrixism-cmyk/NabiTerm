@@ -54,6 +54,8 @@ pub struct TermTabViewer<'a> {
     pub run_cmd: &'a HashMap<PaneId, String>,
     /// AI 명령 바 표시 여부(설정 terminal.ai_cmd_bar — aicmdbar.rs).
     pub ai_cmd_bar: bool,
+    /// pane별 모델·노력 선택 기억(명령 바 버튼에 현재 상태 표시).
+    pub ai_picks: &'a mut HashMap<PaneId, crate::aicmdbar::AiPicks>,
     /// 명령 실행 중(OSC 133;C~D) pane — 탭에 ⚙ 상태 배지(CP-6).
     pub running: &'a std::collections::HashMap<PaneId, std::time::Instant>,
     /// 포커스 pane의 IME 조합 중 텍스트(커서에 오버레이 — 한글 조합 표시).

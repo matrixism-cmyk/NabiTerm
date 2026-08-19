@@ -17,8 +17,13 @@ fn name_charset_roundtrip_and_modes() {
     assert!(std::str::from_utf8(&wire).is_err());
     let name = charset::decode(&wire);
     assert_eq!(name, "한글파일.txt", "CP949 파일명 디코드");
+    charset::promote_candidate(); // list()가 readdir 응답에서 하는 일(파일명 확정).
     assert_eq!(charset::encode_path(&name), wire, "송신 시 서버 원본 바이트 복원");
     assert_eq!(crate::detected_name_charset(), Some("EUC-KR"), "auto 감지 배지");
+    // v0.1.448 회귀 방지: 같은 서버에 섞여 있는 UTF-8 이름은(목록에서 받은 뒤) UTF-8로
+    // 나가야 열린다 — 초판은 감지된 CP949로 재인코딩해 파일을 못 찾았다.
+    assert_eq!(charset::decode("계약서.pdf".as_bytes()), "계약서.pdf");
+    assert_eq!(charset::encode_path("계약서.pdf"), "계약서.pdf".as_bytes().to_vec());
     // 유효 UTF-8은 폴백을 타지 않는다(현대 서버 무영향).
     assert_eq!(charset::decode("한글.txt".as_bytes()), "한글.txt");
     // ASCII 경로는 어떤 모드에서도 그대로.

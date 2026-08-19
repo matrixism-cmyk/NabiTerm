@@ -46,6 +46,7 @@ impl NabiApp {
             }
             PaletteAction::ToggleStatusBar => {
                 self.config.appearance.show_statusbar = !self.config.appearance.show_statusbar;
+                let _ = nabi_config::save(&self.config_path, &self.config); // 다른 토글과 동일하게 영속.
             }
             PaletteAction::OpenSettings => self.settings_open = true,
             PaletteAction::OpenTelegram => {
@@ -106,8 +107,11 @@ impl NabiApp {
                 }
             }
             PaletteAction::ToggleOnTop => {
+                // 메뉴와 동일하게 영속한다 — 팔레트로 켜면 재시작에 잊히던 드리프트(리뷰 2026-08-19).
                 self.always_on_top = !self.always_on_top;
                 self.pending_on_top = Some(self.always_on_top);
+                self.config.appearance.always_on_top = self.always_on_top;
+                let _ = nabi_config::save(&self.config_path, &self.config);
             }
             PaletteAction::ZoomIn => self.set_font_size(self.font_size + 1.0),
             PaletteAction::ZoomOut => self.set_font_size(self.font_size - 1.0),

@@ -48,8 +48,9 @@ pub(crate) fn local_resume_command(command: &str, session: Option<&str>) -> Stri
 /// claude 명령줄에서 기존 재개 관련 토큰(`--continue`/`-c`/`--resume [id]`/`-r [id]`)만
 /// 걷어내고 나머지 플래그를 보존한 뒤, 정확 재개(`--resume <id>`) 또는 근사(`--continue`)를 붙인다.
 fn claude_resume_preserving_flags(command: &str, session: Option<&str>) -> String {
+    let toks = split_args(command);
     let mut kept: Vec<&str> = Vec::new();
-    let mut it = command.split_whitespace().skip(1).peekable();
+    let mut it = toks.iter().skip(1).map(String::as_str).peekable();
     while let Some(tok) = it.next() {
         match tok {
             "--continue" | "-c" => {}
@@ -73,6 +74,42 @@ fn claude_resume_preserving_flags(command: &str, session: Option<&str>) -> Strin
             out.push_str(id);
         }
         None => out.push_str(" --continue"),
+    }
+    // 주입 텍스트 ASCII 규칙: 사용자 인자에 비ASCII가 있으면 플래그 보존을 포기하고
+    // 예전의 고정 ASCII 형태로 돌아간다(한글 프롬프트를 그대로 타이핑하지 않도록).
+    if !out.is_ascii() {
+        return match session {
+            Some(id) => format!("claude --resume {id}"),
+            None => "claude --continue".into(),
+        };
+    }
+    out
+}
+
+/// 따옴표를 존중하는 인자 분리 — `claude -p "why -c fails"`의 인용 인자가 조각나
+/// 다른 명령으로 복원되던 문제를 막는다(리뷰 2026-08-19). 따옴표는 보존한다(재실행 동일성).
+fn split_args(s: &str) -> Vec<String> {
+    let (mut out, mut cur, mut quote) = (Vec::new(), String::new(), None::<char>);
+    for ch in s.chars() {
+        match ch {
+            '"' | '\'' if quote.is_none() => {
+                quote = Some(ch);
+                cur.push(ch);
+            }
+            c if Some(c) == quote => {
+                quote = None;
+                cur.push(c);
+            }
+            c if c.is_whitespace() && quote.is_none() => {
+                if !cur.is_empty() {
+                    out.push(std::mem::take(&mut cur));
+                }
+            }
+            c => cur.push(c),
+        }
+    }
+    if !cur.is_empty() {
+        out.push(cur);
     }
     out
 }
@@ -122,6 +159,22 @@ mod tests {
         assert_eq!(f(r"C:\npm\codex.cmd resume --last", Some("s9")), "codex resume s9");
         assert_eq!(f("codex", None), "codex resume --last");
         assert_eq!(f("cargo watch", Some("x")), "cargo watch", "AI 아니면 세션 무시·원문 유지");
+    }
+
+    /// 인용 인자·비ASCII 처리(리뷰 2026-08-19).
+    #[test]
+    fn quoted_args_survive_and_non_ascii_falls_back() {
+        use super::local_resume_command as f;
+        assert_eq!(
+            f(r#"claude -p "why does -c not work""#, None),
+            r#"claude -p "why does -c not work" --continue"#,
+            "인용 인자 안의 -c는 재개 플래그가 아니다"
+        );
+        assert_eq!(
+            f("claude \"버그 고쳐줘\"", None),
+            "claude --continue",
+            "비ASCII 인자는 고정 ASCII 형태로(주입 규칙)"
+        );
     }
 
     /// 사용자 보고(2026-08-18): claude 플래그가 복원에서 사라지면 안 된다.

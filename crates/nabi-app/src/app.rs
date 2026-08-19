@@ -20,6 +20,8 @@ pub struct NabiApp {
     pub quick_connect: crate::connect::QuickConnect,
     /// AI 터미널 프로필 관리 독립창 열림(세션▸새 AI 터미널▸프로필 관리 — aiprofileui.rs).
     pub ai_prof_open: bool,
+    /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
+    pub ai_picks: std::collections::HashMap<PaneId, crate::aicmdbar::AiPicks>,
     pub forward: crate::forwardui::ForwardForm,
     pub sftp: crate::sftppanel::SftpPanel, // 현재 활성(포커스) 원격 패널.
     pub sftp_pane: Option<nabi_types::PaneId>, // 활성 원격 패널의 도킹 PaneId.

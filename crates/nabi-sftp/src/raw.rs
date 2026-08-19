@@ -130,7 +130,12 @@ impl RawFs {
         let mut out = Vec::new();
         let result = loop {
             match self.session.readdir(handle.clone()).await {
-                Ok(name) => out.extend(name.files.into_iter().map(|f| (f.filename, f.attrs))),
+                Ok(name) => {
+                    // 여기 담긴 문자열은 **파일명이 확실하다** — 자동 감지 후보를 이 지점에서만
+                    // 확정한다(이진 핸들·오류 메시지가 인코딩 감지를 오염시키지 못하게).
+                    russh_sftp::charset::promote_candidate();
+                    out.extend(name.files.into_iter().map(|f| (f.filename, f.attrs)));
+                }
                 Err(SftpError::Status(s)) if s.status_code == StatusCode::Eof => break Ok(out),
                 Err(e) => break Err(es(e)),
             }
