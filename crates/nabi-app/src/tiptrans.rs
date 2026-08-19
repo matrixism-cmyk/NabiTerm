@@ -44,34 +44,75 @@ fn norm(s: &str) -> String {
     out
 }
 
-/// (핵심 구절, 한국어 번역). 구절이 모두 들어 있는 팁에만 매칭된다(오탐 방지).
+/// 사전 항목: 핵심 구절(모두 포함돼야 매칭) + 번역 + 접두사 없는 줄에도 붙일지 여부.
+///
+/// `standalone`이 false면 `Tip:`/`Note:` 줄에서만 번역한다 — 상태 줄처럼 다른 정보가 함께
+/// 있는 줄을 통째로 덮어 버리지 않기 위해서다(예: "esc to interrupt"는 상태 줄의 일부).
+struct Entry {
+    needles: &'static [&'static str],
+    ko: &'static str,
+    standalone: bool,
+}
+
+const fn e(needles: &'static [&'static str], ko: &'static str) -> Entry {
+    Entry { needles, ko, standalone: false }
+}
+
+/// 접두사 없이 그 줄만으로도 뜻이 완결되는 항목(안내 박스 문장 등).
+const fn s(needles: &'static [&'static str], ko: &'static str) -> Entry {
+    Entry { needles, ko, standalone: true }
+}
+
 /// 실제 화면에서 확인한 문구를 기준으로 하고, 확신이 없으면 넣지 않는다.
-const DICT: &[(&[&str], &str)] = &[
-    (&["double-tap esc", "rewind"], "Esc를 두 번 누르면 코드와 대화를 이전 시점으로 되돌립니다"),
-    (&["/color", "/rename"], "여러 세션을 함께 쓴다면 /color·/rename으로 한눈에 구분하세요"),
-    (&["/init", "claude.md"], "/init 을 실행하면 프로젝트 지침 파일(CLAUDE.md)을 만들어 줍니다"),
-    (&["shift+tab", "cycle"], "Shift+Tab을 누르면 권한 모드가 순환합니다"),
-    (&["esc to interrupt"], "Esc를 누르면 진행 중인 작업을 중단합니다"),
-    (&["ctrl+c", "exit"], "Ctrl+C를 두 번 누르면 종료합니다"),
-    (&["drag", "drop", "image"], "이미지를 창에 끌어다 놓으면 대화에 첨부됩니다"),
-    (&["@", "mention", "file"], "@ 뒤에 파일명을 적으면 그 파일을 대화에 붙일 수 있습니다"),
-    (&["/help", "command"], "/help 를 입력하면 사용할 수 있는 명령 목록이 나옵니다"),
-    (&["--continue", "resume"], "--continue(또는 /resume)로 지난 대화를 이어서 시작할 수 있습니다"),
-    (&["plan mode"], "계획 모드에서는 파일을 바꾸지 않고 계획만 먼저 세웁니다"),
-    (&["/compact", "context"], "/compact 로 대화를 요약해 컨텍스트 여유를 확보하세요"),
-    (&["/memory", "claude.md"], "/memory 로 프로젝트 지침(CLAUDE.md)을 편집할 수 있습니다"),
-    (&["/mcp", "server"], "/mcp 에서 MCP 서버 연결을 관리합니다"),
-    (&["/vim", "vim mode"], "/vim 으로 입력창에서 vim 키 조작을 쓸 수 있습니다"),
-    (&["run /", "in the background"], "명령을 백그라운드로 돌려 두고 다른 작업을 계속할 수 있습니다"),
-    (&["type", "/", "slash command"], "슬래시(/)를 입력하면 명령 목록이 열립니다"),
+const DICT: &[Entry] = &[
+    s(&["double-tap esc", "rewind"], "Esc를 두 번 누르면 코드와 대화를 이전 시점으로 되돌립니다"),
+    s(&["/color", "/rename"], "여러 세션을 함께 쓴다면 /color·/rename으로 한눈에 구분하세요"),
+    s(&["/init", "claude.md"], "/init 을 실행하면 프로젝트 지침 파일(CLAUDE.md)을 만들어 줍니다"),
+    s(&["tips for getting started"], "시작하기 팁"),
+    s(&["what's new"], "새로운 기능"),
+    s(&["launched claude in your home directory"], "홈 디렉터리에서 claude를 실행했습니다 — 작업할 프로젝트 폴더에서 실행하는 편이 좋습니다"),
+    s(&["transcript saving is off"], "대화 기록 저장이 꺼져 있습니다"),
+    e(&["shift+tab", "cycle"], "Shift+Tab을 누르면 권한 모드가 순환합니다"),
+    e(&["esc to interrupt"], "Esc를 누르면 진행 중인 작업을 중단합니다"),
+    e(&["ctrl+c", "exit"], "Ctrl+C를 두 번 누르면 종료합니다"),
+    e(&["drag", "drop", "image"], "이미지를 창에 끌어다 놓으면 대화에 첨부됩니다"),
+    e(&["@", "mention", "file"], "@ 뒤에 파일명을 적으면 그 파일을 대화에 붙일 수 있습니다"),
+    s(&["/help", "command"], "/help 를 입력하면 사용할 수 있는 명령 목록이 나옵니다"),
+    e(&["--continue", "resume"], "--continue(또는 /resume)로 지난 대화를 이어서 시작할 수 있습니다"),
+    e(&["plan mode"], "계획 모드에서는 파일을 바꾸지 않고 계획만 먼저 세웁니다"),
+    s(&["/compact", "context"], "/compact 로 대화를 요약해 컨텍스트 여유를 확보하세요"),
+    s(&["/memory", "claude.md"], "/memory 로 프로젝트 지침(CLAUDE.md)을 편집할 수 있습니다"),
+    e(&["/mcp", "server"], "/mcp 에서 MCP 서버 연결을 관리합니다"),
+    e(&["/vim", "vim mode"], "/vim 으로 입력창에서 vim 키 조작을 쓸 수 있습니다"),
+    e(&["run /", "in the background"], "명령을 백그라운드로 돌려 두고 다른 작업을 계속할 수 있습니다"),
+    e(&["type", "/", "slash command"], "슬래시(/)를 입력하면 명령 목록이 열립니다"),
 ];
 
-/// 사전에서 번역을 찾는다(핵심 구절이 모두 포함될 때만).
-pub(crate) fn lookup(body: &str) -> Option<&'static str> {
-    let n = norm(body);
+/// 사전 조회(핵심 구절이 모두 포함될 때만). `standalone_only`면 접두사 없는 줄에도
+/// 붙일 수 있는 항목만 본다.
+fn find(text: &str, standalone_only: bool) -> Option<&'static str> {
+    let n = norm(text);
     DICT.iter()
-        .find(|(needles, _)| needles.iter().all(|k| n.contains(*k)))
-        .map(|(_, ko)| *ko)
+        .filter(|e| !standalone_only || e.standalone)
+        .find(|e| e.needles.iter().all(|k| n.contains(*k)))
+        .map(|e| e.ko)
+}
+
+/// `Tip:`/`Note:` 본문의 번역(모든 항목 대상).
+pub(crate) fn lookup(body: &str) -> Option<&'static str> {
+    find(body, false)
+}
+
+/// 접두사 없는 일반 줄의 번역 — 그 줄만으로 뜻이 완결되는 항목만 매칭한다
+/// (사용자 요청 2026-08-19: 'Tips for getting started' 같은 줄도 번역).
+/// AI 번역은 요청하지 않는다 — 아무 줄이나 보내면 비용이 폭발한다.
+pub(crate) fn lookup_line(line: &str) -> Option<&'static str> {
+    let t = line.trim();
+    // 너무 짧거나 비ASCII(이미 번역된 줄·한글 출력)는 건너뛴다.
+    if t.chars().count() < 12 || !t.is_ascii() {
+        return None;
+    }
+    find(t, true)
 }
 
 #[cfg(test)]
@@ -99,6 +140,18 @@ mod tests {
         assert_eq!(lookup("esc is a key on your keyboard"), None);
         // 공백·대소문자 차이는 무시.
         assert!(lookup("Running multiple sessions?  Use /COLOR and /rename").is_some());
+    }
+
+    /// 접두사 없는 줄도 번역된다(단, standalone 항목만).
+    #[test]
+    fn standalone_lines_translate_without_prefix() {
+        assert!(lookup_line("Tips for getting started").is_some());
+        assert!(lookup_line("Run /init to create a CLAUDE.md file with instructions").is_some());
+        // 상태 줄 일부는 접두사 없이는 번역하지 않는다(줄 전체를 덮어 정보가 사라진다).
+        assert_eq!(lookup_line("esc to interrupt - left arrow for agents"), None);
+        // 짧은 줄·한글 줄은 대상 아님.
+        assert_eq!(lookup_line("what's new"), None, "12자 미만");
+        assert_eq!(lookup_line("한글 출력 줄입니다 여기에는 무엇이"), None);
     }
 
     #[test]

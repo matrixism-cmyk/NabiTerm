@@ -56,6 +56,8 @@ pub struct TermTabViewer<'a> {
     pub ai_cmd_bar: bool,
     /// pane별 모델·노력 선택 기억(명령 바 버튼에 현재 상태 표시).
     pub ai_picks: &'a mut HashMap<PaneId, crate::aicmdbar::AiPicks>,
+    /// pane별 AI 화면 판독 캐시(모드·모델·노력·제목).
+    pub ai_screen: &'a mut HashMap<PaneId, crate::aimode::AiScreen>,
     /// 설정에 저장된 마지막 선택(재시작 후 초기 표시값).
     pub ai_last_model: &'a str,
     pub ai_last_effort: &'a str,

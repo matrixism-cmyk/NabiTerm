@@ -199,4 +199,20 @@ pub(crate) fn tip_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.add_enabled(cfg.terminal.tip_overlay, egui::Checkbox::new(&mut cfg.terminal.tip_translate_ai, ""))
         .on_hover_text(tr(lang, "settings.tipaihint"));
     ui.end_row();
+    // 캐시 파일 경로: 공유 폴더/서버 경로를 지정하면 여러 PC의 번역이 한 곳에 누적된다.
+    ui.label(tr(lang, "settings.tipcachepath"));
+    ui.horizontal(|ui| {
+        ui.add(
+            egui::TextEdit::singleline(&mut cfg.terminal.tip_cache_path)
+                .desired_width(240.0)
+                .hint_text(r"\\server\share\tipcache.json"),
+        )
+        .on_hover_text(tr(lang, "settings.tipcachepathhint"));
+        if ui.button("\u{1f4c1}").clicked() {
+            if let Some(f) = rfd::FileDialog::new().add_filter("json", &["json"]).save_file() {
+                cfg.terminal.tip_cache_path = f.to_string_lossy().into_owned();
+            }
+        }
+    });
+    ui.end_row();
 }

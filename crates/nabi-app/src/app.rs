@@ -22,6 +22,8 @@ pub struct NabiApp {
     pub ai_prof_open: bool,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
     pub ai_picks: std::collections::HashMap<PaneId, crate::aicmdbar::AiPicks>,
+    /// pane별 AI 화면 판독 캐시(모드·모델·노력·제목 — aimode.rs).
+    pub ai_screen: std::collections::HashMap<PaneId, crate::aimode::AiScreen>,
     /// pane별 영문 팁 감지 결과(번역 오버레이 — tipoverlay.rs).
     pub tip_cache: std::collections::HashMap<PaneId, crate::tipoverlay::TipHit>,
     /// 팁 AI 번역 캐시(선택 기능, 디스크 영속).

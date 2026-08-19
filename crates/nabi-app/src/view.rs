@@ -129,6 +129,7 @@ impl NabiApp {
                 run_cmd: &self.run_cmd,
                 ai_cmd_bar: self.config.terminal.ai_cmd_bar,
                 ai_picks: &mut self.ai_picks,
+                ai_screen: &mut self.ai_screen,
                 ai_last_model: &self.config.terminal.ai_last_model,
                 ai_last_effort: &self.config.terminal.ai_last_effort,
                 ai_pick_out: &mut self.ai_pick_out,

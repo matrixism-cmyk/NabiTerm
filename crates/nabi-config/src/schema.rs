@@ -171,6 +171,9 @@ pub struct TerminalCfg {
     #[serde(default = "default_true")] pub tip_overlay: bool,
     /// 사전에 없는 팁을 AI(claude -p)로 번역(기본 꺼짐 — 요금·프라이버시·폐쇄망 고려).
     #[serde(default)] pub tip_translate_ai: bool,
+    /// 팁 번역 캐시 파일 경로(비우면 설정 폴더). 공유 폴더·개발 서버 경로를 지정하면
+    /// 여러 PC의 번역이 한 파일에 누적된다(저장 시 병합).
+    #[serde(default)] pub tip_cache_path: String,
     /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
     pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
@@ -309,6 +312,7 @@ impl Default for TerminalCfg {
             ai_last_effort: String::new(),
             tip_overlay: true,
             tip_translate_ai: false,
+            tip_cache_path: String::new(),
             max_parallel_transfers: 2,
             download_dir: String::new(),
             download_ask: true,

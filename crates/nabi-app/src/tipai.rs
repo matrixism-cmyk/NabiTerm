@@ -20,14 +20,26 @@ pub(crate) struct TipAi {
 }
 
 impl TipAi {
-    /// 설정 폴더의 캐시 파일을 읽어 초기화한다(없으면 빈 캐시).
-    pub(crate) fn load(dir: &Path) -> Self {
-        let path = dir.join("tipcache.json");
-        let cache = std::fs::read_to_string(&path)
-            .ok()
-            .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default();
+    /// 캐시 파일을 읽어 초기화한다. `custom`이 비어 있지 않으면 그 경로를 쓴다 —
+    /// 네트워크 드라이브·UNC(`\\server\share\tipcache.json`)를 지정하면 여러 PC의
+    /// 번역이 **한 파일에 계속 누적**된다(사용자 요청 2026-08-19: 개발 서버에 모으기).
+    pub(crate) fn load(dir: &Path, custom: &str) -> Self {
+        let path = if custom.trim().is_empty() {
+            dir.join("tipcache.json")
+        } else {
+            PathBuf::from(custom.trim())
+        };
+        let cache = read_map(&path);
         Self { cache, path, ..Default::default() }
+    }
+
+    /// 경로가 바뀌면 새 파일에서 다시 읽는다(설정 변경 즉시 반영).
+    pub(crate) fn retarget(&mut self, dir: &Path, custom: &str) {
+        let path = if custom.trim().is_empty() { dir.join("tipcache.json") } else { PathBuf::from(custom.trim()) };
+        if path != self.path {
+            self.cache = read_map(&path);
+            self.path = path;
+        }
     }
 
     /// 캐시된 번역(있으면).
@@ -71,9 +83,30 @@ impl TipAi {
             return false;
         }
         self.cache.insert(en, text);
-        if let Ok(s) = serde_json::to_string_pretty(&self.cache) {
-            let _ = std::fs::write(&self.path, s);
-        }
+        self.save();
         true
     }
+
+    /// 파일에 저장한다 — **먼저 다시 읽어 병합**한다. 같은 파일을 다른 PC·다른 세션이
+    /// 함께 쓸 때(공유 폴더에 모으는 구성) 서로의 항목을 지우지 않기 위해서다.
+    fn save(&mut self) {
+        let mut merged = read_map(&self.path);
+        merged.extend(self.cache.iter().map(|(k, v)| (k.clone(), v.clone())));
+        if let Some(dir) = self.path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        if let Ok(s) = serde_json::to_string_pretty(&merged) {
+            if std::fs::write(&self.path, s).is_ok() {
+                self.cache = merged; // 저장에 성공했을 때만 남의 항목까지 흡수한다.
+            }
+        }
+    }
+}
+
+/// 캐시 파일을 읽는다(없거나 깨졌으면 빈 맵 — 번역 캐시는 잃어도 기능이 죽지 않는다).
+fn read_map(path: &Path) -> HashMap<String, String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
 }

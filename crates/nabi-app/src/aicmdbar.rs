@@ -45,23 +45,35 @@ impl crate::tabs::TermTabViewer<'_> {
         if !self.ai_cmd_bar {
             return;
         }
-        let Some(kind) = self.run_cmd.get(&pane).and_then(|c| bar_kind(c)) else { return };
+        // 화면 판독(모드·모델·노력·제목)은 내용이 바뀐 프레임에만 — 결과는 pane별 캐시.
+        let scr = self.ai_screen_state(pane);
+        // CLI 종류: 셸 통합이 있으면 실행 명령으로, 없으면(=SSH pane) **창 제목**으로 판정한다.
+        let Some(kind) = self
+            .run_cmd
+            .get(&pane)
+            .and_then(|c| bar_kind(c))
+            .or(scr.title_kind)
+        else {
+            return;
+        };
         let picks = self.ai_picks.get(&pane).cloned().unwrap_or_default();
-        // 모델은 CLI 상태줄(pane_status)이 가장 정확하고, 없으면 이 pane에서 고른 값,
-        // 그것도 없으면 설정에 남은 마지막 선택(재시작 후에도 유지 — 사용자 요청 2026-08-19).
+        // 모델 우선순위: CLI 상태줄(pane_status) → **화면에서 읽은 현재 모델** → 이 pane에서
+        // 고른 값 → 설정에 남은 마지막 선택. 화면 판독이 있어야 재시작 후에도 실제 모델이 뜬다.
         let model = self
             .pane_status
             .get(&pane)
             .and_then(|m| m.get("model"))
             .cloned()
+            .or(scr.model)
             .or(picks.model)
             .or_else(|| Some(self.ai_last_model.to_owned()).filter(|s| !s.is_empty()));
-        let effort = picks
+        let effort = scr
             .effort
+            .or(picks.effort)
             .or_else(|| Some(self.ai_last_effort.to_owned()).filter(|s| !s.is_empty()));
         let view = BarView {
             kind,
-            mode: self.pane_ai_mode(pane),
+            mode: scr.mode,
             model: model.as_deref(),
             effort: effort.as_deref(),
             active: picks.active.as_deref(),
@@ -101,15 +113,24 @@ impl crate::tabs::TermTabViewer<'_> {
         }
     }
 
-    /// pane 화면 하단에서 현재 승인/권한 모드를 읽는다(CLI가 상태 줄에 쓰는 문구 — aimode.rs).
-    fn pane_ai_mode(&self, pane: nabi_types::PaneId) -> &'static str {
-        self.orch
-            .panes
-            .read()
-            .ok()
-            .and_then(|m| m.get(&pane).map(|v| v.model.clone()))
-            .and_then(|md| md.lock().ok().map(|m| crate::aimode::detect_mode(&m.visible_bottom_text(4))))
-            .unwrap_or("aimode.unknown")
+    /// pane 화면 판독 결과(모드·모델·노력·제목 종류) — 세대가 같으면 캐시를 그대로 쓴다.
+    fn ai_screen_state(&mut self, pane: nabi_types::PaneId) -> crate::aimode::AiScreen {
+        let Some(md) = self.orch.panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.model.clone()))
+        else {
+            return crate::aimode::AiScreen { mode: "aimode.unknown", ..Default::default() };
+        };
+        let Ok(model) = md.lock() else {
+            return crate::aimode::AiScreen { mode: "aimode.unknown", ..Default::default() };
+        };
+        let gen = model.render_gen();
+        if let Some(c) = self.ai_screen.get(&pane) {
+            if c.gen == gen {
+                return c.clone();
+            }
+        }
+        let scanned = crate::aimode::scan(&model, gen);
+        self.ai_screen.insert(pane, scanned.clone());
+        scanned
     }
 }
 

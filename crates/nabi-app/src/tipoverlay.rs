@@ -86,8 +86,15 @@ fn scan(
     // 아래에서 위로 — 가장 최근에 출력된 팁을 고른다.
     let lines: Vec<&str> = text.lines().collect();
     for (i, line) in lines.iter().enumerate().rev() {
-        let Some(body) = crate::tiptrans::tip_body(line) else { continue };
         let r = u16::try_from(i).unwrap_or(0);
+        // ② 접두사 없는 안내 줄 — 사전에 확실히 있는 문장만(AI 호출 없음).
+        if crate::tiptrans::tip_body(line).is_none() {
+            if let Some(ko) = crate::tiptrans::lookup_line(line) {
+                return Some(TipHit { gen, row: r, en: (*line).trim().to_owned(), ko: Some(ko.to_owned()) });
+            }
+            continue;
+        }
+        let body = crate::tiptrans::tip_body(line).unwrap_or(line);
         let mut ko = crate::tiptrans::lookup(body).map(str::to_owned);
         if ko.is_none() {
             ko = ai.get(body).map(str::to_owned);

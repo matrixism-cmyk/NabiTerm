@@ -132,6 +132,8 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("settings.tipoverlayhint", "Shows a Korean translation over English 'Tip:'/'Note:' lines from AI CLIs. The terminal text itself is untouched - hover the line to see the original.", "AI CLI가 출력하는 영문 'Tip:'/'Note:' 줄 위에 한글 번역을 덧그립니다. 터미널 내용 자체는 그대로이며, 줄에 마우스를 올리면 원문이 보입니다.", "AI CLIの英語「Tip:」「Note:」行の上に韓国語訳を重ねて表示します。端末の内容自体は変更されず、行にマウスを乗せると原文が見られます。"),
     ("settings.tipai", "Use AI for unknown tips", "사전에 없는 팁은 AI 번역", "辞書にないヒントはAI翻訳"),
     ("settings.tipaihint", "For tips not in the built-in dictionary, translate once with the local claude CLI and cache the result. Off by default: it uses your tokens, needs network, and sends that line to the API.", "내장 사전에 없는 팁은 로컬 claude CLI로 한 번 번역해 결과를 캐시합니다. 기본 꺼짐 - 토큰·요금이 들고 네트워크가 필요하며 해당 줄이 API로 전송됩니다.", "内蔵辞書にないヒントはローカルのclaude CLIで一度翻訳しキャッシュします。既定はオフ - トークン消費・ネットワーク必要・該当行がAPIに送信されます。"),
+    ("settings.tipcachepath", "Translation cache file", "번역 캐시 파일", "翻訳キャッシュファイル"),
+    ("settings.tipcachepathhint", "Where translated tips are stored. Point it at a shared folder or a path on your dev server to keep accumulating translations across machines - saving merges with what is already there.", "번역된 팁이 쌓이는 파일입니다. 공유 폴더나 개발 서버 경로를 지정하면 여러 PC의 번역이 계속 누적됩니다(저장할 때 기존 내용과 병합).", "翻訳したヒントを保存する場所です。共有フォルダや開発サーバーのパスを指定すると複数PCの翻訳が蓄積されます(保存時に既存内容とマージ)。"),
     ("aicb.close", "Close this screen (sends Esc)", "이 화면 닫기(Esc 전송)", "この画面を閉じる(Esc送信)"),
     ("aicb.more", "More commands", "더 많은 명령", "その他のコマンド"),
     // AI 명령 바 버튼의 짧은 요약명(사용자 요청 2026-08-19 — 슬래시 명령 대신 한눈에 읽히게).
