@@ -5,14 +5,13 @@ use nabi_i18n::{tr, Lang};
 
 /// 좌측 내비게이션 항목(i18n 키). 인덱스가 `page()`의 페이지 번호.
 // 외관 그룹(글꼴·색상·커서·테마)을 앞쪽에 인접 배치 → 그 뒤 터미널·동작·에디터·강조·스니펫.
-pub(crate) const PAGE_KEYS: [&str; 12] = [
+pub(crate) const PAGE_KEYS: [&str; 11] = [
     "settings.sec.font",
     "settings.sec.colors",
     "settings.sec.cursor",
     "settings.sec.import",
     "settings.sec.terminal",
     "settings.sec.behavior",
-    "settings.sec.editor",
     "settings.sec.highlights",
     "settings.sec.snippets",
     "settings.sec.aiprof",
@@ -32,7 +31,8 @@ pub(crate) struct PageCtx<'a> {
 }
 
 /// 선택된 카테고리 페이지 하나를 그린다(cfg 직접 편집; 적용은 apply_settings).
-pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, editor: &mut EditorConfig, lang: Lang, idx: usize, cx: &PageCtx) {
+/// (nabiPad 설정은 편집기 창 메뉴로 이동 — 여기서는 편집기 설정을 다루지 않는다.)
+pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorConfig, lang: Lang, idx: usize, cx: &PageCtx) {
     match idx {
         // 외관 그룹: 글꼴(0)·색상(1)·커서(2)·테마(3).
         0 => grid(ui, "sec_font", |ui| font_rows(ui, cfg, lang, cx)),
@@ -44,11 +44,12 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, editor: &mut EditorCo
             crate::settingsui2::behavior_rows(ui, cfg, lang);
             crate::controlui::approvals_ui(ui, cx.policy, lang);
         }),
-        6 => grid(ui, "sec_editor", |ui| editor_rows(ui, editor, lang)),
-        7 => crate::settingslists::highlight_rows(ui, cfg, lang),
-        8 => crate::settingslists::snippet_rows(ui, cfg, lang),
-        9 => crate::aiprofileui::ai_profile_rows(ui, cfg, lang),
-        10 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
+        // nabiPad 설정은 **nabiPad 자체 메뉴**(편집기 창 ▸ 설정)로 옮겼다(사용자 요청
+        // 2026-08-19) — 편집기 설정은 nabipad.toml에 별도 저장되고, 편집기에서 바로 여는 편이 자연스럽다.
+        6 => crate::settingslists::highlight_rows(ui, cfg, lang),
+        7 => crate::settingslists::snippet_rows(ui, cfg, lang),
+        8 => crate::aiprofileui::ai_profile_rows(ui, cfg, lang),
+        9 => crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path),
         _ => grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending)),
     }
 }

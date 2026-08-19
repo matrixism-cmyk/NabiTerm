@@ -30,8 +30,29 @@ pub(crate) fn scan(model: &nabi_vt::TermModel, gen: u64) -> AiScreen {
         mode: detect_mode(&text),
         model: detect_model(&text),
         effort: detect_effort(&text),
-        title_kind: kind_from_title(model.title()),
+        // 제목(OSC 0/2)이 1순위, 없으면 화면 문구로 판정한다 — CLI가 제목을 바꾸지 않는
+        // 환경(일부 원격 셸·TERM 설정)에서도 SSH pane에서 바가 떠야 한다.
+        title_kind: kind_from_title(model.title()).or_else(|| kind_from_screen(&text)),
     }
+}
+
+/// 화면에 남은 CLI 고유 문구로 종류를 판정한다(제목이 없을 때의 마지막 폴백).
+/// 문구는 실제 화면에서 확인한 것만 쓴다 — 오탐하면 엉뚱한 CLI의 명령 바가 뜬다.
+pub(crate) fn kind_from_screen(screen: &str) -> Option<&'static str> {
+    let s = screen.to_ascii_lowercase();
+    if s.contains("claude code v") || s.contains("shift+tab to cycle") {
+        return Some("claude");
+    }
+    if s.contains("openai codex") || s.contains("codex v") {
+        return Some("codex");
+    }
+    if s.contains("gemini cli") || s.contains("gemini.md") {
+        return Some("gemini");
+    }
+    if s.contains("aider v") || s.contains("aider chat") {
+        return Some("aider");
+    }
+    None
 }
 
 /// 창 제목에서 AI CLI 종류를 판정한다(claude는 제목을 "Claude Code"로 바꾼다).
@@ -162,6 +183,14 @@ mod tests {
         );
         assert_eq!(detect_effort("effort: ultracode").as_deref(), Some("ultracode"));
         assert_eq!(detect_effort("Set effort level to bogus"), None, "알 수 없는 단계는 무시");
+    }
+
+    /// 제목이 없어도 화면 문구로 판정된다(SSH·원격 셸 폴백).
+    #[test]
+    fn screen_kind_is_last_resort() {
+        assert_eq!(kind_from_screen("auto mode on (shift+tab to cycle)"), Some("claude"));
+        assert_eq!(kind_from_screen("Claude Code v2.1.235"), Some("claude"));
+        assert_eq!(kind_from_screen("$ ls -al"), None, "일반 셸 출력은 판정하지 않는다");
     }
 
     #[test]

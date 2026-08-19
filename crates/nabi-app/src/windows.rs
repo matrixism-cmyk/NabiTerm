@@ -4,13 +4,7 @@
 //! 캡처한다. pane 상태는 오케스트레이터 SharedPanes에서 읽고, 입력은 cmd_tx로 보낸다.
 
 use crate::app::NabiApp;
-use crossbeam_channel::Sender;
-use nabi_orchestrator::SharedPanes;
-use nabi_proto::Command;
-use nabi_types::{GridSize, PaneId};
-use nabi_vt::Theme;
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use nabi_types::PaneId;
 
 impl NabiApp {
     pub(crate) fn show_floating(&mut self, ctx: &egui::Context) {
@@ -131,7 +125,12 @@ impl NabiApp {
         };
         let mut zoom = None;
         let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산(차용 충돌 회피).
-        render_floating(
+        // 명령 바가 쓰는 설정 문자열도 미리 복사한다(아래에서 self를 가변 차용하므로).
+        let (ai_last_model, ai_last_effort) = (
+            self.config.terminal.ai_last_model.clone(),
+            self.config.terminal.ai_last_effort.clone(),
+        );
+        crate::floatterm::render_floating(
             ui,
             &self.orch.panes,
             &self.orch.cmd_tx,
@@ -149,6 +148,23 @@ impl NabiApp {
             self.config.terminal.warn_paste_newline,
             fk,
             &mut self.tui_overlay,
+            &mut crate::aicmdbar::AiBarState {
+                enabled: self.config.terminal.ai_cmd_bar,
+                run_cmd: &self.run_cmd,
+                pane_status: &self.pane_status,
+                picks: &mut self.ai_picks,
+                screen: &mut self.ai_screen,
+                last_model: &ai_last_model,
+                last_effort: &ai_last_effort,
+                pick_out: &mut self.ai_pick_out,
+            },
+            &mut crate::tipoverlay::TipState {
+                enabled: self.config.terminal.tip_overlay,
+                ai_on: self.config.terminal.tip_translate_ai,
+                cache: &mut self.tip_cache,
+                ai: &mut self.tip_ai,
+            },
+            self.lang,
         );
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
@@ -185,6 +201,11 @@ impl NabiApp {
             let mut open = true;
             let fk = self.wheel_keys_effective(pane); // 가변 차용 전에 계산.
             let mut zoom = None;
+            // 명령 바가 쓰는 설정 문자열 사전 복사(아래 클로저에서 self를 가변 차용).
+            let (ai_last_model, ai_last_effort) = (
+                self.config.terminal.ai_last_model.clone(),
+                self.config.terminal.ai_last_effort.clone(),
+            );
             egui::Window::new(format!("\u{2750} {title}"))
                 .id(egui::Id::new(("nabi_docked_float", pane.get())))
                 .open(&mut open)
@@ -212,6 +233,23 @@ impl NabiApp {
                         self.config.terminal.warn_paste_newline,
                         fk,
                         &mut self.tui_overlay,
+                        &mut crate::aicmdbar::AiBarState {
+                            enabled: self.config.terminal.ai_cmd_bar,
+                            run_cmd: &self.run_cmd,
+                            pane_status: &self.pane_status,
+                            picks: &mut self.ai_picks,
+                            screen: &mut self.ai_screen,
+                            last_model: &ai_last_model,
+                            last_effort: &ai_last_effort,
+                            pick_out: &mut self.ai_pick_out,
+                        },
+                        &mut crate::tipoverlay::TipState {
+                            enabled: self.config.terminal.tip_overlay,
+                            ai_on: self.config.terminal.tip_translate_ai,
+                            cache: &mut self.tip_cache,
+                            ai: &mut self.tip_ai,
+                        },
+                        self.lang,
                     );
                 });
             if let Some((p, d)) = zoom {
@@ -227,37 +265,5 @@ impl NabiApp {
         }
         self.show_floating_link_menu(ctx); // 오버레이 내 링크 팝업도 메인 ctx에 렌더.
     }
-}
-
-/// 분리 창(별도 OS 창)에서 터미널 pane을 렌더한다 — CentralPanel로 감싼 thin 래퍼.
-#[allow(clippy::too_many_arguments)]
-fn render_floating(
-    ui: &mut egui::Ui,
-    panes: &SharedPanes,
-    cmd_tx: &Sender<Command>,
-    grids: &Arc<Mutex<HashMap<PaneId, GridSize>>>,
-    pane: PaneId,
-    font_size: f32,
-    theme: &Theme,
-    broadcast: bool,
-    find: Option<&str>,
-    blink_on: bool,
-    link: &mut Option<(String, egui::Pos2)>,
-    zoom: &mut Option<(PaneId, f32)>,
-    link_click: &mut Option<(PaneId, String)>,
-    paste_req: &mut Option<(PaneId, String)>,
-    warn_paste: bool,
-    force_keys: bool,
-    tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
-) {
-    egui::CentralPanel::default().show(ui, |ui| {
-        crate::floatterm::paint_floating_term(
-            ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
-            link_click, paste_req, warn_paste, force_keys, tui_overlay,
-        );
-    });
-    // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.
-    // 여기서 무조건 request_repaint()를 걸면 이 뷰포트가 영원히 최대 프레임으로 돌아
-    // 코어 하나를 계속 먹는다(출력이 없어도).
 }
 

@@ -39,70 +39,122 @@ fn active_text(s: impl Into<String>) -> egui::RichText {
     bar_text(s).color(egui::Color32::BLACK).strong()
 }
 
-impl crate::tabs::TermTabViewer<'_> {
-    /// pane에 AI 명령 바를 그린다(설정 꺼짐/비AI pane이면 아무것도 안 그림).
-    pub(crate) fn ai_bar(&mut self, ui: &mut egui::Ui, pane: nabi_types::PaneId) {
-        if !self.ai_cmd_bar {
-            return;
+/// 명령 바가 필요로 하는 앱 상태(탭·분리 창 공용) — 표면마다 코드를 복사하지 않기 위한 묶음.
+pub(crate) struct AiBarState<'a> {
+    pub enabled: bool,
+    pub run_cmd: &'a std::collections::HashMap<nabi_types::PaneId, String>,
+    pub pane_status: &'a std::collections::HashMap<nabi_types::PaneId, std::collections::BTreeMap<String, String>>,
+    pub picks: &'a mut std::collections::HashMap<nabi_types::PaneId, AiPicks>,
+    pub screen: &'a mut std::collections::HashMap<nabi_types::PaneId, crate::aimode::AiScreen>,
+    pub last_model: &'a str,
+    pub last_effort: &'a str,
+    pub pick_out: &'a mut Option<(String, String)>,
+}
+
+/// 명령 바를 그리고 pane에 보낼 바이트를 돌려준다(없으면 None).
+///
+/// **탭과 분리 창이 같은 코드를 쓴다** — 예전엔 탭(tabsterm)에만 있어 분리 창·창 안에 띄우기
+/// pane에서는 바가 아예 나오지 않았다(사용자 보고 2026-08-19, 표면 드리프트 결함 클래스).
+pub(crate) fn draw_ai_bar(
+    ui: &mut egui::Ui,
+    panes: &nabi_orchestrator::SharedPanes,
+    pane: nabi_types::PaneId,
+    lang: nabi_i18n::Lang,
+    st: &mut AiBarState,
+) -> Option<Vec<u8>> {
+    if !st.enabled {
+        return None;
+    }
+    // 화면 판독(모드·모델·노력·종류)은 내용이 바뀐 프레임에만 — 결과는 pane별 캐시.
+    let scr = screen_state(panes, pane, st.screen);
+    // CLI 종류: 셸 통합이 있으면 실행 명령으로, 없으면(=SSH pane) 창 제목·화면 문구로 판정한다.
+    let kind = st.run_cmd.get(&pane).and_then(|c| bar_kind(c)).or(scr.title_kind)?;
+    let picks = st.picks.get(&pane).cloned().unwrap_or_default();
+    // 모델 우선순위: CLI 상태줄(pane_status) → 화면 판독 → 이 pane에서 고른 값 → 설정의 마지막 값.
+    let model = st
+        .pane_status
+        .get(&pane)
+        .and_then(|m| m.get("model"))
+        .cloned()
+        .or(scr.model)
+        .or(picks.model)
+        .or_else(|| Some(st.last_model.to_owned()).filter(|s| !s.is_empty()));
+    let effort = scr
+        .effort
+        .or(picks.effort)
+        .or_else(|| Some(st.last_effort.to_owned()).filter(|s| !s.is_empty()));
+    let view = BarView {
+        kind,
+        mode: scr.mode,
+        model: model.as_deref(),
+        effort: effort.as_deref(),
+        active: picks.active.as_deref(),
+    };
+    let action = show_bar(ui, lang, &view)?;
+    Some(match action {
+        BarAction::Cmd(cmd, opens_ui) => {
+            let entry = st.picks.entry(pane).or_default();
+            // 값 선택(예: "/model opus")은 즉시 적용 → 기억하고 설정에도 남긴다.
+            if let Some(v) = cmd.strip_prefix("/model ") {
+                entry.model = Some(v.to_owned());
+                *st.pick_out = Some(("model".into(), v.to_owned()));
+            } else if let Some(v) = cmd.strip_prefix("/effort ") {
+                entry.effort = Some(v.to_owned());
+                *st.pick_out = Some(("effort".into(), v.to_owned()));
+            }
+            // 화면을 여는 명령이면 활성으로 표시(다시 누르면 ESC로 닫는다).
+            entry.active = opens_ui.then(|| cmd.clone());
+            let mut d = cmd.into_bytes();
+            d.push(b'\r');
+            d
         }
-        // 화면 판독(모드·모델·노력·제목)은 내용이 바뀐 프레임에만 — 결과는 pane별 캐시.
-        let scr = self.ai_screen_state(pane);
-        // CLI 종류: 셸 통합이 있으면 실행 명령으로, 없으면(=SSH pane) **창 제목**으로 판정한다.
-        let Some(kind) = self
-            .run_cmd
-            .get(&pane)
-            .and_then(|c| bar_kind(c))
-            .or(scr.title_kind)
-        else {
-            return;
+        BarAction::Esc => {
+            st.picks.entry(pane).or_default().active = None;
+            vec![0x1b]
+        }
+        BarAction::ShiftTab => crate::aimode::SHIFT_TAB.to_vec(),
+    })
+}
+
+/// pane 화면 판독 결과 — 세대가 같으면 캐시를 그대로 쓴다(내용 변경 프레임에만 스캔).
+fn screen_state(
+    panes: &nabi_orchestrator::SharedPanes,
+    pane: nabi_types::PaneId,
+    cache: &mut std::collections::HashMap<nabi_types::PaneId, crate::aimode::AiScreen>,
+) -> crate::aimode::AiScreen {
+    let unknown = crate::aimode::AiScreen { mode: "aimode.unknown", ..Default::default() };
+    let Some(md) = panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.model.clone())) else {
+        return unknown;
+    };
+    let Ok(model) = md.lock() else { return unknown };
+    let gen = model.render_gen();
+    if let Some(c) = cache.get(&pane) {
+        if c.gen == gen {
+            return c.clone();
+        }
+    }
+    let scanned = crate::aimode::scan(&model, gen);
+    cache.insert(pane, scanned.clone());
+    scanned
+}
+
+impl crate::tabs::TermTabViewer<'_> {
+    /// 탭 pane에 AI 명령 바를 그린다(공통 구현 위임).
+    pub(crate) fn ai_bar(&mut self, ui: &mut egui::Ui, pane: nabi_types::PaneId) {
+        let mut st = AiBarState {
+            enabled: self.ai_cmd_bar,
+            run_cmd: self.run_cmd,
+            pane_status: self.pane_status,
+            picks: self.ai_picks,
+            screen: self.ai_screen,
+            last_model: self.ai_last_model,
+            last_effort: self.ai_last_effort,
+            pick_out: self.ai_pick_out,
         };
-        let picks = self.ai_picks.get(&pane).cloned().unwrap_or_default();
-        // 모델 우선순위: CLI 상태줄(pane_status) → **화면에서 읽은 현재 모델** → 이 pane에서
-        // 고른 값 → 설정에 남은 마지막 선택. 화면 판독이 있어야 재시작 후에도 실제 모델이 뜬다.
-        let model = self
-            .pane_status
-            .get(&pane)
-            .and_then(|m| m.get("model"))
-            .cloned()
-            .or(scr.model)
-            .or(picks.model)
-            .or_else(|| Some(self.ai_last_model.to_owned()).filter(|s| !s.is_empty()));
-        let effort = scr
-            .effort
-            .or(picks.effort)
-            .or_else(|| Some(self.ai_last_effort.to_owned()).filter(|s| !s.is_empty()));
-        let view = BarView {
-            kind,
-            mode: scr.mode,
-            model: model.as_deref(),
-            effort: effort.as_deref(),
-            active: picks.active.as_deref(),
-        };
-        let Some(action) = show_bar(ui, self.lang, &view) else { return };
-        let data = match action {
-            BarAction::Cmd(cmd, opens_ui) => {
-                let entry = self.ai_picks.entry(pane).or_default();
-                // 값 선택(예: "/model opus")은 즉시 적용 → 기억하고 설정에도 남긴다.
-                if let Some(v) = cmd.strip_prefix("/model ") {
-                    entry.model = Some(v.to_owned());
-                    *self.ai_pick_out = Some(("model".into(), v.to_owned()));
-                } else if let Some(v) = cmd.strip_prefix("/effort ") {
-                    entry.effort = Some(v.to_owned());
-                    *self.ai_pick_out = Some(("effort".into(), v.to_owned()));
-                }
-                // 화면을 여는 명령이면 활성으로 표시(다시 누르면 ESC로 닫는다).
-                entry.active = opens_ui.then(|| cmd.clone());
-                let mut d = cmd.into_bytes();
-                d.push(b'\r');
-                d
-            }
-            BarAction::Esc => {
-                self.ai_picks.entry(pane).or_default().active = None;
-                vec![0x1b]
-            }
-            BarAction::ShiftTab => crate::aimode::SHIFT_TAB.to_vec(),
-        };
-        self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
+        let data = draw_ai_bar(ui, &self.orch.panes, pane, self.lang, &mut st);
+        if let Some(data) = data {
+            self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
+        }
     }
 
     /// 사용자가 pane에 직접 입력하면 바가 표시하던 "열림" 상태를 해제한다 —
@@ -111,26 +163,6 @@ impl crate::tabs::TermTabViewer<'_> {
         if let Some(p) = self.ai_picks.get_mut(&pane) {
             p.active = None;
         }
-    }
-
-    /// pane 화면 판독 결과(모드·모델·노력·제목 종류) — 세대가 같으면 캐시를 그대로 쓴다.
-    fn ai_screen_state(&mut self, pane: nabi_types::PaneId) -> crate::aimode::AiScreen {
-        let Some(md) = self.orch.panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.model.clone()))
-        else {
-            return crate::aimode::AiScreen { mode: "aimode.unknown", ..Default::default() };
-        };
-        let Ok(model) = md.lock() else {
-            return crate::aimode::AiScreen { mode: "aimode.unknown", ..Default::default() };
-        };
-        let gen = model.render_gen();
-        if let Some(c) = self.ai_screen.get(&pane) {
-            if c.gen == gen {
-                return c.clone();
-            }
-        }
-        let scanned = crate::aimode::scan(&model, gen);
-        self.ai_screen.insert(pane, scanned.clone());
-        scanned
     }
 }
 

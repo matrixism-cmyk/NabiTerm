@@ -33,7 +33,15 @@ pub(crate) fn paint_floating_term(
     force_keys: bool,
     // pane별 마지막 Ctrl+T(오버레이 열기) 전송 시각(탭 쪽과 공유하는 래치).
     tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
+    // AI 명령 바·팁 오버레이 상태(탭과 동일 기능을 분리 창에도 — 표면 드리프트 방지).
+    ai: &mut crate::aicmdbar::AiBarState,
+    tip: &mut crate::tipoverlay::TipState,
+    lang: nabi_i18n::Lang,
 ) {
+    // AI 명령 바를 먼저 그린다(그만큼 터미널 영역이 줄어든다 — 탭과 같은 순서).
+    if let Some(data) = crate::aicmdbar::draw_ai_bar(ui, panes, pane, lang, ai) {
+        let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
+    }
     let font = egui::FontId::monospace(font_size);
     let (cw, ch) = nabi_render::cell_size(ui, &font);
     // 가용 영역을 실제로 allocate해야 egui::Window(창 안에 띄우기)가 콘텐츠 0으로 무너지지 않는다.
@@ -164,7 +172,8 @@ pub(crate) fn paint_floating_term(
                 model.scroll_by(scroll);
             }
             let focused = ui.ctx().input(|i| i.focused);
-            nabi_render::paint(ui, rect, font, &model, theme, find, &[], None, false, focused, blink_on, "");
+            nabi_render::paint(ui, rect, font.clone(), &model, theme, find, &[], None, false, focused, blink_on, "");
+            crate::tipoverlay::draw_tip_overlay(ui, rect, ch, &font, theme.bg, pane, &model, tip);
             if crate::paneio::draw_scroll_badge(ui, rect, model.scrollback_offset()) {
                 model.scroll_to_bottom();
             }
@@ -188,4 +197,39 @@ pub(crate) fn paint_floating_term(
             }
         }
     }
+}
+
+/// 분리 OS 창 본문(CentralPanel) — windows.rs에서 이관(라인 한도).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn render_floating(
+    ui: &mut egui::Ui,
+    panes: &SharedPanes,
+    cmd_tx: &Sender<Command>,
+    grids: &Arc<Mutex<HashMap<PaneId, GridSize>>>,
+    pane: PaneId,
+    font_size: f32,
+    theme: &Theme,
+    broadcast: bool,
+    find: Option<&str>,
+    blink_on: bool,
+    link: &mut Option<(String, egui::Pos2)>,
+    zoom: &mut Option<(PaneId, f32)>,
+    link_click: &mut Option<(PaneId, String)>,
+    paste_req: &mut Option<(PaneId, String)>,
+    warn_paste: bool,
+    force_keys: bool,
+    tui_overlay: &mut HashMap<PaneId, std::time::Instant>,
+    ai: &mut crate::aicmdbar::AiBarState,
+    tip: &mut crate::tipoverlay::TipState,
+    lang: nabi_i18n::Lang,
+) {
+    egui::CentralPanel::default().show(ui, |ui| {
+        paint_floating_term(
+            ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
+            link_click, paste_req, warn_paste, force_keys, tui_overlay, ai, tip, lang,
+        );
+    });
+    // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.
+    // 여기서 무조건 request_repaint()를 걸면 이 뷰포트가 영원히 최대 프레임으로 돌아
+    // 코어 하나를 계속 먹는다(출력이 없어도).
 }

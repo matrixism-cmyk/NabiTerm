@@ -18,8 +18,62 @@ pub(crate) struct TipHit {
     pub ko: Option<String>,
 }
 
+/// 팁 오버레이가 필요로 하는 상태(탭·분리 창 공용).
+pub(crate) struct TipState<'a> {
+    pub enabled: bool,
+    pub ai_on: bool,
+    pub cache: &'a mut std::collections::HashMap<PaneId, TipHit>,
+    pub ai: &'a mut crate::tipai::TipAi,
+}
+
+/// 팁 줄을 찾아 번역을 덧그린다. 번역이 없으면 아무 것도 하지 않는다(원문 그대로 보임).
+/// 탭과 분리 창이 같은 코드를 쓴다(표면 드리프트 방지).
+pub(crate) fn draw_tip_overlay(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    ch: f32,
+    font: &egui::FontId,
+    bg: nabi_types::Rgba,
+    pane: PaneId,
+    model: &nabi_vt::TermModel,
+    st: &mut TipState,
+) {
+    if !st.enabled {
+        return;
+    }
+    let gen = model.render_gen();
+    if st.cache.get(&pane).is_none_or(|h| h.gen != gen) {
+        match scan(model, gen, st.ai_on, st.ai) {
+            Some(h) => st.cache.insert(pane, h),
+            None => st.cache.remove(&pane),
+        };
+    }
+    // AI 번역이 뒤늦게 도착하면 그 pane의 캐시에 채워 넣는다(다음 프레임부터 표시).
+    if let Some(h) = st.cache.get_mut(&pane) {
+        if h.ko.is_none() {
+            h.ko = st.ai.get(&h.en).map(str::to_owned);
+        }
+    }
+    let Some(hit) = st.cache.get(&pane) else { return };
+    let Some(ko) = hit.ko.as_deref() else { return };
+    let y = rect.top() + f32::from(hit.row) * ch;
+    let row_rect = egui::Rect::from_min_size(egui::pos2(rect.left(), y), egui::vec2(rect.width(), ch));
+    let p = ui.painter_at(rect);
+    p.rect_filled(row_rect, egui::CornerRadius::ZERO, egui::Color32::from_rgb(bg.r, bg.g, bg.b));
+    p.text(
+        egui::pos2(rect.left() + 1.0, y),
+        egui::Align2::LEFT_TOP,
+        format!("\u{1f4ac} {ko}"),
+        font.clone(),
+        crate::theme_ui::ACCENT,
+    );
+    // 원문은 호버로 — "번역이 틀렸나?" 싶을 때 바로 확인할 수 있어야 한다.
+    ui.interact(row_rect, ui.id().with(("tiptrans", pane.get())), egui::Sense::hover())
+        .on_hover_text(&hit.en);
+}
+
 impl crate::tabs::TermTabViewer<'_> {
-    /// 팁 줄을 찾아 번역을 덧그린다. 번역이 없으면 아무 것도 하지 않는다(원문 그대로 보임).
+    /// 탭 pane의 팁 오버레이(공통 구현 위임).
     pub(crate) fn tip_overlay(
         &mut self,
         ui: &mut egui::Ui,
@@ -29,43 +83,13 @@ impl crate::tabs::TermTabViewer<'_> {
         pane: PaneId,
         model: &nabi_vt::TermModel,
     ) {
-        if !self.tip_overlay {
-            return;
-        }
-        let gen = model.render_gen();
-        if self.tip_cache.get(&pane).is_none_or(|h| h.gen != gen) {
-            let hit = scan(model, gen, self.tip_ai_on, self.tip_ai);
-            match hit {
-                Some(h) => self.tip_cache.insert(pane, h),
-                None => self.tip_cache.remove(&pane),
-            };
-        }
-        // AI 번역이 뒤늦게 도착하면 그 pane의 캐시에 채워 넣는다(다음 프레임부터 표시).
-        if let Some(h) = self.tip_cache.get_mut(&pane) {
-            if h.ko.is_none() {
-                h.ko = self.tip_ai.get(&h.en).map(str::to_owned);
-            }
-        }
-        let Some(hit) = self.tip_cache.get(&pane) else { return };
-        let Some(ko) = hit.ko.as_deref() else { return };
-        let y = rect.top() + f32::from(hit.row) * ch;
-        let row_rect = egui::Rect::from_min_size(
-            egui::pos2(rect.left(), y),
-            egui::vec2(rect.width(), ch),
-        );
-        let p = ui.painter_at(rect);
-        let bg = self.theme.bg;
-        p.rect_filled(row_rect, egui::CornerRadius::ZERO, egui::Color32::from_rgb(bg.r, bg.g, bg.b));
-        p.text(
-            egui::pos2(rect.left() + 1.0, y),
-            egui::Align2::LEFT_TOP,
-            format!("\u{1f4ac} {ko}"),
-            font.clone(),
-            crate::theme_ui::ACCENT,
-        );
-        // 원문은 호버로 — "번역이 틀렸나?" 싶을 때 바로 확인할 수 있어야 한다.
-        ui.interact(row_rect, ui.id().with(("tiptrans", pane.get())), egui::Sense::hover())
-            .on_hover_text(&hit.en);
+        let mut st = TipState {
+            enabled: self.tip_overlay,
+            ai_on: self.tip_ai_on,
+            cache: self.tip_cache,
+            ai: self.tip_ai,
+        };
+        draw_tip_overlay(ui, rect, ch, font, self.theme.bg, pane, model, &mut st);
     }
 }
 
