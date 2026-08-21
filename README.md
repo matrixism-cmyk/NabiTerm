@@ -29,6 +29,9 @@ On top of a solid traditional core (robust VT engine, deep scrollback), it adds 
 - **Tabs / splits / tear-off windows** — egui_dock docking, drag a tab out into its own OS window, tmux-style pane zoom
 - **Local shells** — PowerShell, cmd, WSL, Git Bash (Windows ConPTY); restores your running command and directory after restart
 - **SSH / SFTP / FTP** — pure-Rust async stack (russh), host-key TOFU verification, port forwarding (-L / -R / -D, ProxyJump, X11)
+- **trzsz file transfer (`trz` / `tsz`)** — send and receive files from inside a live shell,
+  where a separate SFTP channel isn't available (jump hosts, `sudo -i`, container `exec`, serial consoles).
+  Every transfer is confirmed; remote-supplied names are refused, never sanitised
 - **Broadcast input** — type into many panes at once
 - **Search & scrollback** — smart-case find, scrollbar, prompt-to-prompt jumps
 - **Quake mode, fullscreen, themes** — 8 color presets, cursor/selection color customization; UI in English / Korean / Japanese

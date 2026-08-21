@@ -24,3 +24,12 @@ Modified third-party code bundled in this repository:
 The optional software-OpenGL runtime asset (Mesa llvmpipe,
 distributed separately as nabiTerm-mesa-software-gl.zip) is built from
 Mesa 3D, licensed under the MIT license, Copyright Mesa contributors.
+
+Protocol interoperability:
+
+  * crates/nabi-trzsz implements the trzsz file-transfer protocol
+    (trz / tsz) so nabiTerm can interoperate with existing servers.
+    The wire format was determined by reading the trzsz-go reference
+    implementation (MIT, Copyright the Trzsz Authors) and by testing
+    against trzsz-py. No trzsz source code was copied; the Rust
+    implementation is original work by the nabiTerm authors.
