@@ -16,6 +16,9 @@ impl NabiApp {
             ui.heading(tr(lang, "hostkey.title"));
             ui.label(tr(lang, "hostkey.msg"));
             ui.add_space(8.0);
+            // 지문은 다른 경로로 받은 값과 대조하느라 복사할 일이 있다 — 이 표에서만 텍스트 선택 허용
+            // (전역으로는 꺼 둔다: 드래그 한 번에 창 전체가 파랗게 블럭 선택되는 문제 때문).
+            ui.style_mut().interaction.selectable_labels = true;
             egui::Grid::new("hostkey_grid").num_columns(2).spacing([16.0, 4.0]).show(ui, |ui| {
                 ui.strong(tr(lang, "hostkey.host"));
                 ui.monospace(format!("{host}:{port}"));

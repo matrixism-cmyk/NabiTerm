@@ -137,6 +137,11 @@ pub fn apply_theme(ctx: &egui::Context) {
         s.spacing.interact_size.y = 24.0; // 버튼/콤보 최소 높이(클릭 타깃 확대).
         s.spacing.menu_margin = egui::Margin::same(8);
         s.spacing.window_margin = egui::Margin::same(10);
+        // 라벨 텍스트 선택 끄기 — egui 기본은 켜짐이라, 대화상자 안에서 마우스를 살짝만 끌어도
+        // 라벨들이 통째로 파랗게 블럭 선택된다(설정 창 전체가 선택되는 것처럼 보임).
+        // 데스크톱 앱의 통상 동작은 '라벨은 선택 안 됨'이고, 복사가 필요한 화면(도움말·정보 등)에서만
+        // `ui.style_mut().interaction.selectable_labels = true`로 켠다.
+        s.interaction.selectable_labels = false;
     });
 }
 
