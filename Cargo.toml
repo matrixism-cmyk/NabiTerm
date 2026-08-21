@@ -15,6 +15,7 @@ members = [
     "crates/nabi-image",
     "crates/nabi-pty",
     "crates/nabi-osc",
+    "crates/nabi-trzsz",
     "crates/nabi-orchestrator",
     "crates/nabi-control",
     "crates/nabi-release",
@@ -52,6 +53,7 @@ nabi-vt = { path = "crates/nabi-vt" }
 nabi-agentdetect = { path = "crates/nabi-agentdetect" }
 nabi-image = { path = "crates/nabi-image" }
 nabi-osc = { path = "crates/nabi-osc" }
+nabi-trzsz = { path = "crates/nabi-trzsz" }
 nabi-pty = { path = "crates/nabi-pty" }
 nabi-orchestrator = { path = "crates/nabi-orchestrator" }
 nabi-control = { path = "crates/nabi-control" }
@@ -74,6 +76,11 @@ bytes = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
+
+# --- trzsz 파일 전송(프로토콜 v1) — 줄 페이로드는 zlib+base64, 무결성은 MD5(프로토콜 규정) ---
+flate2 = "1.1"
+base64 = "0.22"
+md5 = "0.8"
 figment = { version = "0.10", features = ["toml", "env"] }
 directories = "6"
 # notify는 어느 크레이트도 쓰지 않아 제거(2026-08-16, T1-3 — 죽은 의존성 정리).

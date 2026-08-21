@@ -3367,6 +3367,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nabi-trzsz"
+version = "0.1.454"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "md5",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nabi-types"
 version = "0.1.454"
 dependencies = [
