@@ -41,4 +41,8 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
     ("aicb.agy.config", "Open the settings editor", "설정 편집기 열기", "設定エディタを開く"),
     ("aiopt.agy.skipperm", "Run every tool call without asking (dangerous)", "모든 도구 호출을 묻지 않고 실행(위험)", "すべてのツール呼出を確認なしで実行(危険)"),
     ("aiopt.agy.sandbox", "Run the session sandboxed", "샌드박스로 실행", "サンドボックスで実行"),
+    // 메뉴 띠 업데이트 버튼 + 재시작 안내(사용자 요청 2026-08-21).
+    ("update.btn", "Update", "업데이트", "アップデート"),
+    ("update.btn.hint", "A new version is ready - see what changed and install", "새 버전이 준비됐습니다 - 변경 내용을 보고 설치", "新しいバージョンがあります - 変更内容を確認して更新"),
+    ("update.restartwarn", "nabiTerm will close and reopen to finish the update. Save your work first.", "업데이트하면 nabiTerm이 종료됐다가 다시 실행됩니다. 작업을 먼저 저장하세요.", "更新するとnabiTermは終了して再起動します。作業を先に保存してください。"),
 ];

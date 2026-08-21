@@ -96,6 +96,9 @@ impl NabiApp {
             ai_dash: self.ai_dash_open,
             float_on_top: self.floating_on_top,
         };
+        // 새 버전이 확인된 상태인가(메뉴 띠 오른쪽 '업데이트' 버튼 노출 조건).
+        let update_ready = matches!(self.updater.get_status(), nabi_release::UpdateStatus::Available(_));
+        let mut open_update = false;
         let mut saved = self.sessions.sessions.clone();
         saved.sort_by_key(|a| a.name.to_lowercase());
         let snippets = self.config.terminal.snippets.clone(); let last_conn = self.config.terminal.last_connected.clone();
@@ -209,8 +212,13 @@ impl NabiApp {
                     action = Some(MenuAction::OpenAbout); // 클릭 즉시 도움말(설정과 동일).
                     ui.close();
                 }
+                // 새 버전이 있으면 메뉴 띠 오른쪽 끝에 '업데이트' 버튼(updatemodal 소관).
+                open_update = crate::updatemodal::update_button(ui, lang, update_ready);
             });
         });
+        if open_update {
+            self.update_modal = true; // 확인 창(변경 내용 + 재시작 안내)을 연다.
+        }
         if let Some(a) = action {
             self.apply(ctx, a);
         }

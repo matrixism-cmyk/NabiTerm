@@ -82,6 +82,24 @@ impl NabiApp {
 }
 
 /// 현재 업데이트 상태에 맞춰 모달 본문을 그린다(가용=선택 버튼, 다운로드=진행률).
+/// 메뉴 띠 오른쪽 끝의 '업데이트' 버튼 — 새 버전이 확인된 상태에서만 그린다. 눌리면 true.
+///
+/// 시작 시 뜬 알림을 "다음에"로 넘기면 그 세션에선 다시 볼 길이 없었다. 여기 두면 언제든
+/// 다시 열 수 있다(사용자 요청 2026-08-21).
+pub(crate) fn update_button(ui: &mut egui::Ui, lang: Lang, ready: bool) -> bool {
+    if !ready {
+        return false;
+    }
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        let b = egui::Button::new(
+            egui::RichText::new(format!("\u{2b06} {}", tr(lang, "update.btn"))).color(egui::Color32::WHITE),
+        )
+        .fill(crate::theme_ui::OK);
+        ui.add(b).on_hover_text(tr(lang, "update.btn.hint")).clicked()
+    })
+    .inner
+}
+
 fn prompt_body(
     ui: &mut egui::Ui,
     lang: Lang,
@@ -101,6 +119,13 @@ fn prompt_body(
                 });
             }
             ui.add_space(10.0);
+            // 업데이트는 프로그램을 닫고 인스톨러를 실행한다 — 누르기 전에 반드시 알린다
+            // (열려 있던 탭은 워크스페이스 복원이 켜져 있을 때만 되살아난다).
+            ui.colored_label(
+                crate::theme_ui::BROADCAST,
+                format!("\u{26a0} {}", tr(lang, "update.restartwarn")),
+            );
+            ui.add_space(6.0);
             ui.horizontal(|ui| {
                 let go = egui::Button::new(
                     egui::RichText::new(tr(lang, "update.now")).color(egui::Color32::WHITE),
