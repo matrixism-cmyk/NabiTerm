@@ -23,13 +23,17 @@ pub(crate) struct Live {
 
 #[derive(Default)]
 pub(crate) struct TrzszUi {
-    /// 사용자에게 물어보는 중인 요청.
+    /// 사용자에게 물어보는 중인 요청. 답하면 **반드시 비운다** — 그러지 않으면 확인 창이
+    /// 전송 내내 떠 있어 화면을 막는다.
     pub ask: Option<(PaneId, XferMode)>,
+    /// 수락한 전송의 방향(pane별) — 확인 창을 닫은 뒤에도 화살표를 그려야 한다.
+    dir_up: HashMap<PaneId, bool>,
     pub live: HashMap<PaneId, Live>,
 }
 
 impl TrzszUi {
-    fn on_progress(&mut self, pane: PaneId, p: XferProgress, up: bool) {
+    fn on_progress(&mut self, pane: PaneId, p: XferProgress) {
+        let up = self.dir_up.get(&pane).copied().unwrap_or(true);
         let e = self.live.entry(pane).or_insert_with(|| Live {
             progress: XferProgress::default(),
             up,
@@ -51,11 +55,11 @@ impl NabiApp {
                 self.trzsz.ask = Some((*pane, *mode));
             }
             Event::TrzszProgress { pane, progress } => {
-                let up = self.trzsz.ask.is_none_or(|(_, m)| m.is_upload());
-                self.trzsz.on_progress(*pane, progress.clone(), up);
+                self.trzsz.on_progress(*pane, progress.clone());
             }
             Event::TrzszDone { pane, ok, message, names } => {
                 self.trzsz.live.remove(pane);
+                self.trzsz.dir_up.remove(pane);
                 self.trzsz.ask = None;
                 let icon = if *ok { "\u{2705}" } else { "\u{26a0}" };
                 let what = if names.is_empty() { message.clone() } else { names.join(", ") };
@@ -94,10 +98,12 @@ impl NabiApp {
             }
         });
         if let Some(d) = decision {
-            // 거절이면 여기서 끝나고, 수락이면 진행률로 넘어간다.
-            if !d.accept {
-                self.trzsz.ask = None;
+            // 답했으면 확인 창은 무조건 닫는다. 수락한 경우 방향만 기억해 두었다가
+            // pane 오버레이의 화살표에 쓴다(예전에는 ask를 남겨 둬서 전송 내내 창이 떠 있었다).
+            if d.accept {
+                self.trzsz.dir_up.insert(pane, mode.is_upload());
             }
+            self.trzsz.ask = None;
             self.orch.send(Command::TrzszDecide(d));
         }
     }
@@ -187,9 +193,21 @@ mod tests {
     fn progress_accumulates_per_pane() {
         let mut ui = TrzszUi::default();
         let p = |done| XferProgress { index: 1, count: 1, name: "a".into(), done, total: 100 };
-        ui.on_progress(PaneId(1), p(10), false);
-        ui.on_progress(PaneId(1), p(20), false);
+        ui.on_progress(PaneId(1), p(10));
+        ui.on_progress(PaneId(1), p(20));
         assert_eq!(ui.live.len(), 1);
         assert_eq!(ui.live[&PaneId(1)].progress.done, 20);
+    }
+
+    /// 확인 창은 답한 뒤 **반드시** 닫혀야 한다 — 안 닫으면 전송 내내 화면을 막는다.
+    #[test]
+    fn the_prompt_does_not_outlive_the_answer() {
+        let mut ui = TrzszUi { ask: Some((PaneId(1), XferMode::Download)), ..Default::default() };
+        // show_trzsz_ask 가 하는 일과 같은 상태 전이(그리기는 egui 컨텍스트가 필요하다).
+        ui.dir_up.insert(PaneId(1), false);
+        ui.ask = None;
+        assert!(ui.ask.is_none());
+        ui.on_progress(PaneId(1), XferProgress { index: 1, count: 1, name: "a".into(), done: 1, total: 2 });
+        assert!(!ui.live[&PaneId(1)].up, "다운로드 화살표가 유지되어야 한다");
     }
 }
