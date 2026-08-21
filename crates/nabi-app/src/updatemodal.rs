@@ -33,6 +33,11 @@ enum PromptAction {
 impl NabiApp {
     /// 새 버전 알림 모달(시작 시 1회 자동 오픈). update 루프에서 매 프레임 호출.
     pub(crate) fn show_update_prompt(&mut self, ctx: &egui::Context) {
+        // 첫 실행 환영 화면이 떠 있는 동안은 미룬다 — 모달 둘이 겹쳐서 뜨면
+        // 처음 켠 사람이 무엇을 먼저 눌러야 할지 알 수 없다(온보딩이 끝나면 그때 뜬다).
+        if self.onboarding_open {
+            return;
+        }
         let status = self.updater.get_status();
         if !self.update_seen && matches!(status, UpdateStatus::Available(_)) {
             self.update_modal = true;

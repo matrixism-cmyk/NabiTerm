@@ -5,7 +5,12 @@ use crate::telegram::TelegramCfg;
 use serde::{Deserialize, Serialize};
 
 /// 기본 글꼴 크기(px) — 설정 기본값과 Ctrl+0 줌 리셋이 공유하는 단일 진실원.
-pub const DEFAULT_FONT_SIZE: f32 = 14.0;
+///
+/// 터미널 본문과 새 편집기 문서에만 쓰인다(메뉴·버튼 같은 UI 크롬은 egui 기본값).
+/// 16px은 **Windows Terminal 기본값(Cascadia Mono 12pt = 96dpi에서 16px)에 맞춘 값**이다.
+/// 예전 기본 14px은 그보다 한 단계 작아 "처음 켰을 때 글씨가 작다"는 인상을 줬다
+/// (사용자 보고 2026-08-21). 이미 설정 파일이 있는 사용자는 영향받지 않는다 — 새 설치만 바뀐다.
+pub const DEFAULT_FONT_SIZE: f32 = 16.0;
 
 /// 앱 전체 설정.
 #[derive(Debug, Clone, Serialize, Deserialize)]

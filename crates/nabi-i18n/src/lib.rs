@@ -68,13 +68,20 @@ impl Lang {
         }
     }
 
-    /// OS 표시 언어를 Lang으로(감지 실패 시 En).
+    /// OS가 알려주는 언어로(감지 실패 시 En).
+    ///
+    /// **지역 형식과 표시 언어 둘 다** 본다. 어느 한쪽이라도 한국어/일본어를 가리키면
+    /// 그 언어로 시작한다 — 사용자가 한쪽에라도 그 언어를 지정했다면 영어보다 그 언어를
+    /// 원할 가능성이 높다. 영어 고정이 필요하면 설정에서 명시하면 된다.
     fn from_os_locale() -> Lang {
-        match os_locale() {
-            Some(l) if l.starts_with("ko") => Lang::Ko,
-            Some(l) if l.starts_with("ja") => Lang::Ja,
-            _ => Lang::En,
+        let by_locale = os_locale().as_deref().and_then(lang_from_tag);
+        // 둘 중 하나라도 ko/ja면 그것을 쓴다(En은 "감지됨"이지 "선호"가 아니다).
+        for cand in [by_locale, os_ui_lang()].into_iter().flatten() {
+            if cand != Lang::En {
+                return cand;
+            }
         }
+        by_locale.or_else(os_ui_lang).unwrap_or(Lang::En)
     }
 
     /// 설정 코드가 실제 언어를 고정하는지("system"이 아닌지).
@@ -98,6 +105,49 @@ impl Lang {
     pub fn all() -> [Lang; 3] {
         [Lang::En, Lang::Ko, Lang::Ja]
     }
+}
+
+/// 언어 태그("ko-kr", "ja-jp", "en-us")를 Lang으로. 지원하지 않는 태그는 None.
+fn lang_from_tag(tag: &str) -> Option<Lang> {
+    let t = tag.to_ascii_lowercase();
+    if t.starts_with("ko") {
+        Some(Lang::Ko)
+    } else if t.starts_with("ja") {
+        Some(Lang::Ja)
+    } else if t.starts_with("en") {
+        Some(Lang::En)
+    } else {
+        None
+    }
+}
+
+/// Windows LANGID의 주 언어 ID를 Lang으로(하위 10비트). 지원 밖이면 None.
+fn lang_from_langid(id: u16) -> Option<Lang> {
+    match id & 0x3ff {
+        0x12 => Some(Lang::Ko), // LANG_KOREAN
+        0x11 => Some(Lang::Ja), // LANG_JAPANESE
+        0x09 => Some(Lang::En), // LANG_ENGLISH
+        _ => None,
+    }
+}
+
+/// OS 표시 언어(메뉴 언어) — 사용자 로캘과 **다를 수 있다**.
+///
+/// Windows는 "지역 형식"과 "표시 언어"가 별개 설정이다. 한쪽만 보면 반대 조합에서
+/// 반드시 틀린다: 영문 Windows에 한국어 언어팩만 얹은 PC(지역=미국·표시=한국어)와,
+/// 한국 Windows를 영어 표시로 쓰는 PC(지역=한국·표시=영어)가 둘 다 흔하다.
+#[cfg(windows)]
+fn os_ui_lang() -> Option<Lang> {
+    extern "system" {
+        fn GetUserDefaultUILanguage() -> u16;
+    }
+    // SAFETY: 인자가 없고 LANGID(u16) 하나만 돌려주는 kernel32 호출이다. 포인터를 다루지 않는다.
+    lang_from_langid(unsafe { GetUserDefaultUILanguage() })
+}
+
+#[cfg(not(windows))]
+fn os_ui_lang() -> Option<Lang> {
+    None // 유닉스는 os_locale()의 LANG 계열 환경변수 하나로 충분하다.
 }
 
 /// OS 표시 언어 태그(소문자, 예 "ko-kr"). 감지 실패 시 None.
@@ -131,6 +181,27 @@ fn os_locale() -> Option<String> {
 
 #[cfg(test)]
 mod lang_tests {
+    /// 언어 태그 → Lang(지원 밖은 None이라 다른 신호에 기회를 준다).
+    #[test]
+    fn tag_maps_supported_languages_only() {
+        use super::lang_from_tag;
+        assert_eq!(lang_from_tag("ko-KR"), Some(Lang::Ko));
+        assert_eq!(lang_from_tag("ja-jp"), Some(Lang::Ja));
+        assert_eq!(lang_from_tag("en-US"), Some(Lang::En));
+        assert_eq!(lang_from_tag("de-DE"), None);
+        assert_eq!(lang_from_tag(""), None);
+    }
+
+    /// Windows LANGID는 하위 10비트가 주 언어다(0x0412=ko-KR, 0x0812=ko-KR 보조 등).
+    #[test]
+    fn langid_uses_primary_language_bits() {
+        use super::lang_from_langid;
+        assert_eq!(lang_from_langid(0x0412), Some(Lang::Ko));
+        assert_eq!(lang_from_langid(0x0411), Some(Lang::Ja));
+        assert_eq!(lang_from_langid(0x0409), Some(Lang::En)); // en-US
+        assert_eq!(lang_from_langid(0x0809), Some(Lang::En)); // en-GB
+        assert_eq!(lang_from_langid(0x0407), None); // 독일어 → 미지원
+    }
     use super::Lang;
 
     #[test]
