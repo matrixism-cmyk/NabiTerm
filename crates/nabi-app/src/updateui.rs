@@ -63,9 +63,8 @@ pub(crate) fn update_section(
             UpdateStatus::Downloading(p) => {
                 ui.label(tr(lang, "update.downloading"));
                 ui.add_space(4.0);
-                let bar = egui::ProgressBar::new(p.percent() / 100.0)
-                    .text(format!("{:.0}%  {}", p.percent(), p.display()));
-                ui.add(bar);
+                // 전송 진행률은 앱 전체가 한 위젯을 쓴다(SFTP 큐·trzsz와 같은 모양).
+                update_bar(ui, lang, &p);
             }
             UpdateStatus::Downloaded(path, want) => {
                 ui.colored_label(GREEN, format!("\u{2713} {}", tr(lang, "update.done")));
@@ -101,4 +100,19 @@ fn draw_check_button(ui: &mut egui::Ui, lang: Lang, updater: &UpdateChecker) {
 
 fn open_url(url: &str) {
     let _ = std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn();
+}
+
+/// 업데이트 다운로드 막대 — 앱 공통 위젯을 쓴다(모양·속도·남은 시간 계산을 한곳에서).
+pub(crate) fn update_bar(ui: &mut egui::Ui, lang: Lang, p: &nabi_release::DownloadProgress) {
+    let v = crate::xferbar::XferView {
+        arrow: "\u{2b07}",
+        name: "nabiTerm-setup.exe",
+        done: p.downloaded,
+        total: p.total,
+        bps: p.speed_bps,
+        index: 0,
+        count: 0,
+        width: ui.available_width().max(160.0),
+    };
+    crate::xferbar::xfer_bar(ui, lang, &v);
 }

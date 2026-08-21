@@ -193,15 +193,6 @@ pub(crate) fn xfer_totals(items: &[(u64, u64, u64)]) -> (u64, u64, u64) {
     items.iter().fold((0, 0, 0), |(b, s, sp), &(tb, ts, tsp)| (b + tb, s + ts, sp + tsp))
 }
 
-/// 현재 속도로 남은 바이트를 보내는 데 걸릴 예상 초(시작 직후·완료·정보부족이면 None).
-pub(crate) fn eta_secs(bytes: u64, size: u64, elapsed: f64) -> Option<u64> {
-    if bytes == 0 || elapsed <= 0.0 || bytes >= size {
-        return None;
-    }
-    let speed = bytes as f64 / elapsed;
-    (speed > 0.0).then(|| ((size - bytes) as f64 / speed) as u64)
-}
-
 /// 초를 사람이 읽는 짧은 표기로(예: 45s, 1m23s, 2h05m).
 pub(crate) fn human_secs(s: u64) -> String {
     if s >= 3600 {
@@ -232,7 +223,7 @@ pub(crate) fn take_refresh(drained: bool, stale: &mut bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{eta_secs, human_secs, settled, take_refresh, xfer_totals, Transfer, XferState, XFER_NONE};
+    use super::{human_secs, settled, take_refresh, xfer_totals, Transfer, XferState, XFER_NONE};
 
     /// 큐 항목은 id로 지목해야 한다 — 위치로 찾으면 다른 파일 작업이 끼어들거나
     /// 재시도로 순서가 바뀔 때 엉뚱한 행이 갱신된다(과거 "첫 미완료 항목" 방식의 버그).
@@ -283,10 +274,7 @@ mod tests {
 
     #[test]
     fn eta_and_format() {
-        // 1초에 500/1000 → 남은 500, 속도 500/s → 약 1초.
-        assert_eq!(eta_secs(500, 1000, 1.0), Some(1));
-        assert_eq!(eta_secs(0, 1000, 1.0), None); // 시작 직후.
-        assert_eq!(eta_secs(1000, 1000, 1.0), None); // 완료.
+        // 남은 시간 계산은 xferbar(앱 공통 진행률 위젯)로 옮겼다 — 여기서는 표기만 지킨다.
         assert_eq!(human_secs(45), "45s");
         assert_eq!(human_secs(83), "1m23s");
         assert_eq!(human_secs(7505), "2h05m");

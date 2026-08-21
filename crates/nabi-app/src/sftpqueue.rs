@@ -2,7 +2,7 @@
 //!
 //! 큐가 길어져도 파일 목록을 밀어내지 않도록 높이를 제한한 스크롤 영역에 그린다.
 
-use crate::sftpxfer::{eta_secs, human_secs, xfer_totals, Transfer, XferState};
+use crate::sftpxfer::{human_secs, xfer_totals, Transfer, XferState};
 use nabi_i18n::{tr, Lang};
 
 /// 큐 목록이 차지할 수 있는 최대 높이(px). 넘으면 그 안에서 스크롤한다.
@@ -45,28 +45,13 @@ fn summary(transfers: &[Transfer]) -> String {
     format!("  \u{2211}{pct}% \u{00b7} {}/s{eta}", crate::browserfs::human(sp))
 }
 
-/// 전체 크기를 모르는 전송(폴더)의 진행 표시 — 보낸 양 + 속도.
-fn running_amount(t: &Transfer) -> String {
-    let sent = crate::browserfs::human(t.bytes);
+/// 진행 중 항목의 평균 속도(B/s). 너무 이르면 0 — 첫 순간의 튀는 값을 보여주지 않는다.
+fn running_bps(t: &Transfer) -> u64 {
     let secs = t.started.elapsed().as_secs_f64();
     if secs <= 0.3 || t.bytes == 0 {
-        return sent;
+        return 0;
     }
-    format!("{sent} ({}/s)", crate::browserfs::human((t.bytes as f64 / secs) as u64))
-}
-
-/// 진행 중 항목의 라벨(이름 + 속도 + 남은 시간).
-fn running_label(t: &Transfer, dir: &str) -> String {
-    let secs = t.started.elapsed().as_secs_f64();
-    if secs <= 0.3 || t.bytes == 0 {
-        return format!("{dir} {}", t.name);
-    }
-    let sp = (t.bytes as f64 / secs) as u64;
-    let speed = crate::browserfs::human(sp);
-    match eta_secs(t.bytes, t.size, secs) {
-        Some(e) => format!("{dir} {} ({speed}/s \u{00b7} ~{})", t.name, human_secs(e)),
-        None => format!("{dir} {} ({speed}/s)", t.name),
-    }
+    (t.bytes as f64 / secs) as u64
 }
 
 /// 전송 큐를 그리고 사용자 동작을 모은다.
@@ -112,14 +97,20 @@ fn row(ui: &mut egui::Ui, t: &Transfer, lang: Lang, act: &mut QueueAct) {
     let dir = if t.up { "\u{2b06}" } else { "\u{2b07}" };
     ui.horizontal(|ui| {
         match t.state {
-            XferState::Running if t.size > 0 => {
-                let frac = (t.bytes as f32 / t.size as f32).clamp(0.0, 1.0);
-                ui.add(egui::ProgressBar::new(frac).desired_width(180.0).text(running_label(t, dir)));
-            }
-            // 폴더 전송은 전체 크기를 미리 모른다(재귀로 훑어야 안다). 막대 대신 지금까지
-            // 보낸 양과 속도를 보여 준다 — 예전엔 모래시계만 있어서 멈춘 것과 구별이 안 됐다.
+            // 크기를 아는 전송은 막대, 폴더처럼 모르는 전송은 보낸 양 — 둘 다 공통 위젯이
+            // 알아서 가른다(업데이트·trzsz와 같은 모양을 쓰려고 xferbar로 통일, 2026-08-21).
             XferState::Running => {
-                ui.label(format!("{dir} {} \u{23f3} {}", t.name, running_amount(t)));
+                let v = crate::xferbar::XferView {
+                    arrow: dir,
+                    name: &t.name,
+                    done: t.bytes,
+                    total: t.size,
+                    bps: running_bps(t),
+                    index: 0,
+                    count: 0,
+                    width: 180.0,
+                };
+                crate::xferbar::xfer_bar(ui, lang, &v);
             }
             XferState::Waiting => {
                 ui.weak(format!("{dir} {} \u{00b7} {}", t.name, crate::browserfs::human(t.size)));

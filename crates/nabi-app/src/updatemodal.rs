@@ -149,10 +149,7 @@ fn prompt_body(
         UpdateStatus::Downloading(p) => {
             ui.label(tr(lang, "update.downloading"));
             ui.add_space(4.0);
-            ui.add(
-                egui::ProgressBar::new(p.percent() / 100.0)
-                    .text(format!("{:.0}%  {}", p.percent(), p.display())),
-            );
+            crate::updateui::update_bar(ui, lang, p);
         }
         UpdateStatus::Downloaded(..) => {
             ui.colored_label(GREEN, format!("\u{2713} {}", tr(lang, "update.done")));
