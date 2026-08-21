@@ -8,7 +8,7 @@ use nabi_config::AiProfileCfg;
 
 /// CLI별 불리언 스위치 프리셋: (스위치, 설명 i18n 키). 스위치명은 제품 옵션이라 번역하지
 /// 않고, 설명을 체크박스 아래 흐린 글씨로 보여 선택을 돕는다(사용자 요청 2026-08-18).
-/// 값이 필요한 옵션(--model 등)은 "추가 인자"로 넣는다. 미지 CLI(agy 등)는 빈 목록.
+/// 값이 필요한 옵션(--model 등)은 "추가 인자"로 넣는다. 미지 CLI는 빈 목록.
 pub(crate) fn preset_switches(cmd: &str) -> &'static [(&'static str, &'static str)] {
     match cmd {
         // 2026-08-18 공식 CLI 레퍼런스(code.claude.com/docs/en/cli-reference)로 검증.
@@ -29,11 +29,13 @@ pub(crate) fn preset_switches(cmd: &str) -> &'static [(&'static str, &'static st
             ("--search", "aiopt.codex.search"),
             ("--oss", "aiopt.codex.oss"),
         ],
-        "gemini" => &[
-            ("--yolo", "aiopt.gemini.yolo"),
-            ("--sandbox", "aiopt.gemini.sandbox"),
-            ("--checkpointing", "aiopt.gemini.checkpoint"),
-            ("--debug", "aiopt.gemini.debug"),
+        // Antigravity CLI(`agy`) — Gemini CLI의 후속. Gemini CLI는 2026-06-18 서비스 종료라
+        // `gemini` 선택지는 실행조차 되지 않았다(사용자 피드백 2026-08-21).
+        // 슬래시 명령은 공식 레퍼런스(antigravity.google/docs/cli/reference), 실행 스위치는
+        // 커뮤니티 치트시트 기준 — 값이 필요한 --model/--effort/--mode는 "추가 인자"로 넣는다.
+        "antigravity" => &[
+            ("--dangerously-skip-permissions", "aiopt.agy.skipperm"),
+            ("--sandbox", "aiopt.agy.sandbox"),
         ],
         "aider" => &[
             ("--yes-always", "aiopt.aider.yes"),
@@ -53,7 +55,7 @@ fn is_preset(cmd: &str, arg: &str) -> bool {
 }
 
 /// 설정 UI의 CLI 종류 선택지(마지막 "custom"은 자유 입력).
-pub(crate) const CLI_CHOICES: [&str; 5] = ["claude", "codex", "gemini", "aider", "custom"];
+pub(crate) const CLI_CHOICES: [&str; 5] = ["claude", "codex", "antigravity", "aider", "custom"];
 
 /// args에서 프리셋 스위치를 켜고 끈다(중복 없이, 순서 유지).
 pub(crate) fn toggle_arg(args: &mut Vec<String>, sw: &str, on: bool) {
@@ -76,9 +78,18 @@ pub(crate) fn set_extra_args(args: &mut Vec<String>, cmd: &str, text: &str) {
     args.extend(text.split_whitespace().map(str::to_string));
 }
 
+/// 선택지 id → 실제 실행 파일 이름. 대부분 같지만 Antigravity는 표시명과 명령이 다르다
+/// (제품명 "Antigravity", 명령 `agy`). 이 매핑이 없으면 존재하지 않는 명령을 실행한다.
+pub(crate) fn exec_name(choice: &str) -> &str {
+    match choice {
+        "antigravity" => "agy",
+        other => other,
+    }
+}
+
 /// 프로필 → 셸에 주입할 명령줄. 주입 텍스트는 ASCII 전용 규칙이라 비ASCII면 None.
 pub(crate) fn command_line(p: &AiProfileCfg) -> Option<String> {
-    let mut line = p.cmd.trim().to_string();
+    let mut line = exec_name(p.cmd.trim()).to_string();
     if line.is_empty() {
         return None;
     }

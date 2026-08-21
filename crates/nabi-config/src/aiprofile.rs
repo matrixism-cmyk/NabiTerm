@@ -10,7 +10,8 @@ pub struct AiProfileCfg {
     pub name: String,
     /// 셸("powershell"/"pwsh"/"cmd"/"wsl"/"gitbash", 빈 값 = 기본 셸 설정을 따름).
     pub shell: String,
-    /// 실행할 CLI 명령(claude/codex/gemini/aider/… 또는 임의 명령).
+    /// 실행할 CLI 선택지(claude/codex/antigravity/aider/… 또는 임의 명령).
+    /// 실제 실행 파일명은 `aiprof::exec_name`이 매핑한다(antigravity → `agy`).
     pub cmd: String,
     /// CLI 뒤에 붙는 인자들 — 체크박스 프리셋과 직접 입력 모두 여기로 합쳐 저장(SSOT).
     pub args: Vec<String>,

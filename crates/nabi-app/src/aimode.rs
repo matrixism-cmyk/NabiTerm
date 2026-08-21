@@ -46,8 +46,8 @@ pub(crate) fn kind_from_screen(screen: &str) -> Option<&'static str> {
     if s.contains("openai codex") || s.contains("codex v") {
         return Some("codex");
     }
-    if s.contains("gemini cli") || s.contains("gemini.md") {
-        return Some("gemini");
+    if s.contains("antigravity") || s.contains("agy v") {
+        return Some("agy");
     }
     if s.contains("aider v") || s.contains("aider chat") {
         return Some("aider");
@@ -59,7 +59,7 @@ pub(crate) fn kind_from_screen(screen: &str) -> Option<&'static str> {
 /// 제목은 OSC 0/2라 SSH를 그대로 통과하므로, 원격 pane 판정의 핵심 단서다.
 pub(crate) fn kind_from_title(title: &str) -> Option<&'static str> {
     let t = title.to_ascii_lowercase();
-    ["claude", "codex", "gemini", "aider"].into_iter().find(|k| t.contains(k))
+    ["claude", "codex", "agy", "aider"].into_iter().find(|k| t.contains(k))
 }
 
 /// 감지된 모드의 i18n 키. 못 찾으면 `aimode.unknown`(버튼은 여전히 순환 가능).

@@ -3,7 +3,7 @@
 //! 버튼에는 **한눈에 읽히는 요약명**(대화 요약·새 대화…)을 보여주고, 실제 슬래시 명령은
 //! 툴팁에 설명과 함께 붙인다(사용자 요청 2026-08-19 — CLI를 GUI처럼).
 //! 명령 목록은 각 CLI의 2026-08 공식 문서로 검증(claude commands·codex slash-commands·
-//! gemini cli/commands·aider in-chat commands).
+//! Antigravity CLI(agy) 슬래시 명령·aider in-chat commands).
 
 /// 바에 노출할 명령 하나.
 pub(crate) struct BarCmd {
@@ -33,7 +33,7 @@ const fn u(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd
 /// 실행 명령 → 명령 바를 아는 CLI 종류(판정은 aihandoff::ai_command_name과 공유 — SSOT).
 pub(crate) fn bar_kind(run_cmd: &str) -> Option<&'static str> {
     crate::aihandoff::ai_command_name(run_cmd)
-        .filter(|n| matches!(*n, "claude" | "codex" | "gemini" | "aider"))
+        .filter(|n| matches!(*n, "claude" | "codex" | "agy" | "aider"))
 }
 
 /// 주요 명령(바에 바로 노출). 나머지는 "⋯" 더보기 메뉴(secondary_commands).
@@ -71,18 +71,16 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
             ];
             A
         }
-        "gemini" => {
+        // Antigravity CLI(`agy`) — 공식 레퍼런스 antigravity.google/docs/cli/reference 기준.
+        // Gemini CLI(2026-06-18 종료)의 /compress·/stats·/tools·/chat 등은 더 이상 없다.
+        "agy" => {
             static A: &[BarCmd] = &[
-                c("/compress", "aicb.l.compact", "aicb.gemini.compress"),
-                c("/clear", "aicb.l.clear", "aicb.gemini.clear"),
-                u("/stats", "aicb.l.usage", "aicb.gemini.stats"),
-                u("/tools", "aicb.l.tools", "aicb.gemini.tools"),
-                BarCmd { cmd: "/memory", label: "aicb.l.memory", desc: "aicb.gemini.memory", sub: &[
-                    ("show", "/memory show"), ("refresh", "/memory refresh"),
-                ], opens_ui: true },
-                BarCmd { cmd: "/chat", label: "aicb.l.chat", desc: "aicb.gemini.chat", sub: &[
-                    ("list", "/chat list"), ("save", "/chat save"), ("resume", "/chat resume"),
-                ], opens_ui: true },
+                c("/clear", "aicb.l.clear", "aicb.agy.clear"),
+                u("/context", "aicb.l.context", "aicb.agy.context"),
+                u("/usage", "aicb.l.usage", "aicb.agy.usage"),
+                u("/model", "aicb.l.model", "aicb.agy.model"),
+                u("/resume", "aicb.l.resume", "aicb.agy.resume"),
+                u("/diff", "aicb.l.diff", "aicb.agy.diff"),
             ];
             A
         }
@@ -130,14 +128,16 @@ pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
             ];
             A
         }
-        "gemini" => {
+        "agy" => {
             static A: &[BarCmd] = &[
-                u("/mcp", "aicb.l.mcp", "aicb.gemini.mcp"),
-                u("/restore", "aicb.l.restore", "aicb.gemini.restore"),
-                c("/init", "aicb.l.init", "aicb.gemini.init"),
-                u("/settings", "aicb.l.settings", "aicb.gemini.settings"),
-                u("/extensions", "aicb.l.extensions", "aicb.gemini.extensions"),
-                c("/copy", "aicb.l.copy", "aicb.gemini.copy"),
+                u("/agents", "aicb.l.agents", "aicb.agy.agents"),
+                u("/permissions", "aicb.l.perms", "aicb.agy.perms"),
+                u("/skills", "aicb.l.skills", "aicb.agy.skills"),
+                u("/mcp", "aicb.l.mcp", "aicb.agy.mcp"),
+                u("/tasks", "aicb.l.tasks", "aicb.agy.tasks"),
+                c("/rewind", "aicb.l.rewind", "aicb.agy.rewind"),
+                c("/copy", "aicb.l.copy", "aicb.agy.copy"),
+                u("/config", "aicb.l.settings", "aicb.agy.config"),
                 u("/help", "aicb.l.help", "aicb.help"),
             ];
             A
@@ -166,7 +166,7 @@ mod tests {
         assert_eq!(bar_kind(r"C:\bin\codex.exe"), Some("codex"));
         assert_eq!(bar_kind("grep claude src"), None, "부분문자열 오탐 금지");
         assert_eq!(bar_kind(""), None);
-        for kind in ["claude", "codex", "gemini", "aider"] {
+        for kind in ["claude", "codex", "agy", "aider"] {
             for bc in primary_commands(kind).iter().chain(secondary_commands(kind)) {
                 assert!(bc.cmd.starts_with('/') && bc.cmd.is_ascii());
                 assert!(bc.label.starts_with("aicb.l."), "표시 라벨 키 규약: {}", bc.label);

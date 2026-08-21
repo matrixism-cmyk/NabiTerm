@@ -24,7 +24,7 @@ pub(crate) fn is_ai_command(cmd: &str) -> bool {
         .to_ascii_lowercase();
     matches!(
         base.as_str(),
-        "claude" | "aider" | "codex" | "gemini" | "llm" | "goose" | "cursor"
+        "claude" | "aider" | "codex" | "agy" | "llm" | "goose" | "cursor"
             | "opencode" | "crush" | "ollama" | "sgpt" | "cody"
     ) || cmd.contains("claude ")
 }

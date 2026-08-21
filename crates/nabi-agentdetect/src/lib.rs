@@ -28,6 +28,7 @@ pub fn agent_kind(cmd: &str) -> Option<&'static str> {
         "claude" => Some("claude"),
         "codex" => Some("codex"),
         "agy" => Some("agy"),
+        // Gemini CLI는 2026-06-18 종료(후속=agy). 옛 세션 판정용으로만 남긴다.
         "gemini" => Some("gemini"),
         _ => None,
     }
