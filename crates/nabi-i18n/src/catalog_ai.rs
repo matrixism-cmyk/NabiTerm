@@ -93,4 +93,13 @@ pub(crate) const CATALOG_AI: &[(&str, &str, &str, &str)] = &[
     ("aicb.claude.btw", "Add a side note without interrupting the work", "작업을 끊지 않고 곁말 남기기", "作業を止めずに補足を伝える"),
     ("aicb.claude.powerup", "Show tips that unlock more of Claude Code", "숨은 기능·요령 보기", "隠れた機能・コツを表示"),
     ("aicb.claude.radio", "Play background audio while you work", "작업 중 배경 음악 재생", "作業中に背景音を再生"),
+    // trzsz 파일 전송(trz/tsz).
+    ("trzsz.title", "File transfer requested", "파일 전송 요청", "ファイル転送の要求"),
+    ("trzsz.ask.down", "The remote wants to send you files (tsz). Choose where to save them.", "원격이 파일을 보내려 합니다(tsz). 저장할 폴더를 고르세요.", "リモートがファイルを送ろうとしています(tsz)。保存先を選んでください。"),
+    ("trzsz.ask.up", "The remote is waiting for files (trz). Choose what to send.", "원격이 파일을 기다립니다(trz). 보낼 파일을 고르세요.", "リモートがファイルを待っています(trz)。送るファイルを選んでください。"),
+    ("trzsz.ask.updir", "The remote is waiting for files or folders (trz -d).", "원격이 파일·폴더를 기다립니다(trz -d).", "リモートがファイル・フォルダを待っています(trz -d)。"),
+    ("trzsz.warn", "This was started by the remote host, not by you. Accept only if you ran trz/tsz yourself.", "이 요청은 원격이 시작한 것입니다. 직접 trz/tsz를 실행했을 때만 수락하세요.", "この要求はリモート側が開始したものです。自分でtrz/tszを実行した場合のみ承諾してください。"),
+    ("trzsz.pickfolder", "Choose folder...", "저장 폴더 고르기...", "保存先を選ぶ..."),
+    ("trzsz.pickfiles", "Choose files...", "보낼 파일 고르기...", "送るファイルを選ぶ..."),
+    ("xfer.left", "left", "남은 시간", "残り"),
 ];

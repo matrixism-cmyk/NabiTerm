@@ -161,6 +161,7 @@ impl NabiApp {
                 ai: &mut self.tip_ai,
             },
             self.lang,
+            &self.trzsz,
         );
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
@@ -246,6 +247,7 @@ impl NabiApp {
                             ai: &mut self.tip_ai,
                         },
                         self.lang,
+                        &self.trzsz,
                     );
                 });
             if let Some((p, d)) = zoom {

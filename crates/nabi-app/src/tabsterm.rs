@@ -13,6 +13,10 @@ impl TermTabViewer<'_> {
         // AI 명령 바: AI CLI 실행 중이면 pane 최상단에 슬래시 명령 버튼 줄(클릭=주입).
         // 터미널 rect 계산 '앞'에 그려 세로 공간을 차지한다(grid가 자동으로 줄어듦).
         self.ai_bar(ui, pane);
+        // 전송 중이면 그 pane 위에 진행률 한 줄(터미널에서 시작한 일이라 눈이 여기 있다).
+        if crate::trzszui::overlay(ui, self.lang, self.trzsz, pane) {
+            self.orch.send(Command::TrzszCancel { pane });
+        }
         let font =
             egui::FontId::monospace(self.pane_font.get(&pane).copied().unwrap_or(self.font_size));
         let (cw, ch) = nabi_render::cell_size(ui, &font);

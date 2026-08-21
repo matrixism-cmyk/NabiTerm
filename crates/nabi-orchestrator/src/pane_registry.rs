@@ -73,6 +73,8 @@ pub struct PaneRuntime {
     pub osc: OscScanner,
     /// 비UTF-8 입력 디코더(UTF-8이면 None = 원본 통과).
     pub decoder: Option<encoding_rs::Decoder>,
+    /// trzsz(`trz`/`tsz`) 파일 전송 상태 — 평소에는 트리거 스캐너 하나뿐이라 거의 공짜다.
+    pub trzsz: crate::trzszpane::PaneTrzsz,
 }
 
 /// 인코딩 라벨("UTF-8","EUC-KR","Shift_JIS"…)로 디코더 생성. UTF-8이면 None.

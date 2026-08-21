@@ -37,10 +37,15 @@ pub(crate) fn paint_floating_term(
     ai: &mut crate::aicmdbar::AiBarState,
     tip: &mut crate::tipoverlay::TipState,
     lang: nabi_i18n::Lang,
+    trzsz: &crate::trzszui::TrzszUi,
 ) {
     // AI 명령 바를 먼저 그린다(그만큼 터미널 영역이 줄어든다 — 탭과 같은 순서).
     if let Some(data) = crate::aicmdbar::draw_ai_bar(ui, panes, pane, lang, ai) {
         let _ = cmd_tx.send(Command::WriteInput { pane, data: Bytes::from(data) });
+    }
+    // 전송 진행률도 탭과 같은 자리에 — 분리 창에만 없으면 그게 표면 드리프트다.
+    if crate::trzszui::overlay(ui, lang, trzsz, pane) {
+        let _ = cmd_tx.send(Command::TrzszCancel { pane });
     }
     let font = egui::FontId::monospace(font_size);
     let (cw, ch) = nabi_render::cell_size(ui, &font);
@@ -222,11 +227,12 @@ pub(crate) fn render_floating(
     ai: &mut crate::aicmdbar::AiBarState,
     tip: &mut crate::tipoverlay::TipState,
     lang: nabi_i18n::Lang,
+    trzsz: &crate::trzszui::TrzszUi,
 ) {
     egui::CentralPanel::default().show(ui, |ui| {
         paint_floating_term(
             ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
-            link_click, paste_req, warn_paste, force_keys, tui_overlay, ai, tip, lang,
+            link_click, paste_req, warn_paste, force_keys, tui_overlay, ai, tip, lang, trzsz,
         );
     });
     // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.

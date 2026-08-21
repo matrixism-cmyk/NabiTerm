@@ -83,6 +83,7 @@ pub fn finish_local_spawn(
                     transport: Box::new(pty),
                     osc: OscScanner::new(),
                     decoder: decoder_for(&d.encoding),
+                    trzsz: Default::default(),
                 },
             );
             let _ = event_tx.send(Event::PaneSpawned { pane: d.pane, seq: d.reply_seq });
@@ -142,6 +143,7 @@ pub fn connect_ssh_pane(
             transport: Box::new(channel),
             osc: OscScanner::new(),
             decoder: decoder_for(encoding),
+            trzsz: Default::default(),
         },
     );
     let _ = event_tx.send(Event::PaneSpawned { pane, seq: reply_seq });

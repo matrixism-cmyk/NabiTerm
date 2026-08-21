@@ -19,6 +19,26 @@ pub fn route_output(
     let decoded = state.get_mut(&pane).and_then(|rt| rt.decode(bytes));
     let feed: &[u8] = decoded.as_deref().unwrap_or(bytes);
 
+    // 0.5) trzsz 파일 전송 필터 — VT에 넣기 **전에** 가로챈다. 전송 중에는 화면에
+    // 아무것도 보내지 않고(프로토콜이 새면 화면이 깨진다), 회신은 아래 1b와 같은 길로 나간다.
+    let filtered = state.get_mut(&pane).map(|rt| rt.trzsz.filter(pane, feed, event_tx));
+    let feed: &[u8] = match &filtered {
+        Some(r) => {
+            if !r.reply.is_empty() {
+                if let Some(rt) = state.get_mut(&pane) {
+                    let _ = rt.transport.write(&r.reply);
+                }
+            }
+            &r.display
+        }
+        None => feed,
+    };
+    if feed.is_empty() {
+        // 전송이 다 삼켰다 — UI만 깨워 진행률을 다시 그리게 한다.
+        let _ = event_tx.send(Event::PaneOutput { pane });
+        return;
+    }
+
     // 1) 권위 있는 VT 모델에 먹인다 + 메타(활동 상태) 갱신.
     // 잠금이 오염돼도 복구해서 계속 쓴다 — 건너뛰면 그 pane은 출력이 영영 멈춘다.
     let mut replies = Vec::new();

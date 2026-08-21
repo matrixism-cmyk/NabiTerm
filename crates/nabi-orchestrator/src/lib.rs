@@ -19,6 +19,8 @@ mod sftppool;
 mod sftppool_test;
 mod sftpretry;
 pub mod spawn_pane;
+pub mod trzszfile;
+pub mod trzszpane;
 
 pub use actor::start;
 pub use handle::OrchestratorHandle;

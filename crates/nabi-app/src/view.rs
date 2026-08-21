@@ -125,6 +125,7 @@ impl NabiApp {
                 pane_status: &self.pane_status,
                 run_cmd: &self.run_cmd,
                 ai_cmd_bar: self.config.terminal.ai_cmd_bar,
+                trzsz: &self.trzsz,
                 ai_picks: &mut self.ai_picks,
                 ai_screen: &mut self.ai_screen,
                 ai_last_model: &self.config.terminal.ai_last_model,

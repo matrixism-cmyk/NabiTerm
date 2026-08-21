@@ -54,6 +54,8 @@ pub struct TermTabViewer<'a> {
     pub run_cmd: &'a HashMap<PaneId, String>,
     /// AI 명령 바 표시 여부(설정 terminal.ai_cmd_bar — aicmdbar.rs).
     pub ai_cmd_bar: bool,
+    /// trzsz 전송 진행률(읽기 전용 — 취소는 orch로 바로 보낸다).
+    pub trzsz: &'a crate::trzszui::TrzszUi,
     /// pane별 모델·노력 선택 기억(명령 바 버튼에 현재 상태 표시).
     pub ai_picks: &'a mut HashMap<PaneId, crate::aicmdbar::AiPicks>,
     /// pane별 AI 화면 판독 캐시(모드·모델·노력·제목).

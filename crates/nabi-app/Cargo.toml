@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 nabi-types = { workspace = true }
 nabi-proto = { workspace = true }
+nabi-trzsz = { workspace = true }
 nabi-vt = { workspace = true }
 nabi-pty = { workspace = true }
 nabi-render = { workspace = true }

@@ -34,6 +34,10 @@ pub enum Command {
     },
     /// 포커스 pane(또는 지정 pane)에 입력 바이트 주입.
     WriteInput { pane: PaneId, data: Bytes },
+    /// trzsz 전송 요청에 대한 사용자의 결정(수락/거절 + 경로).
+    TrzszDecide(crate::trzsz::XferDecision),
+    /// 진행 중인 trzsz 전송을 취소한다.
+    TrzszCancel { pane: PaneId },
     /// pane 리사이즈(ConPTY resize / SSH window_change).
     Resize { pane: PaneId, size: GridSize },
     /// pane 닫기(세션 종료).

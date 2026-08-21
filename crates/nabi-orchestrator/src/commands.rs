@@ -27,6 +27,23 @@ pub fn handle_command(
         // SpawnLocalPane은 액터 루프가 가로채 병렬 스폰한다(actor.rs).
         Command::SpawnLocalPane { .. } => {}
         Command::HostKeyDecision { id, accept } => verifier.resolve(id, accept),
+        // trzsz 결정·취소: 세션이 낸 회신 바이트를 그 pane으로 그대로 흘려보낸다.
+        Command::TrzszDecide(d) => {
+            if let Some(rt) = state.get_mut(&d.pane) {
+                let reply = rt.trzsz.decide(&d, event_tx);
+                if !reply.is_empty() {
+                    let _ = rt.transport.write(&reply);
+                }
+            }
+        }
+        Command::TrzszCancel { pane } => {
+            if let Some(rt) = state.get_mut(&pane) {
+                let reply = rt.trzsz.cancel(pane, event_tx);
+                if !reply.is_empty() {
+                    let _ = rt.transport.write(&reply);
+                }
+            }
+        }
         Command::ConnectSsh {
             params,
             size,

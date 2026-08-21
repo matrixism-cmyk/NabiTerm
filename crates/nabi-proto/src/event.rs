@@ -88,6 +88,12 @@ pub enum Event {
     },
     /// 포트 포워딩 시작됨(id + 사람이 읽는 설명 메시지).
     ForwardStarted { id: u64, message: String },
+    /// 원격이 파일 전송(trzsz)을 요청했다 — 사용자에게 물어야 한다.
+    TrzszAsk { pane: PaneId, mode: crate::trzsz::XferMode },
+    /// 전송 진행.
+    TrzszProgress { pane: PaneId, progress: crate::trzsz::XferProgress },
+    /// 전송 종료(성공이든 실패든). `names`는 실제 저장된 이름들.
+    TrzszDone { pane: PaneId, ok: bool, message: String, names: Vec<String> },
     /// 일반 오류 통지.
     Error { message: String },
     /// 로컬 셸 스폰 실패(seq는 SpawnLocalPane.reply_seq 에코 — 제어 평면이 빠른 에러 회신).

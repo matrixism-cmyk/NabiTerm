@@ -11,6 +11,7 @@ pub mod sftp;
 pub mod shell;
 pub mod ssh;
 pub mod stats;
+pub mod trzsz;
 pub mod statsparse;
 
 pub use appctl::{AppCtl, SftpCtlOp};
@@ -21,3 +22,4 @@ pub use sftp::{SftpEntry, SftpId};
 pub use shell::ShellKind;
 pub use ssh::{SshAuth, SshParams};
 pub use stats::ServerStats;
+pub use trzsz::{XferDecision, XferMode, XferProgress};

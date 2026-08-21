@@ -109,6 +109,7 @@ impl NabiApp {
             browser_tabs: HashMap::new(),
             sidebar_filter: String::new(),
             reconnect_ask: None, hostkey_prompt: None,
+            trzsz: Default::default(),
             tabbar_menu: None, link_menu: None, floating_link: None, img_textures: std::collections::HashMap::new(),
             last_win: (0.0, 0.0),
             control_policy,

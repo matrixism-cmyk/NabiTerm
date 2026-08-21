@@ -212,6 +212,11 @@ impl NabiApp {
                     self.notify = Some((message, std::time::Instant::now()));
                     ctx.request_repaint();
                 }
+                // trzsz 파일 전송(요청·진행·종료).
+                ev @ (Event::TrzszAsk { .. } | Event::TrzszProgress { .. } | Event::TrzszDone { .. }) => {
+                    self.on_trzsz_event(&ev);
+                    ctx.request_repaint();
+                }
                 _ => {}
             }
         }

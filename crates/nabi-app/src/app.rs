@@ -203,6 +203,8 @@ pub struct NabiApp {
     pub quake: Option<crate::quake::QuakeState>,
     /// 최근 데스크톱 알림(OSC 9) — 토스트로 잠시 표시.
     pub notify: Option<(String, std::time::Instant)>,
+    /// trzsz 파일 전송(확인 대화상자 + pane별 진행률).
+    pub trzsz: crate::trzszui::TrzszUi,
     /// 화면 규칙 기반 에이전트 상태 감시(A1 — 훅 미설치 에이전트 폴백).
     pub agent_watch: crate::agentwatch::AgentWatch,
     /// pane 상태 키의 만료 시각(B7 TTL) — 지나면 tick이 삭제한다.

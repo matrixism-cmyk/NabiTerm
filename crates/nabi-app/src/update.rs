@@ -143,6 +143,7 @@ impl eframe::App for NabiApp {
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);
         self.show_hostkey_prompt(ctx);
+        self.show_trzsz_ask(ctx);
         self.show_control_approval(ctx);
         self.show_about(ctx);
         self.show_known_hosts(ctx);
