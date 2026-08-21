@@ -18,4 +18,7 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
     ("editor.duplines", "Duplicate each line", "줄 복제", "各行を複製"),
     ("editor.wrapcol", "Hard wrap width", "줄바꿈 폭", "ハードラップ幅"),
     ("paste.title.one", "Paste this?", "붙여넣을까요?", "貼り付けますか?"),
+    // 설정 페이지 통합(사용자 요청 2026-08-21): 모양 4→1, 원격 2→1, AI 터미널은 전용 창으로.
+    ("settings.sec.appearance", "Appearance", "모양", "外観"),
+    ("settings.sec.remote", "Remote (SSH / SFTP)", "원격 연결", "リモート接続"),
 ];

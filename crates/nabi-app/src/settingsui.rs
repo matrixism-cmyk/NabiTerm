@@ -5,20 +5,18 @@ use nabi_i18n::{tr, Lang};
 
 /// 좌측 내비게이션 항목(i18n 키). 인덱스가 `page()`의 페이지 번호.
 //
-// 종류별로 묶고 나눈다(사용자 요청 2026-08-19):
-//   일반 → 모양(글꼴·색상·커서) → 연결(터미널·SSH·전송) → 규칙·AI → 자동화.
-// • 분리: 만물상이던 '터미널'에서 SSH와 전송(SFTP)을 띄어냈다.
-// • 통합: 테마 가져오기→색상, 강조+스니펫→규칙, 스케줄+텔레그램→자동화.
-pub(crate) const PAGE_KEYS: [&str; 10] = [
+// 종류별로 묶는다(사용자 요청 2026-08-19·08-21):
+//   일반 → 모양 → 터미널 → 원격 연결 → 규칙 → 자동화.
+// • 모양: 글꼴·색상·커서·테마 가져오기를 한 페이지로(모두 [appearance] 한 덩어리라 나눌 양이 아니다).
+// • 원격 연결: SSH와 전송(SFTP)을 한 페이지로. SSH는 항목이 둘뿐이라 탭 하나를 가질 양이 아니었다.
+// • AI 터미널(프로필)은 **여기서 뺐다** — 전용 창(터미널 메뉴 ▸ 프로필 관리)이 이미 있고,
+//   저장된 세션 목록처럼 '설정'이 아니라 '목록 관리'다.
+pub(crate) const PAGE_KEYS: [&str; 6] = [
     "settings.sec.general",
-    "settings.sec.font",
-    "settings.sec.colors",
-    "settings.sec.cursor",
+    "settings.sec.appearance",
     "settings.sec.terminal",
-    "settings.sec.ssh",
-    "settings.sec.transfer",
+    "settings.sec.remote",
     "settings.sec.rules",
-    "settings.sec.aiprof",
     "settings.sec.automation",
 ];
 
@@ -37,34 +35,38 @@ pub(crate) struct PageCtx<'a> {
 /// (nabiPad 설정은 편집기 창 메뉴로 이동 — 여기서는 편집기 설정을 다루지 않는다.)
 pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorConfig, lang: Lang, idx: usize, cx: &PageCtx) {
     match idx {
-        // 일반(0): 언어·단축키·복원·승인 정책 — 예전 '동작' 페이지.
+        // 일반(0): 언어·단축키·복원·승인 정책.
         0 => grid(ui, "sec_general", |ui| {
             crate::settingsui2::behavior_rows(ui, cfg, lang);
             crate::controlui::approvals_ui(ui, cx.policy, lang);
         }),
-        // 모양 그룹: 글꼴(1)·색상+테마 가져오기(2)·커서(3).
-        1 => grid(ui, "sec_font", |ui| font_rows(ui, cfg, lang, cx)),
-        2 => {
+        // 모양(1): 글꼴 → 색상 → 커서 → 테마 가져오기.
+        1 => {
+            group(ui, lang, "settings.sec.font");
+            grid(ui, "sec_font", |ui| font_rows(ui, cfg, lang, cx));
+            group(ui, lang, "settings.sec.colors");
             grid(ui, "sec_colors", |ui| color_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.cursor");
+            grid(ui, "sec_cursor", |ui| cursor_rows(ui, cfg, lang));
             group(ui, lang, "settings.sec.import");
             crate::themeimport::import_section(ui, cfg, lang);
         }
-        3 => grid(ui, "sec_cursor", |ui| cursor_rows(ui, cfg, lang)),
-        // 연결 그룹: 터미널(4)·SSH(5)·전송·SFTP(6).
-        4 => grid(ui, "sec_terminal", |ui| terminal_rows(ui, cfg, lang)),
-        5 => grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang)),
-        6 => grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang)),
-        // nabiPad 설정은 **nabiPad 자체 메뉴**(편집기 창 ▸ 설정)로 옮겼다(사용자 요청
-        // 2026-08-19) — 편집기 설정은 nabipad.toml에 별도 저장되고, 편집기에서 바로 여는 편이 자연스럽다.
-        // 사용자 규칙(7): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
-        7 => {
+        2 => grid(ui, "sec_terminal", |ui| terminal_rows(ui, cfg, lang)),
+        // 원격 연결(3): SSH(접속 유지·통계) → 전송·SFTP(속도·병렬·무결성·다운로드 폴더).
+        3 => {
+            group(ui, lang, "settings.sec.ssh");
+            grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.transfer");
+            grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang));
+        }
+        // 사용자 규칙(4): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
+        4 => {
             group(ui, lang, "settings.sec.highlights");
             crate::settingslists::highlight_rows(ui, cfg, lang);
             group(ui, lang, "settings.sec.snippets");
             crate::settingslists::snippet_rows(ui, cfg, lang);
         }
-        8 => crate::aiprofileui::ai_profile_rows(ui, cfg, lang),
-        // 자동화(9): 내장 스케줄러 + 텔레그램 브리지(둘 다 알아서 돌아가는 기능).
+        // 자동화(5): 내장 스케줄러 + 텔레그램 브리지.
         _ => {
             group(ui, lang, "settings.sec.schedule");
             crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path);

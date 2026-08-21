@@ -110,7 +110,7 @@ const CATALOG: &[(&str, &str, &str, &str)] = &[
     ("settings.statusbar", "Status bar", "상태바", "ステータスバー"),
     ("settings.warnpaste", "Confirm multiline paste", "여러 줄 붙여넣기 확인", "複数行貼り付け確認"),
     ("settings.searchlimit", "Search depth (lines)", "검색 깊이(줄)", "検索深度(行)"),
-    ("settings.sec.font", "Font & Theme", "글꼴·테마", "フォント・テーマ"),
+    ("settings.sec.font", "Font", "글꼴", "フォント"),
     ("settings.sec.cursor", "Cursor", "커서", "カーソル"),
     ("settings.sec.colors", "Colors", "색상", "色"),
     ("settings.sec.terminal", "Terminal", "터미널", "ターミナル"),
