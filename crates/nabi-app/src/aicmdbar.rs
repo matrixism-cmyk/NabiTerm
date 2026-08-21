@@ -5,7 +5,7 @@
 //! 이름(대화 요약·새 대화…), 툴팁에는 `"/compact 설명"` 형식으로 실제 명령과 설명을 보여준다.
 //! 명령 표는 aicmdcmds.rs, 모드 감지는 aimode.rs.
 
-use crate::aicmdcmds::{bar_kind, primary_commands, secondary_commands};
+use crate::aicmdcmds::{bar_kind, primary_commands};
 use nabi_i18n::tr;
 
 /// 바에서 고른 동작.
@@ -226,17 +226,10 @@ pub(crate) fn show_bar(ui: &mut egui::Ui, lang: nabi_i18n::Lang, v: &BarView) ->
                 .on_hover_text(tip);
             }
         }
-        ui.menu_button(bar_text("\u{22ef}"), |ui| {
-            for bc in secondary_commands(v.kind) {
-                let tip = format!("{} {}", bc.cmd, tr(lang, bc.desc));
-                if ui.button(tr(lang, bc.label)).on_hover_text(tip).clicked() {
-                    send = Some(BarAction::Cmd(bc.cmd.to_string(), bc.opens_ui));
-                    ui.close();
-                }
-            }
-        })
-        .response
-        .on_hover_text(tr(lang, "aicb.more"));
+        // 더보기는 명령이 많아(Claude 80+) 주제별 하위 메뉴 + 검색으로 낸다.
+        if let Some(a) = crate::aicmdmore::more_menu(ui, lang, v.kind, bar_text("\u{22ef}")) {
+            send = Some(a);
+        }
     });
     send
 }

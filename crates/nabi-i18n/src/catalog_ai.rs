@@ -1,0 +1,96 @@
+//! i18n 카탈로그 — AI 명령 바(2026-08-21 Claude 슬래시 명령 전수 반영).
+//!
+//! 설명문은 code.claude.com/docs/en/commands 공식 표를 요약한 것이다. 더보기 메뉴는
+//! 명령 이름을 그대로 보여주므로, 여기 있는 문장이 **사용자가 뜻을 아는 유일한 통로**다.
+//! 검색도 이 문장으로 걸리니 한국어에 흔히 쓰는 낱말을 넣는다.
+
+/// (키, 영어, 한국어, 일본어) 4-튜플.
+pub(crate) const CATALOG_AI: &[(&str, &str, &str, &str)] = &[
+    // 더보기 메뉴 자체.
+    ("aicb.filter", "Search commands…", "명령 검색…", "コマンド検索…"),
+    ("aicb.nomatch", "No matching command", "일치하는 명령 없음", "一致するコマンドなし"),
+    ("aicb.g.session", "Session & history", "세션·기록", "セッション・履歴"),
+    ("aicb.g.review", "Code review", "코드 검토", "コードレビュー"),
+    ("aicb.g.work", "Plan & tasks", "계획·작업", "計画・タスク"),
+    ("aicb.g.project", "Project & files", "프로젝트·파일", "プロジェクト・ファイル"),
+    ("aicb.g.ext", "Extensions", "확장·연동", "拡張・連携"),
+    ("aicb.g.pref", "Settings & look", "설정·모양", "設定・外観"),
+    ("aicb.g.account", "Account & devices", "계정·기기", "アカウント・端末"),
+    ("aicb.g.help", "Help & diagnostics", "도움·진단", "ヘルプ・診断"),
+    // 세션·기록.
+    ("aicb.claude.recap", "Summarize what happened so far in this session", "이번 세션에서 지금까지 한 일 요약", "これまでの作業を要約"),
+    ("aicb.claude.copy", "Copy the last reply to the clipboard", "마지막 응답을 클립보드로 복사", "最後の応答をクリップボードへコピー"),
+    ("aicb.claude.import", "Import a conversation from a file or another session", "다른 대화·파일에서 대화 가져오기", "他の会話やファイルから取り込む"),
+    ("aicb.claude.autocompact", "Turn automatic context compaction on or off", "컨텍스트 자동 요약 켜기·끄기", "自動コンテキスト圧縮のオン・オフ"),
+    ("aicb.claude.status", "Show model, effort, working folder and git state", "모델·노력·작업 폴더·git 상태 보기", "モデル・推論・作業フォルダ・git状態を表示"),
+    ("aicb.claude.todos", "Show the current to-do list", "지금 할 일 목록 보기", "現在のToDoリストを表示"),
+    ("aicb.claude.exit", "Quit Claude Code in this pane", "이 pane의 Claude Code 종료", "このペインのClaude Codeを終了"),
+    // 코드 검토.
+    ("aicb.claude.codereview", "Review the current diff, a PR or a path", "현재 변경분·PR·경로를 코드 리뷰", "現在の差分・PR・パスをレビュー"),
+    ("aicb.claude.secreview", "Review the diff for security vulnerabilities", "변경분의 보안 취약점 검토", "差分のセキュリティ脆弱性を検査"),
+    ("aicb.claude.simplify", "Suggest ways to simplify the current diff", "현재 변경분을 더 단순하게 만드는 제안", "現在の差分を単純化する提案"),
+    ("aicb.claude.verify", "Run the project test suite and report failures", "프로젝트 테스트 실행·실패 보고", "テストを実行し失敗を報告"),
+    ("aicb.claude.autofixpr", "Fix failing checks and review comments on a PR", "PR의 실패한 검사·리뷰 의견 자동 수정", "PRの失敗チェックとレビュー指摘を修正"),
+    // 계획·작업.
+    ("aicb.claude.goal", "Set a finish condition and keep working until it is met", "완료 조건을 걸고 그때까지 계속 진행", "完了条件を設定して達成まで継続"),
+    ("aicb.claude.loop", "Repeat a prompt on a schedule in this session", "이 세션에서 같은 지시를 주기적으로 반복", "同じ指示を定期的に繰り返す"),
+    ("aicb.claude.tasks", "Show background tasks and their output", "백그라운드 작업·출력 보기", "バックグラウンドタスクと出力を表示"),
+    ("aicb.claude.background", "Move the running command to the background", "실행 중인 명령을 백그라운드로 보내기", "実行中のコマンドをバックグラウンドへ"),
+    ("aicb.claude.batch", "Run the same instruction over many items", "같은 지시를 여러 대상에 일괄 실행", "同じ指示を複数対象に一括実行"),
+    ("aicb.claude.subtask", "Hand a side task to a subagent and wait for it", "곁가지 작업을 서브에이전트에 맡기고 대기", "副次タスクをサブエージェントに委任"),
+    ("aicb.claude.fork", "Run a copy of this conversation as a background session", "이 대화의 사본을 백그라운드 세션으로 실행", "この会話の複製を背景セッションで実行"),
+    ("aicb.claude.branch", "Branch the conversation to try another direction", "다른 방향을 시도하려고 대화 분기", "別方針を試すため会話を分岐"),
+    ("aicb.claude.agents", "Create and manage subagents", "서브에이전트 만들기·관리", "サブエージェントの作成・管理"),
+    ("aicb.claude.listagents", "Print the available agents as a list", "쓸 수 있는 에이전트 목록 출력", "利用可能なエージェント一覧を出力"),
+    ("aicb.claude.focus", "Limit attention to certain files or folders", "특정 파일·폴더로 작업 범위 좁히기", "特定のファイル・フォルダに集中"),
+    ("aicb.claude.deepresearch", "Research a question across many sources", "여러 자료를 훑어 깊이 조사", "多数の情報源を横断して深く調査"),
+    ("aicb.claude.dataviz", "Turn data into a chart or visual", "데이터를 도표·시각화로 만들기", "データを図表・可視化にする"),
+    // 프로젝트·파일.
+    ("aicb.claude.adddir", "Add another folder to the working set", "작업 대상 폴더 추가", "作業対象フォルダを追加"),
+    ("aicb.claude.cd", "Change the working folder", "작업 폴더 변경", "作業フォルダを変更"),
+    ("aicb.claude.renamefile", "Rename a file or folder in the project", "프로젝트의 파일·폴더 이름 바꾸기", "ファイル・フォルダの名前を変更"),
+    ("aicb.claude.worktree", "Create or manage git worktrees", "git 워크트리 만들기·관리", "gitワークツリーの作成・管理"),
+    ("aicb.claude.tools", "Write reference docs for this project's custom tools", "이 프로젝트 전용 도구 설명 문서 만들기", "プロジェクト独自ツールの参照文書を作成"),
+    // 확장·연동.
+    ("aicb.claude.plugin", "Install and manage plugins", "플러그인 설치·관리", "プラグインの導入・管理"),
+    ("aicb.claude.reloadplugins", "Apply pending plugin changes now", "대기 중인 플러그인 변경 즉시 적용", "保留中のプラグイン変更を反映"),
+    ("aicb.claude.skills", "Browse and manage skills", "스킬 살펴보기·관리", "スキルの閲覧・管理"),
+    ("aicb.claude.hooks", "Set up hooks that run on tool events", "도구 이벤트에 걸리는 훅 설정", "ツールイベントに掛けるフックを設定"),
+    ("aicb.claude.ide", "Connect the running IDE for shared context", "실행 중인 IDE와 컨텍스트 연결", "起動中のIDEと文脈を連携"),
+    ("aicb.claude.chrome", "Control Chrome from this session", "이 세션에서 크롬 제어", "このセッションからChromeを操作"),
+    ("aicb.claude.ghapp", "Install the GitHub app for PR automation", "PR 자동화를 위한 GitHub 앱 설치", "PR自動化用のGitHubアプリを導入"),
+    ("aicb.claude.slackapp", "Install the Slack app", "Slack 앱 설치", "Slackアプリを導入"),
+    ("aicb.claude.claudeapi", "Set up access to the Claude API", "Claude API 접근 설정", "Claude APIのアクセスを設定"),
+    ("aicb.claude.designsync", "Sync design assets into the project", "디자인 자산을 프로젝트로 동기화", "デザイン資産をプロジェクトへ同期"),
+    ("aicb.claude.designlogin", "Sign in to the design service", "디자인 서비스 로그인", "デザインサービスにログイン"),
+    // 설정·모양.
+    ("aicb.claude.config", "Open settings (alias: /settings)", "설정 열기(별칭 /settings)", "設定を開く(別名 /settings)"),
+    ("aicb.claude.fewerperms", "Ask for permission less often", "권한 확인 창을 덜 뜨게 하기", "権限確認を減らす"),
+    ("aicb.claude.keybindings", "View and change key bindings", "단축키 보기·변경", "キー割り当ての確認・変更"),
+    ("aicb.claude.theme", "Change the terminal colour theme", "터미널 색 테마 변경", "端末のカラーテーマを変更"),
+    ("aicb.claude.color", "Set the prompt bar colour for this session", "이 세션 입력줄 색 지정", "このセッションの入力欄の色を指定"),
+    ("aicb.claude.vim", "Toggle vim key bindings in the prompt", "입력줄 vim 키 사용 전환", "入力欄のvimキーを切替"),
+    ("aicb.claude.fast", "Toggle fast output mode", "빠른 출력 모드 전환", "高速出力モードを切替"),
+    ("aicb.claude.web", "Allow or block web search and browsing", "웹 검색·열람 허용·차단", "Web検索・閲覧の許可・遮断"),
+    ("aicb.claude.privacy", "Open privacy settings", "개인정보 설정 열기", "プライバシー設定を開く"),
+    // 계정·기기.
+    ("aicb.claude.login", "Sign in to your Claude account", "Claude 계정 로그인", "Claudeアカウントにログイン"),
+    ("aicb.claude.logout", "Sign out of this machine", "이 컴퓨터에서 로그아웃", "この端末からログアウト"),
+    ("aicb.claude.upgrade", "Update Claude Code (alias: /update)", "Claude Code 업데이트(별칭 /update)", "Claude Codeを更新(別名 /update)"),
+    ("aicb.claude.passes", "Show and buy usage passes", "사용권 확인·구매", "利用パスの確認・購入"),
+    ("aicb.claude.insights", "Show usage insights over time", "기간별 사용 통계 보기", "期間ごとの利用統計を表示"),
+    ("aicb.claude.remotectl", "Mirror this session to claude.ai/code", "이 세션을 claude.ai/code에 연결", "このセッションをclaude.ai/codeへ連携"),
+    ("aicb.claude.teleport", "Pull a web or mobile session into this terminal", "웹·모바일 세션을 이 터미널로 가져오기", "Web・モバイルのセッションをここへ"),
+    ("aicb.claude.desktop", "Open this session in the desktop app", "데스크톱 앱에서 이 세션 열기", "デスクトップアプリで開く"),
+    ("aicb.claude.mobile", "Continue this session on the mobile app", "모바일 앱에서 이어서 하기", "モバイルアプリで続ける"),
+    // 도움·진단.
+    ("aicb.claude.relnotes", "Show what changed in recent versions", "최근 버전 변경 내용 보기", "最近のバージョンの変更点"),
+    ("aicb.claude.feedback", "Send feedback to Anthropic", "Anthropic에 의견 보내기", "Anthropicに意見を送る"),
+    ("aicb.claude.bug", "Report a bug (alias: /share)", "버그 신고(별칭 /share)", "バグを報告(別名 /share)"),
+    ("aicb.claude.debug", "Show debug information for the session", "세션 디버그 정보 보기", "セッションのデバッグ情報"),
+    ("aicb.claude.heapdump", "Write a memory heap dump for diagnosis", "진단용 메모리 덤프 저장", "診断用のメモリダンプを保存"),
+    ("aicb.claude.advisor", "Get advice on how to use Claude Code better", "Claude Code를 더 잘 쓰는 조언 받기", "Claude Codeの使い方の助言"),
+    ("aicb.claude.btw", "Add a side note without interrupting the work", "작업을 끊지 않고 곁말 남기기", "作業を止めずに補足を伝える"),
+    ("aicb.claude.powerup", "Show tips that unlock more of Claude Code", "숨은 기능·요령 보기", "隠れた機能・コツを表示"),
+    ("aicb.claude.radio", "Play background audio while you work", "작업 중 배경 음악 재생", "作業中に背景音を再生"),
+];

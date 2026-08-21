@@ -4,12 +4,15 @@
 //! 툴팁에 설명과 함께 붙인다(사용자 요청 2026-08-19 — CLI를 GUI처럼).
 //! 명령 목록은 각 CLI의 2026-08 공식 문서로 검증(claude commands·codex slash-commands·
 //! Antigravity CLI(agy) 슬래시 명령·aider in-chat commands).
+//!
+//! Claude는 명령이 80개를 넘어 표를 aicmdclaude.rs로 분리하고 **주제별 묶음**으로 낸다.
 
 /// 바에 노출할 명령 하나.
 pub(crate) struct BarCmd {
     /// 전송할 슬래시 명령("/compact").
     pub cmd: &'static str,
-    /// 버튼에 보일 짧은 요약명 i18n 키.
+    /// 버튼에 보일 짧은 요약명 i18n 키. 비어 있으면 `cmd`를 그대로 보여준다
+    /// (더보기 메뉴처럼 명령 수가 많아 억지 이름이 오히려 방해가 되는 자리).
     pub label: &'static str,
     /// 툴팁 설명 i18n 키.
     pub desc: &'static str,
@@ -20,13 +23,19 @@ pub(crate) struct BarCmd {
     pub opens_ui: bool,
 }
 
+/// 더보기 메뉴의 한 묶음. `label`이 비면 하위 메뉴 없이 그대로 펼친다.
+pub(crate) struct CmdGroup {
+    pub label: &'static str,
+    pub cmds: &'static [BarCmd],
+}
+
 /// 즉시 끝나는 명령(대화 요약·새 대화 등).
-const fn c(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
+pub(crate) const fn c(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
     BarCmd { cmd, label, desc, sub: &[], opens_ui: false }
 }
 
 /// 화면/선택창을 여는 명령(재클릭 시 ESC로 닫는다).
-const fn u(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
+pub(crate) const fn u(cmd: &'static str, label: &'static str, desc: &'static str) -> BarCmd {
     BarCmd { cmd, label, desc, sub: &[], opens_ui: true }
 }
 
@@ -36,30 +45,10 @@ pub(crate) fn bar_kind(run_cmd: &str) -> Option<&'static str> {
         .filter(|n| matches!(*n, "claude" | "codex" | "agy" | "aider"))
 }
 
-/// 주요 명령(바에 바로 노출). 나머지는 "⋯" 더보기 메뉴(secondary_commands).
+/// 주요 명령(바에 바로 노출). 나머지는 "⋯" 더보기 메뉴(secondary_groups).
 pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
     match kind {
-        "claude" => {
-            static A: &[BarCmd] = &[
-                c("/compact", "aicb.l.compact", "aicb.claude.compact"),
-                c("/clear", "aicb.l.clear", "aicb.claude.clear"),
-                u("/context", "aicb.l.context", "aicb.claude.context"),
-                // 별칭·단계는 공식 CLI 레퍼런스 기준(fable/opus/sonnet/haiku, low~ultracode).
-                // 첫 항목은 CLI의 대화식 선택창.
-                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.claude.model", sub: &[
-                    ("/model", "/model"), ("fable", "/model fable"), ("opus", "/model opus"),
-                    ("sonnet", "/model sonnet"), ("haiku", "/model haiku"),
-                ], opens_ui: true },
-                BarCmd { cmd: "/effort", label: "aicb.l.effort", desc: "aicb.claude.effort", sub: &[
-                    ("/effort", "/effort"), ("low", "/effort low"), ("medium", "/effort medium"),
-                    ("high", "/effort high"), ("xhigh", "/effort xhigh"), ("max", "/effort max"),
-                    ("ultracode", "/effort ultracode"),
-                ], opens_ui: true },
-                u("/resume", "aicb.l.resume", "aicb.claude.resume"),
-                u("/usage", "aicb.l.usage", "aicb.claude.usage"),
-            ];
-            A
-        }
+        "claude" => crate::aicmdclaude::primary(),
         "codex" => {
             static A: &[BarCmd] = &[
                 c("/compact", "aicb.l.compact", "aicb.codex.compact"),
@@ -98,24 +87,10 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
     }
 }
 
-/// 더보기(⋯) 메뉴 명령.
-pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
+/// 더보기(⋯) 메뉴 — 묶음 목록. Claude만 주제별로 나뉘고 나머지는 한 묶음(평평하게).
+pub(crate) fn secondary_groups(kind: &str) -> &'static [CmdGroup] {
     match kind {
-        "claude" => {
-            static A: &[BarCmd] = &[
-                u("/permissions", "aicb.l.permissions", "aicb.claude.permissions"),
-                u("/mcp", "aicb.l.mcp", "aicb.claude.mcp"),
-                u("/memory", "aicb.l.memory", "aicb.claude.memory"),
-                u("/plan", "aicb.l.plan", "aicb.claude.plan"),
-                u("/rewind", "aicb.l.rewind", "aicb.claude.rewind"),
-                u("/diff", "aicb.l.diff", "aicb.claude.diff"),
-                c("/init", "aicb.l.init", "aicb.claude.init"),
-                u("/doctor", "aicb.l.doctor", "aicb.claude.doctor"),
-                u("/export", "aicb.l.export", "aicb.claude.export"),
-                u("/help", "aicb.l.help", "aicb.help"),
-            ];
-            A
-        }
+        "claude" => crate::aicmdclaude::groups(),
         "codex" => {
             static A: &[BarCmd] = &[
                 u("/approve", "aicb.l.approve", "aicb.codex.approve"),
@@ -126,7 +101,8 @@ pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
                 u("/rename", "aicb.l.rename", "aicb.codex.rename"),
                 c("/init", "aicb.l.init", "aicb.codex.init"),
             ];
-            A
+            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
+            G
         }
         "agy" => {
             static A: &[BarCmd] = &[
@@ -140,7 +116,8 @@ pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
                 u("/config", "aicb.l.settings", "aicb.agy.config"),
                 u("/help", "aicb.l.help", "aicb.help"),
             ];
-            A
+            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
+            G
         }
         _ => {
             static A: &[BarCmd] = &[
@@ -151,9 +128,15 @@ pub(crate) fn secondary_commands(kind: &str) -> &'static [BarCmd] {
                 u("/settings", "aicb.l.settings", "aicb.aider.settings"),
                 u("/help", "aicb.l.help", "aicb.help"),
             ];
-            A
+            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
+            G
         }
     }
+}
+
+/// 더보기 메뉴의 모든 명령(묶음을 펼친 것) — 검색 필터·테스트가 쓴다.
+pub(crate) fn secondary_flat(kind: &str) -> impl Iterator<Item = &'static BarCmd> {
+    secondary_groups(kind).iter().flat_map(|g| g.cmds.iter())
 }
 
 #[cfg(test)]
@@ -167,12 +150,38 @@ mod tests {
         assert_eq!(bar_kind("grep claude src"), None, "부분문자열 오탐 금지");
         assert_eq!(bar_kind(""), None);
         for kind in ["claude", "codex", "agy", "aider"] {
-            for bc in primary_commands(kind).iter().chain(secondary_commands(kind)) {
+            for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
                 assert!(bc.cmd.starts_with('/') && bc.cmd.is_ascii());
-                assert!(bc.label.starts_with("aicb.l."), "표시 라벨 키 규약: {}", bc.label);
+                assert!(bc.desc.starts_with("aicb."), "설명 키 규약: {}", bc.desc);
                 for (_, cmd) in bc.sub {
                     assert!(cmd.is_ascii(), "주입 명령은 ASCII 전용: {cmd}");
                 }
+            }
+            // 바 버튼은 요약명이 있어야 한다(더보기는 명령 자체를 보여주므로 비어도 된다).
+            for bc in primary_commands(kind) {
+                assert!(bc.label.starts_with("aicb.l."), "표시 라벨 키 규약: {}", bc.label);
+            }
+        }
+    }
+
+    /// 같은 명령이 바와 더보기에 **동시에** 나오면 사용자가 헷갈린다(드리프트 방지).
+    #[test]
+    fn no_duplicate_between_primary_and_more() {
+        for kind in ["claude", "codex", "agy", "aider"] {
+            let prim: Vec<_> = primary_commands(kind).iter().map(|b| b.cmd).collect();
+            for bc in secondary_flat(kind) {
+                assert!(!prim.contains(&bc.cmd), "{kind}: {} 중복", bc.cmd);
+            }
+        }
+    }
+
+    /// 더보기 안에서도 중복이 없어야 한다(묶음을 나누다 실수하기 쉬운 자리).
+    #[test]
+    fn more_menu_has_no_repeats() {
+        for kind in ["claude", "codex", "agy", "aider"] {
+            let mut seen = std::collections::BTreeSet::new();
+            for bc in secondary_flat(kind) {
+                assert!(seen.insert(bc.cmd), "{kind}: {} 두 번", bc.cmd);
             }
         }
     }
