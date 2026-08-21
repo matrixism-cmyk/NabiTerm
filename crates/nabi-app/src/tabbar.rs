@@ -14,8 +14,19 @@ impl NabiApp {
     }
 
     pub(crate) fn detect_tabbar_menu(&mut self, ctx: &egui::Context) {
-        // 탭 컨텍스트 메뉴가 열렸으면(짧은 탭 우클릭 등) 빈 탭바 메뉴는 띄우지 않는다(#3 중복 방지).
-        if self.tab_ctx_open || egui::Popup::is_any_open(ctx) {
+        // 탭 위 우클릭은 **그 탭의 메뉴가 주인**이므로 양보한다(#3). egui_dock이 탭별 위치를
+        // 알려주지 않아 "탭 위인지"를 좌표로 판정할 수 없어서, 탭 메뉴가 열려 있으면 물러선다.
+        if self.tab_ctx_tab.is_some() {
+            return;
+        }
+        // 일반 팝업(상단 메뉴·드롭다운·툴팁)은 **이 클릭이 연 경우에만** 양보한다.
+        //
+        // 예전에는 "지금 열려 있으면" 무조건 물러섰다. 그래서 메뉴를 한 번 쓰거나 툴팁이 떠 있으면
+        // 다음 우클릭이 그 팝업을 닫는 데만 쓰이고 **우리 메뉴는 안 떴다** — 한 번 더 눌러야 떴다
+        // (사용자 보고 2026-08-21 "빈 공간 우클릭이 잘 안 뜬다").
+        let popup_now = egui::Popup::is_any_open(ctx);
+        let popup_before = std::mem::replace(&mut self.popup_was_open, popup_now);
+        if popup_now && !popup_before {
             return;
         }
         let Some(pos) = ctx.input(|i| {
@@ -40,6 +51,7 @@ impl NabiApp {
         if let Some(node) = hit {
             self.dock.set_focused_node_and_surface(egui_dock::NodePath { surface: egui_dock::SurfaceIndex::main(), node });
             self.tabbar_menu = Some(pos);
+            self.tabbar_menu_fresh = true; // 이 프레임의 우클릭은 '메뉴 밖 클릭'이 아니다.
         }
     }
 
@@ -67,10 +79,17 @@ impl NabiApp {
             })
             .response;
         // 닫기: 항목 선택, 메뉴 밖 클릭, Esc.
-        let clicked_out = ctx.input(|i| {
-            (i.pointer.primary_clicked() || i.pointer.secondary_clicked())
-                && i.pointer.interact_pos().is_some_and(|p| !resp.rect.contains(p))
-        });
+        //
+        // **메뉴를 연 그 프레임에는 밖 클릭 판정을 하지 않는다.** egui가 Area를 화면 안에 맞추려
+        // 클릭 위치가 아닌 곳에 배치하는 경우가 있는데(실측: 클릭 x=792인데 Area는 600~768),
+        // 그러면 여는 우클릭이 곧바로 '밖 클릭'으로 잡혀 **뜨자마자 닫혔다**. 이게 "빈 공간
+        // 우클릭이 잘 안 뜬다"의 정체였다(사용자 보고 2026-08-21).
+        let fresh = std::mem::take(&mut self.tabbar_menu_fresh);
+        let clicked_out = !fresh
+            && ctx.input(|i| {
+                (i.pointer.primary_clicked() || i.pointer.secondary_clicked())
+                    && i.pointer.interact_pos().is_some_and(|p| !resp.rect.contains(p))
+            });
         if act.is_some() || clicked_out || ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
             self.tabbar_menu = None;
         }

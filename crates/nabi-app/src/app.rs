@@ -203,7 +203,15 @@ pub struct NabiApp {
     pub resize_badge: Option<(GridSize, std::time::Instant)>,
     /// 탭 바 "+" 클릭 신호 + 눌린 (surface,node); 비활성 pane 우클릭 포커스 요청; 탭 메뉴 열림 여부.
     pub add_requested: bool, pub add_target: Option<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>,
-    pub focus_req: Option<PaneId>, pub tab_ctx_open: bool,
+    pub focus_req: Option<PaneId>,
+    /// 이번 프레임에 **컨텍스트 메뉴가 열려 있는 탭**(egui_dock이 그 탭의 closure를 부른다).
+    pub tab_ctx_tab: Option<PaneId>,
+    /// 직전 프레임에 팝업(탭 메뉴·상단 메뉴·툴팁 등)이 열려 있었는가 — 탭바 빈 공간
+    /// 우클릭이 "방금 연 팝업"인지 "열려 있던 팝업을 닫는 클릭"인지 가르는 데 쓴다.
+    pub popup_was_open: bool,
+    /// 탭바 메뉴를 **방금 연 프레임**인가 — 여는 클릭이 '메뉴 밖 클릭'으로 잡혀
+    /// 즉시 닫히는 것을 막는다.
+    pub tabbar_menu_fresh: bool,
     /// 마우스/분리 창 붙여넣기 요청 — 프레임 끝에서 확인 경로로 보낸다.
     pub paste_req: Option<(PaneId, String)>,
     /// 차단형 프롬프트 때문에 메인 창을 이미 앞으로 불렀는지(뜨는 순간 한 번만).

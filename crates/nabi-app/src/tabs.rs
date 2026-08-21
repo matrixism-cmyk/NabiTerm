@@ -84,7 +84,7 @@ pub struct TermTabViewer<'a> {
     /// 마우스 붙여넣기 요청 (pane, 원문). 확인 여부는 app이 한곳에서 정한다.
     pub paste_req: &'a mut Option<(PaneId, String)>,
     /// 이번 프레임 탭 컨텍스트 메뉴가 열려 있는지(빈 탭바 우클릭 메뉴 중복 표시 방지).
-    pub tab_ctx_open: &'a mut bool,
+    pub tab_ctx_tab: &'a mut Option<PaneId>,
     pub pane_font: &'a std::collections::HashMap<PaneId, f32>,
     pub cwds: &'a std::collections::HashMap<PaneId, String>,
     /// 활성 원격 패널(현재 포커스된 SFTP/FTP 탭)과 그 PaneId.
@@ -209,7 +209,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
     }
 
     fn context_menu(&mut self, ui: &mut egui::Ui, tab: &mut PaneId, _path: egui_dock::NodePath) {
-        *self.tab_ctx_open = true; // 탭 메뉴가 열렸으니 빈 탭바 우클릭 메뉴는 띄우지 않는다(#3).
+        *self.tab_ctx_tab = Some(*tab); // 어느 탭의 메뉴가 열려 있는지 기록(#3 중복 방지 판정용).
         let is_ssh = matches!(
             self.pane_origins.get(tab),
             Some(nabi_session::SessionKind::Ssh { .. })

@@ -185,7 +185,7 @@ impl NabiApp {
             pane_status_ttl: HashMap::new(),
             ai_cli_auto: None,
             resize_badge: None,
-            add_requested: false, add_target: None, focus_req: None, tab_ctx_open: false, paste_req: None, prompt_raised: false,
+            add_requested: false, add_target: None, focus_req: None, tab_ctx_tab: None, popup_was_open: false, tabbar_menu_fresh: false, paste_req: None, prompt_raised: false,
             pending_ssh: None, pending_link: None, telegram: Default::default(), telegram_targets: HashMap::new(), telegram_pending: Vec::new(),
             telegram_heartbeat: (None, String::new()), worktree_prompt: None, worktree_list: None,
             schedules, schedules_path, sched_last_tick: std::time::Instant::now(),
