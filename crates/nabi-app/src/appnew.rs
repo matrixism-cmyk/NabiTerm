@@ -171,6 +171,7 @@ impl NabiApp {
             update_modal: false, update_seen: false, shellinteg_prompt: false, help_update_checked: false,
             font_installer: crate::fontinstall::FontInstaller::default(),
             ime_preedit: String::new(), hwnd, drop_zones: Vec::new(),
+            sidebar_pick_mode: false, sidebar_menu_row: None, sidebar_marked: Default::default(), sidebar_anchor: None, bulk_ask: None,
             sidebar_selected: None, sidebar_new_group: String::new(),
             sidebar_rename_group: None, sidebar_rename_to: String::new(),
             reach: std::sync::Arc::new(std::sync::Mutex::new(None)),

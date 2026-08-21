@@ -45,4 +45,16 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
     ("update.btn", "Update", "업데이트", "アップデート"),
     ("update.btn.hint", "A new version is ready - see what changed and install", "새 버전이 준비됐습니다 - 변경 내용을 보고 설치", "新しいバージョンがあります - 変更内容を確認して更新"),
     ("update.restartwarn", "nabiTerm will close and reopen to finish the update. Save your work first.", "업데이트하면 nabiTerm이 종료됐다가 다시 실행됩니다. 작업을 먼저 저장하세요.", "更新するとnabiTermは終了して再起動します。作業を先に保存してください。"),
+    // 세션 다중 선택·일괄 연결(실사용자 피드백 2026-08-21).
+    ("bulk.connect", "Connect selected", "선택 연결", "選択を接続"),
+    ("bulk.clear", "Clear selection", "선택 해제", "選択を解除"),
+    ("bulk.title", "Connect selected sessions", "선택한 세션 연결", "選択したセッションを接続"),
+    ("bulk.count", "Selected", "선택", "選択"),
+    ("bulk.auto", "Connect automatically (vault / key)", "자동 연결(볼트·키)", "自動接続(ボルト・鍵)"),
+    ("bulk.needlogin", "Need a password (one dialog each)", "비밀번호 입력 필요(각각 창이 뜸)", "パスワード入力が必要(それぞれ画面が出ます)"),
+    ("bulk.hint", "Sessions without saved credentials open a connect dialog one by one.", "자격증명이 저장되지 않은 세션은 접속 창이 하나씩 뜹니다.", "資格情報が保存されていないセッションは接続画面が個別に開きます。"),
+    ("bulk.onlyready", "Connect only the automatic ones", "자동 연결되는 것만", "自動接続のみ"),
+    ("bulk.all", "Connect all", "전부 연결", "すべて接続"),
+    ("bulk.pickmode", "Select", "선택 모드", "選択モード"),
+    ("bulk.pickmode.hint", "Click rows to select instead of connecting (Ctrl/Shift also work)", "클릭이 연결 대신 선택이 됩니다(Ctrl·Shift도 동작)", "クリックが接続ではなく選択になります(Ctrl・Shiftも有効)"),
 ];

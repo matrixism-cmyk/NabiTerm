@@ -47,7 +47,7 @@ impl NabiApp {
                 let path = crate::browser::home_dir().join(".ssh").join("config");
                 if let Ok(content) = std::fs::read_to_string(&path) {
                     let imported = crate::sshconfig::parse_ssh_config(&content);
-                    self.import_sessions(imported, "menu.importsshconfig");
+                    self.import_sessions(imported, "menu.importsshconfig", "ssh-config");
                 }
             }
             MenuAction::ImportFileZilla => {
@@ -64,7 +64,7 @@ impl NabiApp {
                     if let Ok(b) = std::fs::read(&p) {
                         // 인코딩 자동 감지(BOM/UTF-16/ANSI) — 한글 등 깨짐 방지.
                         let text = crate::editload::decode(&b).0;
-                        self.import_sessions(crate::filezilla::parse_filezilla(&text), "menu.importfilezilla");
+                        self.import_sessions(crate::filezilla::parse_filezilla(&text), "menu.importfilezilla", "filezilla");
                     }
                 }
             }
@@ -74,7 +74,7 @@ impl NabiApp {
                 if let Some(p) = path {
                     if let Ok(b) = std::fs::read(&p) {
                         let text = crate::editload::decode(&b).0; // 인코딩 자동 감지(MobaXterm.ini는 UTF-16/ANSI 흔함).
-                        self.import_sessions(crate::mobaxterm::parse_mobaxterm(&text), "menu.importmobaxterm");
+                        self.import_sessions(crate::mobaxterm::parse_mobaxterm(&text), "menu.importmobaxterm", "mobaxterm");
                     }
                 }
             }
@@ -83,7 +83,7 @@ impl NabiApp {
                 let dir = crate::xshell::default_sessions_dir()
                     .or_else(|| rfd::FileDialog::new().pick_folder());
                 if let Some(d) = dir {
-                    self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell");
+                    self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell", "xshell");
                 }
             }
             MenuAction::ImportPuTTY => {
@@ -96,7 +96,7 @@ impl NabiApp {
                         .map(|b| crate::editload::decode(&b).0)
                 });
                 if let Some(t) = text {
-                    self.import_sessions(crate::putty::parse_putty_reg(&t), "menu.importputty");
+                    self.import_sessions(crate::putty::parse_putty_reg(&t), "menu.importputty", "putty");
                 }
             }
             MenuAction::ExportFileZilla => {

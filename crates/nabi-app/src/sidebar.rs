@@ -16,6 +16,11 @@ impl NabiApp {
         let mut saved = self.sessions.sessions.clone();
         saved.sort_by_key(|s| s.name.to_lowercase());
         let mut action: Option<MenuAction> = None;
+        // 선택 막대의 '선택 연결' 클릭(패널 클로저 밖에서 실행 — 세션 목록 가변 차용 분리).
+        let mut connect_marked = false;
+        // ⋯ 메뉴가 열린 행(직전 프레임) / 이번 프레임에 열려 있는 행.
+        let menu_row = self.sidebar_menu_row.clone();
+        let mut menu_now: Option<String> = None;
         // 그룹 헤더 우클릭 결과(클로저에서 수집 → 닫힌 뒤 적용).
         let (mut start_rename, mut ungroup_folder, mut rename_apply): (Option<String>, Option<String>, Option<(String, String)>) = (None, None, None);
         // 그룹 접기 상태(영속) — 현재 접힌 그룹 + 이번 프레임 토글 요청.
@@ -31,6 +36,14 @@ impl NabiApp {
         egui::Panel::left("sessions_sidebar")
             .default_size(200.0)
             .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    // 선택 모드: 켜면 클릭이 '연결'이 아니라 '선택'이 된다(여러 개 고르기).
+                    let pm = self.sidebar_pick_mode;
+                    if ui.selectable_label(pm, tr(lang, "bulk.pickmode")).on_hover_text(tr(lang, "bulk.pickmode.hint")).clicked() {
+                        self.sidebar_pick_mode = !pm;
+                        if pm { self.sidebar_marked.clear(); } // 끄면 선택도 비운다.
+                    }
+                });
                 ui.horizontal(|ui| {
                     ui.label(
                         egui::RichText::new(tr(lang, "status.sessions"))
@@ -76,12 +89,27 @@ impl NabiApp {
                 // 우클릭 "그룹 이동" 서브메뉴용 기존 그룹 목록.
                 let all_folders: Vec<String> = { let mut f: Vec<String> = saved.iter().filter_map(|s| s.folder.clone()).collect(); f.sort(); f.dedup(); f };
                 // 드래그 가능한 세션 한 줄(side_row를 드래그 소스로 감싼다).
-                let drag_row = |ui: &mut egui::Ui, s: &SavedSession, sel: Option<&str>, ns: &mut Option<String>| -> Option<MenuAction> {
+                let marked = self.sidebar_marked.clone();
+                let mut click_out: Option<(String, bool, bool)> = None;
+                let mut drag_row = |ui: &mut egui::Ui, s: &SavedSession, sel: Option<&str>, ns: &mut Option<String>| -> Option<MenuAction> {
                     let live = matches!(&s.kind, SessionKind::Ssh { host, user, port, .. } if active.contains(&format!("{user}@{host}:{port}")));
                     let last = last_conn.get(&s.name).copied();
                     // 드래그 소스는 side_row 내부에서 이름 라벨에만 적용 — 우측 아이콘 클릭이 드래그에 가로채이지 않게.
-                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, live, last, now)
+                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, live, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
                 };
+                // 선택 막대: 몇 개 골랐는지 + 한 번에 연결 / 선택 해제.
+                if !self.sidebar_marked.is_empty() {
+                    let n = self.sidebar_marked.len();
+                    ui.separator();
+                    ui.horizontal_wrapped(|ui| {
+                        let go = egui::Button::new(
+                            egui::RichText::new(format!("\u{25b6} {} ({n})", tr(lang, "bulk.connect"))).color(egui::Color32::WHITE),
+                        )
+                        .fill(crate::theme_ui::OK);
+                        if ui.add(go).clicked() { connect_marked = true; }
+                        if ui.button(tr(lang, "bulk.clear")).clicked() { self.sidebar_marked.clear(); }
+                    });
+                }
                 egui::ScrollArea::vertical().id_salt("sidebar_sessions").show(ui, |ui| {
                     if vis.is_empty() {
                         // 필터로 0건인지(있지만 안 보임) 저장 자체가 없는지 구분.
@@ -132,6 +160,21 @@ impl NabiApp {
                         if let Some(n) = drop { move_to = Some(((*n).clone(), Some(new_group.clone()))); }
                     }
                 });
+                // 다중 선택 처리: 범위(Shift)는 **보이는 순서**를 아는 여기서 판정한다.
+                if let Some((name, ctrl, shift)) = click_out {
+                    let order: Vec<String> = vis.iter().map(|s| s.name.clone()).collect();
+                    // 선택 모드가 켜져 있으면 평클릭도 '선택'으로 친다 — Ctrl을 모르는 사용자와
+                    // 트랙패드 환경을 위해 눈에 보이는 토글을 둔다(Ctrl/Shift는 그대로 동작).
+                    let pick_mode = self.sidebar_pick_mode;
+                    let picked = crate::sidebarsel::apply_click(
+                        &mut self.sidebar_marked, &mut self.sidebar_anchor, &order, &name, ctrl || pick_mode, shift,
+                    );
+                    if let crate::sidebarsel::RowClick::Connect(n) = picked {
+                        if let Some(s) = saved.iter().find(|s| s.name == n) {
+                            action = Some(MenuAction::ConnectSaved((*s).clone()));
+                        }
+                    }
+                }
                 // 새 그룹 이름 입력칸(여기에 입력 후 세션을 위 헤더로 드래그).
                 ui.horizontal(|ui| { ui.label("\u{2795}"); ui.add(egui::TextEdit::singleline(&mut self.sidebar_new_group).hint_text(tr(lang, "sessions.newgroup")).desired_width(f32::INFINITY)); });
                 if let Some(sel) = new_sel {
@@ -154,6 +197,12 @@ impl NabiApp {
                 None => v.push(g),
             }
             let _ = nabi_config::save(&self.config_path, &self.config);
+        }
+        self.sidebar_menu_row = menu_now; // 다음 프레임에 그 행 아이콘을 유지한다.
+        if connect_marked {
+            let names = self.sidebar_marked.clone();
+            self.bulk_connect(&names); // 자격증명 없는 항목이 섞였으면 확인 창을 띄운다.
+            self.sidebar_marked.clear();
         }
         if let Some(a) = action { self.apply(ctx, a); }
     }
@@ -203,10 +252,16 @@ fn side_row(
     live: bool,
     last: Option<i64>,
     now: i64,
+    marked: bool,
+    click_out: &mut Option<(String, bool, bool)>,
+    // 직전 프레임에 이 행의 ⋯ 메뉴가 열려 있었는가.
+    menu_was_open: bool,
+    // 이번 프레임에 이 행의 ⋯ 메뉴가 열려 있으면 이름을 담는다.
+    menu_open_out: &mut Option<String>,
 ) -> Option<MenuAction> {
     let mut action = None;
     let is_ssh = matches!(s.kind, SessionKind::Ssh { .. }) && !s.is_ftp;
-    let selected = cur_sel == Some(s.name.as_str());
+    let selected = cur_sel == Some(s.name.as_str()) || marked;
     // 행 전체 사각형을 **먼저** 잡는다. 배경을 이름 영역에만 칠하면 강조 막대가 오른쪽
     // 아이콘 자리에서 뚝 끊겨 지저분해 보이고, 호버 판정도 이름 위에서만 되어
     // 아이콘 쪽으로 마우스를 옮기면 강조가 꺼진다.
@@ -216,7 +271,11 @@ fn side_row(
     // 동작 아이콘은 **가리키거나 선택했을 때만** 보여 준다. 늘 띄워 두면 세션 10개에
     // 아이콘이 40개라 목록이 아이콘 밭이 된다(오클릭 위험도 있다 — 특히 ✕ 삭제).
     // 평소엔 이름만 보이고, 우클릭 메뉴는 행 어디서나 그대로 열린다.
-    let show_icons = row_hot || selected;
+    // ⋯ 메뉴가 열려 있는 동안에는 아이콘을 계속 그린다. 예전엔 행에서 마우스가 벗어나면
+    // 버튼 자체가 사라졌고, **버튼에 매인 메뉴도 같이 닫혔다** — 항목을 고르려고 아래로
+    // 내려가는 순간 닫혀 쓸 수가 없었다(사용자 보고 2026-08-21). 우클릭 메뉴는 행 응답에
+    // 매여 있어 같은 문제가 없었다.
+    let show_icons = row_hot || selected || menu_was_open;
     let rounding = egui::CornerRadius::same(4);
     if selected {
         ui.painter().rect_filled(full, rounding, ui.visuals().selection.bg_fill);
@@ -262,7 +321,10 @@ fn side_row(
             if icon(ui, "\u{2715}", "sessions.delete") { action = Some(MenuAction::DeleteSession(s.name.clone())); }
             if icon(ui, "\u{270e}", "sessions.edit") { action = Some(MenuAction::EditSession(s.clone())); }
             if is_ssh && icon(ui, "\u{1f5a7}", "sessions.opensftp") { action = Some(MenuAction::OpenSftp(s.clone())); }
-            ui.menu_button("\u{22ef}", |ui| { if let Some(a) = crate::sessionctx::session_menu_items(ui, s, lang, folders) { action = Some(a); } });
+            ui.menu_button("\u{22ef}", |ui| {
+                *menu_open_out = Some(s.name.clone()); // 열려 있는 동안 아이콘을 유지시킨다.
+                if let Some(a) = crate::sessionctx::session_menu_items(ui, s, lang, folders) { action = Some(a); }
+            });
         });
         r
     });
@@ -273,8 +335,13 @@ fn side_row(
     let resp = resp.inner.on_hover_text(hint);
     // 클릭=연결(SSH 열기). 드래그(이동)는 페이로드로 처리돼 단순 클릭과 구분된다.
     if resp.clicked() {
-        *new_sel = Some(s.name.clone());
-        action = Some(MenuAction::ConnectSaved(s.clone()));
+        // Ctrl/Shift는 '선택'이고 평클릭은 '연결'이다. 범위 선택은 보이는 순서를 아는
+        // 호출부에서 판정하므로 여기서는 수정자만 실어 올려보낸다.
+        let (ctrl, shift) = ui.input(|i| (i.modifiers.command, i.modifiers.shift));
+        *click_out = Some((s.name.clone(), ctrl, shift));
+        if !ctrl && !shift {
+            *new_sel = Some(s.name.clone());
+        }
     }
     // 우클릭=더보기(라인 어디서나). 라인 전폭 영역이라 이름 어디서 눌러도 동일 메뉴.
     resp.context_menu(|ui| {

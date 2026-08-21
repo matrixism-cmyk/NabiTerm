@@ -139,6 +139,7 @@ impl eframe::App for NabiApp {
         }
         self.prompt_raised = pending;
         self.show_paste_confirm(ctx);
+        self.show_bulk_confirm(ctx); // 세션 일괄 연결 확인(자격증명 필요 개수 안내).
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);
         self.show_hostkey_prompt(ctx);

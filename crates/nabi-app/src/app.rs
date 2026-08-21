@@ -184,6 +184,16 @@ pub struct NabiApp {
     /// 창 핸들(OS 드롭 위치 판정) + 이번 프레임 드롭 존 rect들(브라우저/SFTP 라우팅).
     pub hwnd: Option<isize>, pub drop_zones: Vec<(crate::dnd::DropTarget, egui::Rect)>,
     /// 사이드바 편집 상태 + SSH 연결테스트(포트 도달성) 결과.
+    /// 사이드바 다중 선택 집합(Ctrl/Shift 클릭) — 비어 있으면 평소 동작.
+    /// ⋯ 더보기 메뉴가 열려 있는 행 이름 — 그 행의 아이콘을 계속 그려 메뉴가 살아 있게 한다.
+    pub sidebar_menu_row: Option<String>,
+    /// 선택 모드 — 켜면 사이드바 클릭이 '연결'이 아니라 '선택'이 된다.
+    pub sidebar_pick_mode: bool,
+    pub sidebar_marked: std::collections::HashSet<String>,
+    /// Shift 범위 선택의 기준점(마지막으로 Ctrl/평클릭한 항목).
+    pub sidebar_anchor: Option<String>,
+    /// 일괄 연결 확인 대기 목록(자격증명 없는 세션이 섞였을 때).
+    pub bulk_ask: Option<Vec<nabi_session::SavedSession>>,
     pub sidebar_selected: Option<String>, pub sidebar_new_group: String,
     pub sidebar_rename_group: Option<String>, pub sidebar_rename_to: String,
     pub reach: std::sync::Arc<std::sync::Mutex<Option<String>>>,

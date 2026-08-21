@@ -119,7 +119,7 @@ mod sftppanel;
 mod sftprestore;
 mod sftptab;
 mod shellinteg;
-mod sidebar;
+mod sidebar; mod sidebarsel;
 mod tabbar;
 mod tiling; mod toolsmenu;
 mod update;
