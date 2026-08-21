@@ -224,7 +224,10 @@ impl Session {
         let raw = decode_payload(payload).ok_or("bad CFG payload")?;
         let cfg: Config = serde_json::from_slice(&raw).map_err(|e| format!("bad CFG json: {e}"))?;
         self.cfg = cfg.sanitized();
-        self.newline.clone_from(&self.cfg.newline);
+        // 원격이 줄바꿈을 명시했을 때만 바꾼다. 명시하지 않으면 `#ACT`에서 정한 값이 맞다.
+        if let Some(nl) = self.cfg.newline.clone() {
+            self.newline = nl;
+        }
         if self.cfg.protocol != 1 {
             return Err(format!("unsupported protocol v{}", self.cfg.protocol));
         }

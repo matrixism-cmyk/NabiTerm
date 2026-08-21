@@ -1,4 +1,7 @@
 //! 흐름 시험용 가짜 원격과 메모리 저장소.
+//!
+//! `real.rs`는 이 중 일부만 쓴다(진짜 원격이 상대라 가짜 원격이 필요 없다).
+#![allow(dead_code)]
 
 use nabi_trzsz::{
     decode_payload, encode_payload, render, FileSink, FileSource, LineFramer, Session, Step,
