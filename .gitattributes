@@ -1,0 +1,18 @@
+# 줄바꿈은 저장소에서 LF로 통일한다.
+#
+# Windows에서 스크립트로 파일을 고칠 때(예: 파이썬 `open(p,"w")`)가 문제였다 — 텍스트 모드가
+# `\n`을 `\r\n`으로 바꿔 써서, 한 줄만 고쳐도 **파일 전체가 바뀐 것처럼** diff에 잡혔다.
+# 실제로 그렇게 139개 파일이 CRLF로 섞였다(2026-08-21 발견). 이 설정이 커밋 시점에 정규화한다.
+* text=auto eol=lf
+
+# 벤더 코드는 원본 그대로 둔다(우리 규율 대상이 아니다).
+vendor/** -text
+
+# 바이너리는 손대지 않는다.
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.exe binary
+*.ttf binary
+*.otf binary
