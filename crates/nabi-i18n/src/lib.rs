@@ -9,6 +9,7 @@ mod catalog3;
 mod catalog4;
 mod catalog5;
 mod catalog_ai;
+mod catalog_ai2;
 mod catalog_agent;
 mod catalog_editor;
 mod catalog_editor2;

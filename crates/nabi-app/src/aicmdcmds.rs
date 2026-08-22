@@ -49,90 +49,28 @@ pub(crate) fn bar_kind(run_cmd: &str) -> Option<&'static str> {
 pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
     match kind {
         "claude" => crate::aicmdclaude::primary(),
-        "codex" => {
-            static A: &[BarCmd] = &[
-                c("/compact", "aicb.l.compact", "aicb.codex.compact"),
-                c("/clear", "aicb.l.clear", "aicb.codex.clear"),
-                u("/permissions", "aicb.l.permissions", "aicb.codex.permissions"),
-                u("/diff", "aicb.l.diff", "aicb.codex.diff"),
-                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.codex.model", sub: &[], opens_ui: true },
-                u("/status", "aicb.l.status", "aicb.codex.status"),
-            ];
-            A
-        }
-        // Antigravity CLI(`agy`) — 공식 레퍼런스 antigravity.google/docs/cli/reference 기준.
-        // Gemini CLI(2026-06-18 종료)의 /compress·/stats·/tools·/chat 등은 더 이상 없다.
-        "agy" => {
-            static A: &[BarCmd] = &[
-                c("/clear", "aicb.l.clear", "aicb.agy.clear"),
-                u("/context", "aicb.l.context", "aicb.agy.context"),
-                u("/usage", "aicb.l.usage", "aicb.agy.usage"),
-                u("/model", "aicb.l.model", "aicb.agy.model"),
-                u("/resume", "aicb.l.resume", "aicb.agy.resume"),
-                u("/diff", "aicb.l.diff", "aicb.agy.diff"),
-            ];
-            A
-        }
-        _ => {
-            static A: &[BarCmd] = &[
-                c("/undo", "aicb.l.undo", "aicb.aider.undo"),
-                u("/diff", "aicb.l.diff", "aicb.aider.diff"),
-                c("/commit", "aicb.l.commit", "aicb.aider.commit"),
-                c("/clear", "aicb.l.clear", "aicb.aider.clear"),
-                c("/tokens", "aicb.l.tokens", "aicb.aider.tokens"),
-                c("/map", "aicb.l.map", "aicb.aider.map"),
-            ];
-            A
-        }
+        "codex" => crate::aicmdother::codex_primary(),
+        "agy" => crate::aicmdother::agy_primary(),
+        _ => crate::aicmdother::aider_primary(),
     }
 }
 
-/// 더보기(⋯) 메뉴 — 묶음 목록. Claude만 주제별로 나뉘고 나머지는 한 묶음(평평하게).
+/// 더보기(⋯) 메뉴 — 주제별 묶음.
 pub(crate) fn secondary_groups(kind: &str) -> &'static [CmdGroup] {
     match kind {
         "claude" => crate::aicmdclaude::groups(),
-        "codex" => {
-            static A: &[BarCmd] = &[
-                u("/approve", "aicb.l.approve", "aicb.codex.approve"),
-                u("/memories", "aicb.l.memory", "aicb.codex.memories"),
-                u("/skills", "aicb.l.skills", "aicb.codex.skills"),
-                u("/ide", "aicb.l.ide", "aicb.codex.ide"),
-                c("/copy", "aicb.l.copy", "aicb.codex.copy"),
-                u("/rename", "aicb.l.rename", "aicb.codex.rename"),
-                c("/init", "aicb.l.init", "aicb.codex.init"),
-            ];
-            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
-            G
-        }
-        "agy" => {
-            static A: &[BarCmd] = &[
-                u("/agents", "aicb.l.agents", "aicb.agy.agents"),
-                u("/permissions", "aicb.l.perms", "aicb.agy.perms"),
-                u("/skills", "aicb.l.skills", "aicb.agy.skills"),
-                u("/mcp", "aicb.l.mcp", "aicb.agy.mcp"),
-                u("/tasks", "aicb.l.tasks", "aicb.agy.tasks"),
-                c("/rewind", "aicb.l.rewind", "aicb.agy.rewind"),
-                c("/copy", "aicb.l.copy", "aicb.agy.copy"),
-                u("/config", "aicb.l.settings", "aicb.agy.config"),
-                u("/help", "aicb.l.help", "aicb.help"),
-            ];
-            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
-            G
-        }
-        _ => {
-            static A: &[BarCmd] = &[
-                c("/drop", "aicb.l.drop", "aicb.aider.drop"),
-                BarCmd { cmd: "/model", label: "aicb.l.model", desc: "aicb.aider.model", sub: &[], opens_ui: true },
-                c("/test", "aicb.l.test", "aicb.aider.test"),
-                c("/lint", "aicb.l.lint", "aicb.aider.lint"),
-                u("/settings", "aicb.l.settings", "aicb.aider.settings"),
-                u("/help", "aicb.l.help", "aicb.help"),
-            ];
-            static G: &[CmdGroup] = &[CmdGroup { label: "", cmds: A }];
-            G
-        }
+        "codex" => crate::aicmdother::codex_groups(),
+        "agy" => crate::aicmdother::agy_groups(),
+        _ => crate::aicmdother::aider_groups(),
     }
 }
+
+/// 이 CLI를 끝내는 명령. 바 오른쪽 "⋯" **바로 앞**에 종료 버튼으로 노출한다
+/// (사용자 요청 2026-08-22 — 끝내려고 매번 더보기를 열지 않도록).
+///
+/// 네 CLI가 모두 `/exit`을 받는다(claude·codex·agy·aider 공식 문서에서 확인).
+/// 달라지는 CLI가 생기면 여기만 고치면 된다 — 버튼은 이 값을 그대로 보낸다.
+pub(crate) const QUIT_CMD: &str = "/exit";
 
 /// 더보기 메뉴의 모든 명령(묶음을 펼친 것) — 검색 필터·테스트가 쓴다.
 pub(crate) fn secondary_flat(kind: &str) -> impl Iterator<Item = &'static BarCmd> {
@@ -191,6 +129,25 @@ mod tests {
             for bc in secondary_flat(kind) {
                 assert!(!prim.contains(&bc.cmd), "{kind}: {} 중복", bc.cmd);
             }
+        }
+    }
+
+    /// 종료는 바에 **버튼으로** 나온다 — 메뉴에도 있으면 같은 일이 두 군데가 된다.
+    #[test]
+    fn quit_lives_only_on_the_button() {
+        for kind in ["claude", "codex", "agy", "aider"] {
+            for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
+                assert_ne!(bc.cmd, QUIT_CMD, "{kind}: 종료가 목록에도 있다");
+            }
+        }
+    }
+
+    /// 각 CLI가 실제로 그만큼의 명령을 갖췄는가 — 예전처럼 몇 개만 남아 빈약해지지 않게.
+    #[test]
+    fn every_cli_has_a_useful_number_of_commands() {
+        for (kind, least) in [("claude", 70), ("codex", 30), ("agy", 25), ("aider", 30)] {
+            let n = primary_commands(kind).len() + secondary_flat(kind).count();
+            assert!(n >= least, "{kind}: {n}개뿐 — 최소 {least}개는 되어야 한다");
         }
     }
 

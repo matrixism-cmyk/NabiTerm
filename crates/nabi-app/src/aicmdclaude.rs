@@ -61,7 +61,6 @@ static SESSION: &[BarCmd] = &[
     c("/autocompact", "aicb.l.autocompact", "aicb.claude.autocompact"),
     u("/status", "aicb.l.status", "aicb.claude.status"),
     u("/todos", "aicb.l.todos", "aicb.claude.todos"),
-    c("/exit", "aicb.l.exit", "aicb.claude.exit"),
 ];
 
 /// 코드 검토 — 지금 diff를 여러 각도로 본다.
