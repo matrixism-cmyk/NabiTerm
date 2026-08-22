@@ -146,9 +146,15 @@ fn choose(pane: PaneId, mode: XferMode) -> Option<XferDecision> {
             let dir = rfd::FileDialog::new().pick_folder()?;
             Some(XferDecision::download_to(pane, dir))
         }
-        XferMode::Upload | XferMode::UploadDir => {
+        XferMode::Upload => {
             let files = rfd::FileDialog::new().pick_files()?;
             Some(XferDecision::upload(pane, files))
+        }
+        // `trz -d`는 폴더도 받는다. 파일 선택창으로는 폴더를 고를 수 없으므로 폴더창을 연다
+        // (파일만 올리고 싶으면 원격에서 `trz`를 쓰면 된다).
+        XferMode::UploadDir => {
+            let dir = rfd::FileDialog::new().pick_folder()?;
+            Some(XferDecision::upload(pane, vec![dir]))
         }
         // 원격이 올릴 파일을 고르는 모드는 오케스트레이터가 이미 막았다 — 여기까지 오지 않는다.
         XferMode::UploadSpecified => Some(XferDecision::reject(pane)),
@@ -164,10 +170,10 @@ fn ask_line(mode: XferMode) -> &'static str {
 }
 
 fn accept_label(mode: XferMode) -> &'static str {
-    if mode.is_upload() {
-        "trzsz.pickfiles"
-    } else {
-        "trzsz.pickfolder"
+    match mode {
+        XferMode::Upload => "trzsz.pickfiles",
+        // 받기도 폴더를 고르고, `trz -d`로 올리기도 폴더를 고른다.
+        _ => "trzsz.pickfolder",
     }
 }
 
@@ -186,6 +192,7 @@ mod tests {
     fn the_button_asks_for_the_right_thing() {
         assert_eq!(accept_label(XferMode::Download), "trzsz.pickfolder");
         assert_eq!(accept_label(XferMode::Upload), "trzsz.pickfiles");
+        assert_eq!(accept_label(XferMode::UploadDir), "trzsz.pickfolder", "trz -d는 폴더를 고른다");
     }
 
     /// 진행률이 들어오면 속도가 채워지고, 같은 pane은 하나로 합쳐진다.

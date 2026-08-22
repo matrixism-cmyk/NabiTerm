@@ -12,6 +12,7 @@
 
 mod action;
 mod codec;
+mod entry;
 mod line;
 mod progress;
 mod session;
@@ -19,6 +20,7 @@ mod trigger;
 mod upload;
 
 pub use codec::{decode_payload, encode_payload};
+pub use entry::Entry;
 pub use line::{render, Line, LineFramer};
 pub use action::{Action, Config};
 pub use progress::{Progress, Rate};

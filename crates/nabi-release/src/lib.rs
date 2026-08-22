@@ -252,10 +252,35 @@ pub fn launch_installer(
     request_quit: &Arc<AtomicBool>,
 ) -> Result<(), String> {
     verify_installer(path, expected_sha256)?;
-    std::process::Command::new(path)
-        .spawn()
-        .map_err(|e| format!("인스톨러 실행 실패: {e}"))?;
+    spawn_after_we_exit(path)?;
     request_quit.store(true, Ordering::Relaxed);
+    Ok(())
+}
+
+/// 우리가 **완전히 종료한 뒤에** 인스톨러를 띄운다.
+///
+/// 왜 기다리는가: 인스톨러는 시작하자마자 `AppMutex`로 실행 중인 nabiTerm을 찾는다.
+/// 예전에는 종료를 요청하기 **직전에** 인스톨러를 띄웠기 때문에, 우리가 아직 살아 있는 채로
+/// 설치가 시작돼 "nabiTerm이 실행 중입니다. 닫고 확인을 누르세요" 대화상자가 떴다.
+/// 그 창이 다른 창 뒤에 가리면 사용자는 앱이 닫힌 것만 보고 설치가 끝난 줄 안다 —
+/// 결과는 "업데이트했는데 다시 켜지지 않는다"였다(사용자 보고 2026-08-22, 설치 로그로 확인:
+/// `Defaulting to Cancel for suppressed message box … currently running` → 종료 코드 1).
+///
+/// 그래서 몇 초 뒤에 시작하도록 예약한다. 그 사이 우리는 워크스페이스를 저장하고 나간다.
+/// `/SILENT`으로 마법사 대신 진행 창만 띄우고, 설치가 끝나면 인스톨러가 nabiTerm을 다시 켠다
+/// (installer/nabiTerm.iss의 `[Run]` — 조용한 설치에서도 실행되도록 `skipifsilent`를 뺐다).
+fn spawn_after_we_exit(path: &str) -> Result<(), String> {
+    // `timeout`은 콘솔이 없으면 실패한다(창 없이 띄우므로). `ping`은 어디서나 된다.
+    let script = format!("ping -n 6 127.0.0.1 >nul & start \"\" \"{path}\" /SILENT");
+    let mut cmd = std::process::Command::new("cmd");
+    cmd.args(["/c", &script]);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.spawn().map_err(|e| format!("인스톨러 실행 예약 실패: {e}"))?;
     Ok(())
 }
 

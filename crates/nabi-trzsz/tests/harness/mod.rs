@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 use nabi_trzsz::{
-    decode_payload, encode_payload, render, FileSink, FileSource, LineFramer, Session, Step,
+    decode_payload, encode_payload, render, Entry, FileSink, FileSource, LineFramer, Session, Step,
     Storage, Trigger, TriggerScanner,
 };
 use std::cell::RefCell;
@@ -15,14 +15,19 @@ pub type Files = Rc<RefCell<Vec<(String, Vec<u8>, bool)>>>;
 
 pub struct MemStorage {
     files: Files,
+    dirs: Rc<RefCell<Vec<String>>>,
 }
 
 impl MemStorage {
     pub fn new() -> Self {
-        Self { files: Rc::new(RefCell::new(Vec::new())) }
+        Self { files: Rc::new(RefCell::new(Vec::new())), dirs: Rc::new(RefCell::new(Vec::new())) }
     }
     pub fn shared(&self) -> Files {
         self.files.clone()
+    }
+    /// 만들어진 디렉터리 목록(폴더 전송 시험).
+    pub fn dirs(&self) -> Rc<RefCell<Vec<String>>> {
+        self.dirs.clone()
     }
 }
 
@@ -32,18 +37,21 @@ struct MemSink {
 }
 
 impl Storage for MemStorage {
-    fn create(
-        &mut self,
-        remote_name: &str,
-        _size: u64,
-    ) -> Result<(String, Box<dyn FileSink>), String> {
+    fn create(&mut self, entry: &Entry) -> Result<(String, Option<Box<dyn FileSink>>), String> {
         // 진짜 구현의 경로 검사를 흉내 낸다 — 이 시험의 핵심 하나가 여기다.
-        if remote_name.contains("..") || remote_name.starts_with('/') {
-            return Err(format!("path traversal refused: {remote_name}"));
+        for part in &entry.rel {
+            if part.contains("..") || part.contains('/') || part.contains('\\') {
+                return Err(format!("path traversal refused: {part}"));
+            }
         }
-        self.files.borrow_mut().push((remote_name.to_owned(), Vec::new(), false));
+        let full = entry.rel.join("/");
+        if entry.is_dir {
+            self.dirs.borrow_mut().push(full);
+            return Ok((entry.root().to_owned(), None));
+        }
+        self.files.borrow_mut().push((full, Vec::new(), false));
         let idx = self.files.borrow().len() - 1;
-        Ok((remote_name.to_owned(), Box::new(MemSink { files: self.files.clone(), idx })))
+        Ok((entry.root().to_owned(), Some(Box::new(MemSink { files: self.files.clone(), idx }))))
     }
 }
 
@@ -95,6 +103,8 @@ pub struct Remote {
     pub fail_after_cfg: bool,
     /// 선언한 SIZE보다 많이 보낸다(디스크 채우기 시험).
     pub oversend: bool,
+    /// CFG에 directory:true 를 실어 `#NAME`을 JSON으로 주고받는다.
+    directory: bool,
 }
 
 impl Remote {
@@ -118,6 +128,7 @@ impl Remote {
             corrupt_md5: false,
             fail_after_cfg: false,
             oversend: false,
+            directory: false,
         }
     }
 
@@ -136,8 +147,13 @@ impl Remote {
                 "NUM" => out.extend(l("SUCC", &p)),
                 "NAME" => {
                     let n = decode_payload(&p).expect("NAME");
-                    self.got.push((String::from_utf8_lossy(&n).into_owned(), Vec::new()));
-                    out.extend(l("SUCC", &encode_payload(&n)));
+                    let text = String::from_utf8_lossy(&n).into_owned();
+                    // 진짜 원격은 저장한 **최상위 이름**만 돌려준다(폴더 전송에서 특히 중요 —
+                    // JSON을 그대로 되돌리면 항목마다 다른 이름이 되어 목록이 부풀어 오른다).
+                    let saved = Entry::parse(&text, self.directory)
+                        .map_or_else(|_| text.clone(), |e| e.root().to_owned());
+                    self.got.push((text, Vec::new()));
+                    out.extend(l("SUCC", &encode_payload(saved.as_bytes())));
                 }
                 "SIZE" => out.extend(l("SUCC", &p)),
                 "DATA" => {
@@ -156,6 +172,12 @@ impl Remote {
         out
     }
 
+    /// CFG에 directory:true 를 넣어 폴더 전송을 흉내 낸다.
+    pub fn directory_mode(mut self) -> Self {
+        self.directory = true;
+        self
+    }
+
     fn on_act(&mut self, payload: &str) -> Vec<u8> {
         let act = decode_payload(payload).expect("ACT는 zlib+base64여야 한다");
         let txt = String::from_utf8_lossy(&act).into_owned();
@@ -163,7 +185,11 @@ impl Remote {
         if !self.saw_confirm {
             return Vec::new(); // 거절이면 원격은 조용히 끝난다.
         }
-        let cfg = r#"{"lang":"go","bufsize":4096,"timeout":100,"protocol":1}"#;
+        let cfg = if self.directory {
+            r#"{"lang":"go","bufsize":4096,"timeout":100,"protocol":1,"directory":true}"#
+        } else {
+            r#"{"lang":"go","bufsize":4096,"timeout":100,"protocol":1}"#
+        };
         let mut out = l("CFG", &encode_payload(cfg.as_bytes()));
         if self.fail_after_cfg {
             out.extend(l("FAIL", &encode_payload(b"disk full on the remote")));
@@ -184,7 +210,7 @@ impl Remote {
         match self.stage {
             0 => {
                 self.stage = 1;
-                l("NAME", &encode_payload(self.files[self.idx].0.as_bytes()))
+                self.name_frame(self.idx)
             }
             1 => {
                 self.stage = 2;
@@ -212,10 +238,27 @@ impl Remote {
                     Vec::new()
                 } else {
                     self.stage = 1;
-                    l("NAME", &encode_payload(self.files[self.idx].0.as_bytes()))
+                    self.name_frame(self.idx)
                 }
             }
         }
+    }
+
+    /// `#NAME` 한 프레임. 디렉터리 모드면 경로를 조각내 JSON으로 싣는다.
+    /// 이름이 `/`로 끝나면 디렉터리 항목으로 본다.
+    fn name_frame(&mut self, idx: usize) -> Vec<u8> {
+        let raw = self.files[idx].0.clone();
+        if !self.directory {
+            return l("NAME", &encode_payload(raw.as_bytes()));
+        }
+        let is_dir = raw.ends_with('/');
+        let rel: Vec<String> =
+            raw.trim_end_matches('/').split('/').map(str::to_owned).collect();
+        let e = Entry { path_id: 0, rel, is_dir, size: 0, perm: None };
+        if is_dir {
+            self.stage = 4; // 디렉터리에는 SIZE·DATA·MD5가 없다 — 다음 이름으로 넘어간다.
+        }
+        l("NAME", &encode_payload(e.wire_name(true).as_bytes()))
     }
 
     fn md5_of(&self, data: &[u8]) -> Vec<u8> {

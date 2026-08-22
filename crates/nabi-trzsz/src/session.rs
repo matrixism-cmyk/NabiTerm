@@ -6,13 +6,15 @@
 use crate::action::{Action, Config, CHUNK_START};
 use crate::line::{render, LineFramer};
 use crate::progress::Progress;
-use crate::{decode_payload, encode_payload, Mode, Trigger};
+use crate::{decode_payload, encode_payload, Entry, Mode, Trigger};
 
 /// 우리가 받은 파일을 어디에 어떻게 쓸지 — 호출자(앱)가 구현한다.
 pub trait Storage {
-    /// 원격 이름으로 로컬 파일을 만든다. 돌려주는 문자열은 **실제 저장 이름**이다
-    /// (겹치면 바꿔 붙이므로 원격 이름과 다를 수 있다). 경로 안전 검사도 여기서 한다.
-    fn create(&mut self, remote_name: &str, size: u64) -> Result<(String, Box<dyn FileSink>), String>;
+    /// 항목을 만든다. 디렉터리면 만들기만 하고 쓸 곳은 `None`이다.
+    ///
+    /// 돌려주는 문자열은 원격에 알릴 **최상위 로컬 이름**이다(겹쳐 바뀌었을 수 있다).
+    /// 경로 안전 검사는 여기서 한다 — 원격이 준 조각을 그대로 이어 붙이면 안 된다.
+    fn create(&mut self, entry: &Entry) -> Result<(String, Option<Box<dyn FileSink>>), String>;
 }
 
 /// 받은 바이트를 흘려 넣는 곳.
@@ -27,11 +29,17 @@ pub trait FileSource {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize, String>;
 }
 
-/// 보낼 파일 하나.
+/// 보낼 항목 하나. 디렉터리면 `source`가 없다(만들라고 알리기만 한다).
 pub struct UploadItem {
-    pub name: String,
-    pub size: u64,
-    pub source: Box<dyn FileSource>,
+    pub entry: Entry,
+    pub source: Option<Box<dyn FileSource>>,
+}
+
+impl UploadItem {
+    /// 파일 하나를 보내는 항목(폴더 전송이 아닐 때).
+    pub fn file(name: impl Into<String>, size: u64, source: Box<dyn FileSource>) -> Self {
+        Self { entry: Entry::file(name, size), source: Some(source) }
+    }
 }
 
 /// 사용자가 정한 이번 전송의 처리 방침.
@@ -200,6 +208,16 @@ impl Session {
         self.state = St::Ended;
     }
 
+    /// 항목 하나를 끝냈다 — 다음 이름을 기다리거나, 다 됐으면 마무리한다(다운로드 쪽).
+    fn next_file(&mut self, out: &mut Vec<Step>) {
+        self.index += 1;
+        if self.index >= self.count {
+            self.finish_all(out);
+        } else {
+            self.state = St::DlName;
+        }
+    }
+
     fn close_sink(&mut self, ok: bool) {
         if let Some(mut s) = self.sink.take() {
             let _ = s.finish(ok);
@@ -257,13 +275,24 @@ impl Session {
             }
             (St::DlName, "NAME") => {
                 let raw = decode_payload(payload).ok_or("bad NAME")?;
-                self.name = String::from_utf8_lossy(&raw).into_owned();
+                let text = String::from_utf8_lossy(&raw).into_owned();
+                // 폴더 전송이면 이름 자리에 JSON이 온다(경로 조각 + 디렉터리 여부).
+                let entry = Entry::parse(&text, self.cfg.directory)?;
+                self.name = entry.name().to_owned();
                 let st = self.storage.as_mut().ok_or("no storage")?;
-                let (local, sink) = st.create(&self.name, 0)?;
-                self.sink = Some(sink);
-                self.names.push(local.clone());
+                let (local, sink) = st.create(&entry)?;
+                self.sink = sink;
+                // 이름은 **최상위**만 모은다 — 폴더 하나를 받으면 이름도 하나여야 한다.
+                if !self.names.iter().any(|n| n == &local) {
+                    self.names.push(local.clone());
+                }
                 out.push(self.send("SUCC", &encode_payload(local.as_bytes())));
-                self.state = St::DlSize;
+                if entry.is_dir {
+                    // 디렉터리 항목에는 SIZE·DATA·MD5가 따라오지 않는다. 바로 다음 이름이다.
+                    self.next_file(out);
+                } else {
+                    self.state = St::DlSize;
+                }
                 Ok(())
             }
             (St::DlSize, "SIZE") => {
@@ -299,12 +328,7 @@ impl Session {
                 }
                 self.close_sink(true);
                 out.push(self.send("SUCC", &encode_payload(&ours.0)));
-                self.index += 1;
-                if self.index >= self.count {
-                    self.finish_all(out);
-                } else {
-                    self.state = St::DlName;
-                }
+                self.next_file(out);
                 Ok(())
             }
             (_, "EXIT") => Ok(()),

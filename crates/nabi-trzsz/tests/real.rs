@@ -171,11 +171,8 @@ fn sends_a_real_file_to_trz() {
     let (trigger, rest) = wait_trigger(&mut child);
     assert!(trigger.mode.is_upload(), "trz 는 우리가 보내는 쪽이어야 한다");
 
-    let item = UploadItem {
-        name: "sent.bin".into(),
-        size: data.len() as u64,
-        source: Box::new(MemSource::new(data.clone())),
-    };
+    let item =
+        UploadItem::file("sent.bin", data.len() as u64, Box::new(MemSource::new(data.clone())));
     let (session, first) = Session::new(&trigger, Plan::Upload(vec![item]));
     let (names, err) = pump(&mut child, session, first, &rest);
     child.wait_timeout();
@@ -203,5 +200,104 @@ impl WaitTimeout for Child {
             }
         }
         let _ = self.kill();
+    }
+}
+
+#[test]
+#[ignore = "실제 trzsz 설치 필요(pip install trzsz)"]
+fn receives_a_real_folder_tree_from_tsz() {
+    let dir = tmp_dir("dl2");
+    let tree = dir.join("docs");
+    let _ = std::fs::create_dir_all(tree.join("img"));
+    std::fs::write(tree.join("readme.txt"), b"hello folder").unwrap();
+    let png: Vec<u8> = (0..3000u32).map(|i| (i % 253) as u8).collect();
+    std::fs::write(tree.join("img").join("a.png"), &png).unwrap();
+
+    // `tsz -d` 는 폴더를 통째로 보낸다.
+    let Some(mut child) = spawn("tsz", &["-q", "-d", tree.to_str().unwrap()], &dir) else {
+        eprintln!("tsz 를 찾지 못했다 — 건너뛴다");
+        return;
+    };
+    let (trigger, rest) = wait_trigger(&mut child);
+    assert!(!trigger.mode.is_upload());
+
+    let store = MemStorage::new();
+    let files = store.shared();
+    let dirs = store.dirs();
+    let (session, first) = Session::new(&trigger, Plan::Download(Box::new(store)));
+    let (names, err) = pump(&mut child, session, first, &rest);
+    let _ = child.kill();
+
+    assert_eq!(err, None, "실서버 폴더 다운로드가 실패했다");
+    assert_eq!(names, vec!["docs".to_string()], "폴더 하나면 이름도 하나여야 한다");
+    assert!(dirs.borrow().iter().any(|d| d == "docs"), "폴더가 만들어져야 한다: {:?}", dirs.borrow());
+    let got = files.borrow();
+    let find = |suffix: &str| got.iter().find(|f| f.0.ends_with(suffix)).map(|f| f.1.clone());
+    assert_eq!(find("readme.txt").as_deref(), Some(&b"hello folder"[..]));
+    assert_eq!(find("a.png"), Some(png), "폴더 안 파일도 바이트가 같아야 한다");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+#[ignore = "실제 trzsz 설치 필요(pip install trzsz)"]
+fn sends_a_real_folder_tree_to_trz() {
+    let dir = tmp_dir("ul2");
+    let src = dir.join("out");
+    let _ = std::fs::create_dir_all(src.join("sub"));
+    std::fs::write(src.join("a.txt"), b"top level").unwrap();
+    std::fs::write(src.join("sub").join("b.bin"), vec![3u8; 2500]).unwrap();
+    let dest = dir.join("landed");
+    let _ = std::fs::create_dir_all(&dest);
+
+    // `-d` 가 있어야 원격이 폴더를 받는다(CFG에 directory:true 가 실린다).
+    let Some(mut child) = spawn("trz", &["-q", "-y", "-d", dest.to_str().unwrap()], &dir) else {
+        eprintln!("trz 를 찾지 못했다 — 건너뛴다");
+        return;
+    };
+    let (trigger, rest) = wait_trigger(&mut child);
+
+    // 폴더를 통째로 올린다 — 오케스트레이터의 collect()가 하는 일을 여기서 손으로 만든다.
+    let items = vec![
+        item(&["out"], true, None),
+        item(&["out", "a.txt"], false, Some(src.join("a.txt"))),
+        item(&["out", "sub"], true, None),
+        item(&["out", "sub", "b.bin"], false, Some(src.join("sub").join("b.bin"))),
+    ];
+    let (session, first) = Session::new(&trigger, Plan::Upload(items));
+    let (names, err) = pump(&mut child, session, first, &rest);
+    child.wait_timeout();
+
+    assert_eq!(err, None, "실서버 폴더 업로드가 실패했다");
+    assert_eq!(names, vec!["out".to_string()]);
+    assert_eq!(std::fs::read(dest.join("out").join("a.txt")).unwrap(), b"top level");
+    assert_eq!(
+        std::fs::read(dest.join("out").join("sub").join("b.bin")).unwrap(),
+        vec![3u8; 2500],
+        "폴더 안 파일이 제자리에 같은 내용으로 있어야 한다"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// 업로드 항목 하나를 만든다(디렉터리면 내용 없음).
+fn item(parts: &[&str], is_dir: bool, from: Option<PathBuf>) -> UploadItem {
+    let rel: Vec<String> = parts.iter().map(|s| (*s).to_owned()).collect();
+    match from {
+        None => UploadItem {
+            entry: nabi_trzsz::Entry { path_id: 0, rel, is_dir, size: 0, perm: None },
+            source: None,
+        },
+        Some(p) => {
+            let data = std::fs::read(&p).expect("read source");
+            UploadItem {
+                entry: nabi_trzsz::Entry {
+                    path_id: 0,
+                    rel,
+                    is_dir: false,
+                    size: data.len() as u64,
+                    perm: None,
+                },
+                source: Some(Box::new(MemSource::new(data))),
+            }
+        }
     }
 }

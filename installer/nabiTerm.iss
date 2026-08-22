@@ -42,4 +42,8 @@ Name: "{group}\nabiTerm"; Filename: "{app}\nabiTerm.exe"
 Name: "{autodesktop}\nabiTerm"; Filename: "{app}\nabiTerm.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\nabiTerm.exe"; Description: "{cm:LaunchProgram,nabiTerm}"; Flags: nowait postinstall skipifsilent
+; 설치가 끝나면 nabiTerm을 다시 켠다. `skipifsilent`를 **일부러 뺐다** — 앱에서 시작한
+; 업데이트는 조용한 설치(/SILENT)로 돌기 때문에, 그 플래그가 있으면 재실행이 통째로
+; 건너뛰어진다("업데이트했는데 다시 안 켜진다", 사용자 보고 2026-08-22).
+; runasoriginaluser: 설치가 관리자로 올라갔더라도 앱은 원래 사용자 권한으로 켠다.
+Filename: "{app}\nabiTerm.exe"; Description: "{cm:LaunchProgram,nabiTerm}"; Flags: nowait postinstall runasoriginaluser

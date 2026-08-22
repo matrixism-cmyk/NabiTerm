@@ -7,7 +7,7 @@
 use crate::trzszfile::{DiskSource, DiskStorage};
 use crossbeam_channel::Sender;
 use nabi_proto::{Event, XferDecision, XferMode, XferProgress};
-use nabi_trzsz::{Mode, Plan, Session, Step, Trigger, TriggerScanner, UploadItem};
+use nabi_trzsz::{Entry, Mode, Plan, Session, Step, Trigger, TriggerScanner, UploadItem};
 use nabi_types::PaneId;
 use std::path::{Path, PathBuf};
 
@@ -151,9 +151,14 @@ fn to_proto(m: Mode) -> XferMode {
 /// 사용자의 결정을 실제 계획으로 바꾼다(파일을 여기서 연다).
 fn build_plan(t: &Trigger, d: &XferDecision) -> Result<Plan, String> {
     if t.mode.is_upload() {
+        // `trz -d`면 폴더째 올릴 수 있다. 그냥 `trz`면 파일만.
+        let dirs_ok = t.mode == Mode::UploadDir;
         let mut items = Vec::new();
-        for p in &d.upload {
-            items.push(open_item(p)?);
+        for (id, p) in d.upload.iter().enumerate() {
+            collect(p, id as i64, &mut Vec::new(), dirs_ok, &mut items)?;
+            if items.len() > MAX_FILES {
+                return Err(format!("too many items to upload (limit {MAX_FILES})"));
+            }
         }
         if items.is_empty() {
             return Err("no files chosen to upload".into());
@@ -164,13 +169,53 @@ fn build_plan(t: &Trigger, d: &XferDecision) -> Result<Plan, String> {
     Ok(Plan::Download(Box::new(DiskStorage::new(dir, MAX_FILES))))
 }
 
-fn open_item(path: &Path) -> Result<UploadItem, String> {
+/// 경로 하나를 항목으로 펼친다. 폴더면 자기 자신 + 아래 전부(깊이 우선).
+///
+/// 심볼릭 링크·정션은 따라가지 않는다 — 폴더 하나를 올린다고 하고서 링크를 타고
+/// 시스템 전체를 올려 보내는 일이 없어야 한다.
+fn collect(
+    path: &Path,
+    id: i64,
+    rel: &mut Vec<String>,
+    dirs_ok: bool,
+    out: &mut Vec<UploadItem>,
+) -> Result<(), String> {
     let name = path
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .ok_or_else(|| format!("bad path: {}", path.display()))?;
-    let (size, source) = DiskSource::open(path)?;
-    Ok(UploadItem { name, size, source: Box::new(source) })
+    let meta = std::fs::symlink_metadata(path).map_err(|e| format!("cannot read {name}: {e}"))?;
+    if meta.file_type().is_symlink() {
+        return Ok(()); // 조용히 건너뛴다 — 올리겠다고 고른 것은 링크가 가리키는 곳이 아니다.
+    }
+    rel.push(name);
+    if meta.is_dir() {
+        if !dirs_ok {
+            rel.pop();
+            return Err("this remote is not accepting folders (use `trz -d`)".into());
+        }
+        out.push(UploadItem {
+            entry: Entry { path_id: id, rel: rel.clone(), is_dir: true, size: 0, perm: None },
+            source: None,
+        });
+        let mut kids: Vec<_> = std::fs::read_dir(path)
+            .map_err(|e| format!("cannot list folder: {e}"))?
+            .filter_map(Result::ok)
+            .map(|e| e.path())
+            .collect();
+        kids.sort(); // 순서를 정해 두면 재현 가능하고, 받는 쪽 목록도 읽기 좋다.
+        for k in kids {
+            collect(&k, id, rel, dirs_ok, out)?;
+        }
+    } else {
+        let (size, source) = DiskSource::open(path)?;
+        out.push(UploadItem {
+            entry: Entry { path_id: id, rel: rel.clone(), is_dir: false, size, perm: None },
+            source: Some(Box::new(source)),
+        });
+    }
+    rel.pop();
+    Ok(())
 }
 
 #[cfg(test)]
