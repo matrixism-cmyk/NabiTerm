@@ -70,7 +70,7 @@ mod updatemodal;
 mod shellintegprompt;
 mod agentguide;
 mod aicli; mod aiclipage; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdmore; mod aimode;
-mod trzszui; mod xferbar; mod tiptrans; mod tipai; mod tipoverlay;
+mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay;
 mod aistatus; mod agentwatch;
 mod aidash;
 
@@ -271,7 +271,12 @@ fn main() -> eframe::Result<()> {
         // glow(OpenGL) 단일 백엔드는 일부 드라이버에서 화면이 안 보이는 사례가 있어 wgpu로.
         // GPU 없는 VM/헤드리스면 softgl이 소프트웨어 GL(Mesa)을 확인 후 받아 GL 백엔드로.
         renderer: eframe::Renderer::Wgpu,
-        wgpu_options: gpu::wgpu_options(softgl::resolve_backends()),
+        wgpu_options: gpu::wgpu_options({
+            // 그래픽 초기화 도중 죽으면 다음 실행이 알아채도록 표식을 남긴다(첫 프레임에서 지운다).
+            let b = softgl::resolve_backends();
+            gpupick::mark_starting();
+            b
+        }),
         // 디더링은 그라데이션 밴딩용인데 터미널은 평면 채움+글리프뿐이라 이득이 없다.
         // 켜두면 프래그먼트마다 추가 연산 — 약한 GPU·RDP·가상 GPU에서 프레임이 눈에 띄게 준다.
         dithering: false,

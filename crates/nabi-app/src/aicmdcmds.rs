@@ -11,8 +11,8 @@
 pub(crate) struct BarCmd {
     /// 전송할 슬래시 명령("/compact").
     pub cmd: &'static str,
-    /// 버튼에 보일 짧은 요약명 i18n 키. 비어 있으면 `cmd`를 그대로 보여준다
-    /// (더보기 메뉴처럼 명령 수가 많아 억지 이름이 오히려 방해가 되는 자리).
+    /// 버튼·메뉴에 보일 짧은 요약명 i18n 키. 비어 있으면 `cmd`를 그대로 보여준다(마지막 방어선 —
+    /// 정상 경로에서는 모든 명령이 요약명을 가진다. 테스트가 그것을 강제한다).
     pub label: &'static str,
     /// 툴팁 설명 i18n 키.
     pub desc: &'static str,
@@ -157,9 +157,28 @@ mod tests {
                     assert!(cmd.is_ascii(), "주입 명령은 ASCII 전용: {cmd}");
                 }
             }
-            // 바 버튼은 요약명이 있어야 한다(더보기는 명령 자체를 보여주므로 비어도 된다).
-            for bc in primary_commands(kind) {
-                assert!(bc.label.starts_with("aicb.l."), "표시 라벨 키 규약: {}", bc.label);
+            // 바 버튼이든 더보기든 **모두 요약명을 가진다** — 표기 규칙이 갈라지면
+            // 새로 넣은 명령만 `/cmd`로 나와 사용자가 다른 물건으로 읽는다(2026-08-22 지적).
+            for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
+                assert!(bc.label.starts_with("aicb.l."), "표시 라벨 키 규약: {} ({})", bc.label, bc.cmd);
+            }
+        }
+    }
+
+    /// 라벨·설명 키가 실제로 카탈로그에 있어야 한다. `tr`은 없는 키에 `"?"`를 돌려주므로
+    /// 빠뜨리면 버튼에 물음표가 뜬다 — 화면을 열어 보기 전에는 아무도 모른다.
+    #[test]
+    fn every_key_is_translated_in_all_languages() {
+        use nabi_i18n::{tr, Lang};
+        for kind in ["claude", "codex", "agy", "aider"] {
+            for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
+                for lang in [Lang::En, Lang::Ko, Lang::Ja] {
+                    assert_ne!(tr(lang, bc.label), "?", "{lang:?} 라벨 없음: {}", bc.label);
+                    assert_ne!(tr(lang, bc.desc), "?", "{lang:?} 설명 없음: {}", bc.desc);
+                }
+            }
+            for g in secondary_groups(kind).iter().filter(|g| !g.label.is_empty()) {
+                assert_ne!(tr(Lang::Ko, g.label), "?", "묶음 이름 없음: {}", g.label);
             }
         }
     }

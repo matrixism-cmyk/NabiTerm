@@ -20,6 +20,8 @@ impl eframe::App for NabiApp {
         self.last_win = (sz.x, sz.y); // 종료 시 창 크기 저장용 추적.
         if !self.did_startup {
             self.did_startup = true;
+            // 첫 프레임이 떴다 = 그래픽 초기화를 무사히 통과했다. 표식을 지운다(gpupick).
+            crate::gpupick::mark_ok();
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
             nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
             nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);

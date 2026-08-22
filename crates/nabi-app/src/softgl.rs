@@ -29,14 +29,16 @@ pub(crate) fn resolve_backends() -> Backends {
     let mdir = mesa_dir();
     register_dll_dir(&mdir); // GL 로드보다 먼저: 사용자 Mesa를 시스템 opengl32보다 우선 검색.
 
-    match std::env::var("NABI_RENDERER").ok().as_deref() {
-        Some("software" | "gl") => return Backends::GL,
-        Some("hardware" | "gpu" | "wgpu") => return Backends::all(),
-        _ => {}
+    // 지난 실행이 그래픽 초기화 중 죽었으면 무엇을 요청했든 GL로 내려간다(gpupick 참조).
+    let env = std::env::var("NABI_RENDERER").ok();
+    if let Some(b) = crate::gpupick::backends_for(env.as_deref(), crate::gpupick::crashed_last_time()) {
+        return b;
     }
-    // 실제 GPU(Discrete/Integrated/Virtual)가 있으면 전 백엔드 허용. WARP(Cpu)는 하드웨어 아님.
+    // 실제 GPU(Discrete/Integrated/Virtual)가 있으면 안전한 하드웨어 집합.
+    // **Windows에서는 Vulkan을 넣지 않는다** — 구형 Intel ICD(igvk64.dll)가 어댑터 열거
+    // 도중 액세스 위반으로 죽는다(사용자 보고 2026-08-22). WARP(Cpu)는 하드웨어가 아니다.
     if has_hardware_gpu() {
-        return Backends::all();
+        return crate::gpupick::safe_hardware();
     }
     // 하드웨어 없음 → 소프트웨어 GL. 쓸 수 있는 GL 어댑터(벤더 GL 또는 llvmpipe)가 있으면 GL만.
     if gl_adapter_ok() {
@@ -135,11 +137,12 @@ fn request_adapter(backends: Backends) -> Option<eframe::wgpu::Adapter> {
     .ok()
 }
 
-/// 실제 하드웨어 GPU가 있는지 — GL을 제외한 DX12/Vulkan로만 프로브해 Mesa d3d12 크래시 경로를
+/// 실제 하드웨어 GPU가 있는지 — GL을 제외한 백엔드로만 프로브해 Mesa d3d12 크래시 경로를
 /// 피한다. WARP는 DeviceType::Cpu로 잡히므로 GPU로 치지 않는다(소프트웨어 경로로 보냄).
 fn has_hardware_gpu() -> bool {
     use eframe::wgpu::DeviceType;
-    let Some(ad) = request_adapter(Backends::DX12 | Backends::VULKAN) else {
+    // 프로브도 ICD를 로드한다 — 여기서 Vulkan을 넣으면 깨진 드라이버에서 이 줄에서 죽는다.
+    let Some(ad) = request_adapter(crate::gpupick::probe_backends()) else {
         return false;
     };
     matches!(
