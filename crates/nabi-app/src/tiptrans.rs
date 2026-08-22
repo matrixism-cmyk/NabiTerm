@@ -86,6 +86,20 @@ const DICT: &[Entry] = &[
     e(&["/vim", "vim mode"], "/vim 으로 입력창에서 vim 키 조작을 쓸 수 있습니다"),
     e(&["run /", "in the background"], "명령을 백그라운드로 돌려 두고 다른 작업을 계속할 수 있습니다"),
     e(&["type", "/", "slash command"], "슬래시(/)를 입력하면 명령 목록이 열립니다"),
+    // ── 작업 중에 계속 보이는 줄들(사용자 요청 2026-08-22: 더 적극적으로 번역).
+    // 여기 있는 것은 전부 화면에서 실제로 확인한 문구다. 확신이 없으면 넣지 않는다.
+    s(&["ctrl+b", "run in background"], "Ctrl+B — 이 작업을 백그라운드로 돌립니다"),
+    s(&["bypass permissions on"], "권한 확인 건너뛰기 켜짐 (Shift+Tab으로 모드 전환)"),
+    s(&["accept edits on"], "편집 자동 수락 켜짐 (Shift+Tab으로 모드 전환)"),
+    s(&["plan mode on"], "계획 모드 켜짐 — 파일을 바꾸지 않고 계획만 세웁니다"),
+    s(&["/clear", "start fresh"], "주제가 바뀌면 /clear 로 새로 시작해 컨텍스트를 비우세요"),
+    s(&["do you want to proceed"], "진행할까요?"),
+    s(&["and don't ask again"], "예 — 다음부터 묻지 않기"),
+    s(&["tell claude what to do differently"], "아니오 — 다르게 하도록 알려주기"),
+    s(&["interrupted by user"], "사용자가 중단했습니다"),
+    s(&["context left until auto-compact"], "자동 요약까지 남은 컨텍스트"),
+    s(&["approaching", "context limit"], "컨텍스트 한도에 가까워지고 있습니다"),
+    s(&["no changes to commit"], "커밋할 변경 사항이 없습니다"),
 ];
 
 /// 사전 조회(핵심 구절이 모두 포함될 때만). `standalone_only`면 접두사 없는 줄에도
@@ -157,5 +171,23 @@ mod tests {
     #[test]
     fn unknown_tips_return_none() {
         assert_eq!(lookup("Something entirely new that we have never seen"), None);
+    }
+
+    /// 작업 중에 계속 보이는 줄들(2026-08-22에 넓힌 범위).
+    #[test]
+    fn working_state_lines_are_translated() {
+        assert!(lookup_line("(ctrl+b to run in background)").unwrap().contains("백그라운드"));
+        assert!(lookup_line("bypass permissions on (shift+tab to cycle)").is_some());
+        assert!(lookup_line("Do you want to proceed?").is_some());
+        assert!(lookup_line("Tip: Use /clear to start fresh when switching topics").is_some());
+    }
+
+    /// 번역이 **정보를 지우면 안 된다** — 한 줄에 여러 안내가 있으면 건드리지 않는다.
+    #[test]
+    fn multi_part_status_lines_are_left_alone() {
+        assert_eq!(lookup_line("esc to interrupt - left arrow for agents"), None);
+        // 남은 컨텍스트처럼 숫자가 핵심인 줄은, 숫자를 가리지 않는 문구만 붙인다.
+        let ko = lookup_line("Context left until auto-compact: 12%").unwrap();
+        assert!(!ko.contains('%'), "숫자를 우리가 지어내면 안 된다: {ko}");
     }
 }
