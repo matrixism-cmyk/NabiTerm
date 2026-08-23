@@ -8,13 +8,22 @@ impl HexBuf {
     ///
     /// `group=true`면 직전 기록의 결과만 갱신한다(HEX 니블 두 번을 한 취소 단위로).
     pub fn splice(&mut self, at: usize, del: usize, new: &[u8], group: bool) {
-        let at = at.min(self.bytes.len());
-        let end = (at + del).min(self.bytes.len());
-        if self.bytes[at..end] == *new {
+        self.splice_ex(at, del, new, group, false);
+    }
+
+    /// `splice`와 같지만 이 기록을 **앞 기록과 한 취소 단위로 묶는다**(모두 바꾸기 등).
+    pub fn splice_chained(&mut self, at: usize, del: usize, new: &[u8], chain: bool) {
+        self.splice_ex(at, del, new, false, chain);
+    }
+
+    fn splice_ex(&mut self, at: usize, del: usize, new: &[u8], group: bool, cont: bool) {
+        let at = at.min(self.data.len());
+        let end = (at + del).min(self.data.len());
+        let old = self.data.read(at, end - at);
+        if old == *new {
             return; // 실제 변화가 없으면 기록도 남기지 않는다.
         }
-        let old: Vec<u8> = self.bytes[at..end].to_vec();
-        self.bytes.splice(at..end, new.iter().copied());
+        self.data.splice(at, end - at, new);
         self.dirty = true;
         if group {
             if let Some(p) = self.undo.last_mut() {
@@ -24,7 +33,7 @@ impl HexBuf {
                 }
             }
         }
-        self.undo.push(HexDelta { at, old, new: new.to_vec(), cur: self.cursor });
+        self.undo.push(HexDelta { at, old, new: new.to_vec(), cur: self.cursor, cont });
         self.redo.clear();
         let mut total: usize = self.undo.iter().map(|d| d.old.len() + d.new.len()).sum();
         while self.undo.len() > 1 && total > MAX_UNDO_BYTES {
@@ -33,26 +42,40 @@ impl HexBuf {
         }
     }
 
-    /// 실행 취소.
+    /// 실행 취소. 묶인 기록(`cont`)은 **한 번에** 전부 되돌린다.
     pub fn undo(&mut self) {
-        if let Some(d) = self.undo.pop() {
-            let end = (d.at + d.new.len()).min(self.bytes.len());
-            self.bytes.splice(d.at..end, d.old.iter().copied());
-            self.cursor = d.cur.min(self.bytes.len().saturating_sub(1));
-            self.after_history();
-            self.redo.push(d);
+        if self.undo.is_empty() {
+            return;
         }
+        while let Some(d) = self.undo.pop() {
+            let end = (d.at + d.new.len()).min(self.data.len());
+            self.data.splice(d.at, end - d.at, &d.old);
+            self.cursor = d.cur.min(self.data.len().saturating_sub(1));
+            let more = d.cont; // 이 기록이 앞 기록과 한 단위면 이어서 되돌린다.
+            self.redo.push(d);
+            if !more {
+                break;
+            }
+        }
+        self.after_history();
     }
 
-    /// 다시 실행.
+    /// 다시 실행. 취소와 대칭으로, 묶인 기록은 한 번에 전부 다시 적용한다.
     pub fn redo(&mut self) {
-        if let Some(d) = self.redo.pop() {
-            let end = (d.at + d.old.len()).min(self.bytes.len());
-            self.bytes.splice(d.at..end, d.new.iter().copied());
-            self.cursor = (d.at + d.new.len()).saturating_sub(1).min(self.bytes.len().saturating_sub(1));
-            self.after_history();
-            self.undo.push(d);
+        if self.redo.is_empty() {
+            return;
         }
+        while let Some(d) = self.redo.pop() {
+            let end = (d.at + d.old.len()).min(self.data.len());
+            self.data.splice(d.at, end - d.at, &d.new);
+            self.cursor = (d.at + d.new.len()).saturating_sub(1).min(self.data.len().saturating_sub(1));
+            self.undo.push(d);
+            // 다음 기록이 같은 묶음이면 이어서 적용한다.
+            if !self.redo.last().is_some_and(|n| n.cont) {
+                break;
+            }
+        }
+        self.after_history();
     }
 
     fn after_history(&mut self) {
@@ -64,9 +87,9 @@ impl HexBuf {
     /// 입력/붙여넣기가 덮어쓸 범위 — 선택이 있으면 그 범위, 없으면 커서 자리의 빈 범위.
     fn target(&self) -> (usize, usize) {
         match self.selection() {
-            Some((lo, hi)) => (lo, hi.min(self.bytes.len())),
+            Some((lo, hi)) => (lo, hi.min(self.data.len())),
             None => {
-                let c = self.cursor.min(self.bytes.len());
+                let c = self.cursor.min(self.data.len());
                 (c, c)
             }
         }
@@ -74,7 +97,7 @@ impl HexBuf {
 
     /// 입력 후 커서·선택 정리(공통).
     fn after_input(&mut self, at: usize) {
-        self.cursor = at.min(self.bytes.len().saturating_sub(1));
+        self.cursor = at.min(self.data.len().saturating_sub(1));
         self.anchor = None;
         self.low_nibble = false;
     }
@@ -84,8 +107,8 @@ impl HexBuf {
     pub fn input_nibble(&mut self, d: u8) {
         if self.low_nibble {
             // 같은 바이트의 하위 니블 — 상위 니블 기록에 합쳐 한 번에 취소되게 한다.
-            let at = self.cursor.min(self.bytes.len().saturating_sub(1));
-            if let Some(&b) = self.bytes.get(at) {
+            let at = self.cursor.min(self.data.len().saturating_sub(1));
+            if let Some(b) = self.data.get(at) {
                 self.splice(at, 1, &[(b & 0xF0) | (d & 0x0F)], true);
             }
             self.low_nibble = false;
@@ -93,9 +116,9 @@ impl HexBuf {
             return;
         }
         let (lo, hi) = self.target();
-        let overwrite = lo == hi && !self.insert_mode && lo < self.bytes.len();
+        let overwrite = lo == hi && !self.insert_mode && lo < self.data.len();
         let del = if lo != hi { hi - lo } else { usize::from(overwrite) };
-        let keep = if overwrite { self.bytes[lo] & 0x0F } else { 0 }; // 덮어쓰기는 하위 니블 보존.
+        let keep = if overwrite { self.data.get(lo).unwrap_or(0) & 0x0F } else { 0 }; // 덮어쓰기는 하위 니블 보존.
         self.splice(lo, del, &[(d << 4) | keep], false);
         self.after_input(lo);
         self.low_nibble = true;
@@ -104,7 +127,7 @@ impl HexBuf {
     /// ASCII 칼럼 입력(삽입/덮어쓰기 후 진행).
     pub fn input_ascii(&mut self, c: u8) {
         let (lo, hi) = self.target();
-        let overwrite = lo == hi && !self.insert_mode && lo < self.bytes.len();
+        let overwrite = lo == hi && !self.insert_mode && lo < self.data.len();
         let del = if lo != hi { hi - lo } else { usize::from(overwrite) };
         self.splice(lo, del, &[c], false);
         self.after_input(lo);
@@ -126,7 +149,7 @@ impl HexBuf {
         let (lo, hi) = self.target();
         let del = if lo != hi {
             hi - lo
-        } else if lo < self.bytes.len() {
+        } else if lo < self.data.len() {
             1
         } else {
             return; // 지울 게 없으면 기록도 남기지 않는다.
@@ -152,7 +175,7 @@ impl HexBuf {
     /// 선택 영역을 주어진 바이트 값으로 채운다(길이 불변).
     pub fn fill_selection(&mut self, byte: u8) {
         let Some((lo, hi)) = self.selection() else { return };
-        let hi = hi.min(self.bytes.len());
+        let hi = hi.min(self.data.len());
         if lo < hi {
             self.splice(lo, hi - lo, &vec![byte; hi - lo], false);
         }
@@ -161,7 +184,7 @@ impl HexBuf {
     /// 선택 바이트(없으면 빈 벡터).
     pub fn selected_bytes(&self) -> Vec<u8> {
         match self.selection() {
-            Some((lo, hi)) => self.bytes[lo..hi.min(self.bytes.len())].to_vec(),
+            Some((lo, hi)) => self.range(lo, hi.min(self.data.len())),
             None => Vec::new(),
         }
     }
@@ -194,10 +217,10 @@ mod tests {
         h.cursor = 2; // 선택 [1,3) = {2,3}
         assert_eq!(h.selected_bytes(), vec![2, 3]);
         h.delete_forward(); // 선택 삭제 → [1,4]
-        assert_eq!(h.bytes, vec![1, 4]);
+        assert_eq!(h.bytes(), vec![1, 4]);
         h.cursor = 1;
         h.insert_bytes(&[9, 9]); // 1 [9 9] 4
-        assert_eq!(h.bytes, vec![1, 9, 9, 4]);
+        assert_eq!(h.bytes(), vec![1, 9, 9, 4]);
     }
 
     #[test]
@@ -207,18 +230,18 @@ mod tests {
         h.cursor = 0;
         h.input_nibble(0xB);
         h.input_nibble(0xC); // 0xBC 삽입
-        assert_eq!(h.bytes, vec![0xBC, 0xAA]);
+        assert_eq!(h.bytes(), vec![0xBC, 0xAA]);
     }
 
     #[test]
     fn undo_redo_roundtrip() {
         let mut h = HexBuf::from_bytes(vec![1, 2, 3]);
         h.input_ascii(9); // bytes[0]=9
-        assert_eq!(h.bytes[0], 9);
+        assert_eq!(h.at(0), Some(9));
         h.undo();
-        assert_eq!(h.bytes, vec![1, 2, 3]);
+        assert_eq!(h.bytes(), vec![1, 2, 3]);
         h.redo();
-        assert_eq!(h.bytes[0], 9);
+        assert_eq!(h.at(0), Some(9));
     }
 
     #[test]
@@ -237,12 +260,12 @@ mod tests {
         h.cursor = 0;
         h.input_nibble(0xA);
         h.input_nibble(0xB); // 0xAB — 니블 두 번이 한 취소 단위.
-        assert_eq!(h.bytes, vec![0xAB, 0xFF]);
+        assert_eq!(h.bytes(), vec![0xAB, 0xFF]);
         assert_eq!(h.undo.len(), 1, "니블 2회는 기록 하나");
         h.undo();
-        assert_eq!(h.bytes, vec![0x00, 0xFF]);
+        assert_eq!(h.bytes(), vec![0x00, 0xFF]);
         h.redo();
-        assert_eq!(h.bytes, vec![0xAB, 0xFF]);
+        assert_eq!(h.bytes(), vec![0xAB, 0xFF]);
     }
 
     #[test]
@@ -250,18 +273,18 @@ mod tests {
         let mut h = HexBuf::from_bytes(vec![1, 2, 3, 4]);
         h.cursor = 1;
         h.insert_bytes(&[9, 9]); // 길이 증가
-        assert_eq!(h.bytes, vec![1, 9, 9, 2, 3, 4]);
+        assert_eq!(h.bytes(), vec![1, 9, 9, 2, 3, 4]);
         h.undo();
-        assert_eq!(h.bytes, vec![1, 2, 3, 4], "삽입은 정확히 되돌아온다");
+        assert_eq!(h.bytes(), vec![1, 2, 3, 4], "삽입은 정확히 되돌아온다");
         h.redo();
-        assert_eq!(h.bytes, vec![1, 9, 9, 2, 3, 4]);
+        assert_eq!(h.bytes(), vec![1, 9, 9, 2, 3, 4]);
         h.undo();
         h.anchor = Some(1);
         h.cursor = 2;
         h.backspace(); // 선택 [1,3) 삭제 = 길이 감소
-        assert_eq!(h.bytes, vec![1, 4]);
+        assert_eq!(h.bytes(), vec![1, 4]);
         h.undo();
-        assert_eq!(h.bytes, vec![1, 2, 3, 4]);
+        assert_eq!(h.bytes(), vec![1, 2, 3, 4]);
     }
 
     #[test]

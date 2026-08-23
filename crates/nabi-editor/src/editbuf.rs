@@ -64,13 +64,20 @@ impl EditBuf {
     }
 
     /// 파일을 읽어 편집 버퍼로 연다(크기 EDIT_CAP 이하). 실패/초과면 None.
+    ///
+    /// **사본을 최대한 줄인다.** 예전에는 원본 바이트 · 디코드한 문자열 · `replace` 두 번이
+    /// 만든 문자열 둘 · rope까지 다섯 벌이 한꺼번에 살아 있어, 300MB 파일이 1GB 넘게 먹었다.
+    /// 이제 ① LF 정규화를 한 번에 하고(`\r`이 없으면 사본을 아예 안 만든다)
+    /// ② rope를 만들기 **전에** 원본 바이트를 버린다.
     pub fn open(path: &Path) -> Option<EditBuf> {
-        let bytes = std::fs::read(path).ok()?;
-        if bytes.len() as u64 > EDIT_CAP {
-            return None;
-        }
-        let (text, enc, eol) = crate::editload::decode(&bytes);
-        let lf = text.replace("\r\n", "\n").replace('\r', "\n"); // 내부는 LF 통일.
+        let (lf, enc, eol) = {
+            let bytes = std::fs::read(path).ok()?;
+            if bytes.len() as u64 > EDIT_CAP {
+                return None;
+            }
+            let (text, enc, eol) = crate::editload::decode(&bytes);
+            (crate::editload::normalize_lf(text), enc, eol)
+        }; // 여기서 원본 바이트가 풀린다 — rope 할당과 겹치지 않는다.
         Some(Self::new_buf(&lf, enc, eol))
     }
 

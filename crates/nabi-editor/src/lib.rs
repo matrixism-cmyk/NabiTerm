@@ -18,6 +18,7 @@ pub mod editbufmove;
 pub mod editbufpaint;
 pub mod editbufview;
 pub mod editbufxform;
+pub mod hexdata;
 pub mod edithex;
 pub mod edithexedit;
 pub mod edithexfind;

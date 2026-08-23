@@ -30,54 +30,55 @@ impl HexBuf {
         if !pat.is_empty() && self.selected_bytes() == pat {
             if let Some((lo, hi)) = self.selection() {
                 let rep = self.replacement();
-                let hi = hi.min(self.bytes.len());
+                let hi = hi.min(self.data.len());
                 self.splice(lo, hi - lo, &rep, false);
-                self.cursor = (lo + rep.len()).min(self.bytes.len().saturating_sub(1));
+                self.cursor = (lo + rep.len()).min(self.data.len().saturating_sub(1));
                 self.anchor = None;
             }
         }
         self.find_step(true);
     }
 
-    /// 모든 일치를 바꾼다(겹치지 않게 한 번에 재작성). 바꾼 횟수를 돌려준다.
+    /// 모든 일치를 바꾼다. 바꾼 횟수를 돌려준다.
+    ///
+    /// 예전에는 전체를 새 `Vec`로 다시 써서 파일 크기만큼 메모리를 더 썼다. 지금은
+    /// **일치한 자리만** 하나씩 고친다 — 조각 표에서 한 번의 교체는 조각 몇 개를 손대는 일이다.
+    /// 뒤에서 앞으로 훑으므로 앞의 오프셋이 밀리지 않는다.
     pub fn replace_all(&mut self) -> usize {
         let (pat, rep) = (self.find_pattern(), self.replacement());
-        if pat.is_empty() || pat.len() > self.bytes.len() {
+        if pat.is_empty() || pat.len() > self.data.len() {
             return 0;
         }
-        let (mut out, mut i, mut n) = (Vec::with_capacity(self.bytes.len()), 0usize, 0usize);
-        while i < self.bytes.len() {
-            if self.bytes[i..].starts_with(&pat) {
-                out.extend_from_slice(&rep);
-                i += pat.len();
-                n += 1;
-            } else {
-                out.push(self.bytes[i]);
-                i += 1;
-            }
+        // 겹치지 않는 일치 위치를 앞에서부터 모은 뒤 뒤에서부터 고친다.
+        let mut hits = Vec::new();
+        let mut at = 0usize;
+        while let Some(pos) = self.data.find(&pat, at) {
+            hits.push(pos);
+            at = pos + pat.len();
         }
-        if n > 0 {
-            // 앞뒤 공통 부분을 빼고 실제로 달라진 가운데만 기록한다(전체 복제 방지).
-            let (at, del, mid) = narrowed(&self.bytes, &out);
-            self.splice(at, del, mid, false);
-            self.cursor = self.cursor.min(self.bytes.len().saturating_sub(1));
+        // 뒤에서 앞으로 고친다(앞 오프셋이 밀리지 않는다). 첫 기록 뒤는 전부 같은 묶음이라
+        // **취소 한 번**으로 모두 되돌아간다.
+        for (k, &pos) in hits.iter().rev().enumerate() {
+            self.splice_chained(pos, pat.len(), &rep, k > 0);
+        }
+        if !hits.is_empty() {
+            self.cursor = self.cursor.min(self.data.len().saturating_sub(1));
             self.anchor = None;
         }
-        n
+        hits.len()
     }
 
     /// 커서 다음(forward)/이전부터 패턴을 찾는다. 끝에 닿으면 반대쪽 끝에서 한 번 더(래핑).
     pub fn find_step(&mut self, forward: bool) {
         let pat = self.find_pattern();
-        if pat.is_empty() || pat.len() > self.bytes.len() {
+        if pat.is_empty() || pat.len() > self.data.len() {
             return;
         }
         let hit = if forward {
-            let from = self.cursor + 1;
-            find_from(&self.bytes, &pat, from).or_else(|| find_from(&self.bytes, &pat, 0))
+            // 커서 다음부터, 끝에 닿으면 처음부터 한 번 더(래핑).
+            self.data.find(&pat, self.cursor + 1).or_else(|| self.data.find(&pat, 0))
         } else {
-            let upto = self.cursor;
-            rfind_before(&self.bytes, &pat, upto).or_else(|| rfind_before(&self.bytes, &pat, self.bytes.len()))
+            self.rfind_before(&pat, self.cursor).or_else(|| self.rfind_before(&pat, self.data.len()))
         };
         if let Some(pos) = hit {
             self.cursor = pos;
@@ -86,38 +87,26 @@ impl HexBuf {
             self.low_nibble = false;
         }
     }
+
+    /// `upto` **앞**에서 마지막으로 일치하는 위치.
+    ///
+    /// 앞에서부터 훑되 마지막 것만 남긴다. 조각 표는 뒤로 훑기가 비싸고 역방향 찾기는
+    /// 드물어, 단순한 쪽이 낫다.
+    fn rfind_before(&self, pat: &[u8], upto: usize) -> Option<usize> {
+        let (mut at, mut last) = (0usize, None);
+        while let Some(pos) = self.data.find(pat, at) {
+            if pos >= upto {
+                break;
+            }
+            last = Some(pos);
+            at = pos + 1;
+        }
+        last
+    }
 }
 
-/// 두 바이트열의 공통 앞·뒤를 잘라내 실제로 다른 가운데만 남긴다.
-/// 반환 = (시작 위치, 지울 길이, 새로 넣을 조각).
-fn narrowed<'a>(old: &[u8], new: &'a [u8]) -> (usize, usize, &'a [u8]) {
-    let mut p = 0;
-    while p < old.len() && p < new.len() && old[p] == new[p] {
-        p += 1;
-    }
-    let mut s = 0;
-    while s < old.len() - p && s < new.len() - p && old[old.len() - 1 - s] == new[new.len() - 1 - s] {
-        s += 1;
-    }
-    (p, old.len() - p - s, &new[p..new.len() - s])
-}
 
-/// `from` 이상에서 needle이 처음 나타나는 시작 위치.
-fn find_from(hay: &[u8], needle: &[u8], from: usize) -> Option<usize> {
-    if needle.is_empty() || from > hay.len() {
-        return None;
-    }
-    hay[from..].windows(needle.len()).position(|w| w == needle).map(|i| from + i)
-}
 
-/// `upto` 미만에서 needle이 마지막으로 나타나는 시작 위치.
-fn rfind_before(hay: &[u8], needle: &[u8], upto: usize) -> Option<usize> {
-    let end = upto.min(hay.len());
-    if needle.is_empty() || end < needle.len() {
-        return None;
-    }
-    hay[..end].windows(needle.len()).rposition(|w| w == needle)
-}
 
 /// HEX 찾기/바꾸기 바: 입력 + 16진/ASCII 토글 + 이전/다음 + (편집 가능 시) 바꾸기.
 pub fn find_bar(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, lang: Lang) {
@@ -164,15 +153,30 @@ mod tests {
         assert_eq!(h.cursor, 0);
     }
 
+    /// 모두 바꾸기는 **취소 한 번**으로 전부 되돌아가야 한다. 조각 표로 옮기면서
+    /// 자리마다 따로 기록하게 됐고, 그때 이 성질이 깨졌다(고친 횟수만큼 눌러야 했다).
+    #[test]
+    fn replace_all_undoes_as_one_step() {
+        let mut h = HexBuf::from_bytes(vec![0xAA, 0x11, 0xAA, 0x22, 0xAA, 0x33]);
+        h.find = "AA".into();
+        h.replace = "FF".into();
+        assert_eq!(h.replace_all(), 3);
+        assert_eq!(h.bytes(), vec![0xFF, 0x11, 0xFF, 0x22, 0xFF, 0x33]);
+        h.undo();
+        assert_eq!(h.bytes(), vec![0xAA, 0x11, 0xAA, 0x22, 0xAA, 0x33], "한 번에 전부 되돌아온다");
+        h.redo();
+        assert_eq!(h.bytes(), vec![0xFF, 0x11, 0xFF, 0x22, 0xFF, 0x33], "다시 실행도 한 번에");
+    }
+
     #[test]
     fn replace_all_works() {
         let mut h = HexBuf::from_bytes(vec![0xAA, 0xBB, 0xAA, 0xBB]);
         h.find = "AABB".into();
         h.replace = "FF".into();
         assert_eq!(h.replace_all(), 2);
-        assert_eq!(h.bytes, vec![0xFF, 0xFF]);
+        assert_eq!(h.bytes(), vec![0xFF, 0xFF]);
         h.undo();
-        assert_eq!(h.bytes, vec![0xAA, 0xBB, 0xAA, 0xBB]);
+        assert_eq!(h.bytes(), vec![0xAA, 0xBB, 0xAA, 0xBB]);
     }
 
     #[test]

@@ -5,7 +5,7 @@ use crate::edithex::HexBuf;
 impl HexBuf {
     /// 연산 대상 범위 [lo, hi)(선택 있으면 그 범위, 없으면 전체).
     fn op_range(&self) -> (usize, usize) {
-        self.selection().map(|(a, b)| (a, b.min(self.bytes.len()))).unwrap_or((0, self.bytes.len()))
+        self.selection().map(|(a, b)| (a, b.min(self.data.len()))).unwrap_or((0, self.data.len()))
     }
 
     /// 대상 바이트마다 f를 적용(길이 불변). 바뀐 구간만 undo에 기록된다.
@@ -14,7 +14,7 @@ impl HexBuf {
         if lo >= hi {
             return;
         }
-        let new: Vec<u8> = self.bytes[lo..hi].iter().map(|b| f(*b)).collect();
+        let new: Vec<u8> = self.range(lo, hi).into_iter().map(f).collect();
         self.splice(lo, hi - lo, &new, false);
     }
 
@@ -24,7 +24,7 @@ impl HexBuf {
         if hi.saturating_sub(lo) < min_len {
             return;
         }
-        let mut new = self.bytes[lo..hi].to_vec();
+        let mut new = self.range(lo, hi);
         f(&mut new);
         self.splice(lo, hi - lo, &new, false);
     }
@@ -106,41 +106,41 @@ mod tests {
     fn invert_and_nibble() {
         let mut h = HexBuf::from_bytes(vec![0x0F, 0xF0]);
         h.invert();
-        assert_eq!(h.bytes, vec![0xF0, 0x0F]);
+        assert_eq!(h.bytes(), vec![0xF0, 0x0F]);
         let mut h = HexBuf::from_bytes(vec![0x12, 0x34]);
         h.swap_nibbles();
-        assert_eq!(h.bytes, vec![0x21, 0x43]);
+        assert_eq!(h.bytes(), vec![0x21, 0x43]);
     }
 
     #[test]
     fn inc_dec_reverse() {
         let mut h = HexBuf::from_bytes(vec![0xFF, 0x00]);
         h.increment();
-        assert_eq!(h.bytes, vec![0x00, 0x01]);
+        assert_eq!(h.bytes(), vec![0x00, 0x01]);
         h.decrement();
-        assert_eq!(h.bytes, vec![0xFF, 0x00]);
+        assert_eq!(h.bytes(), vec![0xFF, 0x00]);
         let mut h = HexBuf::from_bytes(vec![1, 2, 3]);
         h.reverse_bytes();
-        assert_eq!(h.bytes, vec![3, 2, 1]);
+        assert_eq!(h.bytes(), vec![3, 2, 1]);
         let mut h = HexBuf::from_bytes(vec![0x01, 0x80]);
         h.shift_left();
-        assert_eq!(h.bytes, vec![0x02, 0x00]);
+        assert_eq!(h.bytes(), vec![0x02, 0x00]);
         h.shift_right();
-        assert_eq!(h.bytes, vec![0x01, 0x00]);
+        assert_eq!(h.bytes(), vec![0x01, 0x00]);
         let mut h = HexBuf::from_bytes(vec![0x81]);
         h.rotate_left();
-        assert_eq!(h.bytes, vec![0x03]); // 1000_0001 → 0000_0011.
+        assert_eq!(h.bytes(), vec![0x03]); // 1000_0001 → 0000_0011.
         h.rotate_right();
-        assert_eq!(h.bytes, vec![0x81]);
+        assert_eq!(h.bytes(), vec![0x81]);
         let mut h = HexBuf::from_bytes(vec![0x01, 0x02]);
         h.reverse_bits();
-        assert_eq!(h.bytes, vec![0x80, 0x40]); // 비트 역순.
+        assert_eq!(h.bytes(), vec![0x80, 0x40]); // 비트 역순.
         let mut h = HexBuf::from_bytes(vec![0x01, 0x02, 0x03, 0x04, 0x05]);
         h.swap_bytes16();
-        assert_eq!(h.bytes, vec![0x02, 0x01, 0x04, 0x03, 0x05]); // 2바이트씩 스왑, 끝 1바이트 유지.
+        assert_eq!(h.bytes(), vec![0x02, 0x01, 0x04, 0x03, 0x05]); // 2바이트씩 스왑, 끝 1바이트 유지.
         let mut h = HexBuf::from_bytes(vec![1, 2, 3, 4, 5, 6, 7, 8, 9]);
         h.swap_bytes32();
-        assert_eq!(h.bytes, vec![4, 3, 2, 1, 8, 7, 6, 5, 9]); // 4바이트씩 역순, 끝 1바이트 유지.
+        assert_eq!(h.bytes(), vec![4, 3, 2, 1, 8, 7, 6, 5, 9]); // 4바이트씩 역순, 끝 1바이트 유지.
     }
 
     #[test]
@@ -149,6 +149,6 @@ mod tests {
         h.anchor = Some(1);
         h.cursor = 1; // 선택 [1,2) = 두 번째 바이트만.
         h.invert();
-        assert_eq!(h.bytes, vec![0x00, 0xFF, 0x00]);
+        assert_eq!(h.bytes(), vec![0x00, 0xFF, 0x00]);
     }
 }

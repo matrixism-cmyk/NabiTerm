@@ -63,3 +63,55 @@ pub fn detect_eol(text: &str) -> &'static str {
         "LF"
     }
 }
+
+/// 줄 끝을 LF 하나로 맞춘다 — **한 번만 훑고, 필요 없으면 사본을 만들지 않는다.**
+///
+/// `replace("\r\n","\n").replace('\r',"\n")`는 문자열을 두 번 새로 만든다. 큰 파일에서는
+/// 그 두 벌이 원본·디코드본과 함께 살아 있어 메모리 피크를 배로 올린다. 유닉스 줄 끝
+/// 파일(대부분)은 `\r`이 아예 없으므로 받은 문자열을 그대로 돌려준다.
+pub fn normalize_lf(s: String) -> String {
+    if !s.as_bytes().contains(&b'\r') {
+        return s; // 사본 없음.
+    }
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\r' {
+            // CRLF는 둘을 합쳐 하나로, 홀로 선 CR도 LF로.
+            if chars.peek() == Some(&'\n') {
+                chars.next();
+            }
+            out.push('\n');
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod lf_tests {
+    use super::normalize_lf;
+
+    #[test]
+    fn crlf_and_lone_cr_become_lf() {
+        assert_eq!(normalize_lf("a\r\nb\rc\nd".into()), "a\nb\nc\nd");
+        assert_eq!(normalize_lf("\r\n\r\n".into()), "\n\n");
+        assert_eq!(normalize_lf("\r".into()), "\n");
+    }
+
+    /// `\r`이 없으면 **같은 버퍼를 그대로 돌려준다** — 큰 파일에서 사본 한 벌이 사라진다.
+    #[test]
+    fn text_without_cr_is_returned_untouched() {
+        let s = "한 줄\n두 줄\n".to_string();
+        let ptr = s.as_ptr();
+        let out = normalize_lf(s);
+        assert_eq!(out, "한 줄\n두 줄\n");
+        assert_eq!(out.as_ptr(), ptr, "사본을 만들면 안 된다");
+    }
+
+    #[test]
+    fn multibyte_text_survives() {
+        assert_eq!(normalize_lf("가나\r\n다라\r마바".into()), "가나\n다라\n마바");
+    }
+}

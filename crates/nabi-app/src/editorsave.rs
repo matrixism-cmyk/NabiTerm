@@ -5,11 +5,32 @@ use crate::app::NabiApp;
 use crate::editor::EditorDoc;
 use nabi_proto::Command;
 use std::time::Instant;
-/// 저장 바이트: HEX 버퍼 > rope(원본 EOL 복원) > 텍스트 버퍼 순.
+/// 문서를 파일에 쓴다. HEX는 **흘려 쓴다** — 큰 파일을 통째로 메모리에 모으지 않는다.
+///
+/// 같은 폴더의 임시 파일에 먼저 쓰고 원자적으로 바꿔 끼운다. 쓰다가 중간에 실패해도
+/// 원본이 반쯤 덮인 채로 남지 않는다 — HEX 원본은 우리가 매핑해 읽고 있는 바로 그 파일이라
+/// 제자리에 쓰면 읽는 도중 자기 발밑을 무너뜨리게 된다.
+fn write_doc(doc: &EditorDoc, path: &std::path::Path) -> std::io::Result<()> {
+    let Some(h) = &doc.hex else {
+        return std::fs::write(path, doc_bytes(doc));
+    };
+    use std::io::Write;
+    let tmp = path.with_extension("nabipad-tmp");
+    {
+        let f = std::fs::File::create(&tmp)?;
+        let mut w = std::io::BufWriter::with_capacity(1 << 20, f);
+        h.data.write_to(&mut w)?;
+        w.flush()?;
+        w.into_inner().map_err(std::io::Error::other)?.sync_all()?;
+    }
+    std::fs::rename(&tmp, path).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
+}
+
+/// 저장 바이트: rope(원본 EOL 복원) > 텍스트 버퍼. HEX는 write_doc이 흘려 쓴다.
 fn doc_bytes(doc: &EditorDoc) -> Vec<u8> {
-    if let Some(h) = &doc.hex {
-        h.bytes.clone()
-    } else if let Some(eb) = &doc.edit {
+    if let Some(eb) = &doc.edit {
         eb.to_bytes()
     } else {
         doc.text.clone().into_bytes()
@@ -72,8 +93,7 @@ impl NabiApp {
         let Some(path) = dlg.save_file() else { return };
         self.apply_save_format(pane); // VS Code식 저장 시 정리.
         let Some(doc) = self.editors.get_mut(&pane) else { return };
-        let data = doc_bytes(doc);
-        let msg = match std::fs::write(&path, &data) {
+        let msg = match write_doc(doc, &path) {
             Ok(()) => {
                 doc.title = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                 doc.path = path;
@@ -150,9 +170,8 @@ impl NabiApp {
         }
         self.apply_save_format(pane); // VS Code식 저장 시 정리.
         let Some(doc) = self.editors.get(&pane) else { return };
-        let data = doc_bytes(doc);
         let (path, remote, title) = (doc.path.clone(), doc.remote.clone(), doc.title.clone());
-        let msg = match std::fs::write(&path, &data) {
+        let msg = match write_doc(doc, &path) {
             Ok(()) => {
                 if let Some((id, rp)) = remote {
                     self.orch.send(Command::SftpUpload {

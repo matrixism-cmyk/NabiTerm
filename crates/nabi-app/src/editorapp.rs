@@ -49,7 +49,7 @@ impl crate::app::NabiApp {
     pub(crate) fn toggle_editor_hex(&mut self, pane: nabi_types::PaneId) {
         let Some(d) = self.editors.get_mut(&pane) else { return };
         if let Some(h) = d.hex.take() {
-            let (text, encoding, eol) = nabi_editor::editload::decode(&h.bytes);
+            let (text, encoding, eol) = nabi_editor::editload::decode(&h.bytes());
             d.text = text;
             d.encoding = encoding;
             d.eol = eol;

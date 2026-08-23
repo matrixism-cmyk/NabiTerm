@@ -142,7 +142,7 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
             let base = r * COLS;
             painter.text(egui::pos2(left, y), egui::Align2::LEFT_TOP, format!("{base:08X}"), mono.clone(), GUTTER);
             for i in 0..COLS {
-                let Some(&b) = h.bytes.get(base + i) else { break };
+                let Some(b) = h.at(base + i) else { break };
                 let hx = left + x_hex + hex_col(i) * cw;
                 painter.text(egui::pos2(hx, y), egui::Align2::LEFT_TOP, format!("{b:02X}"), mono.clone(), text_col);
                 let ax = left + x_ascii + i as f32 * cw;
