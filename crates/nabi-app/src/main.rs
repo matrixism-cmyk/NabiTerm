@@ -218,6 +218,13 @@ fn main() -> eframe::Result<()> {
         attach_parent_console();
         std::process::exit(run_cli_safe(&args[2..]));
     }
+    // 업데이트 도우미: 앱이 끝나기를 기다렸다가 인스톨러를 실행한다(GUI 없음).
+    // 셸을 거치지 않으려고 우리 자신을 쓴다 — cmd를 거치면 명령줄 따옴표 규칙에 걸린다
+    // (사용자 보고 2026-08-23: "''을(를) 찾을 수 없습니다", "Network path was not found").
+    if args.get(1).map(String::as_str) == Some(nabi_release::RUN_AFTER_EXIT) {
+        let (pid, exe) = (args.get(2).cloned().unwrap_or_default(), args.get(3).cloned().unwrap_or_default());
+        std::process::exit(nabi_release::run_after_exit(&pid, &exe));
+    }
     // `nabi mcp`: stdio MCP 서버(제어 파이프 프록시) — Claude Code 등록:
     // `claude mcp add nabiterm -- nabi.exe mcp` (pane 안에서 상속된 env 사용).
     if args.get(1).map(String::as_str) == Some("mcp") {

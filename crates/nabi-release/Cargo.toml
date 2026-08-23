@@ -11,3 +11,8 @@ publish = false
 serde_json = { workspace = true }
 native-tls = "0.2"   # Windows에서 Schannel 백엔드(OpenSSL 불필요 — gnu/MinGW 빌드 OK)
 sha2 = "0.11"        # 인스톨러 무결성 검증(실행 전 SHA-256 대조)
+
+# 업데이트 도우미가 "앱이 끝났는가"를 묻는 데만 쓴다(OpenProcess/GetExitCodeProcess).
+# 셸을 거치지 않으려면 이 확인이 필요하다 — cmd를 쓰면 명령줄 따옴표 문제가 다시 생긴다.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_System_Threading"] }

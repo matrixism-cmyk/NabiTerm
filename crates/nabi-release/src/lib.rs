@@ -269,11 +269,88 @@ pub fn launch_installer(
 /// 그래서 몇 초 뒤에 시작하도록 예약한다. 그 사이 우리는 워크스페이스를 저장하고 나간다.
 /// `/SILENT`으로 마법사 대신 진행 창만 띄우고, 설치가 끝나면 인스톨러가 nabiTerm을 다시 켠다
 /// (installer/nabiTerm.iss의 `[Run]` — 조용한 설치에서도 실행되도록 `skipifsilent`를 뺐다).
+/// 우리가 종료한 **뒤에** 인스톨러를 시작하도록 예약한다.
+///
+/// **셸을 쓰지 않는다.** 우리 자신을 `--run-after-exit <pid> <인스톨러>` 로 한 번 더 띄우고,
+/// 그 도우미가 우리가 사라질 때까지 기다렸다가 인스톨러를 실행한다.
+///
+/// 왜 이렇게까지 하는가: cmd.exe를 거치는 순간 Windows 명령줄 따옴표 규칙이 끼어든다.
+/// 실제로 두 번 데였다 — Rust가 `\"`로 이스케이프한 것을 cmd가 못 읽어
+/// `'\'을(를) 찾을 수 없습니다`가 났고(2026-08-23), 이어서 `Network path was not found`
+/// (오류 53 = `\\`로 시작하는 UNC로 해석)도 보고됐다. 둘 다 명령줄이 깨졌다는 같은 증상이다.
+/// 인자를 프로그램에 **직접** 넘기면 그 규칙 자체가 관여하지 않는다.
+///
+/// 셸 없는 길이 막히면(우리 exe를 못 찾는 등) 예전 `.cmd` 방식으로 물러선다.
 fn spawn_after_we_exit(path: &str) -> Result<(), String> {
+    if let Ok(me) = std::env::current_exe() {
+        let pid = std::process::id().to_string();
+        let mut cmd = std::process::Command::new(&me);
+        cmd.args([RUN_AFTER_EXIT, &pid, path]);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+        // 작업 디렉터리를 명시한다 — 우리 CWD가 사라진 폴더나 UNC면 자식 생성이 실패한다.
+        if let Some(dir) = me.parent() {
+            cmd.current_dir(dir);
+        }
+        if cmd.spawn().is_ok() {
+            return Ok(());
+        }
+    }
     let dir = std::path::Path::new(path)
         .parent()
         .ok_or_else(|| format!("인스톨러 경로가 이상합니다: {path}"))?;
     spawn_script(dir, &delay_script(path))
+}
+
+/// 도우미 모드의 verb. 앱의 `main`이 이 인자를 보면 GUI를 띄우지 않고 [`run_after_exit`]로 간다.
+pub const RUN_AFTER_EXIT: &str = "--run-after-exit";
+
+/// 도우미 모드: `pid`가 끝나기를 기다렸다가 인스톨러를 조용히 실행한다.
+///
+/// 기다리는 이유는 하나다 — 인스톨러는 시작하자마자 실행 중인 nabiTerm을 찾아
+/// "닫고 확인을 누르세요" 창을 띄운다. 우리가 먼저 사라지면 그 창이 아예 뜨지 않는다.
+pub fn run_after_exit(pid_arg: &str, installer: &str) -> i32 {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+    if let Ok(pid) = pid_arg.parse::<u32>() {
+        while process_alive(pid) && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+        }
+    }
+    // 파일 핸들이 완전히 풀릴 짬을 준다(종료 직후엔 아직 잡혀 있을 수 있다).
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    match std::process::Command::new(installer).arg("/SILENT").spawn() {
+        Ok(_) => 0,
+        Err(_) => 1,
+    }
+}
+
+/// 그 PID의 프로세스가 아직 살아 있는가.
+#[cfg(windows)]
+fn process_alive(pid: u32) -> bool {
+    use windows::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
+    use windows::Win32::System::Threading::{
+        GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    // SAFETY: 핸들을 열어 종료 코드만 묻고 바로 닫는다. 실패는 전부 값으로 다뤄
+    // "이미 없다"로 취급한다(권한이 없거나 PID가 재사용됐어도 기다리다 멈추지 않는다).
+    unsafe {
+        let Ok(h) = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) else {
+            return false;
+        };
+        let mut code = 0u32;
+        let alive = GetExitCodeProcess(h, &mut code).is_ok() && code == STILL_ACTIVE.0 as u32;
+        let _ = CloseHandle(h);
+        alive
+    }
+}
+
+#[cfg(not(windows))]
+fn process_alive(_pid: u32) -> bool {
+    false
 }
 
 /// 지연 실행 스크립트 본문. **따옴표는 이 파일 안에만 있다** — 명령줄로 넘기지 않는다.
@@ -394,4 +471,52 @@ mod launch_tests {
 
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    /// 도우미가 **정말로 기다렸다가** 실행하는가. 셸을 쓰지 않으므로 따옴표 문제가 없고,
+    /// 공백이 든 경로에서도 그대로 동작해야 한다.
+    #[test]
+    #[cfg(windows)]
+    fn the_helper_waits_for_the_process_then_launches() {
+        use std::time::{Duration, Instant};
+        let dir = std::env::temp_dir().join(format!("nabi helper {}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let marker = dir.join("launched.txt");
+
+        // "인스톨러" 대신 표식을 남기는 배치 파일을 쓴다(설치를 실제로 하지 않는다).
+        // 셸 없이 직접 띄우는 경로를 시험하려면 실행 가능한 무언가가 필요한데,
+        // `.cmd`는 CreateProcess가 셸을 통해 실행해 주므로 대역으로 알맞다.
+        let fake = dir.join("fake installer.cmd");
+        std::fs::write(&fake, format!("@echo off\r\necho ok> \"{}\"\r\n", marker.display())).unwrap();
+
+        // 3초쯤 살아 있다 죽는 프로세스를 만들어 그 PID를 기다리게 한다.
+        let mut victim = std::process::Command::new("cmd")
+            .args(["/c", "ping -n 4 127.0.0.1 >nul"])
+            .spawn()
+            .expect("대상 프로세스");
+        let pid = victim.id();
+        assert!(super::process_alive(pid), "방금 띄운 프로세스는 살아 있어야 한다");
+
+        let start = Instant::now();
+        let code = super::run_after_exit(&pid.to_string(), fake.to_str().unwrap());
+        assert_eq!(code, 0, "도우미가 인스톨러를 띄우지 못했다");
+        assert!(start.elapsed() >= Duration::from_secs(2), "기다리지 않고 바로 띄웠다");
+        assert!(!super::process_alive(pid), "대상이 끝난 뒤에 띄워야 한다");
+
+        let deadline = Instant::now() + Duration::from_secs(15);
+        while !marker.exists() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        assert!(marker.exists(), "공백 있는 경로에서 실행되지 않았다: {}", fake.display());
+
+        let _ = victim.wait();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 이미 없는 PID를 기다리라고 하면 즉시 넘어가야 한다(멈추지 않는다).
+    #[test]
+    #[cfg(windows)]
+    fn a_dead_pid_does_not_hang_the_helper() {
+        assert!(!super::process_alive(0xFFFF_FFF0), "쓰이지 않을 PID는 없는 것으로 본다");
+    }
+
 }
