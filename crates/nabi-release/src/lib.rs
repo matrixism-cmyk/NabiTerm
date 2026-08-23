@@ -270,15 +270,49 @@ pub fn launch_installer(
 /// `/SILENT`으로 마법사 대신 진행 창만 띄우고, 설치가 끝나면 인스톨러가 nabiTerm을 다시 켠다
 /// (installer/nabiTerm.iss의 `[Run]` — 조용한 설치에서도 실행되도록 `skipifsilent`를 뺐다).
 fn spawn_after_we_exit(path: &str) -> Result<(), String> {
-    // `timeout`은 콘솔이 없으면 실패한다(창 없이 띄우므로). `ping`은 어디서나 된다.
-    let script = format!("ping -n 6 127.0.0.1 >nul & start \"\" \"{path}\" /SILENT");
+    let dir = std::path::Path::new(path)
+        .parent()
+        .ok_or_else(|| format!("인스톨러 경로가 이상합니다: {path}"))?;
+    spawn_script(dir, &delay_script(path))
+}
+
+/// 지연 실행 스크립트 본문. **따옴표는 이 파일 안에만 있다** — 명령줄로 넘기지 않는다.
+///
+/// `timeout`은 콘솔이 없으면 실패하므로(창 없이 띄운다) `ping`으로 기다린다.
+fn delay_script(target: &str) -> String {
+    format!("@echo off\r\nping -n 6 127.0.0.1 >nul\r\nstart \"\" \"{target}\" /SILENT\r\n")
+}
+
+/// 스크립트를 파일로 써서 cmd에 **파일 경로 하나만** 넘겨 실행한다.
+///
+/// 예전에는 명령 전체를 `Command::args(["/c", &script])`로 넘겼다. Rust는 공백이 든 인자를
+/// 따옴표로 감싸면서 **안쪽 따옴표를 `\"`로 이스케이프**하는데, cmd.exe는 `\"`를 모른다
+/// (백슬래시는 cmd의 이스케이프 문자가 아니다). 그래서 명령줄이 깨져 `\`로 시작하는 무언가를
+/// 실행하려 했고, 사용자에게는 이렇게 보였다 —
+/// **"'\'을(를) 찾을 수 없습니다"**(사용자 보고 2026-08-23).
+///
+/// 따옴표를 스크립트 **파일 안에** 두면 그 문제가 통째로 사라진다. cmd에는 경로 하나만
+/// 넘기고, `/s`와 바깥 따옴표 한 쌍으로 경로에 공백이 있어도 정확히 해석되게 한다.
+fn spawn_script(dir: &std::path::Path, body: &str) -> Result<(), String> {
+    let script = dir.join("nabi-run-update.cmd");
+    std::fs::create_dir_all(dir).map_err(|e| format!("업데이트 폴더를 쓸 수 없습니다: {e}"))?;
+    std::fs::write(&script, body).map_err(|e| format!("업데이트 스크립트를 쓸 수 없습니다: {e}"))?;
+
     let mut cmd = std::process::Command::new("cmd");
-    cmd.args(["/c", &script]);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        // 따옴표를 **두 겹** 씌운다. `/s`는 첫·마지막 따옴표를 떼어 내므로, 한 겹만 씌우면
+        // 경로가 벌거벗은 채 남아 공백에서 잘린다(직접 확인:
+        // `'C:\Users\...\Temp\nabi' is not recognized`). 두 겹이면 바깥 한 쌍만 벗겨지고
+        // 안쪽 따옴표가 남아 공백 있는 경로가 정확히 해석된다.
+        cmd.raw_arg(format!("/s /c \"\"{}\"\"", script.display()));
         cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    #[cfg(not(windows))]
+    {
+        cmd.arg(&script);
     }
     cmd.spawn().map_err(|e| format!("인스톨러 실행 예약 실패: {e}"))?;
     Ok(())
@@ -317,5 +351,47 @@ mod tests {
         // 'v' 접두사가 있어도 정확(태그 vX.Y.Z 방어) — major≥1 오판 회귀 방지.
         assert!(is_newer_version("v1.0.0", "0.9.9"));
         assert!(is_newer_version("v0.1.361", "v0.1.360"));
+    }
+}
+
+#[cfg(test)]
+mod launch_tests {
+    use super::{delay_script, spawn_script};
+
+    /// 스크립트 본문에 따옴표가 제대로 들어가는가(경로에 공백이 있어도).
+    #[test]
+    fn the_script_quotes_the_installer_path() {
+        let s = delay_script(r"C:\Program Files\nabi\setup update.exe");
+        assert!(s.contains("ping -n 6"), "기다리는 줄이 있어야 한다: {s}");
+        assert!(
+            s.contains(r#"start "" "C:\Program Files\nabi\setup update.exe" /SILENT"#),
+            "공백 있는 경로를 따옴표로 감싸야 한다: {s}"
+        );
+        assert!(!s.contains(r#"\""#), "이스케이프한 따옴표가 있으면 cmd가 못 읽는다: {s}");
+    }
+
+    /// **회귀 시험**: 실제로 cmd를 띄워 스크립트가 도는지 본다.
+    ///
+    /// 예전 코드는 명령 전체를 인자로 넘겨서, Rust가 안쪽 따옴표를 `\"`로 바꿔 놓는 바람에
+    /// cmd가 `\`로 시작하는 것을 실행하려 했다("'\'을(를) 찾을 수 없습니다").
+    /// **공백이 든 폴더**에서 돌려야 그 함정을 실제로 밟는다.
+    #[test]
+    #[cfg(windows)]
+    fn the_script_actually_runs_from_a_path_with_spaces() {
+        let dir = std::env::temp_dir().join(format!("nabi run update {}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let marker = dir.join("it ran.txt");
+        // 인스톨러 대신 표식 파일을 남기게 한다(설치를 실제로 하지 않는다).
+        let body = format!("@echo off\r\necho ok> \"{}\"\r\n", marker.display());
+        spawn_script(&dir, &body).expect("띄우기");
+
+        // 자식이 끝날 때까지 잠깐 기다린다(폴링 — 고정 대기는 느리고 불안정하다).
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+        while !marker.exists() && std::time::Instant::now() < deadline {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        assert!(marker.exists(), "공백 있는 경로에서 스크립트가 돌지 않았다: {}", dir.display());
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
