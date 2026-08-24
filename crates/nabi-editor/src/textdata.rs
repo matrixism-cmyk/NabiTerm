@@ -50,6 +50,14 @@ impl TextData {
         let data = HexData::map_file(path)?;
         let head = data.read(0, 64 * 1024);
         let (enc, eol) = (crate::editload::detect_encoding(&head), detect_eol(&head));
+        if eol == "CR" {
+            // 줄 인덱스는 개행(LF)만 센다. CR만으로 줄을 나눈 문서(OS X 이전 Mac)는 통째로
+            // 한 줄이 되어 버린다. 못 다루면서 다루는 척하느니 거절하고 다른 경로로 보낸다.
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "CR-only line endings are not supported by the streaming editor",
+            ));
+        }
         let index = Self::build_index(&data);
         Ok(Self { data, index, enc, eol })
     }
@@ -101,6 +109,11 @@ impl TextData {
         (a, b)
     }
 
+    /// `line`번째 줄의 끝 — **개행을 포함**한다(줄 전체가 선택됐는지 판정할 때).
+    pub fn line_end_with_break(&self, line: usize) -> u64 {
+        self.index.end(line)
+    }
+
     /// `line`번째 줄을 문자열로 꺼낸다(개행 제외). 화면에 보이는 줄만 부르는 것이 전제다.
     pub fn line(&self, line: usize) -> String {
         let (a, b) = self.line_range(line);
@@ -109,6 +122,30 @@ impl TextData {
         }
         let raw = self.data.read(a as usize, (b - a) as usize);
         self.enc.decode(&raw).0.into_owned()
+    }
+
+    /// 바이트를 이 문서의 인코딩으로 디코드한다(선택 복사 등).
+    ///
+    /// **BOM을 다시 해석하지 않는다.** `decode`는 앞머리의 U+FEFF를 스트림 BOM으로 보고
+    /// 삼켜 버리는데, 우리는 줄 단위로 부르므로 둘째 줄 첫 글자가 U+FEFF이면 그 글자가
+    /// 조용히 사라진다(교차 검토 2026-08-25).
+    pub fn decode(&self, raw: &[u8]) -> String {
+        self.enc.decode_without_bom_handling(raw).0.into_owned()
+    }
+
+    /// 바이트를 이 문서의 인코딩으로 디코드했을 때의 **표시 문자 수**.
+    ///
+    /// 커서 열은 바이트가 아니라 글자로 세야 화면과 맞는다("가"는 UTF-8에서 3바이트다).
+    pub fn decode_len(&self, raw: &[u8]) -> usize {
+        self.enc.decode(raw).0.chars().count()
+    }
+
+    /// `line`번째 줄에서 표시 열 `col`에 해당하는 바이트 오프셋.
+    ///
+    /// 줄이 짧으면 줄 끝을 준다 — 위아래로 움직일 때 짧은 줄을 지나도 넘치지 않게.
+    pub fn offset_of_col(&self, line: usize, col: usize) -> u64 {
+        let starts = self.char_starts(line);
+        *starts.get(col).unwrap_or_else(|| starts.last().unwrap_or(&0))
     }
 
     /// 오프셋이 속한 줄 번호.
@@ -129,9 +166,43 @@ impl TextData {
         }
     }
 
-    /// 문자열을 이 문서의 인코딩으로 바꾼다(넣기 전에 통과시킨다).
-    pub fn encode(&self, s: &str) -> Vec<u8> {
-        self.enc.encode(s).0.into_owned()
+    /// 문자열을 이 문서의 인코딩으로 바꾼다. 이 인코딩으로 못 적는 글자가 있으면 None.
+    ///
+    /// `encoding_rs`는 표현할 수 없는 글자를 HTML 참조(`&#128512;`)로 바꿔 버린다. 그대로
+    /// 넣으면 CP949 문서에 이모지를 치는 순간 문서에 `&#128512;`라는 **글자들이** 박힌다
+    /// (교차 검토 2026-08-25). 조용히 다른 내용을 쓰느니 넣지 않는 편이 낫다.
+    pub fn encode(&self, s: &str) -> Option<Vec<u8>> {
+        let (out, _, bad) = self.enc.encode(s);
+        (!bad).then(|| out.into_owned())
+    }
+
+    /// 줄 안에서 각 글자가 시작하는 바이트 오프셋(줄 끝 포함, 개행 제외).
+    ///
+    /// 커서 이동·삭제는 **전부 이걸로만** 한다. 예전에는 UTF-8 이어짐 바이트(`0b10xxxxxx`)를
+    /// 세어 글자 경계를 찾았는데, CP949는 그 패턴에 걸리는 바이트가 널려 있다 — `가`(B0 A1)의
+    /// `A1`이 그렇다. 그래서 한글 문서에서 오른쪽 화살표 한 번이 파일 끝까지 훑었다
+    /// (교차 검토 2026-08-25). 줄 안에서만 재면 인코딩이 무엇이든 맞고, 줄 길이로 묶인다.
+    pub fn char_starts(&self, line: usize) -> Vec<u64> {
+        let (a, b) = self.line_range(line);
+        let raw = self.read(a, (b - a) as usize);
+        let text = self.decode(&raw);
+        let mut out = Vec::with_capacity(text.len() + 1);
+        let mut at = a;
+        for ch in text.chars() {
+            out.push(at);
+            // 한 글자씩 되돌려 그 바이트 수를 쓴다. CP949·Shift_JIS 같은 바이트 인코딩은
+            // 글자마다 길이가 정해져 있어 이 방법이 맞다.
+            at += self.enc.encode(ch.encode_utf8(&mut [0u8; 4])).0.len() as u64;
+            if at > b {
+                // 되돌리기가 원본과 어긋났다(깨진 바이트 등) — 한 바이트씩 세는 쪽이 안전하다.
+                return (a..=b).collect();
+            }
+        }
+        out.push(b);
+        if out.last() != Some(&b) || at != b {
+            return (a..=b).collect();
+        }
+        out
     }
 
     /// `[at, at+del)`을 `ins`로 바꾼다. 바이트와 줄 인덱스를 함께 맞춘다.

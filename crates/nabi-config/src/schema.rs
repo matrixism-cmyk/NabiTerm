@@ -42,6 +42,9 @@ pub struct Appearance {
     pub always_on_top: bool,
     /// 하단 상태바 표시.
     pub show_statusbar: bool,
+    /// 시작할 때 스플래시 화면을 잠깐 보여 줄지(아무 키·클릭으로 즉시 넘어간다).
+    #[serde(default = "default_true")]
+    pub splash: bool,
     /// 전체 UI 배율(egui pixels_per_point).
     pub ui_scale: f32,
     /// 드래그 선택 종료 시 자동 복사.
@@ -103,6 +106,7 @@ impl Default for Appearance {
             visual_bell: true,
             always_on_top: false,
             show_statusbar: true,
+            splash: true,
             ui_scale: 1.0,
             copy_on_select: true,
             cursor_shape: "block".into(),

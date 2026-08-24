@@ -25,6 +25,13 @@
 
 use memchr::memchr_iter;
 
+/// 한 번 편집할 때 다시 읽는 최대 구간(바이트).
+///
+/// 보통은 편집이 걸친 줄 전체를 다시 읽는다. 하지만 개행 없는 초대형 줄(로그 한 덩어리,
+/// minified JS)에서는 그 "한 줄"이 파일 전체다. 그런 줄에는 되찾을 줄 시작이 애초에 없으니,
+/// 편집 자리 둘레만 봐도 결과가 같다.
+const MAX_REGION: u64 = 1 << 20;
+
 /// 줄 시작 바이트 오프셋 표. 줄 수 = `starts.len()`이며, 마지막 줄은 문서 끝까지다.
 ///
 /// 개행이 `\n`으로 정규화된 바이트 열을 전제로 한다(CRLF는 열 때 정규화하고 저장할 때 되돌린다).
@@ -129,7 +136,11 @@ impl LineIndex {
         let diff = ins_len as i64 - del as i64;
 
         // 이번 편집이 만들어 낸, 영향 구간 안의 새 줄 시작들.
-        let at_end = l1 + 1 >= self.starts.len(); // 이 구간 뒤에 다른 줄 항목이 없다.
+        // 구간이 잘렸는지(줄 처음에서 시작하지 않는지) 본다. 잘린 구간에는 그 줄의 시작이
+        // 들어 있지 않으므로, 거기서 찾은 개행만 새 줄 시작으로 넣으면 된다 — 잘라 낸 쪽에는
+        // 개행이 없다는 것이 자르기의 전제다(그래서 그 줄이 그렇게 길었다).
+        let new_total = (self.total as i64 + diff) as u64;
+        let at_end = l1 + 1 >= self.starts.len() && region_start + region.len() as u64 >= new_total;
         let fresh = scan_starts(region, region_start, at_end);
         let old_count = l1 - l0; // 지워질 항목 수(l0 자신은 남는다).
 
@@ -152,10 +163,19 @@ impl LineIndex {
     ///
     /// 편집이 걸친 첫 줄의 처음부터 마지막 줄의 끝까지다. 호출자는 이 구간의 편집 후 바이트를
     /// 읽어 [`patch`](Self::patch)에 넘긴다.
+    ///
+    /// **다만 무한정 넓히지 않는다.** 개행이 하나도 없는 1GB 파일이면 "그 줄"이 곧 파일 전체라,
+    /// 글자 하나 칠 때마다 1GB를 복사하게 된다(교차 검토 2026-08-25). 구간이 [`MAX_REGION`]을
+    /// 넘으면 편집 자리 둘레만 잘라 쓴다 — 그렇게 잘라도 맞는 이유는 [`patch`]에 적어 두었다.
     pub fn edit_region(&self, at: u64, del: u64) -> (u64, u64) {
         let at = at.min(self.total);
         let del = del.min(self.total - at);
-        (self.start(self.line_of(at)), self.end(self.line_of(at + del)))
+        let (a, b) = (self.start(self.line_of(at)), self.end(self.line_of(at + del)));
+        if b - a <= MAX_REGION {
+            return (a, b);
+        }
+        let pad = MAX_REGION / 4;
+        (a.max(at.saturating_sub(pad)), b.min(at + del + pad))
     }
 }
 

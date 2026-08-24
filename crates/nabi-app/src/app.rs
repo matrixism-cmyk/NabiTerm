@@ -20,6 +20,10 @@ pub struct NabiApp {
     pub quick_connect: crate::connect::QuickConnect,
     /// AI 터미널 프로필 관리 독립창 열림(세션▸새 AI 터미널▸프로필 관리 — aiprofileui.rs).
     pub ai_prof_open: bool,
+    /// 시작 스플래시가 뜬 시각. None이면 이미 걷혔거나 설정에서 껐다는 뜻(splash.rs).
+    pub splash_since: Option<std::time::Instant>,
+    /// 프로필 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것. 창이 닫히면 비운다.
+    pub ai_prof_backup: Option<Vec<nabi_config::AiProfileCfg>>,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
     pub ai_picks: std::collections::HashMap<PaneId, crate::aicmdbar::AiPicks>,
     /// pane별 AI 화면 판독 캐시(모드·모델·노력·제목 — aimode.rs).
@@ -91,6 +95,8 @@ pub struct NabiApp {
     pub settings_open: bool, pub editor_settings_for: Option<PaneId>,
     /// 설정 창 열릴 때의 config·editor_config 스냅샷(취소 시 되돌리기 — 실시간 미리보기용).
     pub settings_backup: Option<nabi_config::AppConfig>, pub settings_editor_backup: Option<nabi_config::EditorConfig>,
+    /// nabiPad 설정 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것(주 설정과 같은 방식).
+    pub editor_settings_backup: Option<nabi_config::EditorConfig>,
     /// 실시간 미리보기에서 마지막으로 적용한 글꼴 경로(바뀔 때만 폰트 재설치).
     pub settings_live_font: String,
     /// floating=분리 OS 창 pane, floating_geom=그 창 위치·크기[x,y,w,h](복원, P10),

@@ -20,6 +20,10 @@ impl eframe::App for NabiApp {
         self.last_win = (sz.x, sz.y); // 종료 시 창 크기 저장용 추적.
         if !self.did_startup {
             self.did_startup = true;
+            // 시작 스플래시(설정에서 끌 수 있다) — 첫 프레임이 실제로 뜬 지금부터 센다.
+            if self.config.appearance.splash {
+                self.splash_since = Some(std::time::Instant::now());
+            }
             // 첫 프레임이 떴다 = 그래픽 초기화를 무사히 통과했다. 표식을 지운다(gpupick).
             crate::gpupick::mark_ok();
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
@@ -116,6 +120,12 @@ impl eframe::App for NabiApp {
         self.show_floating(ctx);
         self.show_docked_floats(ctx); // "창 안에 띄우기" 오버레이(P3).
         self.show_vault_unlock(ctx);
+        // 스플래시는 **맨 마지막**에 그린다 — 무엇 위에든 덮여야 한다.
+        if let Some(t) = self.splash_since {
+            if !crate::splash::show(ctx, t, self.lang) {
+                self.splash_since = None;
+            }
+        }
         // 볼트 우선 복원: 볼트가 풀렸거나(자격증명 세션 자동연결 가능) 사용자가 볼트 창을 닫으면
         // 미뤄둔 워크스페이스 복원을 1회 진행한다(panes를 단계적으로 활성화).
         if self.pending_restore.is_some() && (self.vault.is_some() || !self.vault_unlock_open) {

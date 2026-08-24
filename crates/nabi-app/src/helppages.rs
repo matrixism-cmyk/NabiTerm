@@ -140,7 +140,21 @@ pub(crate) fn about_page(
         }
     });
     ui.weak(tr(lang, "help.about.security"));
-    ui.weak(tr(lang, "help.about.madeby"));
+    // 만든 곳·문의처 — 둘 다 실제로 눌러 갈 수 있게 링크로 둔다(글자만 적어 두면 찾아가야 한다).
+    ui.horizontal(|ui| {
+        ui.label(format!("{}:", tr(lang, "help.about.madeby")));
+        if ui.link("나비소리 (nabisori.kr)").clicked() {
+            crate::paneurl::os_open("https://nabisori.kr");
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.label(format!("{}:", tr(lang, "help.about.inquiry")));
+        if ui.link("AI메타버스센터 (metahubs.kr)").clicked() {
+            crate::paneurl::os_open("https://metahubs.kr");
+        }
+    });
+    ui.add_space(4.0);
+    ui.weak(tr(lang, "help.about.funding"));
     ui.add_space(8.0);
     crate::updateui::update_section(ui, lang, updater, update_quit); // 업데이트(설정에서 이동).
     ui.add_space(8.0);

@@ -95,7 +95,7 @@ fn resolve(command: &str) -> Option<PathBuf> {
         .find(|p| p.is_file())
 }
 
-fn hidden(program: impl AsRef<std::ffi::OsStr>) -> Command {
+pub(crate) fn hidden(program: impl AsRef<std::ffi::OsStr>) -> Command {
     use std::os::windows::process::CommandExt;
     let mut c = Command::new(program);
     c.creation_flags(0x0800_0000)
@@ -162,25 +162,36 @@ pub(crate) fn start_action(id: &str, remove: bool) -> std::io::Result<ActionJob>
             ("claude", false) => {
                 install_npm_cli(&worker, "Claude Code", "@anthropic-ai/claude-code@latest")
             }
-            ("claude", true) => {
-                set_progress(&worker, 0.4, "Claude Code 제거 중…");
-                run_ps(&npm_script("uninstall -g @anthropic-ai/claude-code"))
-            }
+            ("claude", true) => remove_npm(&worker, "Claude Code", "@anthropic-ai/claude-code"),
             ("codex", false) => install_codex(&worker),
-            ("codex", true) => {
-                set_progress(&worker, 0.4, "Codex 제거 중…");
-                run_ps(&npm_script("uninstall -g @openai/codex"))
-            }
-            ("antigravity", false) => {
-                set_progress(&worker, 0.3, "Antigravity 다운로드 및 설치 중…");
-                run_ps("$p=Join-Path $env:TEMP 'antigravity-install.ps1'; Invoke-WebRequest https://antigravity.google/cli/install.ps1 -OutFile $p; & $p")
-            }
+            ("codex", true) => remove_npm(&worker, "Codex", "@openai/codex"),
+            ("antigravity", false) => install_antigravity(&worker),
             ("antigravity", true) => run_ps("Start-Process 'https://antigravity.google/download'"),
             _ => unreachable!(),
         };
         finish(&worker, out);
     });
     Ok(job)
+}
+
+/// npm 전역 제거 — 짧지만 그래도 출력을 흘려 읽어 막대가 살아 있게 한다.
+fn remove_npm(job: &ActionJob, name: &str, package: &str) -> std::io::Result<Output> {
+    let script = npm_script(&format!("uninstall -g {package}"));
+    crate::aiclirun::run_ps(job, &script, 0.05, 0.95, &format!("{name} 제거 중"))
+}
+
+/// Antigravity 설치 — 내려받기와 설치를 나눠 두 단계로 보여 준다.
+///
+/// `Invoke-WebRequest`는 자기 진행률을 stdout에 흘리지 않으므로, 스크립트가 단계마다 한 줄씩
+/// 찍게 해서 최소한 어디까지 왔는지는 보이게 한다.
+fn install_antigravity(job: &ActionJob) -> std::io::Result<Output> {
+    let script = "$ProgressPreference='Continue'; \
+        $p=Join-Path $env:TEMP 'antigravity-install.ps1'; \
+        Write-Output 'downloading installer'; \
+        Invoke-WebRequest https://antigravity.google/cli/install.ps1 -OutFile $p; \
+        Write-Output 'running installer'; \
+        & $p";
+    crate::aiclirun::run_ps(job, script, 0.05, 0.95, "Antigravity 설치 중")
 }
 
 fn npm_script(args: &str) -> String {
@@ -202,16 +213,18 @@ fn install_codex(job: &ActionJob) -> std::io::Result<Output> {
 }
 
 pub(crate) fn install_npm_cli(job: &ActionJob, name: &str, package: &str) -> std::io::Result<Output> {
-    if resolve("node").is_none() || resolve("npm").is_none() {
-        set_progress(job, 0.15, "Node.js LTS 설치 중…");
-        let node = install_portable_node()?;
+    // 단계 구간을 나눠 둔다. Node.js를 새로 받아야 하면 그 쪽이 시간의 절반쯤을 먹는다.
+    let need_node = resolve("node").is_none() || resolve("npm").is_none();
+    let split = if need_node { 0.45 } else { 0.05 };
+    if need_node {
+        let node = crate::aiclirun::run_ps(job, &node_script(), 0.03, split, "Node.js LTS 설치 중")?;
         if !node.status.success() {
             return Ok(node);
         }
         expose_local_tools();
     }
-    set_progress(job, 0.65, format!("{name} 설치 중…"));
-    let out = run_ps(&npm_script(&format!("install -g {package}")))?;
+    let script = npm_script(&format!("install -g {package}"));
+    let out = crate::aiclirun::run_ps(job, &script, split, 0.97, &format!("{name} 설치 중"))?;
     if out.status.success() {
         expose_local_tools();
     }
@@ -238,34 +251,40 @@ fn expose_local_tools() {
     }
 }
 
-/// winget·관리자 권한 없이 공식 Node.js LTS ZIP을 받고 SHASUMS256으로 검증한다.
-fn install_portable_node() -> std::io::Result<Output> {
-    let root = tools_root().ok_or_else(|| {
-        std::io::Error::new(std::io::ErrorKind::NotFound, "LOCALAPPDATA not found")
-    })?;
-    let arch = if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        "x64"
+/// winget·관리자 권한 없이 공식 Node.js LTS ZIP을 받고 SHASUMS256으로 검증하는 스크립트.
+///
+/// 단계마다 한 줄씩 찍는다 — 그래야 진행 막대가 "지금 뭘 하는 중"인지 말할 수 있다.
+/// 이 스크립트만 만들고 실행은 [`crate::aiclirun::run_ps`]가 맡는다(출력을 흘려 읽으려고).
+fn node_script() -> String {
+    let Some(root) = tools_root() else {
+        return "throw 'LOCALAPPDATA not found'".to_string();
     };
-    let script = format!(
+    let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+    format!(
         r#"
 $ErrorActionPreference='Stop'; $root='{root}'; $dest=Join-Path $root 'nodejs'; $npm=Join-Path $root 'npm'
+Write-Output 'looking up the current LTS'
 $idx=Invoke-RestMethod 'https://nodejs.org/dist/index.json'; $v=($idx|Where-Object {{$_.lts}}|Select-Object -First 1).version
 $name="node-$v-win-{arch}.zip"; $base="https://nodejs.org/dist/$v"; $tmp=Join-Path $env:TEMP $name
+Write-Output "checking the signature for $v"
 $sums=(Invoke-WebRequest "$base/SHASUMS256.txt" -UseBasicParsing).Content
 $line=($sums -split "`n"|Where-Object {{$_.Trim().EndsWith($name)}}|Select-Object -First 1)
 if(-not $line){{throw 'Node.js checksum missing'}}; $expected=($line.Trim() -split '\s+')[0]
+Write-Output "downloading $name"
 Invoke-WebRequest "$base/$name" -OutFile $tmp -UseBasicParsing
+Write-Output 'verifying the download'
 if((Get-FileHash $tmp -Algorithm SHA256).Hash -ne $expected){{throw 'Node.js SHA256 mismatch'}}
+Write-Output 'unpacking'
 $unpack=Join-Path $root '_node_unpack'; if(Test-Path $unpack){{Remove-Item $unpack -Recurse -Force}}
 Expand-Archive $tmp $unpack -Force; if(Test-Path $dest){{Remove-Item $dest -Recurse -Force}}
 Move-Item (Join-Path $unpack "node-$v-win-{arch}") $dest; Remove-Item $unpack -Recurse -Force; Remove-Item $tmp -Force
+Write-Output 'registering on PATH'
 New-Item $npm -ItemType Directory -Force|Out-Null; $user=[Environment]::GetEnvironmentVariable('Path','User')
 foreach($p in @($dest,$npm)){{if(($user -split ';') -notcontains $p){{$user="$p;$user"}}}}
 [Environment]::SetEnvironmentVariable('Path',$user,'User')
+Write-Output 'done'
 "#,
         root = root.display()
-    );
-    run_ps(&script)
+    )
 }
+

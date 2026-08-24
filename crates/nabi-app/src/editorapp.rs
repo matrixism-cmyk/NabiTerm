@@ -13,21 +13,44 @@ impl NabiApp {
         self.add_editor_tab(EditorDoc::make(tr(self.lang, "nabipad.newdoc").to_string(), PathBuf::new(), None, String::new(), true, self.font_size, "UTF-8".into(), "LF")); // 새 문서 EOL 기본 LF(상태바 표기 일치).
     }
 
-    /// nabiPad 자체 설정 창을 주어진 ctx에 그린다(분리 창=vctx·도크=메인). 닫으면 nabipad.toml 저장·적용.
+    /// nabiPad 자체 설정 창을 주어진 ctx에 그린다(분리 창=vctx·도크=메인).
+    ///
+    /// 주 설정 대화상자와 **같은 방식**이다 — 스냅샷을 찍고, 저장·취소 버튼을 주고, 창의
+    /// X는 취소로 본다. 같은 제품 안에서 같은 종류의 화면이 다르게 동작하면 그것만으로
+    /// 사용자가 헷갈린다(사용자 지적 2026-08-25).
     pub(crate) fn render_editor_settings(&mut self, ctx: &egui::Context) {
         if self.editor_settings_for.is_none() {
             return;
         }
-        let (mut open, lang) = (true, self.lang);
+        if self.editor_settings_backup.is_none() {
+            self.editor_settings_backup = Some(self.editor_config.clone());
+        }
+        let (mut open, lang, mut done) = (true, self.lang, None);
         egui::Window::new(format!("nabiPad \u{2014} {}", tr(lang, "menu.settings")))
             .open(&mut open).collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| crate::settingsui::editor_settings_body(ui, &mut self.editor_config, lang));
-        if !open {
-            self.editor_settings_for = None;
-            let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
-            crate::editorsyntax::set_theme(self.editor_config.theme.clone());
-            crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());
+            .show(ctx, |ui| {
+                crate::settingsui::editor_settings_body(ui, &mut self.editor_config, lang);
+                ui.separator();
+                ui.horizontal(|ui| {
+                    if ui.button(tr(lang, "settings.save")).clicked() {
+                        done = Some(true);
+                    }
+                    if ui.button(tr(lang, "qc.cancel")).clicked() {
+                        done = Some(false);
+                    }
+                });
+            });
+        let Some(save) = done.or(if open { None } else { Some(false) }) else { return };
+        let backup = self.editor_settings_backup.take();
+        if !save {
+            if let Some(b) = backup {
+                self.editor_config = b;
+            }
         }
+        self.editor_settings_for = None;
+        let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
+        crate::editorsyntax::set_theme(self.editor_config.theme.clone());
+        crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());
     }
 }
 

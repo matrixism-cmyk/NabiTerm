@@ -98,6 +98,11 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     );
     chk(
         ui,
+        tr(lang, "settings.splash"),
+        &mut cfg.appearance.splash,
+    );
+    chk(
+        ui,
         tr(lang, "settings.clock"),
         &mut cfg.appearance.show_clock,
     );
