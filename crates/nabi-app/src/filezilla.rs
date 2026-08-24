@@ -47,6 +47,7 @@ pub(crate) fn parse_filezilla(xml: &str) -> Vec<SavedSession> {
                     cwd: None,
                     is_ftp: proto != 1, // SFTP(1)=SSH 터미널, 그 외(FTP/FTPS)=FTP 브라우저.
                     open_sftp: false,
+                    tag: Default::default(),
                 });
             }
         }
@@ -128,6 +129,7 @@ mod tests {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         };
         let xml = super::to_sitemanager(std::slice::from_ref(&sess));
         let back = parse_filezilla(&xml);

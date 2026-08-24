@@ -339,6 +339,54 @@ mod tests {
         assert_eq!(d.lines(), 2);
     }
 
+    /// **큰 파일을 열고·고치고·저장하는 전 과정**이 메모리를 문서 크기만큼 쓰지 않는지.
+    ///
+    /// 이 편집기의 존재 이유가 그것 하나다. 200MB 파일에서 조각 수가 몇 개 늘 뿐이어야 하고,
+    /// 저장도 흘려 쓰기라 결과 파일이 정확히 같아야 한다.
+    #[test]
+    fn a_big_file_opens_edits_and_saves_without_loading_it() {
+        let p = std::env::temp_dir().join("nabi-textdata-big.txt");
+        {
+            use std::io::Write;
+            let f = std::fs::File::create(&p).unwrap();
+            let mut w = std::io::BufWriter::new(f);
+            for i in 0..2_000_000u32 {
+                writeln!(w, "line {i} of a rather long log file").unwrap();
+            }
+            w.flush().unwrap();
+        }
+        let size = std::fs::metadata(&p).unwrap().len();
+        assert!(size > 60_000_000, "시험 파일이 충분히 커야 의미가 있다: {size}");
+
+        let mut d = TextData::open(&p).unwrap();
+        assert_eq!(d.lines(), 2_000_001); // 끝 개행이 만든 마지막 빈 줄 포함.
+        assert_eq!(d.line(0), "line 0 of a rather long log file");
+        assert_eq!(d.line(1_999_999), "line 1999999 of a rather long log file");
+
+        // 한가운데를 고쳐도 조각이 몇 개 늘 뿐이다.
+        let at = d.line_start(1_000_000);
+        d.splice(at, 0, b"EDITED ");
+        assert_eq!(d.line(1_000_000), "EDITED line 1000000 of a rather long log file");
+        assert!(d.piece_count() < 8, "조각이 {}개나 됨", d.piece_count());
+        assert_eq!(d.total(), size + 7);
+
+        let out = std::env::temp_dir().join("nabi-textdata-big-out.txt");
+        {
+            use std::io::Write;
+            let f = std::fs::File::create(&out).unwrap();
+            let mut w = std::io::BufWriter::with_capacity(1 << 20, f);
+            d.write_to(&mut w).unwrap();
+            w.flush().unwrap();
+        }
+        assert_eq!(std::fs::metadata(&out).unwrap().len(), size + 7);
+        // 고친 줄이 저장 결과에도 그대로 있는지 다시 열어 확인한다.
+        let back = TextData::open(&out).unwrap();
+        assert_eq!(back.lines(), d.lines());
+        assert_eq!(back.line(1_000_000), "EDITED line 1000000 of a rather long log file");
+        let _ = std::fs::remove_file(&p);
+        let _ = std::fs::remove_file(&out);
+    }
+
     /// 파일에서 열어도 메모리 문서와 똑같이 동작하는지 — mmap 경로.
     #[test]
     fn a_file_opens_by_mapping_and_edits_the_same_way() {

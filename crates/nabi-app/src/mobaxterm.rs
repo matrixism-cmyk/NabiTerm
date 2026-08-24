@@ -95,6 +95,7 @@ fn parse_session(name: &str, val: &str, folder: Option<&str>) -> Option<SavedSes
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     })
 }
 
@@ -139,6 +140,7 @@ mod tests {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         };
         let ini = super::to_ini(std::slice::from_ref(&sess));
         let back = parse_mobaxterm(&ini);

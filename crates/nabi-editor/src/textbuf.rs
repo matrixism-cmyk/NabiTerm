@@ -43,6 +43,8 @@ pub struct TextBuf {
     pub goal_col: Option<usize>,
     /// 다음 프레임에 이 줄로 스크롤(찾기·줄 이동·커서 따라가기).
     pub scroll_to: Option<usize>,
+    /// 이 인코딩으로 못 적는 글자를 방금 거절한 시각 — 잠깐 안내를 띄우는 데 쓴다.
+    pub refused_at: Option<std::time::Instant>,
     /// 지금까지 본 최장 줄(표시 칸) — 가로 스크롤 범위. 줄어들지 않게 누적한다.
     pub seen_cols: usize,
     pub(crate) undo: Vec<Delta>,
@@ -90,7 +92,7 @@ impl TextBuf {
     pub fn new(data: TextData) -> Self {
         Self {
             data, caret: 0, anchor: 0, dirty: false, readonly: false, goal_col: None,
-            scroll_to: None, seen_cols: 0,
+            scroll_to: None, refused_at: None, seen_cols: 0,
             undo: Vec::new(), redo: Vec::new(), group: false,
         }
     }
@@ -156,6 +158,17 @@ impl TextBuf {
     /// 편집 묶음을 강제로 끊는다(저장·붙여넣기 등 경계가 분명한 동작 뒤에).
     pub fn break_group(&mut self) {
         self.group = false;
+    }
+
+    /// 커서가 화면 밖으로 나갔으면 그 줄로 스크롤을 예약한다.
+    ///
+    /// `first`/`last`는 지금 보이는 줄 범위다. 커서가 그 안에 있으면 아무 것도 하지 않는다 —
+    /// 매 프레임 스크롤을 예약하면 사용자가 마우스로 다른 곳을 볼 수 없다.
+    pub fn scroll_to_caret_if_needed(&mut self, first: usize, last: usize) {
+        let line = self.caret_line();
+        if line < first || line + 1 >= last {
+            self.scroll_to = Some(line.saturating_sub(2));
+        }
     }
 
     /// 되돌리기 스택이 들고 있는 바이트(진단·시험용).

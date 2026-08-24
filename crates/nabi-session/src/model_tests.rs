@@ -11,6 +11,7 @@ fn ssh(name: &str, host: &str) -> SavedSession {
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     }
 }
 
@@ -126,6 +127,7 @@ fn target_string_and_kind_label() {
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     };
     assert_eq!(local.target_string(), "pwsh");
     assert_eq!(local.kind_label(), "Local");
@@ -146,6 +148,7 @@ fn copy_name_and_counts() {
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     });
     assert_eq!(t.ssh_count(), (2, 1)); // SSH 2 + 로컬 1.
 }
@@ -176,4 +179,52 @@ fn dedup_keeps_first_per_target() {
     t.add(ssh("c", "h2"));
     assert_eq!(t.dedup(), 1);
     assert_eq!(t.sessions.iter().map(|s| s.name.as_str()).collect::<Vec<_>>(), ["a", "c"]);
+}
+
+#[cfg(test)]
+mod tag_tests {
+    use crate::{SavedSession, SessionKind, SessionTag};
+
+    fn s(tag: SessionTag) -> SavedSession {
+        SavedSession {
+            name: "x".into(), folder: None,
+            kind: SessionKind::Local { shell: "powershell".into() },
+            on_connect: None, cwd: None, is_ftp: false, open_sftp: false, tag,
+        }
+    }
+
+    /// 표식 없는 기존 세션 파일을 읽어도 그대로 열려야 한다(뒤로 호환).
+    #[test]
+    fn a_session_saved_before_tags_existed_still_loads() {
+        let old = r#"{"name":"old","folder":null,"kind":{"Local":{"shell":"cmd"}}}"#;
+        let got: SavedSession = serde_json::from_str(old).expect("옛 형식을 읽어야 한다");
+        assert_eq!(got.tag, SessionTag::None);
+    }
+
+    /// 표식은 저장되고 그대로 돌아와야 한다 — 껐다 켜도 남는 것이 요점이다.
+    #[test]
+    fn a_tag_survives_a_save_and_load() {
+        let json = serde_json::to_string(&s(SessionTag::Prod)).unwrap();
+        assert!(json.contains("\"prod\""), "{json}");
+        let back: SavedSession = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.tag, SessionTag::Prod);
+    }
+
+    /// 되돌릴 수 없는 곳은 운영뿐이다 — 여기가 넓어지면 확인이 잦아져 아무도 안 읽는다.
+    #[test]
+    fn only_production_asks_for_confirmation() {
+        let risky: Vec<_> = SessionTag::ALL.iter().filter(|t| t.is_risky()).collect();
+        assert_eq!(risky, vec![&SessionTag::Prod]);
+    }
+
+    /// 모든 표식에 라벨과 색이 있어야 한다 — 색만으로 구분하게 두지 않는다.
+    #[test]
+    fn every_tag_has_a_label_and_a_colour() {
+        for t in SessionTag::ALL {
+            assert!(t.key().starts_with("tag."), "{:?}", t);
+            assert_ne!(t.rgb(), (0, 0, 0));
+        }
+        let keys: std::collections::HashSet<_> = SessionTag::ALL.iter().map(|t| t.key()).collect();
+        assert_eq!(keys.len(), SessionTag::ALL.len(), "i18n 키가 겹친다");
+    }
 }

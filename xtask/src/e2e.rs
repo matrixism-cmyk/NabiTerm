@@ -135,6 +135,7 @@ fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
         let r = roundtrip(&mut pipe, &mut rd, &cap)?;
         // JSON 문자열 안의 "NABI_E2E_OK"가 명령 에코 줄 말고도 한 번 더(출력) 있으면 성공.
         if r.matches("NABI_E2E_OK").count() >= 2 {
+            open_big_file(&mut pipe, &mut rd)?; // 흘려 읽기 편집기가 실제로 뜨는지.
             let close = format!(r#"{{"op":"close-pane","pane":{pane}}}"#);
             let _ = roundtrip(&mut pipe, &mut rd, &close)?;
             return Ok(());
@@ -143,6 +144,43 @@ fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
             return Err(format!("출력 대기 시간 초과 — 마지막 캡처: {r}"));
         }
         std::thread::sleep(Duration::from_millis(500));
+    }
+}
+
+/// 큰 파일을 **실제로 앱에서** 열어 흘려 읽기 편집기가 뜨고 살아 있는지 본다.
+///
+/// 단위 시험은 엔진만 본다. 화면은 UI 스레드에서 도는 코드라, 거기서 색인이 벗어나면
+/// 렌더러가 그 자리에서 죽는다(v0.1.41에 실제로 그랬다 — painter 인덱스 초과로 앱 즉사).
+/// 그래서 이 확인만은 진짜로 띄워서 해야 한다. 창을 볼 수는 없으니 살아 있는지로 판정한다.
+fn open_big_file(pipe: &mut std::fs::File, rd: &mut BufReader<std::fs::File>) -> Result<(), String> {
+    let path = std::env::temp_dir().join(format!("nabi-e2e-big-{}.log", std::process::id()));
+    {
+        use std::io::Write;
+        let f = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+        let mut w = std::io::BufWriter::with_capacity(1 << 20, f);
+        // 64MB(HUGE_THRESHOLD)를 넘겨야 흘려 읽기 편집기로 간다.
+        for i in 0..1_800_000u32 {
+            writeln!(w, "{i:08} e2e line for the streaming editor smoke test").map_err(|e| e.to_string())?;
+        }
+        w.flush().map_err(|e| e.to_string())?;
+    }
+    // JSON 문자열이라 경로의 역슬래시를 두 겹으로 바꿔 넣는다.
+    let esc = path.display().to_string().replace('\\', "\\\\");
+    // 프로토콜 op 이름은 `open-editor`다(CLI 동사 `open-file`과 다르다 — 여기서 한 번 틀렸다).
+    let req = format!(r#"{{"op":"open-editor","path":"{esc}"}}"#);
+    let r = roundtrip(pipe, rd, &req)?;
+    if !r.contains(r#""res":"ok""#) {
+        let _ = std::fs::remove_file(&path);
+        return Err(format!("open-editor 거부: {r}"));
+    }
+    // 여는 동안(줄 인덱스 스캔) 잠깐 기다린 뒤, 앱이 아직 응답하는지로 살아 있음을 본다.
+    std::thread::sleep(Duration::from_secs(4));
+    let alive = roundtrip(pipe, rd, r#"{"op":"list-panes"}"#)?;
+    let _ = std::fs::remove_file(&path);
+    if alive.contains(r#""res""#) {
+        Ok(())
+    } else {
+        Err(format!("큰 파일을 연 뒤 앱이 응답하지 않음: {alive}"))
     }
 }
 

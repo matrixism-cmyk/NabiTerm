@@ -13,6 +13,9 @@ impl crate::app::NabiApp {
                         b.path = std::path::PathBuf::from(p);
                     }
                 }
+                AppCtl::OpenEditor { path } => {
+                    self.open_editor_local(std::path::PathBuf::from(path));
+                }
                 AppCtl::OpenSftp { session } => {
                     // 저장 세션 이름으로 SFTP 열기(자격증명은 볼트/connect_saved 경유).
                     if let Some(s) =

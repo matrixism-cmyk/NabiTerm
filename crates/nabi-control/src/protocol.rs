@@ -45,6 +45,8 @@ pub enum ControlRequest {
     Resize { pane: u64, cols: u16, rows: u16 },
     /// U2: 로컬 파일 브라우저 탭(CP-3).
     OpenBrowser { path: Option<String> },
+    /// 파일을 nabiPad로 연다 — 에이전트가 "이 로그 좀 열어 줘"를 할 수 있게.
+    OpenEditor { path: String },
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.

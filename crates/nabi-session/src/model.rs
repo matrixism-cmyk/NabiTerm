@@ -42,6 +42,62 @@ pub struct SavedSession {
     /// true면 SSH 터미널 연결과 동시에 SFTP 브라우저도 함께 연다(저장 세션 클릭 시).
     #[serde(default)]
     pub open_sftp: bool,
+    /// 이 세션의 표식(운영/스테이징/개발…). 사이드바·탭·상태바에 색으로 나타난다.
+    ///
+    /// **연결하기 전부터 보여야** 뜻이 있다 — 운영 서버라는 것을 알고 눌러야 하기 때문이다.
+    /// 그래서 실행 중 탭 색(`app.tab_colors`)과 달리 세션에 저장한다.
+    #[serde(default)]
+    pub tag: SessionTag,
+}
+
+/// 세션 표식. 색과 뜻을 함께 묶는다 — 색만 고르게 하면 사람마다 뜻이 달라진다.
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SessionTag {
+    /// 표식 없음(기존 세션의 기본값).
+    #[default]
+    None,
+    /// 운영 — 되돌릴 수 없는 일이 일어나는 곳.
+    Prod,
+    /// 스테이징.
+    Staging,
+    /// 개발·시험.
+    Dev,
+    /// 개인 표식(뜻은 사용자가 정한다).
+    Note,
+}
+
+impl SessionTag {
+    /// 화면에 쓸 색 (r, g, b). 색만으로 구분하지 않도록 라벨과 늘 함께 쓴다(색각 이상 배려).
+    pub fn rgb(self) -> (u8, u8, u8) {
+        match self {
+            SessionTag::None => (120, 130, 145),
+            SessionTag::Prod => (214, 72, 72),
+            SessionTag::Staging => (222, 158, 54),
+            SessionTag::Dev => (86, 166, 106),
+            SessionTag::Note => (108, 140, 214),
+        }
+    }
+
+    /// i18n 키(라벨).
+    pub fn key(self) -> &'static str {
+        match self {
+            SessionTag::None => "tag.none",
+            SessionTag::Prod => "tag.prod",
+            SessionTag::Staging => "tag.staging",
+            SessionTag::Dev => "tag.dev",
+            SessionTag::Note => "tag.note",
+        }
+    }
+
+    /// **되돌릴 수 없는 곳인가.** 붙여넣기·일괄 실행 전에 한 번 더 묻는 기준이다.
+    pub fn is_risky(self) -> bool {
+        matches!(self, SessionTag::Prod)
+    }
+
+    /// 고를 수 있는 전체 목록(설정 UI·컨텍스트 메뉴가 공유 — SSOT).
+    pub const ALL: [SessionTag; 5] =
+        [SessionTag::None, SessionTag::Prod, SessionTag::Staging, SessionTag::Dev, SessionTag::Note];
 }
 
 impl SavedSession {

@@ -17,6 +17,7 @@ pub fn api_doc() -> serde_json::Value {
             "close-pane": { "params": ["pane"], "doc": "pane 닫기" },
             "resize": { "params": ["pane", "cols", "rows"], "doc": "그리드 크기" },
             "open-browser": { "params": ["path?"], "doc": "파일 브라우저 탭" },
+            "open-file": { "params": ["path"], "doc": "파일을 nabiPad 편집기로 연다" },
             "open-sftp": { "params": ["session"], "doc": "저장 세션 SFTP 탭" },
             "wait": { "params": ["pane", "until", "timeout_ms", "match_text?", "match_regex?"], "doc": "조건 대기: exit|command-done|idle|output(+패턴)|agent:<state>" },
             "tail": { "params": ["pane"], "doc": "출력 스트림" },

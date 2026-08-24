@@ -26,6 +26,7 @@ impl NabiApp {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         };
         self.open_sftp_saved(session, false);
     }

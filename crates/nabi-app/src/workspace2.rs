@@ -26,6 +26,7 @@ impl NabiApp {
                             cwd,
                             is_ftp: false,
                             open_sftp: false,
+                            tag: Default::default(),
                         },
                         *p,
                     )

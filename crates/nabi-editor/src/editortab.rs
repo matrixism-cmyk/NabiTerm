@@ -15,6 +15,11 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
         doc.dirty = doc.hex.as_ref().map(|h| h.dirty).unwrap_or(false);
         return act;
     }
+    if doc.huge.is_some() {
+        let act = crate::textview::huge_view(ui, doc, lang); // 용량 제한 없는 편집기(N5).
+        doc.dirty = doc.huge.as_ref().map(|t| t.dirty).unwrap_or(false); // 탭 제목 * 동기화.
+        return act;
+    }
     if doc.edit.is_some() {
         let act = crate::editbufview::edit_view(ui, doc, lang); // 대용량 rope 편집기(E6).
         doc.dirty = doc.edit.as_ref().map(|e| e.dirty).unwrap_or(false); // 탭 제목 * 동기화.

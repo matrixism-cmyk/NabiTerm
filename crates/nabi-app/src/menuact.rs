@@ -180,6 +180,7 @@ impl NabiApp {
             }
             MenuAction::OpenNabiPad => self.open_empty_pad(),
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
+            MenuAction::SetSessionTag(name, tag) => self.set_session_tag(&name, tag),
             MenuAction::RenameGroup(old, new) => self.rename_folder(&old, &new),
             MenuAction::DisbandGroup(f) => self.rename_folder(&f, ""),
             MenuAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),

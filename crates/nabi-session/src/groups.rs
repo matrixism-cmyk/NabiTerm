@@ -38,7 +38,7 @@ mod tests {
         SavedSession {
             name: name.into(), folder: folder.map(str::to_string),
             kind: SessionKind::Local { shell: "pwsh".into() },
-            on_connect: None, cwd: None, is_ftp: false, open_sftp: false,
+            on_connect: None, cwd: None, is_ftp: false, open_sftp: false, tag: Default::default(),
         }
     }
 

@@ -113,6 +113,7 @@ fn build_request(name: &str, a: &Value) -> Result<ControlRequest, String> {
             rows: n("rows").ok_or("rows 인자 필요")? as u16,
         },
         "nabi_open_browser" => ControlRequest::OpenBrowser { path: s("path") },
+        "nabi_open_file" => ControlRequest::OpenEditor { path: s("path").unwrap_or_default() },
         "nabi_open_sftp" => {
             ControlRequest::OpenSftp { session: s("session").ok_or("session 인자 필요")? }
         }

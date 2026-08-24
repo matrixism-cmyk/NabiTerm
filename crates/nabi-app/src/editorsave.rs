@@ -11,15 +11,21 @@ use std::time::Instant;
 /// 원본이 반쯤 덮인 채로 남지 않는다 — HEX 원본은 우리가 매핑해 읽고 있는 바로 그 파일이라
 /// 제자리에 쓰면 읽는 도중 자기 발밑을 무너뜨리게 된다.
 fn write_doc(doc: &EditorDoc, path: &std::path::Path) -> std::io::Result<()> {
-    let Some(h) = &doc.hex else {
+    // 흘려 쓸 수 있는 문서(HEX·용량 무제한 편집기)는 조각을 순서대로 내보낸다. 둘 다 원본을
+    // 메모리에 올리지 않으므로, 저장할 때도 올리면 안 된다.
+    if doc.hex.is_none() && doc.huge.is_none() {
         return std::fs::write(path, doc_bytes(doc));
-    };
+    }
     use std::io::Write;
     let tmp = path.with_extension("nabipad-tmp");
     {
         let f = std::fs::File::create(&tmp)?;
         let mut w = std::io::BufWriter::with_capacity(1 << 20, f);
-        h.data.write_to(&mut w)?;
+        match (&doc.hex, &doc.huge) {
+            (Some(h), _) => h.data.write_to(&mut w)?,
+            (_, Some(t)) => t.data.write_to(&mut w)?,
+            _ => unreachable!("위에서 걸러진다"),
+        }
         w.flush()?;
         w.into_inner().map_err(std::io::Error::other)?.sync_all()?;
     }
@@ -101,6 +107,7 @@ impl NabiApp {
                 doc.dirty = false;
                 if let Some(eb) = doc.edit.as_mut() { eb.mark_saved(); }
                 if let Some(h) = doc.hex.as_mut() { h.dirty = false; }
+                if let Some(t) = doc.huge.as_mut() { t.dirty = false; t.break_group(); }
                 format!("\u{2713} {}", doc.title)
             }
             Err(e) => format!("\u{2715} {e}"),
@@ -146,7 +153,7 @@ impl NabiApp {
             return;
         }
         if let Some(d) = self.editors.get_mut(&pane) {
-            if d.hex.is_none() && d.edit.is_none() && d.big.is_none() {
+            if d.hex.is_none() && d.edit.is_none() && d.big.is_none() && d.huge.is_none() {
                 d.text = format_on_save(&d.text, trim, fnl, d.eol);
             }
         }
@@ -193,6 +200,7 @@ impl NabiApp {
             d.dirty = false;
             if let Some(eb) = d.edit.as_mut() { eb.mark_saved(); }
             if let Some(h) = d.hex.as_mut() { h.dirty = false; }
+            if let Some(t) = d.huge.as_mut() { t.dirty = false; t.break_group(); }
         }
     }
 }

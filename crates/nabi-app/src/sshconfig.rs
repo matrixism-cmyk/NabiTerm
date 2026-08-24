@@ -126,6 +126,7 @@ fn flush(
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         });
     }
 }
@@ -228,6 +229,7 @@ mod tests {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         };
         assert_eq!(super::to_ssh_url(&mk("bob", 2222)).as_deref(), Some("ssh://bob@h:2222"));
         assert_eq!(super::to_ssh_url(&mk("", 22)).as_deref(), Some("ssh://h"));

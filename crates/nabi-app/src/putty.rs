@@ -91,6 +91,7 @@ fn flush(out: &mut Vec<SavedSession>, cur: Option<Cur>) {
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     });
 }
 
@@ -169,6 +170,7 @@ mod tests {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         };
         let back = parse_putty_reg(&to_putty_reg(std::slice::from_ref(&sess)));
         assert_eq!(back.len(), 1);

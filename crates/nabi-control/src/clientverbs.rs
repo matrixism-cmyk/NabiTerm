@@ -59,6 +59,9 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             rows: flag(args, "--rows").and_then(|s| s.parse().ok()).ok_or(usage)?,
         }),
         Some("open-browser") => Ok(ControlRequest::OpenBrowser { path: flag(args, "--path") }),
+        Some("open-file") => Ok(ControlRequest::OpenEditor {
+            path: flag(args, "--path").ok_or("open-file: --path 가 필요합니다")?,
+        }),
         // S6-55: 열린 SFTP 연결로 원격 목록/전송(에이전트 파일 왕복).
         Some("sftp-list") => Ok(ControlRequest::SftpList { path: flag(args, "--path").unwrap_or_else(|| ".".into()) }),
         Some("sftp-get") => Ok(ControlRequest::SftpGet {

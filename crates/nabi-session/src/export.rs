@@ -70,6 +70,7 @@ mod tests {
             cwd: None,
             is_ftp: false,
             open_sftp: false,
+            tag: Default::default(),
         });
         let json = to_json(&tree).unwrap();
         // 비밀 평문 키가 직렬화되지 않아야 한다(vault 참조만 허용).

@@ -151,6 +151,7 @@ impl NabiApp {
             cwd: None,
             is_ftp,
             open_sftp: with_sftp,
+            tag: Default::default(),
         });
         self.save_sessions();
         self.vault_unlock_open |= need_vault; // 비번 저장 실패(볼트 잠금)면 볼트 열기.

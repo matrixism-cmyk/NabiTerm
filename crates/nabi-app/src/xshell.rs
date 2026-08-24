@@ -39,6 +39,7 @@ pub(crate) fn parse_xsh(name: &str, folder: Option<String>, text: &str) -> Optio
         cwd: None,
         is_ftp: false,
         open_sftp: false,
+        tag: Default::default(),
     })
 }
 

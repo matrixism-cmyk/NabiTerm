@@ -7,6 +7,8 @@
 pub enum AppCtl {
     /// 로컬 파일 브라우저 탭 열기(경로 지정, 없으면 홈).
     OpenBrowser { path: Option<String> },
+    /// 경로를 nabiPad 편집기 탭으로 연다(크기·이진 여부에 따라 알맞은 편집기가 골라진다).
+    OpenEditor { path: String },
     /// 저장된 SFTP 세션 이름으로 원격 탭 열기.
     OpenSftp { session: String },
     /// 다음 PaneSpawned의 도킹 위치(split-right|split-down|new-window — CP-7).

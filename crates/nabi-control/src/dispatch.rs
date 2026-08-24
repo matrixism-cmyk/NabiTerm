@@ -198,6 +198,11 @@ fn dispatch_write(
             app_tx.send(AppCtl::OpenBrowser { path }).ok();
             ControlResponse::Ok
         }
+        ControlRequest::OpenEditor { path } => {
+            tracing::info!(target: "control", from = ?from, %path, "open-file");
+            app_tx.send(AppCtl::OpenEditor { path }).ok();
+            ControlResponse::Ok
+        }
         ControlRequest::OpenSftp { session } => {
             tracing::info!(target: "control", from = ?from, %session, "open-sftp");
             app_tx.send(AppCtl::OpenSftp { session }).ok();

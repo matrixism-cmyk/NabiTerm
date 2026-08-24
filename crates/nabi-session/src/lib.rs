@@ -11,5 +11,5 @@ mod model_tests;
 pub mod store;
 
 pub use export::{from_json, from_toml, to_json, to_toml, SessionExport};
-pub use model::{session_matches, SavedSession, SessionKind, SessionTree};
+pub use model::{session_matches, SavedSession, SessionKind, SessionTag, SessionTree};
 pub use store::{load_tree, load_tree_reporting, save_tree};

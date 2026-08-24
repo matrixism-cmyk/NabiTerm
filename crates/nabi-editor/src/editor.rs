@@ -32,6 +32,12 @@ pub struct EditorDoc {
     pub big: Option<crate::editbig::BigFile>,
     /// 대용량 편집 버퍼(E6 — rope). Some면 가상화 편집기로 렌더(big/text 미사용).
     pub edit: Option<crate::editbuf::EditBuf>,
+    /// **용량 제한 없는** 편집 버퍼(N5 — 조각 표+줄 인덱스). Some면 textview로 렌더.
+    ///
+    /// rope(`edit`)와 다른 점은 문서를 메모리에 올리지 않는다는 것 하나다. 그 대신 접기·
+    /// 미니맵·구문 강조가 없다 — 전부 문서 전체를 훑어야 하는 기능이라, 이 편집기가
+    /// 존재하는 이유와 정면으로 부딪힌다.
+    pub huge: Option<crate::textbuf::TextBuf>,
     /// 찾기/바꾸기/줄이동 상태(E5).
     pub find: crate::editorfind::FindState,
     /// 메뉴바 표시(nabiPad N1). 열 때 EditorConfig.show_menu_bar로 초기화.
@@ -111,7 +117,7 @@ impl EditorDoc {
     ) -> Self {
         EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
-            highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None,
+            highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None, huge: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
             lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,

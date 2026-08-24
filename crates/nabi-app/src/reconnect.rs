@@ -36,7 +36,7 @@ impl NabiApp {
         if let Some(kind) = self.pane_origins.get(&p).cloned() {
             self.connect_saved(nabi_session::SavedSession {
                 name: String::new(), folder: None, kind, on_connect: None,
-                cwd: None, is_ftp: false, open_sftp: false,
+                cwd: None, is_ftp: false, open_sftp: false, tag: Default::default(),
             });
         }
     }
@@ -48,7 +48,7 @@ impl NabiApp {
             self.orch.send(nabi_proto::Command::ClosePane { pane });
             self.connect_saved(nabi_session::SavedSession {
                 name: String::new(), folder: None, kind, on_connect: None,
-                cwd: None, is_ftp: false, open_sftp: false,
+                cwd: None, is_ftp: false, open_sftp: false, tag: Default::default(),
             });
         }
     }

@@ -29,6 +29,8 @@ impl NabiApp {
         let is_ssh = focused
             .and_then(|p| self.pane_origins.get(&p))
             .is_some_and(|k| matches!(k, nabi_session::SessionKind::Ssh { .. }));
+        // 이 pane이 어느 표식의 세션인지 — 매 프레임 다시 본다(세션 표식을 고치면 바로 반영).
+        let tag = focused.map(|p| self.pane_tag(p)).unwrap_or_default();
         // SSH 서버 통계(MobaXterm식) — 채워진 값이 있을 때만. 90% 초과면 빨강. 연결 지속시간 + OS/커널 툴팁.
         let stats = focused.and_then(|p| self.server_stats.get(&p)).filter(|s| !s.is_empty()).cloned();
         let conn = focused.and_then(|p| self.ssh_connect_time.get(&p))
@@ -104,6 +106,13 @@ impl NabiApp {
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
                 ui.colored_label(dc, format!("\u{25cf} {title}"));
                 if is_ssh { crate::statuschips::ssh_badge(ui, lang, focused); }
+                // 표식(운영/스테이징/개발) — 색만이 아니라 글자로도 적는다. 지금 어디에
+                // 명령을 치고 있는지가 상태바에서 늘 보여야 한다.
+                if tag != nabi_session::SessionTag::None {
+                    let (r, g, b) = tag.rgb();
+                    ui.separator();
+                    ui.colored_label(egui::Color32::from_rgb(r, g, b), tr(lang, tag.key()));
+                }
                 ui.separator();
                 ui.label(format!("{}: {count}", tr(lang, "status.sessions")));
                 if xfers > 0 {

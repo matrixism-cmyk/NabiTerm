@@ -218,6 +218,14 @@ impl NabiApp {
         if n > 0 { self.save_sessions(); }
     }
 
+    /// 세션의 표식(운영/개발…)을 바꾸고 저장한다.
+    pub(crate) fn set_session_tag(&mut self, name: &str, tag: nabi_session::SessionTag) {
+        if let Some(s) = self.sessions.sessions.iter_mut().find(|s| s.name == name) {
+            s.tag = tag;
+            self.save_sessions();
+        }
+    }
+
     /// 세션의 그룹(folder)을 바꾸고 저장한다(사이드바 DnD·우클릭 그룹 이동).
     pub(crate) fn set_session_folder(&mut self, name: &str, folder: Option<String>) {
         if let Some(s) = self.sessions.sessions.iter_mut().find(|s| s.name == name) {
@@ -291,6 +299,12 @@ fn side_row(
         let vis = ui.style().interact_selectable(&r, selected);
         let font = egui::TextStyle::Button.resolve(ui.style());
         // 연결 중이면 종류 아이콘을 강조색(초록)으로 — 🟢 점 대신 선두 아이콘 색으로 표시.
+        // 표식 띠(운영/스테이징/개발) — 행 왼쪽 가장자리. 목록을 훑을 때 이름보다 먼저 보인다.
+        if s.tag != nabi_session::SessionTag::None {
+            let (r8, g8, b8) = s.tag.rgb();
+            let bar = egui::Rect::from_min_size(rect.left_top(), egui::vec2(3.0, rect.height()));
+            ui.painter().rect_filled(bar, egui::CornerRadius::ZERO, egui::Color32::from_rgb(r8, g8, b8));
+        }
         let kcolor = if live { crate::theme_ui::OK } else { crate::theme_ui::session_color(s.is_ftp, is_ssh) };
         ui.painter().text(egui::pos2(rect.left() + 5.0, rect.center().y), egui::Align2::LEFT_CENTER, kind_icon(s), font.clone(), kcolor);
         // 이름(+메모 📝) — 폭 넘치면 … 말줄임.

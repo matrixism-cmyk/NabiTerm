@@ -44,6 +44,8 @@ pub(crate) enum MenuAction {
     SortSessions,
     SortSessionsByHost,
     OpenBrowserTab,
+    /// 저장 세션에 표식(운영/개발…)을 지정한다.
+    SetSessionTag(String, nabi_session::SessionTag),
     ToggleSessionsPanel,
     ToggleQcBar,
     /// AI 명령 바 표시 토글(terminal.ai_cmd_bar).

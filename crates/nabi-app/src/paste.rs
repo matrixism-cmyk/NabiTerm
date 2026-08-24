@@ -13,10 +13,32 @@ impl NabiApp {
         self.clip_history.truncate(30);
     }
 
-    /// 붙여넣기 전에 확인을 받아야 하는가 — 개행(설정 연동) 또는 유니코드 속임.
-    fn paste_needs_confirm(&self, text: &str) -> bool {
+    /// 붙여넣기 전에 확인을 받아야 하는가 — 개행(설정 연동)·유니코드 속임·**운영 세션**.
+    ///
+    /// 운영 표식이 붙은 세션에는 한 줄이라도 확인을 받는다. 사고는 대개 짧은 명령에서
+    /// 난다(`rm -rf`는 한 줄이다). 표식을 붙여 두고도 아무 일이 없으면 표식은 장식이다.
+    fn paste_needs_confirm(&self, pane: nabi_types::PaneId, text: &str) -> bool {
         let t = &self.config.terminal;
-        nabi_render::paste::needs_confirm_any(t.warn_paste_newline, t.warn_paste_unicode, text)
+        self.pane_tag(pane).is_risky()
+            || nabi_render::paste::needs_confirm_any(t.warn_paste_newline, t.warn_paste_unicode, text)
+    }
+
+    /// 이 pane이 어느 표식의 세션에서 왔는가.
+    ///
+    /// pane별로 표식을 따로 들고 다니지 않고 **출처(SessionKind)로 저장 세션을 되찾는다.**
+    /// 사본을 두면 사용자가 세션 표식을 고친 뒤에도 열려 있던 pane은 옛 표식을 들고 있게 된다.
+    /// 같은 접속 정보가 여러 세션에 있으면 그중 가장 위험한 것을 따른다(안전한 쪽으로).
+    pub(crate) fn pane_tag(&self, pane: nabi_types::PaneId) -> nabi_session::SessionTag {
+        let Some(origin) = self.pane_origins.get(&pane) else {
+            return nabi_session::SessionTag::None;
+        };
+        self.sessions
+            .sessions
+            .iter()
+            .filter(|s| &s.kind == origin)
+            .map(|s| s.tag)
+            .max_by_key(|t| t.is_risky())
+            .unwrap_or_default()
     }
 
     /// pane이 bracketed paste 모드인가(모르면 false).
@@ -42,7 +64,7 @@ impl NabiApp {
         let Some(pane) = self.focused_pane() else { return };
         let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
         // 확인 판단은 공용 함수 하나로 — 입구마다 규칙이 다르면 안전장치가 아니다.
-        if self.paste_needs_confirm(&text) {
+        if self.paste_needs_confirm(pane, &text) {
             self.pending_paste = Some((pane, data));
             return;
         }
@@ -59,7 +81,7 @@ impl NabiApp {
             return;
         }
         let data = crate::paneio::wrap_paste(&text, self.pane_bracketed(pane));
-        if self.paste_needs_confirm(&text) {
+        if self.paste_needs_confirm(pane, &text) {
             self.pending_paste = Some((pane, data));
             return;
         }
@@ -85,18 +107,20 @@ impl NabiApp {
         if ctx.memory(|m| m.focused().is_some()) || egui::Popup::is_any_open(ctx) {
             return;
         }
+        // 표식(운영 세션) 확인에 pane이 필요하니 먼저 구한다. 터미널 pane이 아니면 관여하지 않는다.
+        let Some(pane) = self.focused_pane() else {
+            return;
+        };
         let risky = ctx.input(|i| {
             i.events
                 .iter()
-                .any(|e| matches!(e, egui::Event::Paste(s) if self.paste_needs_confirm(s)))
+                .any(|e| matches!(e, egui::Event::Paste(s) if self.paste_needs_confirm(pane, s)))
         });
         if !risky {
             return;
         }
         // 포커스가 터미널 pane일 때만(원격 SFTP 패널 제외).
-        let Some(p) = self.focused_pane() else {
-            return;
-        };
+        let p = pane;
         if Some(p) == self.sftp_pane || self.sftp_bg.contains_key(&p) {
             return;
         }
@@ -117,6 +141,7 @@ impl NabiApp {
         let lines = data.iter().filter(|&&b| b == b'\n').count() + 1;
         let clean = String::from_utf8_lossy(&data).replace("\x1b[200~", "").replace("\x1b[201~", "");
         let risks = nabi_render::pastedeceive::scan(&clean);
+        let prod = self.pane_tag(pane).is_risky(); // 운영 세션이면 이유를 함께 보여 준다.
         let (mut paste, mut strip, mut cancel) = (false, false, false);
         // 분리 창 위로 확실히 띄운다 — 공통 Foreground 모달(z-order 일관화).
         crate::modal::foreground_modal(ctx, "paste_confirm", |ui| {
@@ -124,6 +149,10 @@ impl NabiApp {
             ui.heading(nabi_i18n::tr(lang, if lines > 1 { "paste.title" } else { "paste.title.one" }));
             if lines > 1 {
                 ui.label(format!("{} ({} lines)", nabi_i18n::tr(lang, "paste.body"), lines));
+            }
+            if prod {
+                ui.add_space(4.0);
+                ui.colored_label(crate::theme_ui::ERR, format!("\u{26a0} {}", nabi_i18n::tr(lang, "paste.prod")));
             }
             if !risks.is_empty() {
                 ui.add_space(4.0);

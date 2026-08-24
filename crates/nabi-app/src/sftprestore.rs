@@ -106,6 +106,7 @@ fn to_session(s: SftpSave) -> nabi_session::SavedSession {
         cwd: None,
         is_ftp: s.is_ftp,
         open_sftp: false,
+        tag: Default::default(),
     }
 }
 

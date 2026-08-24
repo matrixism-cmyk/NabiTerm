@@ -8,6 +8,14 @@ use nabi_proto::Command;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+/// 이 크기를 넘으면 rope 대신 **흘려 읽기 편집기**로 연다.
+///
+/// rope는 문서를 통째로 RAM에 올린다. 64MB 로그를 열면 64MB를 먹고 여는 데도 몇 초가 걸린다.
+/// 흘려 읽기 편집기는 즉시 열리고 메모리가 편집 횟수에 비례한다. 대신 접기·미니맵·구문
+/// 강조가 없는데, 이 크기에서는 어차피 구문 강조가 꺼지고(`editorhl::MAX_SYNTAX_BYTES`=2MB)
+/// 나머지도 느리다. 그래서 이 선 위에서는 흘려 읽기 쪽이 모든 면에서 낫다.
+const HUGE_THRESHOLD: u64 = 64_000_000;
+
 impl NabiApp {
     /// 포커스 pane을 새 nabiPad 문서로 연다 — 선택 영역이 있으면 그 부분만, 없으면 전체 스크롤백.
     pub(crate) fn edit_scrollback_in_pad(&mut self) {
@@ -87,7 +95,7 @@ impl NabiApp {
             self.add_editor_tab(EditorDoc {
                 title, path, remote: None, text: String::new(), dirty: false, loaded: true,
                 font_size: self.font_size, encoding, eol: "-", highlight: false,
-                wrap: false, show_ws: false, readonly: true, big: Some(big), edit: None,
+                wrap: false, show_ws: false, readonly: true, big: Some(big), edit: None, huge: None,
                 find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
                 diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
                 lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
@@ -98,6 +106,8 @@ impl NabiApp {
     }
 
     /// 대용량(2MB~EDIT_CAP) → rope 가상화 편집기 탭(E6).
+    ///
+    /// rope는 문서를 통째로 RAM에 올리므로 그 위(512MB 초과)는 [`open_huge_editor`]가 맡는다.
     fn open_rope_editor(&mut self, path: PathBuf) {
         match crate::editbuf::EditBuf::open(&path) {
             Some(mut eb) => {
@@ -108,8 +118,26 @@ impl NabiApp {
                 doc.edit = Some(eb);
                 self.add_editor_tab(doc);
             }
-            None => self.open_big_viewer(path), // EDIT_CAP(512MB) 초과: 메모리 보호로 읽기 전용 뷰어.
+            None => self.open_huge_editor(path),
         }
+    }
+
+    /// 초대용량 → **용량 제한 없는 편집기**(N5). 파일을 메모리에 올리지 않는다.
+    ///
+    /// 예전에는 여기서 읽기 전용 뷰어로 떨어뜨렸다("대용량이면 편집을 눌러도 뷰어로 열린다" —
+    /// 사용자 지적). 이제는 편집이 된다. 그래도 열 수 없는 경우(CR 전용 줄바꿈 등)에만
+    /// 뷰어로 물러난다.
+    fn open_huge_editor(&mut self, path: PathBuf) {
+        let Ok(data) = nabi_editor::textdata::TextData::open(&path) else {
+            return self.open_big_viewer(path);
+        };
+        let (title, encoding, eol) = (file_name(&path), data.encoding().to_string(), data.eol);
+        // 어떤 편집기가 골라졌는지 로그에 남긴다 — 사후 진단과 e2e 확인에 쓴다.
+        tracing::info!(target: "editor", file = %path.display(), bytes = data.total(), lines = data.lines(), "huge-editor");
+        let mut doc = EditorDoc::make(title, path, None, String::new(), true, self.font_size, encoding, eol);
+        doc.highlight = false; // 이 편집기에는 구문 강조가 없다(문서 전체를 훑어야 한다).
+        doc.huge = Some(nabi_editor::textbuf::TextBuf::new(data));
+        self.add_editor_tab(doc);
     }
 
     /// 로컬 파일을 강제로 HEX 편집기로 연다(텍스트 파일도 바이트로 — 브라우저 'HEX로 열기').
@@ -153,8 +181,12 @@ impl NabiApp {
             return;
         }
         let len = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        if len > HUGE_THRESHOLD {
+            self.open_huge_editor(path); // 흘려 읽기 편집기 — 파일을 메모리에 올리지 않는다.
+            return;
+        }
         if len > crate::editbig::BIG_THRESHOLD {
-            self.open_rope_editor(path); // 대용량도 rope 편집기로(편집 가능). EDIT_CAP 초과만 내부에서 읽기 전용 폴백.
+            self.open_rope_editor(path); // 2MB~64MB는 rope(접기·미니맵을 쓸 수 있다).
             return;
         }
         match std::fs::read(&path) {

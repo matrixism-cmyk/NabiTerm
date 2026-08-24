@@ -38,6 +38,24 @@ pub(crate) fn session_menu_items(ui: &mut egui::Ui, s: &SavedSession, lang: Lang
         if ui.button(tr(lang, "menu.splitright")).clicked() { action = Some(MenuAction::SplitConnect(s.clone(), true)); ui.close(); }
         if ui.button(tr(lang, "menu.splitdown")).clicked() { action = Some(MenuAction::SplitConnect(s.clone(), false)); ui.close(); }
     });
+    // 표식(운영/스테이징/개발…) — 연결 전에 어떤 서버인지 알아보게 하는 안전장치다.
+    ui.menu_button(tr(lang, "sessions.settag"), |ui| {
+        for t in nabi_session::SessionTag::ALL {
+            let (r, g, b) = t.rgb();
+            let dot = egui::RichText::new("\u{25cf}").color(egui::Color32::from_rgb(r, g, b));
+            let picked = ui
+                .horizontal(|ui| {
+                    ui.label(dot);
+                    // 색만으로 구분하지 않는다 — 라벨을 늘 함께 둔다(색각 이상 배려).
+                    ui.selectable_label(s.tag == t, tr(lang, t.key())).clicked()
+                })
+                .inner;
+            if picked {
+                action = Some(MenuAction::SetSessionTag(s.name.clone(), t));
+                ui.close();
+            }
+        }
+    });
     // 그룹 이동(DnD 대안) — 기존 그룹/그룹 없음으로.
     ui.menu_button(tr(lang, "sessions.movegroup"), |ui| {
         if s.folder.is_some() && ui.button(tr(lang, "sessions.nogroup")).clicked() {
