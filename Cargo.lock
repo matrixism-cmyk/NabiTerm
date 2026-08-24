@@ -3150,6 +3150,7 @@ dependencies = [
  "chrono",
  "egui",
  "encoding_rs",
+ "memchr",
  "memmap2",
  "nabi-config",
  "nabi-fs",

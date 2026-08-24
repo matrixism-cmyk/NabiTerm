@@ -194,6 +194,18 @@ impl HexData {
         self.pieces = merged;
     }
 
+    /// 조각을 순서대로 훑으며 `(시작 오프셋, 바이트)`를 넘긴다 — **복사하지 않는다.**
+    ///
+    /// 줄 인덱스를 세우거나 전체를 훑어 검색할 때 쓴다. `read`로 같은 일을 하면 문서 크기만큼
+    /// 복사본이 생기지만, 여기서는 원본 매핑을 그대로 빌려주므로 1GB든 10GB든 추가 메모리가 없다.
+    pub fn scan_chunks(&self, mut f: impl FnMut(usize, &[u8])) {
+        let mut seen = 0usize;
+        for p in &self.pieces {
+            f(seen, self.src(p));
+            seen += p.len;
+        }
+    }
+
     /// 전체를 순서대로 흘려 쓴다(저장). 문서를 메모리에 모으지 않는다.
     pub fn write_to(&self, w: &mut impl Write) -> IoResult<()> {
         for p in &self.pieces {

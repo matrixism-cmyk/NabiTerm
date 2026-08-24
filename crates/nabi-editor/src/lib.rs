@@ -26,6 +26,8 @@ pub mod edithexmenu;
 pub mod edithexops;
 pub mod edithexview;
 pub mod editload;
+pub mod textdata;
+pub mod textindex;
 pub mod editmenugroups;
 pub mod editor;
 pub mod editoralign;

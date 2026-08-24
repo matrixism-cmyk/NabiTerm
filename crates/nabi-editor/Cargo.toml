@@ -14,6 +14,7 @@ nabi-config = { workspace = true }   # EditorConfig(구문 테마·확장자 매
 egui = { workspace = true }
 ropey = "1"                # 대용량 파일 편집 엔진.
 memmap2 = "0.9"            # 대용량 파일 뷰어 mmap.
+memchr = "2"               # 대용량 줄 인덱스 개행 스캔(SIMD) — textindex.
 encoding_rs = { workspace = true }
 unicode-segmentation = { workspace = true }
 sha2 = { workspace = true }
