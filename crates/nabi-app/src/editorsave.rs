@@ -98,11 +98,14 @@ impl NabiApp {
         }
         let Some(path) = dlg.save_file() else { return };
         self.apply_save_format(pane); // VS Code식 저장 시 정리.
+        let dir = self.cfg_dir();
         let Some(doc) = self.editors.get_mut(&pane) else { return };
         let msg = match write_doc(doc, &path) {
             Ok(()) => {
                 doc.title = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                 doc.path = path;
+                // 이제 파일이 생겼으니 복구본은 필요 없다.
+                crate::padrecover::drop_one(&dir, pane.0);
                 doc.remote = None; // 로컬 파일로 전환.
                 doc.dirty = false;
                 if let Some(eb) = doc.edit.as_mut() { eb.mark_saved(); }

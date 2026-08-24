@@ -14,6 +14,9 @@ impl NabiApp {
         }
         // 워크스페이스는 항상 저장(복원 여부는 시작 시 설정이 결정).
         self.save_workspace();
+        // 여기까지 왔다 = 정상 종료. 복구본을 비운다 — 다음 실행에 뭔가 남아 있으면
+        // 그것 자체가 "지난번은 비정상이었다"는 신호가 된다.
+        crate::padrecover::clear(&self.cfg_dir());
         std::process::exit(0);
     }
 

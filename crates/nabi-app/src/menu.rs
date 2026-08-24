@@ -35,6 +35,8 @@ pub(crate) enum MenuAction {
     ImportFileZilla,
     ImportMobaXterm,
     ImportPuTTY,
+    /// WinSCP 사이트 가져오기(레지스트리 또는 WinSCP.ini).
+    ImportWinScp,
     ImportXshell,
     ExportFileZilla,
     ExportMobaXterm,

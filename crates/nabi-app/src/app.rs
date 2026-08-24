@@ -22,6 +22,8 @@ pub struct NabiApp {
     pub ai_prof_open: bool,
     /// 시작 스플래시가 뜬 시각. None이면 이미 걷혔거나 설정에서 껐다는 뜻(splash.rs).
     pub splash_since: Option<std::time::Instant>,
+    /// 지난 실행이 비정상 종료라 되살릴 수 있는 미저장 문서들(padrecover). 비면 물어보지 않는다.
+    pub pad_recover: Vec<crate::padrecover::Recovered>,
     /// 프로필 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것. 창이 닫히면 비운다.
     pub ai_prof_backup: Option<Vec<nabi_config::AiProfileCfg>>,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).

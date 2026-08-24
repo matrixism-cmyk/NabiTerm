@@ -86,6 +86,19 @@ impl NabiApp {
                     self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell", "xshell");
                 }
             }
+            MenuAction::ImportWinScp => {
+                // WinSCP는 설치 방식에 따라 레지스트리 또는 WinSCP.ini에 둔다 — 둘 다 찾아본다.
+                let text = crate::winscp::find_config().or_else(|| {
+                    rfd::FileDialog::new()
+                        .add_filter("WinSCP.ini / .reg", &["ini", "reg"])
+                        .pick_file()
+                        .and_then(|p| std::fs::read(p).ok())
+                        .map(|b| crate::editload::decode(&b).0)
+                });
+                if let Some(t) = text {
+                    self.import_sessions(crate::winscp::parse(&t), "menu.importwinscp", "winscp");
+                }
+            }
             MenuAction::ImportPuTTY => {
                 // PuTTY는 세션을 레지스트리에 둔다 — reg.exe로 export해 파싱. 실패 시 .reg 파일 선택.
                 let text = crate::putty::export_registry_text().or_else(|| {

@@ -24,6 +24,8 @@ impl eframe::App for NabiApp {
             if self.config.appearance.splash {
                 self.splash_since = Some(std::time::Instant::now());
             }
+            // 지난 실행이 비정상 종료였는지 확인 — 미저장 문서가 남아 있으면 되살릴지 묻는다.
+            self.load_pad_recovery();
             // 첫 프레임이 떴다 = 그래픽 초기화를 무사히 통과했다. 표식을 지운다(gpupick).
             crate::gpupick::mark_ok();
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
@@ -119,6 +121,7 @@ impl eframe::App for NabiApp {
         self.show_shellinteg_prompt(ctx); // 셸 통합 설치 권장 모달.
         self.show_floating(ctx);
         self.show_docked_floats(ctx); // "창 안에 띄우기" 오버레이(P3).
+        self.show_pad_recovery(ctx); // 지난 실행에서 잃을 뻔한 문서 되살리기.
         self.show_vault_unlock(ctx);
         // 스플래시는 **맨 마지막**에 그린다 — 무엇 위에든 덮여야 한다.
         if let Some(t) = self.splash_since {
