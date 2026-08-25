@@ -37,6 +37,8 @@ pub fn dispatch(
     match req {
         ControlRequest::Hello { .. } => ControlResponse::Ok,
         ControlRequest::ListPanes => crate::dispatchread::list_panes(panes),
+        // 읽기 전용 진단 — 휠/붙여넣기가 왜 그렇게 도는지 추측하지 않고 확인한다.
+        ControlRequest::PaneModes { pane } => crate::dispatchread::pane_modes(panes, pane),
         ControlRequest::Capture { pane, lines, start, end, escapes } => {
             tracing::info!(target: "control", from = ?from, pane, lines, "capture");
             crate::dispatchread::capture(panes, pane, lines, start, end, escapes)

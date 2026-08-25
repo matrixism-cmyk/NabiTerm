@@ -88,3 +88,32 @@ pub(crate) fn shell_from_str(s: &str) -> ShellKind {
 pub(crate) fn err(m: &str) -> ControlResponse {
     ControlResponse::Err { message: m.to_string() }
 }
+
+/// pane의 **터미널 모드**를 그대로 돌려준다 — "왜 휠이 안 돼요" 같은 물음에 추측 없이 답하려고.
+///
+/// 대체 화면·마우스 보고·DEC 1007·bracketed paste·커서 키 모드는 눈으로 볼 수 없는데,
+/// 휠·붙여넣기·키 입력의 동작을 전부 좌우한다. 실제로 2026-08-25에 "예전엔 휠로 이전 내용이
+/// 보였는데 안 보인다"는 보고를 받고, 앱이 무엇을 켰는지 몰라 한참 추측해야 했다.
+/// 이 값이 있으면 한 번 물어보면 끝난다.
+pub(crate) fn pane_modes(panes: &SharedPanes, pane: u64) -> ControlResponse {
+    let Ok(map) = panes.read() else {
+        return err("pane 레지스트리 잠금 실패");
+    };
+    let Some(v) = map.get(&nabi_types::PaneId(pane)) else {
+        return err("그런 pane이 없습니다");
+    };
+    let Ok(m) = v.model.lock() else {
+        return err("pane 모델 잠금 실패");
+    };
+    ControlResponse::Modes {
+        pane,
+        alt_screen: m.alt_screen(),
+        mouse_on: m.mouse_on(),
+        alt_scroll: m.alt_scroll(),
+        bracketed_paste: m.bracketed_paste(),
+        app_cursor: m.app_cursor(),
+        kitty_keys: m.kitty_keys(),
+        scrollback_lines: m.history_size(),
+        scroll_offset: m.scrollback_offset(),
+    }
+}

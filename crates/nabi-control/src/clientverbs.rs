@@ -59,6 +59,9 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             rows: flag(args, "--rows").and_then(|s| s.parse().ok()).ok_or(usage)?,
         }),
         Some("open-browser") => Ok(ControlRequest::OpenBrowser { path: flag(args, "--path") }),
+        Some("pane-modes") => Ok(ControlRequest::PaneModes {
+            pane: flag(args, "--pane").and_then(|v| v.parse().ok()).ok_or("pane-modes: --pane 이 필요합니다")?,
+        }),
         Some("open-file") => Ok(ControlRequest::OpenEditor {
             path: flag(args, "--path").ok_or("open-file: --path 가 필요합니다")?,
         }),

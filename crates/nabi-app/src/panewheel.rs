@@ -41,32 +41,42 @@ pub(crate) enum WheelTo {
 ///
 /// 규칙을 한곳에 모아 둔다 — 탭과 분리 창이 서로 다르게 굴면 창을 뗐을 때 동작이 바뀐다.
 pub(crate) fn wheel_target(c: WheelCtx) -> WheelTo {
+    // **DEC 1007은 대체 화면에서만 뜻이 있다.** xterm 규격이 그렇게 정의한다 —
+    // "Alternate Scroll 모드가 켜져 있으면 터미널이 *대체 화면을 표시하고 있을 때*
+    // 커서 위/아래를 보낸다."
+    //
+    // 우리는 그 조건을 빼먹고 주 화면에서도 1007을 따랐다. 그래서 마우스 보고와 1007을
+    // 함께 켜는 TUI(Claude Code 등)를 주 화면에서 쓰면 휠이 아무 일도 하지 않았다 —
+    // 스크롤백은 멀쩡히 쌓여 있는데 볼 방법이 없었다(사용자 보고 2026-08-25).
+    // 주 화면에는 진짜 스크롤백이 있고, 거기서 휠은 그것을 보는 도구다.
+    let c = WheelCtx { alt_scroll: c.alt_scroll && c.alt_screen, ..c };
     if c.mouse_on {
-        // 앱이 휠을 직접 받는다. 앱이 원하는 상황(대체 화면·1007)이나 Shift면 겹치지 않는다.
-        return match c.alt_screen || c.alt_scroll || c.shift {
+        // 앱이 휠을 직접 받는다. 대체 화면이거나 Shift면 우리가 겹쳐 움직이지 않는다.
+        return match c.alt_screen || c.shift {
             true => WheelTo::Nothing,
             false => WheelTo::Scrollback, // 주 화면에서는 스크롤백이 우선.
         };
     }
+    // 1007을 **대체 화면 판정보다 먼저** 본다. 뒤에 두면 아래 alt_screen 분기가 먼저
+    // 걸려 커서 키가 영영 나가지 않는다(이 순서를 놓쳐 시험이 잡았다).
+    if c.alt_scroll {
+        return WheelTo::CursorKeys;
+    }
     if c.alt_screen {
         return WheelTo::PageKeys; // 스크롤백이 없으니 Shift라도 앱에 넘긴다.
     }
-    // Shift는 앱을 건너뛰고 스크롤백을 보는 길 — 주 화면에서만 뜻이 있다.
+    // 여기부터는 주 화면 — 스크롤백이 있다.
     if c.shift {
-        return match c.alt_scroll || c.force_keys {
-            true => WheelTo::Scrollback,
-            false => WheelTo::Nothing,
-        };
+        return WheelTo::Scrollback; // Shift는 앱을 건너뛰고 우리 스크롤백을 보는 길.
     }
-    match (c.alt_scroll, c.force_keys) {
-        (true, _) => WheelTo::CursorKeys,
-        // 기록을 자기 오버레이에만 두는 TUI(codex): 오버레이가 닫혀 있으면 위로 굴릴 때
-        // 먼저 열어 준다(Ctrl+T). 이미 열려 있으면 페이지 키가 그 안에서 스크롤한다.
-        // 아래로 굴리는데 오버레이도 없다면 볼 과거가 없다 — 보내지 않는다.
-        (false, true) if c.overlay => WheelTo::PageKeys,
-        (false, true) if c.up => WheelTo::OpenTui,
-        (false, true) => WheelTo::Nothing,
-        (false, false) => WheelTo::Scrollback,
+    // 기록을 자기 오버레이에만 두는 TUI(codex): 오버레이가 닫혀 있으면 위로 굴릴 때
+    // 먼저 열어 준다(Ctrl+T). 이미 열려 있으면 페이지 키가 그 안에서 스크롤한다.
+    // 아래로 굴리는데 오버레이도 없다면 볼 과거가 없다 — 보내지 않는다.
+    match (c.force_keys, c.overlay, c.up) {
+        (true, true, _) => WheelTo::PageKeys,
+        (true, false, true) => WheelTo::OpenTui,
+        (true, false, false) => WheelTo::Nothing,
+        (false, _, _) => WheelTo::Scrollback,
     }
 }
 
@@ -177,12 +187,32 @@ mod tests {
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::PageKeys);
     }
 
-    /// DEC 1007을 켠 앱은 커서 키로, Shift면 우리 스크롤백으로 빠진다.
+    /// DEC 1007을 켠 앱은 **대체 화면에서** 커서 키를 받는다.
+    ///
+    /// 대체 화면에는 스크롤백이 없으므로 Shift로 빠져나갈 곳도 없다 — 그때도 앱에 넘긴다.
+    /// (예전에는 1007을 주 화면에서도 따랐고, 그래서 Shift가 탈출구였다. 이제 주 화면에서는
+    /// 1007을 아예 무시하므로 탈출할 일이 없다.)
     #[test]
-    fn dec1007_uses_cursor_keys_with_shift_escape() {
-        let c = WheelCtx { alt_scroll: true, ..Default::default() };
+    fn dec1007_uses_cursor_keys_on_the_alternate_screen() {
+        let c = WheelCtx { alt_scroll: true, alt_screen: true, ..Default::default() };
         assert_eq!(wheel_target(c), WheelTo::CursorKeys);
-        assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Scrollback);
+        assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::CursorKeys);
+    }
+
+    /// **주 화면에서는 1007을 따르지 않는다** — xterm 규격이 대체 화면 한정으로 정의한다.
+    ///
+    /// 이걸 지키지 않으면 스크롤백이 멀쩡히 쌓여 있는데도 휠이 그것을 못 본다.
+    /// Claude Code처럼 마우스 보고와 1007을 함께 켜는 TUI에서 실제로 그랬다(사용자 보고).
+    #[test]
+    fn dec1007_is_ignored_on_the_primary_screen() {
+        // 1007만 켠 경우 — 커서 키가 아니라 우리 스크롤백.
+        let c = WheelCtx { alt_scroll: true, ..Default::default() };
+        assert_eq!(wheel_target(c), WheelTo::Scrollback);
+        // 마우스 보고까지 켠 경우 — 예전에는 아무 일도 하지 않았다(휠이 죽었다).
+        let both = WheelCtx { alt_scroll: true, mouse_on: true, ..Default::default() };
+        assert_eq!(wheel_target(both), WheelTo::Scrollback);
+        // 대체 화면으로 넘어가면 그때는 앱 것이다.
+        assert_eq!(wheel_target(WheelCtx { alt_screen: true, ..both }), WheelTo::Nothing);
     }
 
     /// 사용자가 켠 pane: 오버레이가 닫혀 있으면 위로 굴릴 때 먼저 연다(Ctrl+T).
@@ -227,15 +257,27 @@ mod tests {
         assert_eq!(wheel_bytes(WheelTo::OpenTui, 1.0, false), Some(vec![0x14]));
     }
 
-    /// 마우스 보고를 켠 앱에는 우리가 겹쳐 움직이지 않는다(이중 스크롤 방지).
+    /// 마우스 보고를 켠 앱에는 **대체 화면에서만** 양보한다 — 주 화면엔 스크롤백이 있다.
     #[test]
     fn mouse_reporting_app_is_not_doubled() {
         let c = WheelCtx { mouse_on: true, ..Default::default() };
         assert_eq!(wheel_target(c), WheelTo::Scrollback); // 주 화면은 스크롤백이 우선.
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Nothing);
         assert_eq!(wheel_target(WheelCtx { alt_screen: true, ..c }), WheelTo::Nothing);
-        // 마우스 보고와 1007을 함께 켠 앱은 마우스 보고 쪽이 이긴다(주류 에뮬레이터와 같게).
-        assert_eq!(wheel_target(WheelCtx { alt_scroll: true, ..c }), WheelTo::Nothing);
+        // 주 화면에서 1007까지 켠 앱 — 예전에는 여기서 휠이 죽었다(Claude Code 사례).
+        assert_eq!(wheel_target(WheelCtx { alt_scroll: true, ..c }), WheelTo::Scrollback);
+    }
+
+    /// 주 화면에서 Shift+휠은 언제나 우리 스크롤백이다(앱이 무엇을 켰든).
+    #[test]
+    fn shift_wheel_always_shows_our_scrollback_on_the_primary_screen() {
+        for c in [
+            WheelCtx { shift: true, ..Default::default() },
+            WheelCtx { shift: true, alt_scroll: true, ..Default::default() },
+            WheelCtx { shift: true, force_keys: true, ..Default::default() },
+        ] {
+            assert_eq!(wheel_target(c), WheelTo::Scrollback);
+        }
     }
 
     #[test]

@@ -47,6 +47,8 @@ pub enum ControlRequest {
     OpenBrowser { path: Option<String> },
     /// 파일을 nabiPad로 연다 — 에이전트가 "이 로그 좀 열어 줘"를 할 수 있게.
     OpenEditor { path: String },
+    /// pane의 터미널 모드를 읽는다(읽기 전용 진단).
+    PaneModes { pane: u64 },
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.
@@ -118,6 +120,18 @@ pub enum ControlResponse {
     Spawned { pane: u64 },
     /// Wait/Tail 스트림 항목.
     Event { pane: u64, kind: String, data: String },
+    /// pane의 터미널 모드 스냅샷(진단) — 휠·붙여넣기·키 동작을 좌우하는 보이지 않는 상태.
+    Modes {
+        pane: u64,
+        alt_screen: bool,
+        mouse_on: bool,
+        alt_scroll: bool,
+        bracketed_paste: bool,
+        app_cursor: bool,
+        kitty_keys: u8,
+        scrollback_lines: usize,
+        scroll_offset: usize,
+    },
     Err { message: String },
 }
 
