@@ -27,6 +27,9 @@ pub struct EditorConfig {
     pub tab_size: usize,
     /// "줄바꿈" 변환이 쓸 칸 수. 80은 관례일 뿐이고 요즘은 100·120도 흔하다.
     #[serde(default = "default_wrap_col")] pub wrap_col: usize,
+    /// 세로 눈금을 그을 열들(`"80,100"`). 비우면 안 그린다.
+    #[serde(default)]
+    pub rulers: String,
     /// 탭 대신 공백으로 들여쓰기.
     pub indent_spaces: bool,
     /// 현재 줄 강조.
@@ -58,6 +61,7 @@ impl Default for EditorConfig {
             show_whitespace: false,
             tab_size: 4,
             wrap_col: 80,
+            rulers: String::new(),
             indent_spaces: true,
             highlight_current_line: true,
             trim_on_save: false,

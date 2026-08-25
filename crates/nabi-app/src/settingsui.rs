@@ -110,6 +110,11 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     ui.label(tr(lang, "editor.wrapcol"));
     ui.add(egui::Slider::new(&mut e.wrap_col, 40..=200));
     ui.end_row();
+    // 세로 눈금 — 접지 않고 규약 폭을 보여 준다(줄바꿈 폭과 다른 것이라 나란히 둔다).
+    ui.label(tr(lang, "editor.rulers"));
+    ui.add(egui::TextEdit::singleline(&mut e.rulers).hint_text("80,100").desired_width(120.0))
+        .on_hover_text(tr(lang, "editor.rulers.hint"));
+    ui.end_row();
     crate::editorsyntax::settings_ui(ui, e, lang);
 }
 

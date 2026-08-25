@@ -10,6 +10,8 @@ pub mod editbuf;
 pub mod editbufboxsel;
 pub mod editbufmatch;
 pub mod editbufvcursor;
+pub mod hexdiff;
+pub mod rulers;
 pub mod wrapcol;
 mod editortabws;
 #[cfg(test)]

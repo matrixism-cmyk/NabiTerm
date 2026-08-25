@@ -321,4 +321,12 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
         "복사할 명령 블록이 아직 없습니다.",
         "コピーできるコマンドブロックがまだありません。",
     ),
+    ("sftp.freespace", "Free space on the server", "서버의 남은 자리", "サーバーの空き容量"),
+    ("sftp.nospace", "There may not be enough space on the server.", "서버에 자리가 모자랄 수 있습니다.", "サーバーの空き容量が足りない可能性があります。"),
+    ("editor.rulers", "Column guides", "세로 눈금", "縦ガイド"),
+    ("editor.rulers.hint", "Columns to draw a faint line at, e.g. 80,100. Leave empty for none.", "선을 그을 열입니다. 예: 80,100. 비우면 안 그립니다.", "線を引く列です。例: 80,100。空欄なら描きません。"),
+    ("reach.all", "Check all servers", "서버 도달 여부 일괄 확인", "全サーバーの到達確認"),
+    ("reach.none", "No SSH sessions to check.", "확인할 SSH 세션이 없습니다.", "確認するSSHセッションがありません。"),
+    ("reach.tip", "Only checks whether the port is open — it does not log in.", "포트가 열려 있는지만 확인합니다 — 로그인은 하지 않습니다.", "ポートが開いているかのみ確認します — ログインはしません。"),
+    ("diff.hexcapped", "Only the first 64 MB of each file was compared.", "각 파일의 앞 64MB만 견줬습니다.", "各ファイルの先頭64MBのみ比較しました。"),
 ];

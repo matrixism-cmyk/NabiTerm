@@ -32,6 +32,24 @@ impl NabiApp {
             SessionKind::Ssh { host, user, port, .. } => Some(format!("{user}@{host}:{port}")), _ => None }).collect();
         let last_conn = self.config.terminal.last_connected.clone();
         let now = chrono::Local::now().timestamp();
+        // 일괄 확인 결과를 세션 이름 기준으로 한 번만 펴 둔다(행마다 잠그지 않게).
+        let reach_map: std::collections::HashMap<String, crate::reachall::Reach> = self
+            .reach_all
+            .lock()
+            .ok()
+            .map(|m| {
+                self.sessions
+                    .sessions
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        SessionKind::Ssh { host, port, .. } => {
+                            m.get(&(host.clone(), *port)).map(|r| (s.name.clone(), *r))
+                        }
+                        _ => None,
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
         let mut toggle_group: Option<String> = None;
         egui::Panel::left("sessions_sidebar")
             .default_size(200.0)
@@ -94,8 +112,9 @@ impl NabiApp {
                 let mut drag_row = |ui: &mut egui::Ui, s: &SavedSession, sel: Option<&str>, ns: &mut Option<String>| -> Option<MenuAction> {
                     let live = matches!(&s.kind, SessionKind::Ssh { host, user, port, .. } if active.contains(&format!("{user}@{host}:{port}")));
                     let last = last_conn.get(&s.name).copied();
+                    let reach = reach_map.get(&s.name).copied();
                     // 드래그 소스는 side_row 내부에서 이름 라벨에만 적용 — 우측 아이콘 클릭이 드래그에 가로채이지 않게.
-                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, live, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
+                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, RowState { live, reach }, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
                 };
                 // 선택 막대: 몇 개 골랐는지 + 한 번에 연결 / 선택 해제.
                 if !self.sidebar_marked.is_empty() {
@@ -247,6 +266,15 @@ fn kind_icon(s: &SavedSession) -> &'static str {
     }
 }
 
+/// 한 줄의 살아 있는 상태 — 인자를 하나 더 늘리는 대신 묶었다(이 함수는 이미 인자가 많다).
+#[derive(Clone, Copy, Default)]
+pub(crate) struct RowState {
+    /// 지금 연결돼 있는가.
+    pub live: bool,
+    /// 마지막 일괄 확인 결과(안 훑었으면 None).
+    pub reach: Option<crate::reachall::Reach>,
+}
+
 /// 사이드바 세션 한 줄: 클릭=연결(SSH 열기), 드래그=그룹 이동, 우클릭=메뉴, 우측 아이콘(✎편집·✕삭제·🖧SFTP·⋯더보기).
 #[allow(clippy::too_many_arguments)]
 fn side_row(
@@ -257,7 +285,7 @@ fn side_row(
     new_sel: &mut Option<String>,
     folders: &[String],
     notes: &std::collections::BTreeMap<String, String>,
-    live: bool,
+    st: RowState,
     last: Option<i64>,
     now: i64,
     marked: bool,
@@ -305,8 +333,19 @@ fn side_row(
             let bar = egui::Rect::from_min_size(rect.left_top(), egui::vec2(3.0, rect.height()));
             ui.painter().rect_filled(bar, egui::CornerRadius::ZERO, egui::Color32::from_rgb(r8, g8, b8));
         }
-        let kcolor = if live { crate::theme_ui::OK } else { crate::theme_ui::session_color(s.is_ftp, is_ssh) };
+        let kcolor = if st.live { crate::theme_ui::OK } else { crate::theme_ui::session_color(s.is_ftp, is_ssh) };
         ui.painter().text(egui::pos2(rect.left() + 5.0, rect.center().y), egui::Align2::LEFT_CENTER, kind_icon(s), font.clone(), kcolor);
+        // 일괄 확인 결과 — 이름 앞에 작은 점. 연결돼 있으면 이미 초록 아이콘이 있으므로
+        // 겹쳐 그리지 않는다.
+        if let (Some(rc), false) = (st.reach, st.live) {
+            ui.painter().text(
+                egui::pos2(rect.left() + 16.0, rect.center().y),
+                egui::Align2::LEFT_CENTER,
+                rc.mark(),
+                egui::FontId::proportional(9.0),
+                rc.color(),
+            );
+        }
         // 이름(+메모 📝) — 폭 넘치면 … 말줄임.
         let note = if notes.get(&s.name).is_some_and(|n| !n.is_empty()) { " \u{1f4dd}" } else { "" };
         let mut job = egui::text::LayoutJob::simple_singleline(format!("{}{note}", s.name), font, vis.text_color());

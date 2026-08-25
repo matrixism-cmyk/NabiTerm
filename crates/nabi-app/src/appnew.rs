@@ -209,7 +209,7 @@ impl NabiApp {
             autosave_at: std::time::Instant::now(), note_edit: None,
             alert_marks: HashMap::new(), alert_check: std::time::Instant::now(),
             auto_reply_seen: HashMap::new(), auto_reply_streak: HashMap::new(), auto_reply_check: std::time::Instant::now(), cmd_started: HashMap::new(),
-            diff_pick: None, fwd_edit: None, reconnecting: HashMap::new(), reconnect_carry: None, bundle: None,
+            diff_pick: None, fwd_edit: None, reconnecting: HashMap::new(), reconnect_carry: None, bundle: None, reach_all: Default::default(),
             pending_split: None,
             pane_font: HashMap::new(),
             pane_zoom: false,

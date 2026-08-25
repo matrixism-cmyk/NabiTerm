@@ -310,6 +310,8 @@ pub struct NabiApp {
     pub reconnect_carry: Option<(crate::backoff::Backoff, String)>,
     /// 진단 묶음 창(도움말·팔레트).
     pub bundle: Option<Vec<crate::supportbundle::Piece>>,
+    /// 세션 도달성 일괄 확인 결과 — (호스트, 포트) → 상태.
+    pub reach_all: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<(String, u16), crate::reachall::Reach>>>,
     /// 다음 PaneSpawned를 분할 배치(Some(true)=오른쪽, Some(false)=아래).
     pub pending_split: Option<bool>,
     /// pane별 글꼴 크기 오버라이드(Ctrl+휠 확대/축소). 없으면 전역 font_size.

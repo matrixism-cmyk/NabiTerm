@@ -213,6 +213,9 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         if out.response.changed() { doc.dirty = true; } crate::editorextra::apply_pending_cursor(ui, out.response.id, doc);
         crate::editorctx::editor_context_menu(&out, doc, lang, readonly, act); // 우클릭 표준 메뉴.
         if show_ws { crate::editortabws::draw_whitespace(ui, &out.galley, out.galley_pos, &mono); }
+        // 세로 눈금 — 접지 않고도 규약 폭을 넘는 줄이 보인다. 글자 뒤에 그리면 글을
+        // 가리므로 **글자 아래** 층에 흐리게 긋는다.
+        draw_rulers(ui, doc, out.galley_pos, out.galley.size().y, char_w);
         // 커서/선택(블럭)의 galley 행을 구해, 한 번 순회로 논리 줄 번호로 환산.
         let rows = &out.galley.rows;
         // 0.34: rcursor가 사라져 CCursor→행/열은 galley.layout_from_cursor로 구한다.
@@ -280,4 +283,20 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         if doc.text.len() < crate::editorhl::MAX_HL_BYTES { crate::editorextra::unicode_word_dblclick(ui, &out, &doc.text); }
     });
     (cur.0, cur.1, sel_chars)
+}
+
+/// 세로 눈금을 긋는다(설정한 열이 없으면 아무것도 안 한다).
+fn draw_rulers(ui: &egui::Ui, doc: &crate::editor::EditorDoc, origin: egui::Pos2, h: f32, char_w: f32) {
+    let cols = crate::rulers::parse_columns(&doc.rulers);
+    let xs = crate::rulers::offsets(&cols, char_w);
+    if xs.is_empty() {
+        return;
+    }
+    // 글자보다 아래 층(Background)에 그려 본문을 가리지 않는다.
+    let p = ui.painter().clone().with_layer_id(egui::LayerId::new(egui::Order::Background, ui.id().with("rulers")));
+    let color = ui.visuals().weak_text_color().gamma_multiply(0.35);
+    for x in xs {
+        let (a, b) = (egui::pos2(origin.x + x, origin.y), egui::pos2(origin.x + x, origin.y + h));
+        p.line_segment([a, b], egui::Stroke::new(1.0, color));
+    }
 }

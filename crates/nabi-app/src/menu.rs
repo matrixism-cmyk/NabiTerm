@@ -61,7 +61,8 @@ pub(crate) enum MenuAction {
     /// AI 명령 바 표시 토글(terminal.ai_cmd_bar).
     ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
-    RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenCmdHistory, OpenSupportBundle, CopyCommandBlock, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String),
+    RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenCmdHistory, OpenSupportBundle,
+    CopyCommandBlock, CheckAllReachable, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String),
     TearOff,
     DockFloat,
     Arrange(ArrangeMode),

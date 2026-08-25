@@ -18,12 +18,18 @@ impl NabiApp {
                     return None;
                 }
                 let (sort, desc) = (self.browser.sort, self.browser.sort_desc); // 활성/배경 동일 정렬.
+                let mut ask_free = None;
                 if let Some(p) = self.remote_panel_mut(id) {
                     crate::sftpentries::sort_sftp(&mut entries, sort, desc);
-                    p.path = path;
+                    p.path = path.clone();
                     p.entries = entries;
                     p.status.clear();
+                    ask_free = Some(path);
                     ctx.request_repaint();
+                }
+                // 목록을 받을 때 여유 공간도 함께 묻는다 — 올리기 전에 알아야 뜻이 있다.
+                if let Some(path) = ask_free {
+                    self.orch.send(nabi_proto::Command::SftpFreeSpace { id, path });
                 }
             }
             Event::SftpError { id, message } => {
@@ -37,6 +43,12 @@ impl NabiApp {
                 }
             }
             Event::SftpTree { seq, files, .. } => self.on_sync_tree(seq, files),
+            Event::SftpFreeSpace { id, free } => {
+                if let Some(p) = self.remote_panel_mut(id) {
+                    p.free_space = free;
+                    ctx.request_repaint();
+                }
+            }
             Event::SftpPreview { id, path, data, more, err } => {
                 if self.sftp.id == Some(id) {
                     self.preview_arrived(path, data, more, err);

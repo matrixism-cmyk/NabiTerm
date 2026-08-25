@@ -31,6 +31,8 @@ pub(crate) struct SftpPanel {
     pub is_ftp: bool,
     /// 재시작 복원 시 돌아갈 원격 경로(연결 완료 이벤트에서 1회 소비). None이면 서버 기본.
     pub restore_path: Option<String>,
+    /// 원격 파일시스템 여유 공간(모르면 None — statvfs 미지원 서버).
+    pub free_space: Option<u64>,
     pub path: String,
     pub entries: Vec<SftpEntry>,
     pub status: String,

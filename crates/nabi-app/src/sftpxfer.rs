@@ -145,6 +145,15 @@ impl NabiApp {
         size: u64,
         make: impl FnOnce(u64) -> Command,
     ) -> u64 {
+        // 올리기 전에 자리가 모자라면 알린다. **막지는 않는다** — 여유 값이 낡았을 수도,
+        // 대상이 다른 파일시스템일 수도 있다. 우리가 확신할 수 없는 것으로 사용자의 일을
+        // 멈추게 하면 안 된다. 여기가 모든 전송이 지나는 한 자리라 여기에 둔다.
+        if up && crate::freespace::will_not_fit(size, self.sftp.free_space) {
+            self.notify = Some((
+                nabi_i18n::tr(self.lang, "sftp.nospace").to_string(),
+                std::time::Instant::now(),
+            ));
+        }
         self.xfer_seq += 1;
         let xfer = self.xfer_seq;
         let mut t = Transfer::new(xfer, name, up, size);

@@ -16,10 +16,13 @@ impl NabiApp {
             self.notify = Some((tr(self.lang, "diff.need2").to_string(), Instant::now()));
             return;
         }
-        let (Ok(a), Ok(b)) = (
-            std::fs::read_to_string(self.browser.path.join(&sel[0])),
-            std::fs::read_to_string(self.browser.path.join(&sel[1])),
-        ) else {
+        let (pa, pb) = (self.browser.path.join(&sel[0]), self.browser.path.join(&sel[1]));
+        // 이진 파일이면 줄 비교가 뜻이 없다 — 바이트 자리로 견준다(hexdiff).
+        if nabi_editor::edithex::peek_is_binary(&pa) || nabi_editor::edithex::peek_is_binary(&pb) {
+            self.compare_binaries(&sel[0], &sel[1], &pa, &pb);
+            return;
+        }
+        let (Ok(a), Ok(b)) = (std::fs::read_to_string(&pa), std::fs::read_to_string(&pb)) else {
             self.notify = Some((tr(self.lang, "diff.need2").to_string(), Instant::now()));
             return;
         };
@@ -91,6 +94,54 @@ pub(crate) fn diff_lines(a: &str, b: &str) -> String {
         out.push_str(&format!("+ {line}\n"));
     }
     out
+}
+
+impl NabiApp {
+    /// 두 이진 파일을 견줘 결과를 문서로 연다.
+    ///
+    /// 통째로 읽되 상한을 둔다 — 몇 GB짜리 둘을 메모리에 올리면 앱이 죽는다. 상한까지만
+    /// 읽고 **그 사실을 화면에 적는다**(조용히 자르면 "여기까지 같다"는 거짓말이 된다).
+    fn compare_binaries(&mut self, na: &str, nb: &str, pa: &std::path::Path, pb: &std::path::Path) {
+        const MAX: u64 = 64 * 1024 * 1024;
+        let (Ok(a), Ok(b)) = (read_capped(pa, MAX), read_capped(pb, MAX)) else {
+            self.notify = Some((tr(self.lang, "diff.need2").to_string(), Instant::now()));
+            return;
+        };
+        let d = nabi_editor::hexdiff::compare(&a.0, &b.0);
+        let mut body = format!("{}\n\n", nabi_editor::hexdiff::summary(&d));
+        if a.1 || b.1 {
+            body.push_str(&format!("{}\n\n", tr(self.lang, "diff.hexcapped")));
+        }
+        for x in &d.diffs {
+            let f = |v: Option<u8>| v.map(|n| format!("{n:02x}")).unwrap_or_else(|| "--".into());
+            body.push_str(&format!("{:08x}  {}  {}\n", x.at, f(x.a), f(x.b)));
+        }
+        if d.more > 0 {
+            body.push_str(&format!("\n\u{2026} +{}\n", d.more));
+        }
+        let mut doc = EditorDoc::make(
+            format!("\u{21c4} {na} / {nb}"),
+            PathBuf::new(),
+            None,
+            body,
+            true,
+            self.font_size,
+            "UTF-8".into(),
+            "\n",
+        );
+        doc.dirty = true;
+        self.add_editor_tab(doc);
+    }
+}
+
+/// 파일을 상한까지 읽는다 — `(바이트, 잘렸는가)`.
+fn read_capped(p: &std::path::Path, max: u64) -> std::io::Result<(Vec<u8>, bool)> {
+    use std::io::Read;
+    let mut f = std::fs::File::open(p)?;
+    let mut buf = Vec::new();
+    let n = f.by_ref().take(max).read_to_end(&mut buf)?;
+    let more = n as u64 >= max;
+    Ok((buf, more))
 }
 
 #[cfg(test)]

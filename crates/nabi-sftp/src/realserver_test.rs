@@ -283,3 +283,23 @@ async fn realserver_preview_reads_only_the_head() {
         let _ = fs.remove(p).await;
     }
 }
+
+/// 여유 공간 조회를 **실 서버**에 대고 확인한다.
+///
+/// 이 값은 서버가 `statvfs` 확장을 지원할 때만 온다. 지원 여부는 서버마다 다르고,
+/// 인프로세스 서버로는 "지원한다고 답하게" 만들 수 있어 아무것도 증명하지 못한다.
+/// 여기서 확인할 것은 **둘 중 하나로 분명히 답하는가**다 — 그럴듯한 0을 내지 않는가.
+#[tokio::test]
+#[ignore = "실 SFTP 서버 필요(NABI_RT_USER + KEY/PASS)"]
+async fn realserver_free_space_is_known_or_honestly_unknown() {
+    let Some(p) = params() else { return };
+    let fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("연결");
+    let got = fs.free_space(".").await;
+    eprintln!("free_space(.) = {got:?}");
+    match got {
+        // 지원한다면 0일 리 없다 — 0이 오면 그건 "모른다"를 잘못 표현한 것이다.
+        Some(n) => assert!(n > 0, "여유를 0으로 답했다 — 모르는 것을 0으로 내면 거짓말이 된다"),
+        // 지원하지 않으면 None이어야 한다(이쪽도 올바른 답이다).
+        None => eprintln!("이 서버는 statvfs를 지원하지 않는다 — None이 맞는 답이다"),
+    }
+}

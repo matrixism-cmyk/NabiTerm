@@ -44,7 +44,8 @@ mod fileprops; mod filepropsui; mod filezilla; mod xshell; mod mobaxterm; mod pu
 
 mod floatpanels; mod floatterm; mod linkmenu; mod settingsfont; mod worklayout; mod updatemodal; mod shellintegprompt; mod agentguide; mod aicli; mod aiclipage;
 mod envcat; mod envpath; mod shelldetect; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter;
-mod cmdhistui; mod sftppreview; mod sftppreviewui; mod autoreply; mod autoreplyrun; mod diffopen; mod diffopenui; mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui; mod freespace;
+mod cmdhistui; mod sftppreview; mod sftppreviewui; mod autoreply; mod autoreplyrun; mod diffopen; mod diffopenui;
+mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui; mod freespace; mod reachall;
 #[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan;
 #[cfg(test)] mod i18nlint; mod envwsl; mod envstate; mod envrun; mod envmgr; mod envmgrui;

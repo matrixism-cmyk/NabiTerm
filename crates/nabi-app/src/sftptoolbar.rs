@@ -26,6 +26,11 @@ pub(crate) fn render_toolbar(
     ui.horizontal_wrapped(|ui| {
         let t = if sftp.host.is_empty() { tr(lang, "sftp.title").to_string() } else { sftp.host.clone() };
         ui.label(format!("\u{1f5a7} {t}"));
+        // 남은 자리 — 올리기 전에 알아야 뜻이 있다. 모르는 서버(statvfs 미지원)에서는
+        // 아무것도 적지 않는다(0으로 적으면 "가득 찼다"는 거짓말이 된다).
+        if let Some(l) = crate::freespace::label(sftp.free_space) {
+            ui.weak(l).on_hover_text(tr(lang, "sftp.freespace"));
+        }
         // ── 이동 ──
         if icon(ui, "\u{1f3e0}", lang, "sftp.home") {
             a.go = Some(".".to_string());
