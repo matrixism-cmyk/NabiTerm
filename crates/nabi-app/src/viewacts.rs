@@ -11,13 +11,13 @@ use nabi_types::PaneId;
 impl NabiApp {
     /// 탭 우클릭 'SFTP 열기' — 그 SSH pane의 출처(host/user/자격증명)로 원격 브라우저를 연다.
     pub(crate) fn open_sftp_from_pane(&mut self, p: PaneId) {
-        let Some(nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump }) =
+        let Some(nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump, agent_forward }) =
             self.pane_origins.get(&p).cloned()
         else {
             return;
         };
         let name = format!("{user}@{host}");
-        let kind = nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump };
+        let kind = nabi_session::SessionKind::Ssh { host, port, user, credential_ref, key_path, jump, agent_forward };
         let session = nabi_session::SavedSession {
             name,
             folder: None,

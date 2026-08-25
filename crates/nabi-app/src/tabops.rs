@@ -209,6 +209,7 @@ impl NabiApp {
                 credential_ref,
                 key_path,
                 jump,
+                agent_forward: fwd,
             } => {
                 let sb = self.config.terminal.scrollback;
                 let enc = self.config.terminal.encoding.clone();
@@ -230,7 +231,7 @@ impl NabiApp {
                     Some(jp) => { let mut j = nabi_proto::SshParams::password(jp.host, jp.port.unwrap_or(22), jp.user.unwrap_or_else(|| user.clone()), String::new()); j.auth = params.auth.clone(); params.with_jump(j) }
                     None => params,
                 };
-                let origin = SessionKind::Ssh { host, port, user, credential_ref: cred, key_path: kp, jump };
+                let origin = SessionKind::Ssh { host, port, user, credential_ref: cred, key_path: kp, jump, agent_forward: fwd };
                 let seq = self.register_spawn(origin, oncmd);
                 self.orch.send(nabi_proto::Command::ConnectSsh {
                     params,

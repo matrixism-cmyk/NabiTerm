@@ -20,6 +20,12 @@ pub enum SessionKind {
         /// 점프 호스트(ProxyJump, "user@bastion:22"). 비우면 직접 연결. 비밀 아님(B4).
         #[serde(default)]
         jump: Option<String>,
+        /// ssh-agent 포워딩(OpenSSH `ForwardAgent`) — 원격에서도 내 키로 서명하게 한다.
+        ///
+        /// 켜면 **그 서버가 세션 동안 내 키로 서명을 시킬 수 있다.** 키를 가져가지는
+        /// 못하지만 그 시간 동안은 나인 척할 수 있으므로, 전역이 아니라 세션마다 켠다.
+        #[serde(default)]
+        agent_forward: bool,
     },
 }
 

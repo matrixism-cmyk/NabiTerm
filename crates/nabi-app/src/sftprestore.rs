@@ -101,6 +101,7 @@ fn to_session(s: SftpSave) -> nabi_session::SavedSession {
             credential_ref: s.cred_ref,
             key_path: s.key_path,
             jump: s.jump,
+            agent_forward: false,
         },
         on_connect: None,
         cwd: None,

@@ -83,6 +83,11 @@ pub struct Appearance {
     pub window_w: f32,
     #[serde(default)]
     pub window_h: f32,
+    /// 마지막 창 위치(화면 좌표). 저장된 자리가 지금 화면 밖이면 무시한다(winpos).
+    #[serde(default)]
+    pub window_x: f32,
+    #[serde(default)]
+    pub window_y: f32,
     /// 접힌 세션 그룹 이름(사이드바에서 접기 상태 영속).
     #[serde(default)]
     pub collapsed_groups: Vec<String>,
@@ -126,6 +131,8 @@ impl Default for Appearance {
             show_clock: false,
             window_w: 0.0,
             window_h: 0.0,
+            window_x: 0.0,
+            window_y: 0.0,
             collapsed_groups: Vec::new(),
             pinned_sessions: Vec::new(),
             session_notes: std::collections::BTreeMap::new(),

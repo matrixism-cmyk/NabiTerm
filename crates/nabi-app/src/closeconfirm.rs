@@ -10,6 +10,12 @@ impl NabiApp {
             let mut cfg = self.config.clone();
             cfg.appearance.window_w = self.last_win.0;
             cfg.appearance.window_h = self.last_win.1;
+            // 크기만 기억하면 매번 창을 다시 옮겨야 한다(사용자 요청 2026-08-25).
+            // 위치가 지금 화면 밖이면 다음 실행에서 winpos가 걸러 낸다.
+            if let Some((x, y)) = self.last_pos {
+                cfg.appearance.window_x = x;
+                cfg.appearance.window_y = y;
+            }
             let _ = nabi_config::save(&self.config_path, &cfg);
         }
         // 워크스페이스는 항상 저장(복원 여부는 시작 시 설정이 결정).
@@ -17,6 +23,7 @@ impl NabiApp {
         // 여기까지 왔다 = 정상 종료. 복구본을 비운다 — 다음 실행에 뭔가 남아 있으면
         // 그것 자체가 "지난번은 비정상이었다"는 신호가 된다.
         crate::padrecover::clear(&self.cfg_dir());
+        nabi_control::discovery::clear(&self.cfg_dir()); // 밖에서 찾을 주소도 거둔다.
         std::process::exit(0);
     }
 

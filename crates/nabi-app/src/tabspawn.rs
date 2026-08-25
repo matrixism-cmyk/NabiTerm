@@ -2,6 +2,16 @@
 
 use crate::app::NabiApp;
 
+/// 탐색기 "여기서 열기"로 뜬 경우 첫 셸이 열릴 폴더. **한 번만** 쓴다.
+///
+/// 환경 변수로 넘어온다(GUI가 뜨기 전에 정해지므로 설정보다 앞선다). 두 번째 탭부터는
+/// 평소 규칙(포커스 pane의 cwd → 기본 시작 폴더)을 따라야 하므로 읽고 나서 지운다.
+fn take_start_cwd() -> Option<String> {
+    let v = std::env::var("NABI_START_CWD").ok().filter(|s| !s.is_empty())?;
+    std::env::remove_var("NABI_START_CWD");
+    std::path::Path::new(&v).is_dir().then_some(v)
+}
+
 impl NabiApp {
     /// 텍스트 파일(줄당 1개)에서 스니펫을 가져온다(기존과 중복 제거 후 추가, 영속 저장).
     pub(crate) fn import_snippets(&mut self) {
@@ -26,7 +36,7 @@ impl NabiApp {
     /// 로컬 셸을 열고 접속 후 자동 명령(on_connect)을 함께 큐잉한다(포커스 pane의 cwd 상속,
     /// 없으면 설정의 기본 시작 디렉터리, 그것도 없으면 시스템 기본).
     pub(crate) fn spawn_local_with(&mut self, shell: nabi_proto::ShellKind, on_connect: Option<String>) {
-        let cwd = self.spawn_cwd().or_else(|| {
+        let cwd = self.spawn_cwd().or_else(take_start_cwd).or_else(|| {
             let d = &self.config.terminal.default_cwd;
             (!d.is_empty() && std::path::Path::new(d).is_dir()).then(|| d.clone())
         });

@@ -65,6 +65,7 @@ mod tests {
                 credential_ref: Some("vault:1".into()),
                 key_path: None,
                 jump: None,
+                agent_forward: false,
             },
             on_connect: None,
             cwd: None,

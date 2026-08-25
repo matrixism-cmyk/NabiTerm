@@ -10,11 +10,18 @@
 AppId=nabiTerm.aeokorea
 AppName=nabiTerm
 AppVersion={#AppVer}
-AppPublisher=aeo
-DefaultDirName={autopf}\nabiTerm
+AppPublisher=Nabisori
+AppPublisherURL=https://nabisori.kr
+; 제조사\제품 두 단계로 둔다 — 설치 방식에 따라 아래 둘 중 하나가 된다.
+;   전체 설치(관리자):  C:\Program Files\Nabisori\NabiTerm
+;   내 계정만(기본):    %LOCALAPPDATA%\Programs\Nabisori\NabiTerm
+DefaultDirName={autopf}\Nabisori\NabiTerm
 DefaultGroupName=nabiTerm
 DisableProgramGroupPage=yes
-; 관리자 권한 불필요(per-user 설치 기본, 다이얼로그로 전체 설치 선택 가능).
+; **기본은 관리자 권한 없는 per-user 설치다.** Program Files를 기본으로 삼으면 자동
+; 업데이트가 매번 UAC를 띄우고 /SILENT로도 그건 막을 수 없다 — 조용한 업데이트가 이
+; 프로그램의 약속이라 그쪽을 지킨다. 전체 설치가 필요하면 아래 다이얼로그에서 "모든
+; 사용자"를 고르면 되고, 그때 경로가 Program Files가 된다.
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 OutputDir=..\dist
@@ -31,6 +38,23 @@ WizardStyle=modern
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "shellmenu"; Description: "탐색기 우클릭 메뉴에 'nabiTerm에서 열기' 추가"; GroupDescription: "추가 기능:"
+
+[Registry]
+; 탐색기 우클릭 "nabiTerm에서 열기"(사용자 요청 2026-08-25).
+;
+; HKA = per-user 설치면 HKCU, 전체 설치면 HKLM으로 알아서 간다 — 권한 상승이 필요 없다.
+; %V 는 폴더 위에서 눌렀든 폴더 안 빈 곳에서 눌렀든 그 폴더 경로를 준다.
+; 이미 nabiTerm이 떠 있으면 새 pane으로 열리고, 아니면 그 폴더에서 새로 뜬다(openhere.rs).
+Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm"; ValueType: string; ValueData: "nabiTerm에서 열기"; Flags: uninsdeletekey; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --open-here ""%V"""; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm"; ValueType: string; ValueData: "nabiTerm에서 열기"; Flags: uninsdeletekey; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --open-here ""%V"""; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Drive\shell\nabiTerm"; ValueType: string; ValueData: "nabiTerm에서 열기"; Flags: uninsdeletekey; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Drive\shell\nabiTerm"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\Drive\shell\nabiTerm\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --open-here ""%V"""; Tasks: shellmenu
 
 [Files]
 Source: "..\dist\stage\nabiTerm.exe"; DestDir: "{app}"; Flags: ignoreversion

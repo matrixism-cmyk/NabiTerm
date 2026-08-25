@@ -6,7 +6,7 @@ fn ssh(name: &str, host: &str) -> SavedSession {
     SavedSession {
         name: name.into(),
         folder: None,
-        kind: SessionKind::Ssh { host: host.into(), port: 22, user: "u".into(), credential_ref: None, key_path: None, jump: None },
+        kind: SessionKind::Ssh { host: host.into(), port: 22, user: "u".into(), credential_ref: None, key_path: None, jump: None, agent_forward: false },
         on_connect: None,
         cwd: None,
         is_ftp: false,

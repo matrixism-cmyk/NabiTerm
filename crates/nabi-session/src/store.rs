@@ -70,6 +70,7 @@ mod tests {
                 credential_ref: None,
                 key_path: None,
                 jump: None,
+                agent_forward: false,
             },
             on_connect: None,
             cwd: None,

@@ -14,6 +14,11 @@ pub struct SshParams {
     /// 점프 호스트(ProxyJump). Some이면 이 호스트를 경유해 target에 연결한다(다단계는 jump.jump로 중첩).
     #[serde(skip)]
     pub jump: Option<Box<SshParams>>,
+    /// ssh-agent 포워딩(OpenSSH `ForwardAgent`). 켜면 **그 서버가 세션 동안 내 키로 서명을
+    /// 시킬 수 있다** — 키를 가져가지는 못하지만 그 시간 동안은 나인 척할 수 있다.
+    /// 그래서 전역이 아니라 세션마다 켠다(믿는 서버에만).
+    #[serde(default)]
+    pub agent_forward: bool,
 }
 
 impl SshParams {
@@ -29,6 +34,7 @@ impl SshParams {
             user: user.into(),
             auth: SshAuth::Password(pw.into()),
             jump: None,
+            agent_forward: false,
         }
     }
 
@@ -40,7 +46,7 @@ impl SshParams {
 
     /// 실행 중인 ssh-agent의 키로 인증(키 파일·비밀번호 없이).
     pub fn agent(host: impl Into<String>, port: u16, user: impl Into<String>) -> Self {
-        Self { host: host.into(), port, user: user.into(), auth: SshAuth::Agent, jump: None }
+        Self { host: host.into(), port, user: user.into(), auth: SshAuth::Agent, jump: None, agent_forward: false }
     }
 
     /// 개인키 파일 인증(선택적 passphrase).
@@ -60,6 +66,7 @@ impl SshParams {
                 passphrase,
             },
             jump: None,
+            agent_forward: false,
         }
     }
 }

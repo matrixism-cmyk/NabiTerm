@@ -121,6 +121,7 @@ fn flush(
                 credential_ref: None,
                 key_path: key.clone(),
                 jump: jump.clone(),
+                agent_forward: false,
             },
             on_connect: None,
             cwd: None,
@@ -224,7 +225,7 @@ mod tests {
         let mk = |user: &str, port: u16| SavedSession {
             name: "x".into(),
             folder: None,
-            kind: SessionKind::Ssh { host: "h".into(), port, user: user.into(), credential_ref: None, key_path: None, jump: None },
+            kind: SessionKind::Ssh { host: "h".into(), port, user: user.into(), credential_ref: None, key_path: None, jump: None, agent_forward: false },
             on_connect: None,
             cwd: None,
             is_ftp: false,

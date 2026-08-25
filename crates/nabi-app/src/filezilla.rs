@@ -42,7 +42,7 @@ pub(crate) fn parse_filezilla(xml: &str) -> Vec<SavedSession> {
                 out.push(SavedSession {
                     name,
                     folder: Some(stack.last().cloned().unwrap_or_else(|| "filezilla".into())),
-                    kind: SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None },
+                    kind: SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None, agent_forward: false },
                     on_connect: None,
                     cwd: None,
                     is_ftp: proto != 1, // SFTP(1)=SSH 터미널, 그 외(FTP/FTPS)=FTP 브라우저.
@@ -124,7 +124,7 @@ mod tests {
         let sess = SavedSession {
             name: "My <Web>".into(),
             folder: None,
-            kind: SessionKind::Ssh { host: "a.com".into(), port: 2222, user: "al&ice".into(), credential_ref: None, key_path: None, jump: None },
+            kind: SessionKind::Ssh { host: "a.com".into(), port: 2222, user: "al&ice".into(), credential_ref: None, key_path: None, jump: None, agent_forward: false },
             on_connect: None,
             cwd: None,
             is_ftp: false,

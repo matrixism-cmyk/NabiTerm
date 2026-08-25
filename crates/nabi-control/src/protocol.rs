@@ -49,6 +49,8 @@ pub enum ControlRequest {
     OpenEditor { path: String },
     /// pane의 터미널 모드를 읽는다(읽기 전용 진단).
     PaneModes { pane: u64 },
+    /// 그 폴더에서 새 터미널을 열고 **창을 앞으로** 가져온다(탐색기 우클릭).
+    OpenHere { path: String },
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.

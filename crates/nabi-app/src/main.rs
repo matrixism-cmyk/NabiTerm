@@ -113,6 +113,7 @@ mod qcparse;
 mod paneio; mod panewheel;
 mod paneurl;
 mod osc52policy;
+mod openhere;
 mod padrecover;
 mod padrecoverui;
 mod paste;
@@ -176,6 +177,7 @@ mod winclip;
 mod windnd;
 mod whatsnew;
 mod whatsnewui;
+mod winpos;
 mod winscp;
 mod windndvirt;
 mod windndfolder;
@@ -245,6 +247,14 @@ fn main() -> eframe::Result<()> {
         let (pid, exe) = (args.get(2).cloned().unwrap_or_default(), args.get(3).cloned().unwrap_or_default());
         std::process::exit(nabi_release::run_after_exit(&pid, &exe));
     }
+    // 탐색기 우클릭 "nabiTerm에서 열기". 이미 떠 있으면 그쪽에 넘기고 조용히 끝낸다 —
+    // 창이 두 개 뜨면 사용자가 원한 것이 아니다.
+    let mut start_cwd: Option<String> = None;
+    match openhere::handle(&args) {
+        Some(openhere::Outcome::Delegated) => std::process::exit(0),
+        Some(openhere::Outcome::StartHere(p)) => start_cwd = Some(p),
+        None => {}
+    }
     // `nabi mcp`: stdio MCP 서버(제어 파이프 프록시) — Claude Code 등록:
     // `claude mcp add nabiterm -- nabi.exe mcp` (pane 안에서 상속된 env 사용).
     if args.get(1).map(String::as_str) == Some("mcp") {
@@ -261,12 +271,19 @@ fn main() -> eframe::Result<()> {
         use ::windows::Win32::System::Threading::CreateMutexW;
         let _ = CreateMutexW(None, false, ::windows::core::w!("nabiTermRunning"));
     }
+    // '여기서 열기'로 새로 뜨는 경우 첫 셸을 그 폴더에서 연다.
+    if let Some(cwd) = start_cwd.filter(|c| !c.is_empty()) {
+        std::env::set_var("NABI_START_CWD", cwd);
+    }
     // 제어 평면 디스커버리: 자식 셸들이 상속할 파이프/토큰(서버는 NabiApp::new에서).
     // 이미 설정돼 있으면 존중(외부 테스트 하니스용 — 같은 사용자 권한이라 보안 동등).
-    if std::env::var_os("NABI_CONTROL_PIPE").is_none() {
+    // 나비텀 **안의** 셸에서 나비텀을 또 실행하면 부모의 파이프·토큰이 딸려 온다.
+    // 그대로 두면 새 앱이 부모의 주소를 자기 것인 양 기록해 버린다 — 남의 것이면 새로 만든다.
+    let inherited = std::env::var("NABI_CONTROL_PIPE").unwrap_or_default();
+    if inherited.is_empty() || nabi_control::is_foreign_pipe(&inherited) {
         std::env::set_var("NABI_CONTROL_PIPE", nabi_control::pipe_name());
-    }
-    if std::env::var_os("NABI_CONTROL_TOKEN").is_none() {
+        std::env::set_var("NABI_CONTROL_TOKEN", nabi_control::gen_token()); // 짝을 함께 바꾼다.
+    } else if std::env::var_os("NABI_CONTROL_TOKEN").is_none() {
         std::env::set_var("NABI_CONTROL_TOKEN", nabi_control::gen_token());
     }
     // 콘솔 + 회전 파일 로그(설정 폴더 logs/). 가드는 종료까지 보관해야 플러시됨.
@@ -285,13 +302,20 @@ fn main() -> eframe::Result<()> {
     } else {
         (1200.0, 760.0)
     };
-    tracing::info!(w, h, "초기 창 크기 적용");
+    // 저장된 자리가 지금 화면 안에 있으면 그대로 복원한다. 모니터를 뽑았거나 배치가
+    // 바뀌었으면 보이지 않는 자리가 되므로 기본 자리에 띄운다(winpos가 판정).
+    let pos = winpos::restore_pos(&cfg, w, h);
+    tracing::info!(w, h, restored = pos.is_some(), "초기 창 크기·위치 적용");
+    let mut vp = egui::ViewportBuilder::default()
+        .with_title("nabiTerm")
+        .with_icon(appicon::butterfly())
+        .with_inner_size([w, h])
+        .with_min_inner_size([400.0, 300.0]);
+    if let Some((x, y)) = pos {
+        vp = vp.with_position([x, y]);
+    }
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("nabiTerm")
-            .with_icon(appicon::butterfly())
-            .with_inner_size([w, h])
-            .with_min_inner_size([400.0, 300.0]),
+        viewport: vp,
         // eframe 자체 창 상태 복원 비활성 — 최소화 중 스냅샷이 다음 실행을 최소화로
         // 시작시키는 문제 방지. 크기는 config(window_w/h)로 우리가 복원한다.
         persist_window: false,

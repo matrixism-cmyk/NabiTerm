@@ -57,6 +57,9 @@ impl NabiApp {
             if let (Ok(pipe), Ok(token)) =
                 (std::env::var("NABI_CONTROL_PIPE"), std::env::var("NABI_CONTROL_TOKEN"))
             {
+                // 밖에서(탐색기 우클릭 등) 우리를 찾아올 수 있게 접속 정보를 남긴다.
+                // 정상 종료 때 지우고, 남아 있어도 PID가 죽었으면 무시된다(discovery).
+                nabi_control::discovery::write(&layout.base, &pipe, &token);
                 let ctx = nabi_control::server::ServerCtx {
                     panes: orch.panes.clone(),
                     cmd_tx: orch.cmd_tx.clone(),
@@ -114,7 +117,7 @@ impl NabiApp {
             reconnect_ask: None, hostkey_prompt: None,
             trzsz: Default::default(),
             tabbar_menu: None, link_menu: None, floating_link: None, img_textures: std::collections::HashMap::new(),
-            last_win: (0.0, 0.0),
+            last_win: (0.0, 0.0), last_pos: None, raise_window: false,
             control_policy,
             control_ask_rx,
             control_pending: None,

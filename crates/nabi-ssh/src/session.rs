@@ -79,6 +79,16 @@ async fn run(
     }
 
     let channel = handle.channel_open_session().await?;
+    // ssh-agent 포워딩(세션에서 켠 경우에만). 원격에서 다시 git/ssh를 쓸 때 내 키로 서명한다.
+    // 실패해도 세션은 그대로 연다 — 포워딩이 안 될 뿐 로그인은 이미 끝났다.
+    if params.agent_forward {
+        if let Err(e) = channel.agent_forward(false).await {
+            let msg = format!("
+[{}: {e}]
+", nabi_i18n::trc("ssh.agentfwd.failed"));
+            let _ = out_tx.send((pane, Bytes::from(msg)));
+        }
+    }
     channel
         .request_pty(false, "xterm-256color", size.cols() as u32, size.rows() as u32, 0, 0, &[])
         .await?;
@@ -129,7 +139,10 @@ async fn open_authed(
         // 터널 위의 목적지도 따로 협상한다 — 재시도 때는 채널부터 다시 연다.
         let (mut thandle, old_t) = crate::legacy::connect_compat(&opts, |cfg| {
             let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
-                .with_kex_slot(kex_slot.clone());
+                .with_kex_slot(kex_slot.clone())
+                // 포워딩은 **목적지에만** 켠다. 점프 호스트는 통로일 뿐인데 거기까지 켜면
+                // 경유지 관리자에게도 내 키를 내주는 셈이 된다.
+                .with_agent_forward(params.agent_forward);
             let jh = &jhandle;
             async move {
                 let ch = jh
@@ -144,7 +157,10 @@ async fn open_authed(
     } else {
         let (mut handle, old) = crate::legacy::connect_compat(&opts, |cfg| {
             let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
-                .with_kex_slot(kex_slot.clone());
+                .with_kex_slot(kex_slot.clone())
+                // 포워딩은 **목적지에만** 켠다. 점프 호스트는 통로일 뿐인데 거기까지 켜면
+                // 경유지 관리자에게도 내 키를 내주는 셈이 된다.
+                .with_agent_forward(params.agent_forward);
             async move {
                 tokio::time::timeout(d15, client::connect(cfg, (params.host.as_str(), params.port), h))
                     .await

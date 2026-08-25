@@ -167,6 +167,7 @@ fn flush(out: &mut Vec<SavedSession>, cur: Option<Cur>) {
             credential_ref: None, // 비밀번호는 옮기지 않는다(위 모듈 주석 참고).
             key_path: c.key,
             jump: None,
+            agent_forward: false,
         },
         on_connect: None,
         cwd: None,

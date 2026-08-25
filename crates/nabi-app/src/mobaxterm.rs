@@ -90,7 +90,7 @@ fn parse_session(name: &str, val: &str, folder: Option<&str>) -> Option<SavedSes
     Some(SavedSession {
         name: name.to_string(),
         folder: folder.map(str::to_string).or_else(|| Some("mobaxterm".into())),
-        kind: SessionKind::Ssh { host: host.to_string(), port, user, credential_ref: None, key_path: None, jump: None },
+        kind: SessionKind::Ssh { host: host.to_string(), port, user, credential_ref: None, key_path: None, jump: None, agent_forward: false },
         on_connect: None,
         cwd: None,
         is_ftp: false,
@@ -135,7 +135,7 @@ mod tests {
         let sess = SavedSession {
             name: "DB".into(),
             folder: Some("Prod".into()),
-            kind: SessionKind::Ssh { host: "db.local".into(), port: 2222, user: "root".into(), credential_ref: None, key_path: None, jump: None },
+            kind: SessionKind::Ssh { host: "db.local".into(), port: 2222, user: "root".into(), credential_ref: None, key_path: None, jump: None, agent_forward: false },
             on_connect: None,
             cwd: None,
             is_ftp: false,

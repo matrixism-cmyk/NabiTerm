@@ -38,6 +38,8 @@ impl NabiApp {
             credential_ref,
             key_path,
             jump,
+            // SFTP 패널은 셸이 아니라 파일 전송만 한다 — 에이전트를 내줄 이유가 없다.
+            agent_forward: _,
         } = s.kind
         else {
             return;
@@ -69,11 +71,13 @@ impl NabiApp {
             key_path,
             credential_ref,
             jump,
+            agent_forward,
         } = &s.kind
         {
             // 볼트가 풀려 있으면 저장된 비밀번호를 미리 채운다(★로 가려져도 그대로 저장/연결되게).
             let saved_pw = credential_ref.as_ref().and_then(|k| self.vault_get(k)).unwrap_or_default();
             let qc = &mut self.quick_connect;
+            qc.agent_forward = *agent_forward;
             qc.name = s.name.clone();
             qc.folder = s.folder.clone().unwrap_or_default();
             qc.host = host.clone();
@@ -102,7 +106,7 @@ impl NabiApp {
 
     /// 현재 Quick Connect 입력을 저장 세션으로 추가/교체하고 영속화한다(비밀 제외).
     pub(crate) fn save_current_session(&mut self) {
-        let (custom, folder, host, port, user, pw, key, on_connect, save_pw, is_ftp, with_sftp, jump) = {
+        let (custom, folder, host, port, user, pw, key, on_connect, save_pw, is_ftp, with_sftp, jump, fwd) = {
             let qc = &self.quick_connect;
             (
                 qc.name.trim().to_string(),
@@ -117,6 +121,7 @@ impl NabiApp {
                 qc.is_ftp,
                 qc.with_sftp,
                 qc.jump.trim().to_string(),
+                qc.agent_forward,
             )
         };
         if host.is_empty() {
@@ -146,6 +151,7 @@ impl NabiApp {
                 credential_ref,
                 key_path: (!key.is_empty()).then_some(key),
                 jump: (!jump.is_empty()).then_some(jump),
+                agent_forward: fwd,
             },
             on_connect: (!on_connect.is_empty()).then_some(on_connect),
             cwd: None,
@@ -176,7 +182,7 @@ impl NabiApp {
 
     pub(crate) fn do_quick_connect(&mut self) {
         self.normalize_qc();
-        let (host, port, user, pw, key, oncmd) = {
+        let (host, port, user, pw, key, oncmd, fwd) = {
             let qc = &self.quick_connect;
             (
                 qc.host.trim().to_string(),
@@ -185,6 +191,7 @@ impl NabiApp {
                 qc.password.clone(),
                 qc.key_path.trim().to_string(),
                 qc.on_connect.trim().to_string(),
+                qc.agent_forward,
             )
         };
         let oncmd = (!oncmd.is_empty()).then_some(oncmd);
@@ -207,6 +214,7 @@ impl NabiApp {
             credential_ref: None,
             key_path: key_origin,
             jump: (!jump_str.is_empty()).then_some(jump_str),
+            agent_forward: fwd,
         };
         let seq = self.register_spawn(origin, oncmd);
         self.orch.send(Command::ConnectSsh {

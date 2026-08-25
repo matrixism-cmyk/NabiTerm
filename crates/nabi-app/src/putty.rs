@@ -86,7 +86,7 @@ fn flush(out: &mut Vec<SavedSession>, cur: Option<Cur>) {
     out.push(SavedSession {
         name: c.name,
         folder: Some("putty".into()),
-        kind: SessionKind::Ssh { host: c.host, port: c.port, user: c.user, credential_ref: None, key_path: None, jump: None },
+        kind: SessionKind::Ssh { host: c.host, port: c.port, user: c.user, credential_ref: None, key_path: None, jump: None, agent_forward: false },
         on_connect: None,
         cwd: None,
         is_ftp: false,
@@ -165,7 +165,7 @@ mod tests {
         let sess = SavedSession {
             name: "Web [prod]".into(),
             folder: None,
-            kind: SessionKind::Ssh { host: "a.com".into(), port: 2222, user: "al".into(), credential_ref: None, key_path: None, jump: None },
+            kind: SessionKind::Ssh { host: "a.com".into(), port: 2222, user: "al".into(), credential_ref: None, key_path: None, jump: None, agent_forward: false },
             on_connect: None,
             cwd: None,
             is_ftp: false,

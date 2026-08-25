@@ -18,6 +18,10 @@ impl eframe::App for NabiApp {
         }
         let sz = ctx.input(|i| i.viewport_rect().size());
         self.last_win = (sz.x, sz.y); // 종료 시 창 크기 저장용 추적.
+        // 창 위치도 추적한다(종료 시 저장 → 다음 실행에 그 자리로).
+        if let Some(p) = ctx.input(|i| i.viewport().outer_rect).map(|r| r.min) {
+            self.last_pos = Some((p.x, p.y));
+        }
         if !self.did_startup {
             self.did_startup = true;
             // 시작 스플래시(설정에서 끌 수 있다) — 첫 프레임이 실제로 뜬 지금부터 센다.
@@ -130,6 +134,11 @@ impl eframe::App for NabiApp {
         self.show_log_view(ctx); // 진단 로그 보기(도움말).
         self.show_find_all(ctx); // 모든 창에서 찾기.
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
+        // 밖에서 부른 요청(탐색기 '여기서 열기')이면 창을 앞으로 — 뒤에서 열리면 열린 줄 모른다.
+        if std::mem::take(&mut self.raise_window) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
         self.drain_hashes(); // 곁 스레드가 낸 파일 해시 반영.
         self.show_file_props(ctx); // 파일 속성 창.
         self.show_import_screen(ctx); // 가져오기 한 화면.

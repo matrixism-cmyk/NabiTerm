@@ -13,6 +13,10 @@ impl crate::app::NabiApp {
                         b.path = std::path::PathBuf::from(p);
                     }
                 }
+                AppCtl::OpenHere { path } => {
+                    self.spawn_local_at(path);
+                    self.raise_window = true; // 탐색기에서 부른 것이니 창이 앞으로 와야 한다.
+                }
                 AppCtl::OpenEditor { path } => {
                     self.open_editor_local(std::path::PathBuf::from(path));
                 }

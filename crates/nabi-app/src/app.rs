@@ -90,6 +90,10 @@ pub struct NabiApp {
     pub tabbar_menu: Option<egui::Pos2>, pub link_menu: Option<(String, egui::Pos2)>, pub floating_link: Option<(String, egui::Pos2)>, pub img_textures: std::collections::HashMap<u64, egui::TextureHandle>,
     /// 현재 창 크기(매 프레임 추적, 종료 시 config 저장).
     pub last_win: (f32, f32),
+    /// 마지막으로 본 창 화면 위치(x, y). 종료 시 설정에 저장한다(winpos).
+    pub last_pos: Option<(f32, f32)>,
+    /// 창을 앞으로 가져와야 하는가(탐색기 '여기서 열기' 등 밖에서 부른 경우).
+    pub raise_window: bool,
     /// 에이전트 제어 평면 권한 정책(서버와 공유) + 승인 요청 수신.
     pub control_policy: nabi_control::policy::ControlPolicy,
     pub control_ask_rx: crossbeam_channel::Receiver<(u64, nabi_control::policy::Group)>,

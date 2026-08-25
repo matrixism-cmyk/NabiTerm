@@ -34,7 +34,7 @@ pub(crate) fn parse_xsh(name: &str, folder: Option<String>, text: &str) -> Optio
     Some(SavedSession {
         name: name.to_string(),
         folder,
-        kind: SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None },
+        kind: SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None, agent_forward: false },
         on_connect: None,
         cwd: None,
         is_ftp: false,

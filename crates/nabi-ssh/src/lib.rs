@@ -11,6 +11,7 @@ pub mod channel;
 pub mod fingerprint;
 pub mod knownhosts;
 pub mod agent;
+pub mod agentfwd;
 pub mod legacy;
 pub mod handler;
 pub mod kexinfo;

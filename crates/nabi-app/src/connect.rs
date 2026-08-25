@@ -29,6 +29,8 @@ pub struct QuickConnect {
     pub with_sftp: bool,
     /// 저장 시 FTP 세션으로 표시(연결 시 FTP 브라우저로 엶).
     pub is_ftp: bool,
+    /// ssh-agent 포워딩 — 원격에서도 내 키로 서명하게 한다(믿는 서버에만).
+    pub agent_forward: bool,
 }
 
 impl Default for QuickConnect {
@@ -47,6 +49,7 @@ impl Default for QuickConnect {
             save_password: true,
             with_sftp: false,
             is_ftp: false,
+            agent_forward: false,
         }
     }
 }
@@ -135,6 +138,15 @@ impl NabiApp {
                         ui.checkbox(&mut qc.save_password, tr(lang, "qc.savepw"));
                         ui.checkbox(&mut qc.with_sftp, tr(lang, "qc.withsftp"));
                         ui.checkbox(&mut qc.is_ftp, tr(lang, "qc.ftpsession"));
+                    });
+                    // 에이전트 포워딩 — 위험을 아는 사람만 켜야 하므로 뜻을 옆에 적어 둔다.
+                    ui.horizontal(|ui| {
+                        ui.checkbox(&mut qc.agent_forward, tr(lang, "qc.agentfwd"))
+                            .on_hover_text(tr(lang, "qc.agentfwd.hint"));
+                        // 포워딩할 에이전트가 없으면 켜도 소용없다 — 미리 알려 준다.
+                        if qc.agent_forward && !nabi_ssh::agentfwd::available() {
+                            ui.colored_label(crate::theme_ui::BROADCAST, tr(lang, "qc.agentfwd.noagent"));
+                        }
                     });
                     // Enter로 즉시 연결, Esc로 닫기.
                     if ui.input(|i| i.key_pressed(egui::Key::Enter)) {

@@ -23,3 +23,7 @@ rand = { workspace = true }
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true }
+
+# 살아 있는 인스턴스 판정(discovery) — 프로세스 종료 코드만 묻는다.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_System_Threading"] }
