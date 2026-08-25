@@ -8,6 +8,9 @@
 pub mod editbig;
 pub mod editbuf;
 pub mod editbufboxsel;
+pub mod editbufmatch;
+#[cfg(test)]
+mod editbufmatchtest;
 pub mod editbufcol;
 pub mod editbufbar;
 pub mod editbuffold;

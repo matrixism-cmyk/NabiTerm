@@ -84,6 +84,10 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
             click = Some(EClick::OpenTermHere(e.name.clone()));
             ui.close();
         }
+        if !e.is_dir && ui.button(tr(lang, "sftp.preview")).clicked() {
+            click = Some(EClick::Preview(e.name.clone()));
+            ui.close();
+        }
         if !e.is_dir && ui.button(tr(lang, "sftp.edit")).clicked() {
             click = Some(EClick::Edit(e.name.clone()));
             ui.close();

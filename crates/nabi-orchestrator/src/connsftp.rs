@@ -23,6 +23,22 @@ impl Conn {
         }
     }
 
+    /// 파일 앞부분만 읽는다(미리보기) — `(바이트, 더 있는가)`.
+    ///
+    /// FTP에는 부분 읽기 통로가 없어 통째로 읽은 뒤 잘라 낸다. 회선을 아끼자고 만든
+    /// 기능인데 FTP에서만 그 이득이 없는 셈이지만, **되긴 되는 편**이 낫다 — 안 되면
+    /// 사용자는 FTP에서만 메뉴가 죽은 이유를 알 길이 없다.
+    pub(crate) async fn preview(&mut self, p: &str, max: usize) -> Result<(Vec<u8>, bool), String> {
+        match self {
+            Conn::Sftp(f) => f.preview(p, max).await,
+            Conn::Ftp(f) => {
+                let all = f.read_file(p).await?;
+                let more = all.len() > max;
+                Ok((all.into_iter().take(max).collect(), more))
+            }
+        }
+    }
+
     pub(crate) async fn list_dir(&mut self, p: &str) -> Result<Vec<FileEntry>, String> {
         match self {
             Conn::Sftp(f) => f.list_dir(p).await,

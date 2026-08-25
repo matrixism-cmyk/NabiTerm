@@ -59,6 +59,14 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
                     eb.delete_multi(true);
                 }
             }
+            // Ctrl+D / Ctrl+Shift+L — VS Code·Sublime과 같은 조합. 새로 발명한 키가 아니라
+            // 이 기능을 아는 사람의 손가락에 이미 들어 있는 키라 그대로 따른다.
+            Key::D if !m.shift => {
+                eb.add_next_match();
+            }
+            Key::L if m.shift => {
+                eb.select_all_matches();
+            }
             Key::Z if !readonly && !m.shift => eb.undo(),
             Key::Z if !readonly && m.shift => eb.redo(),
             Key::Y if !readonly => eb.redo(),

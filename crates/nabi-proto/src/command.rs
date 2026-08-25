@@ -112,6 +112,12 @@ pub enum Command {
         root: String,
         needle: String,
     },
+    /// 원격 파일 **앞부분만** 읽어 온다(미리보기). 크기를 묻지 않고 max까지만 읽는다.
+    SftpPreview {
+        id: SftpId,
+        path: String,
+        max: usize,
+    },
     /// 원격 디렉터리 총 크기 재귀 계산.
     SftpDirSize {
         id: SftpId,

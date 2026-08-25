@@ -232,3 +232,54 @@ async fn realserver_download_resume_filepart() {
     let _ = std::fs::remove_file(&local);
     let _ = std::fs::remove_file(&src);
 }
+
+/// 미리보기(앞부분만 읽기)를 **실 서버**에 대고 확인한다.
+///
+/// 인프로세스 서버는 우리가 만든 것이라 우리가 기대하는 대로만 답한다. 부분 읽기는 특히
+/// 서버 사정을 타는 곳이다 — 한 번의 read가 요청한 만큼을 다 주지 않고 쪼개서 주는 서버가
+/// 흔하다. 그걸 안 겪어 보면 "한 번 읽고 끝"이라는 잘못된 코드가 시험을 통과한다.
+#[tokio::test]
+#[ignore = "실 SFTP 서버 필요(NABI_RT_USER + KEY/PASS)"]
+async fn realserver_preview_reads_only_the_head() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("연결");
+    let base = format!("nabi-prev-{}", std::process::id());
+
+    // ① 상한보다 확실히 큰 파일 — 앞부분만 오고, 더 있다고 말해야 한다.
+    const MAX: usize = 8 * 1024;
+    let big_path = format!("{base}-big.txt");
+    let big: Vec<u8> = (0..4000u32).flat_map(|i| format!("line {i}\n").into_bytes()).collect();
+    assert!(big.len() > MAX * 2, "시험 파일이 상한보다 커야 뜻이 있다");
+    fs.write_file(&big_path, &big).await.expect("업로드");
+    let (head, more) = fs.preview(&big_path, MAX).await.expect("미리보기");
+    assert_eq!(head.len(), MAX, "상한만큼 채워 오지 않았다(쪼개 주는 서버에서 깨진다)");
+    assert_eq!(head, big[..MAX], "앞부분이 원본과 다르다");
+    assert!(more, "뒤에 더 있는데 없다고 했다");
+
+    // ② 상한보다 작은 파일 — 통째로 오고, 더 없다고 해야 한다.
+    let small_path = format!("{base}-small.txt");
+    let small = b"hello remote preview\n".to_vec();
+    fs.write_file(&small_path, &small).await.expect("업로드");
+    let (all, more2) = fs.preview(&small_path, MAX).await.expect("미리보기");
+    assert_eq!(all, small);
+    assert!(!more2, "작은 파일인데 더 있다고 했다");
+
+    // ③ **딱 상한만큼인 파일** — 여기가 거짓말하기 쉬운 자리다. "상한을 채웠으니 더 있다"고
+    //    넘겨짚으면 이 경우에 "앞부분만"이라는 잘못된 안내가 뜬다.
+    let exact_path = format!("{base}-exact.bin");
+    let exact = vec![b'x'; MAX];
+    fs.write_file(&exact_path, &exact).await.expect("업로드");
+    let (got, more3) = fs.preview(&exact_path, MAX).await.expect("미리보기");
+    assert_eq!(got.len(), MAX);
+    assert!(!more3, "딱 상한만큼인데 '더 있다'고 했다 — 사용자에게 거짓말이 된다");
+
+    // ④ 빈 파일도 터지지 않아야 한다.
+    let empty_path = format!("{base}-empty.txt");
+    fs.write_file(&empty_path, b"").await.expect("업로드");
+    let (none, more4) = fs.preview(&empty_path, MAX).await.expect("미리보기");
+    assert!(none.is_empty() && !more4);
+
+    for p in [&big_path, &small_path, &exact_path, &empty_path] {
+        let _ = fs.remove(p).await;
+    }
+}

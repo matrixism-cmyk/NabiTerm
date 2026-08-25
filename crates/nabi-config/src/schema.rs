@@ -279,6 +279,10 @@ pub struct TerminalCfg {
     /// 명령 히스토리((명령,cwd,종료코드,unix초)) — Atuin식 재실행(E5).
     #[serde(default)]
     pub cmd_history: Vec<(String, String, i32, i64)>,
+    /// 팔레트에서 최근에 고른 명령 **이름**(최신이 앞). 동작이 아니라 이름을 기억하는
+    /// 이유는 paletteorder 문서 참고 — 동작에는 pane 번호 같은 그때뿐인 값이 들어 있다.
+    #[serde(default)]
+    pub palette_recent: Vec<String>,
     /// SFTP 원격 경로 북마크(FileZilla식 즐겨찾기).
     #[serde(default)]
     pub sftp_bookmarks: Vec<String>,
@@ -318,6 +322,7 @@ impl Default for TerminalCfg {
             last_connected: std::collections::BTreeMap::new(),
             dir_visits: std::collections::BTreeMap::new(),
             cmd_history: Vec::new(),
+            palette_recent: Vec::new(),
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,

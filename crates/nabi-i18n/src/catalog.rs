@@ -184,36 +184,37 @@ const CATALOG: &[(&str, &str, &str, &str)] = &[
         "처음 사용: 여기서 정한 비밀번호가 마스터 비밀번호가 됩니다.",
         "初回: ここで設定したパスワードがマスターになります。",
     ),
-    (
-        "vault.reset_done",
-        "Vault deleted. Set a new master password.",
-        "볼트가 삭제되었습니다. 새 마스터 비밀번호를 설정하세요.",
-        "削除しました。新しいパスワードを設定してください。",
-    ),
-    (
-        "vault.wrong",
-        "Wrong password or corrupt vault",
-        "비밀번호가 틀렸거나 볼트가 손상됨",
-        "パスワードが違うか破損",
-    ),
-    ("status.nosession", "No session", "세션 없음", "セッションなし"),
-    ("status.sessions", "Sessions", "세션", "セッション"),
 ];
 
-/// 키를 현재 언어 문자열로 변환한다(미상 키는 "?"). CATALOG + 분할된 CATALOG2를 함께 본다.
-pub fn tr(lang: Lang, key: &str) -> &'static str {
-    for (k, en, ko, ja) in CATALOG
+/// 나뉜 카탈로그를 **한 곳에서** 이어 붙인다.
+///
+/// 예전에는 이 목록이 `tr`과 무결성 시험 두 곳에 그대로 복사돼 있었다. 카탈로그를 하나
+/// 더할 때 한쪽만 고치면 **새 키가 번역은 되는데 중복 검사는 안 되거나, 그 반대가 된다.**
+/// 어느 쪽이든 조용히 어긋나므로 목록을 하나만 둔다.
+pub(crate) fn all_entries() -> impl Iterator<Item = &'static (&'static str, &'static str, &'static str, &'static str)> {
+    CATALOG
         .iter()
         .chain(crate::catalog2::CATALOG2)
         .chain(crate::catalog3::CATALOG3)
+        .chain(crate::catalog4::CATALOG4)
+        .chain(crate::catalog5::CATALOG5)
+        .chain(crate::catalog6::CATALOG6)
         .chain(crate::catalog_agent::CATALOG_AGENT)
         .chain(crate::catalog_editor::CATALOG_EDITOR)
         .chain(crate::catalog_editor2::CATALOG_EDITOR2)
-        .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN)
-        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4)
-        .chain(crate::catalog5::CATALOG5).chain(crate::catalog_ai::CATALOG_AI)
+        .chain(crate::catalog_sftp::CATALOG_SFTP)
+        .chain(crate::catalog_vault::CATALOG_VAULT)
+        .chain(crate::catalog_conn::CATALOG_CONN)
+        .chain(crate::catalog_queue::CATALOG_QUEUE)
+        .chain(crate::catalog_term::CATALOG_TERM)
+        .chain(crate::catalog_net::CATALOG_NET)
+        .chain(crate::catalog_ai::CATALOG_AI)
         .chain(crate::catalog_ai2::CATALOG_AI2)
-    {
+}
+
+/// 키를 현재 언어 문자열로 변환한다(미상 키는 "?").
+pub fn tr(lang: Lang, key: &str) -> &'static str {
+    for (k, en, ko, ja) in all_entries() {
         if *k == key {
             return match lang {
                 Lang::En => en,
@@ -241,13 +242,7 @@ mod tests {
     fn catalog_integrity() {
         use std::collections::HashSet;
         let mut seen = HashSet::new();
-        for (k, en, ko, ja) in CATALOG.iter().chain(crate::catalog2::CATALOG2)
-            .chain(crate::catalog3::CATALOG3).chain(crate::catalog_agent::CATALOG_AGENT)
-            .chain(crate::catalog_editor::CATALOG_EDITOR).chain(crate::catalog_editor2::CATALOG_EDITOR2)
-        .chain(crate::catalog_sftp::CATALOG_SFTP).chain(crate::catalog_vault::CATALOG_VAULT).chain(crate::catalog_conn::CATALOG_CONN)
-        .chain(crate::catalog_queue::CATALOG_QUEUE).chain(crate::catalog_term::CATALOG_TERM).chain(crate::catalog_net::CATALOG_NET).chain(crate::catalog4::CATALOG4)
-        .chain(crate::catalog5::CATALOG5).chain(crate::catalog_ai::CATALOG_AI)
-        .chain(crate::catalog_ai2::CATALOG_AI2) {
+        for (k, en, ko, ja) in all_entries() {
             assert!(seen.insert(*k), "중복 키: {k}");
             assert!(
                 !en.is_empty() && !ko.is_empty() && !ja.is_empty(),

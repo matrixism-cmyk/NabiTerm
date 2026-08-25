@@ -19,6 +19,8 @@ pub(crate) struct SftpAct {
     pub reconnect: bool,
     pub dl_cur: bool,
     pub edit: Option<String>,
+    /// 원격 파일 앞부분 미리보기.
+    pub preview: Option<String>,
     pub chmod: Option<(String, u32)>,
     /// 권한 재귀 적용(하위 전부).
     pub chmod_rec: Option<(String, u32)>,

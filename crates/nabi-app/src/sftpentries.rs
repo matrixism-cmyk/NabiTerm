@@ -130,6 +130,8 @@ pub(crate) enum EClick {
     /// 이 폴더에서 SSH 터미널 열기(빠른연결 프리필).
     OpenTermHere(String),
     Edit(String),
+    /// 앞부분만 받아 미리보기(내려받지 않는다).
+    Preview(String),
     Chmod(String, u32),
     /// 권한 재귀 적용(하위 전부).
     ChmodRecursive(String, u32),

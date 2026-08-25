@@ -42,6 +42,9 @@ impl NabiApp {
                 qc.open = true;
             }
         }
+        if let Some(name) = a.preview.take() {
+            self.request_preview(join_path(&self.sftp.path, &name));
+        }
         if let Some(name) = a.edit.take() {
             self.edit_remote_dispatch(name); // 내장(기본)/외부 에디터.
         }

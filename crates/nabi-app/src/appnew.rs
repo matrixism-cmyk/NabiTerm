@@ -83,7 +83,7 @@ impl NabiApp {
             theme,
             lang,
             quick_connect: crate::connect::QuickConnect::default(),
-            ai_prof_open: false, ai_prof_backup: None, splash_since: None, pad_recover: Vec::new(), log_view: None, env_mgr: None, find_all: None, whatsnew: None, boot: None,
+            ai_prof_open: false, ai_prof_backup: None, splash_since: None, pad_recover: Vec::new(), log_view: None, env_mgr: None, cmd_hist_open: false, preview: None, find_all: None, whatsnew: None, boot: None,
             file_props: None, hash_tx, hash_rx, import_screen: None,
             ai_picks: std::collections::HashMap::new(),
             ai_pick_out: None,

@@ -4,9 +4,9 @@
 //! 결과를 `Event`로 UI에 보낸다. 라이브 동작은 인프로세스 SFTP 서버로 검증한다.
 
 use crate::connsftp::Conn;
+use crate::sftpev::{op_done, to_entry, transfer_done};
 use crossbeam_channel::Sender;
-use nabi_fs::FileKind;
-use nabi_proto::{Event, SftpEntry, SftpId, SshAuth, SshParams};
+use nabi_proto::{Event, SftpId, SshAuth, SshParams};
 use nabi_sftp::connect_sftp;
 use std::collections::HashMap;
 use std::path::Path;
@@ -16,6 +16,8 @@ use tokio::sync::mpsc;
 /// 액터로 보내는 요청.
 pub enum SftpReq {
     List(String),
+    /// 앞부분만 읽기(미리보기).
+    Preview { path: String, max: usize },
     Download { xfer: u64, remote: String, local: String, resume: u64 },
     Upload { xfer: u64, local: String, remote: String },
     Remove(String),
@@ -188,6 +190,13 @@ pub fn spawn_sftp(
                     let results = fs.search(&root, &needle, 500).await;
                     let _ = ev.send(Event::SftpSearchResults { id, results });
                 }
+                SftpReq::Preview { path, max } => {
+                    let (data, more, err) = match fs.preview(&path, max).await {
+                        Ok((d, m)) => (d, m, None),
+                        Err(e) => (Vec::new(), false, Some(e)),
+                    };
+                    let _ = ev.send(Event::SftpPreview { id, path, data, more, err });
+                }
                 SftpReq::DirSize(path) => {
                     let (files, dirs, bytes) = fs.dir_stats(&path).await;
                     let _ = ev.send(Event::SftpDirSize { id, path, files, dirs, bytes });
@@ -223,39 +232,6 @@ pub fn sftp_cancel(id: SftpId, conns: &SftpConns) {
 pub fn sftp_cancel_xfer(id: SftpId, xfer: u64, conns: &SftpConns) {
     if let Some(h) = conns.get(&id) {
         crate::sftppool::cancel_one(&h.flags, xfer);
-    }
-}
-
-/// 전송 결과를 완료 이벤트로 변환(큐 항목 `xfer`에 귀속).
-fn transfer_done(id: SftpId, xfer: u64, name: &str, res: Result<(), String>) -> Event {
-    Event::SftpTransferDone {
-        id,
-        xfer,
-        name: name.to_string(),
-        ok: res.is_ok(),
-        message: res.err().unwrap_or_default(),
-    }
-}
-
-/// 파일 작업(삭제·이름변경·권한 등) 결과 — 전송 큐와 무관한 별도 이벤트.
-fn op_done(id: SftpId, name: &str, res: Result<(), String>) -> Event {
-    Event::SftpOpDone {
-        id,
-        name: name.to_string(),
-        ok: res.is_ok(),
-        message: res.err().unwrap_or_default(),
-    }
-}
-
-/// nabi-fs FileEntry → proto SftpEntry(디렉터리 여부 평탄화).
-fn to_entry(e: nabi_fs::FileEntry) -> SftpEntry {
-    SftpEntry {
-        name: e.name,
-        is_dir: matches!(e.kind, FileKind::Dir),
-        is_link: matches!(e.kind, FileKind::Symlink),
-        size: e.size,
-        mode: e.mode,
-        mtime: e.mtime,
     }
 }
 

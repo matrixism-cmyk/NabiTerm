@@ -77,6 +77,37 @@ impl SftpFs {
     pub async fn free_space(&self, path: &str) -> Option<u64> {
         self.raw.free_space(path).await
     }
+    /// 파일 **앞부분만** 읽는다(미리보기). `(바이트, 더 있는가)`.
+    ///
+    /// 크기를 묻지 않고 상한만큼만 읽는 것이 요점이다. 원격 파일 크기는 믿을 수 없다 —
+    /// 심볼릭 링크, /proc 같은 가짜 파일, 잘못된 stat이 흔하다. "크기를 보고 작으면 다
+    /// 읽자"는 길을 아예 만들지 않으면 몇 GB를 실수로 끌어올 일이 없다.
+    ///
+    /// 한 번의 read로 상한을 다 못 채울 수 있어(서버가 청크를 쪼갠다) 채울 때까지 반복하되,
+    /// **상한을 넘겨 읽지는 않는다.**
+    pub async fn preview(&self, path: &str, max: usize) -> Result<(Vec<u8>, bool), String> {
+        let h = self.raw.open(path, OpenFlags::READ).await?;
+        let mut out: Vec<u8> = Vec::with_capacity(max.min(64 * 1024));
+        let mut more = false;
+        while out.len() < max {
+            let want = max - out.len();
+            match self.raw.read_at(&h, out.len() as u64, want).await {
+                Ok(Some(chunk)) if !chunk.is_empty() => out.extend_from_slice(&chunk),
+                Ok(_) => break,        // 파일 끝.
+                Err(e) => {
+                    let _ = self.raw.close(&h).await;
+                    return Err(e);
+                }
+            }
+        }
+        // 상한을 채웠다면 뒤에 더 있는지 한 바이트로 확인한다(있다고 넘겨짚지 않는다 —
+        // 딱 max 바이트짜리 파일에 "더 있음"을 띄우면 거짓말이다).
+        if out.len() >= max {
+            more = matches!(self.raw.read_at(&h, max as u64, 1).await, Ok(Some(b)) if !b.is_empty());
+        }
+        let _ = self.raw.close(&h).await;
+        Ok((out, more))
+    }
 }
 
 #[async_trait]

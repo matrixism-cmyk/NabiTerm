@@ -33,6 +33,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("sync.title", PaletteAction::OpenSync),
         ("keygen.title", PaletteAction::OpenKeygen),
         ("env.title", PaletteAction::OpenEnvMgr),
+        ("cmdhist.title", PaletteAction::OpenCmdHistory),
         ("snap.list", PaletteAction::SnapshotList),
         ("bcast.results", PaletteAction::BroadcastResults),
     ] {

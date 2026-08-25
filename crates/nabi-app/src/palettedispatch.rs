@@ -151,7 +151,7 @@ impl NabiApp {
     }
 
     /// 히스토리에서 고른 명령을 포커스 pane에 개행과 함께 보낸다(재실행).
-    fn run_history_cmd(&mut self, cmd: String) {
+    pub(crate) fn run_history_cmd(&mut self, cmd: String) {
         let Some(pane) = self.focused_pane() else { return };
         let mut data = cmd.into_bytes();
         data.push(b'\r');

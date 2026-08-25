@@ -39,12 +39,17 @@ pub fn connect(
 ) -> SshChannel {
     let (in_tx, in_rx) = unbounded_channel::<SshInput>();
     let out = out_tx.clone();
+    // 실패 진단에 쓸 인증 **갈래만** 미리 뽑는다. params는 곧 run으로 넘어가고, 비밀번호
+    // 사본을 실패 경로까지 들고 갈 이유는 없다.
+    let auth_kind = crate::diagnose::AuthKind::from(&params.auth);
     rt.spawn(async move {
         let res = run(pane, params, size, out.clone(), in_rx, known_hosts, verifier, stats).await;
         crate::kexinfo::clear(pane); // 배지 잔상 방지.
         let err = res.err().map(|e| e.to_string());
         if let Some(e) = &err {
-            let _ = out.send((pane, Bytes::from(format!("\r\n[{}: {e}]\r\n", nabi_i18n::trc("net.ssh.err")))));
+            // 원문 한 줄만 던지면 대부분의 사용자에게 아무 도움이 안 된다 — 갈래를 짚고
+            // 해 볼 것을 함께 준다(diagnose.rs). 원문은 그 아래에 그대로 남는다.
+            let _ = out.send((pane, Bytes::from(crate::diagnose::render(e, auth_kind))));
         }
         on_close(err);
     });

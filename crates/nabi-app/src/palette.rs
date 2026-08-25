@@ -70,6 +70,7 @@ pub(crate) enum PaletteAction {
     /// SSH ed25519 키 생성 모달.
     OpenKeygen,
     OpenEnvMgr,
+    OpenCmdHistory,
     /// 폴더 동기화 다이얼로그(S6-51).
     OpenSync,
     /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
@@ -125,6 +126,8 @@ impl NabiApp {
                 cmds.push((format!("\u{1f4cd} {s}"), PaletteAction::RunHistory(cmd)));
             }
         }
+        // 최근에 쓴 것을 위로(M2). 걸러진 뒤에도 순서가 지켜져야 Enter가 손가락 기억대로 돈다.
+        let cmds = crate::paletteorder::order(cmds, &self.config.terminal.palette_recent);
         let q = self.palette_query.to_lowercase();
         let mut chosen: Option<usize> = None;
         let mut enter = false;
@@ -178,7 +181,9 @@ impl NabiApp {
             });
 
         if let Some(i) = chosen {
-            if let Some((_, act)) = cmds.into_iter().nth(i) {
+            if let Some((label, act)) = cmds.into_iter().nth(i) {
+                crate::paletteorder::bump(&mut self.config.terminal.palette_recent, &label);
+                let _ = nabi_config::save(&self.config_path, &self.config);
                 self.run_palette(ctx, act);
             }
             self.palette_open = false;

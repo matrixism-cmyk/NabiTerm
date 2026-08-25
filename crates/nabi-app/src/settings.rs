@@ -47,6 +47,15 @@ impl NabiApp {
                 .collapsible(false)
                 .fixed_rect(win)
                 .show(ctx, |ui| {
+                    // 검색 줄 — 60항목을 여섯 페이지에서 눈으로 훑지 않아도 되게(M1).
+                    let q_id = egui::Id::new("settings_query");
+                    let mut query: String = ui.data(|d| d.get_temp(q_id)).unwrap_or_default();
+                    if let Some(p) = crate::settingsearchui::bar(ui, lang, &mut query) {
+                        cat = p;
+                        query.clear(); // 갔으면 결과 목록은 치운다.
+                    }
+                    ui.data_mut(|d| d.insert_temp(q_id, query));
+                    ui.separator();
                     // 좌측 카테고리 내비게이션 + 우측 콘텐츠(현대식 설정 레이아웃).
                     let body_h = (ui.available_height() - 44.0).max(200.0);
                     ui.horizontal_top(|ui| {

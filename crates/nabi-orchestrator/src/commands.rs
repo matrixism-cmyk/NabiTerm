@@ -124,6 +124,9 @@ pub fn handle_command(
         Command::SftpDirSize { id, path } => {
             sftp_request(id, SftpReq::DirSize(path), sftp)
         }
+        Command::SftpPreview { id, path, max } => {
+            sftp_request(id, SftpReq::Preview { path, max }, sftp)
+        }
         Command::SftpChmodRecursive { id, path, mode } => {
             sftp_request(id, SftpReq::ChmodRec { path, mode }, sftp)
         }

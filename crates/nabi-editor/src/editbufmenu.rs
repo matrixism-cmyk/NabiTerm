@@ -51,6 +51,15 @@ pub fn context_menu(
             ui.close();
         }
     });
+    // 다중 커서 — 팔레트·메뉴에도 있어야 단축키를 모르는 사람이 만난다.
+    if ui.button(tr(lang, "edit.addnextmatch")).clicked() {
+        eb.add_next_match();
+        ui.close();
+    }
+    if ui.button(tr(lang, "edit.selectallmatches")).clicked() {
+        eb.select_all_matches();
+        ui.close();
+    }
     if ui.button(tr(lang, "menu.selectall")).clicked() {
         eb.select_all();
         ui.close();

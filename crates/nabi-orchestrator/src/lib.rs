@@ -14,6 +14,7 @@ pub mod pane_meta;
 pub mod pane_registry;
 pub mod router;
 pub mod sftp;
+mod sftpev;
 mod sftppool;
 #[cfg(test)]
 mod sftppool_test;

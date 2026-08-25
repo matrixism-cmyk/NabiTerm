@@ -85,6 +85,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "lsp.format.pal").to_string(), PaletteAction::LspFormat),
         (tr(lang, "keygen.title").to_string(), PaletteAction::OpenKeygen),
         (tr(lang, "env.title").to_string(), PaletteAction::OpenEnvMgr),
+        (tr(lang, "cmdhist.title").to_string(), PaletteAction::OpenCmdHistory),
         (tr(lang, "sync.title").to_string(), PaletteAction::OpenSync),
         (tr(lang, "handoff.last").to_string(), PaletteAction::HandoffLast),
         (tr(lang, "handoff.copymd").to_string(), PaletteAction::CopyLastMd),

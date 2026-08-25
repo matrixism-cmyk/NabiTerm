@@ -64,6 +64,9 @@ pub enum Event {
     SftpSearchResults { id: SftpId, results: Vec<String> },
     /// 원격 디렉터리 집계 결과(경로, 파일 수, 폴더 수, 총 바이트).
     SftpDirSize { id: SftpId, path: String, files: u64, dirs: u64, bytes: u64 },
+    /// 미리보기 결과. `more`는 뒤에 내용이 더 있는지. 실패는 `err`에 담는다 —
+    /// 조용히 빈 화면을 보여 주면 "빈 파일"과 구분이 안 된다.
+    SftpPreview { id: SftpId, path: String, data: Vec<u8>, more: bool, err: Option<String> },
     /// 동기화 계획용 원격 파일 트리(상대경로, 크기, mtime) — SftpListTree(seq) 회신.
     SftpTree { id: SftpId, seq: u64, files: Vec<(String, u64, u64)> },
     /// 전송 진행(누적 바이트). `xfer`는 명령에 실어 보낸 큐 항목 식별자.

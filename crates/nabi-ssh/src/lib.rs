@@ -12,6 +12,7 @@ pub mod fingerprint;
 pub mod knownhosts;
 pub mod agent;
 pub mod agentfwd;
+pub mod diagnose;
 #[cfg(test)]
 mod agentfwd_test;
 pub mod legacy;
