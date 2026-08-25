@@ -43,7 +43,8 @@ mod fileprops; mod filepropsui; mod filezilla; mod xshell; mod mobaxterm; mod pu
        
 
 mod floatpanels; mod floatterm; mod linkmenu; mod settingsfont; mod worklayout; mod updatemodal; mod shellintegprompt; mod agentguide; mod aicli; mod aiclipage;
-mod envcat; mod envpath; mod shelldetect; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter; mod cmdhistui; mod sftppreview; mod sftppreviewui;
+mod envcat; mod envpath; mod shelldetect; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter; mod cmdhistui; mod sftppreview; mod sftppreviewui; mod autoreply;
+#[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan; mod envwsl; mod envstate; mod envrun; mod envmgr; mod envmgrui;
 mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
