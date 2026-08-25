@@ -29,8 +29,7 @@ impl NabiApp {
         }
         let (mut open, mut copy, mut save) = (true, false, false);
         // AI CLI 자동 업데이트 설정은 이 창에서 바꿀 수 있다 — 바뀌면 즉시 저장한다.
-        let mut auto_cli = self.config.terminal.ai_cli_auto_update;
-        let mut cfg_changed = false;
+        let mut open_env = false; // 도움말에서 환경 관리자로 건너가기.
         let mut open_logs = false; // 도움말에서 '진단 로그'를 눌렀는가.
         egui::Window::new(tr(lang, "help.title"))
             .open(&mut open)
@@ -63,8 +62,7 @@ impl NabiApp {
                                 1 => crate::helppages::shortcut_page(ui, lang),
                                 2 => crate::helppages::features_page(ui, lang),
                                 3 => crate::helppages::agent_page(
-                                    ui, lang, &mut copy, &mut save, &mut auto_cli,
-                                    &mut cfg_changed,
+                                    ui, lang, &mut copy, &mut save, &mut open_env,
                                 ),
                                 _ => crate::helppages::licenses_page(ui, lang),
                             });
@@ -75,9 +73,8 @@ impl NabiApp {
         if open_logs {
             self.open_log_view();
         }
-        if cfg_changed {
-            self.config.terminal.ai_cli_auto_update = auto_cli;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+        if open_env {
+            self.open_env_mgr();
         }
         if copy {
             ctx.copy_text(crate::agentguide::agent_guide_md(&Self::exe_path()));

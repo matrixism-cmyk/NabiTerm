@@ -221,19 +221,16 @@ const CMDS: [(&str, &str); 7] = [
 
 /// AI 제어 페이지: 요약 + 주요 명령(설명 포함) + 사용설명 복사/저장 버튼(out 플래그로 신호).
 ///
-/// `auto_update`는 AI CLI 자동 업데이트 설정 — 바뀌면 `saved`를 세워 호출부가 저장하게 한다.
-pub(crate) fn agent_page(
-    ui: &mut egui::Ui,
-    lang: Lang,
-    copy: &mut bool,
-    save: &mut bool,
-    auto_update: &mut bool,
-    saved: &mut bool,
-) {
+/// **설치 기능은 여기 없다.** AI CLI를 깔고 지우는 일은 환경 관리자(도구 메뉴)로 옮겼다 —
+/// 도움말은 읽는 곳이라, 반년 뒤에 다시 깔려고 이곳을 뒤지는 사람은 없기 때문이다
+/// (사용자와 2026-08-25에 내린 결론). 대신 읽다가 바로 갈 수 있게 버튼 하나를 둔다.
+pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &mut bool, open_env: &mut bool) {
     ui.heading(tr(lang, "help.agent.title"));
     ui.label(tr(lang, "help.agent.intro")); // 폭 제한된 본문이라 자동 줄바꿈.
     ui.add_space(8.0);
-    *saved |= crate::aiclipage::ai_cli_manager(ui, lang, auto_update);
+    if ui.button(tr(lang, "help.agent.openenv")).clicked() {
+        *open_env = true;
+    }
     ui.add_space(8.0);
     ui.separator();
     ui.add_space(8.0);

@@ -61,7 +61,7 @@ pub(crate) enum MenuAction {
     /// AI 명령 바 표시 토글(terminal.ai_cmd_bar).
     ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
-    RenameGroup(String, String), DisbandGroup(String), OpenKeygen, TestConnection(String, u16), TogglePin(String), EditNote(String),
+    RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, TestConnection(String, u16), TogglePin(String), EditNote(String),
     TearOff,
     DockFloat,
     Arrange(ArrangeMode),
@@ -259,32 +259,47 @@ pub(crate) fn shell_choices() -> [(&'static str, ShellKind); 5] {
     ]
 }
 
-/// 실제 설치된(실행파일이 PATH에 있는) 셸만 추린 목록 — 메뉴/팔레트에 노출.
-/// 한 번만 탐지해 캐시한다(PATH 스캔·WSL 조회 비용 절감). powershell/cmd는 항상 잡힌다.
-/// WSL은 설치된 배포판별로 펼친다(여러 개면 "WSL: Ubuntu"처럼; 없으면 기본 "WSL" 1개).
+/// 실제 설치된 셸만 추린 목록 — 메뉴·팔레트·분할에 노출.
+///
+/// 한 번 훑어 캐시하지만 **영구는 아니다.** 환경 관리자에서 WSL이나 PowerShell 7을 깔면
+/// 그 자리에서 목록에 나타나야 한다(`refresh_shells`). 예전에는 `OnceLock`이라 다시 켜기
+/// 전까지 반영되지 않았다.
+static SHELL_CACHE: std::sync::RwLock<Option<Vec<(String, ShellKind)>>> = std::sync::RwLock::new(None);
+
+/// 캐시를 버린다 — 다음 호출 때 다시 훑는다(환경 관리자에서 무언가를 깐 뒤).
+pub(crate) fn clear_shell_cache() {
+    if let Ok(mut c) = SHELL_CACHE.write() {
+        *c = None;
+    }
+}
+
 pub(crate) fn installed_shells() -> Vec<(String, ShellKind)> {
-    static CACHE: std::sync::OnceLock<Vec<(String, ShellKind)>> = std::sync::OnceLock::new();
-    CACHE
-        .get_or_init(|| {
-            let mut v = Vec::new();
-            for (label, kind) in shell_choices() {
-                if nabi_pty::resolve_shell(&kind).is_none() {
-                    continue;
-                }
-                if matches!(kind, ShellKind::Wsl { .. }) {
-                    let distros = nabi_pty::wsl_distros();
-                    if distros.is_empty() {
-                        v.push((label.to_string(), kind));
-                    } else {
-                        for d in distros {
-                            v.push((format!("WSL: {d}"), ShellKind::Wsl { distro: Some(d) }));
-                        }
-                    }
-                } else {
-                    v.push((label.to_string(), kind));
-                }
-            }
-            v
-        })
-        .clone()
+    use SHELL_CACHE as CACHE;
+    if let Ok(c) = CACHE.read() {
+        if let Some(v) = c.as_ref() {
+            return v.clone();
+        }
+    }
+    let v = detect_shells();
+    if let Ok(mut c) = CACHE.write() {
+        *c = Some(v.clone());
+    }
+    v
+}
+
+/// 이 PC를 실제로 훑는다.
+fn detect_shells() -> Vec<(String, ShellKind)> {
+    let mut v = Vec::new();
+    for (label, kind) in shell_choices() {
+        // WSL은 실행 파일 유무로 판단할 수 없다 — wsl.exe는 미설치 PC에도 늘 있다.
+        if matches!(kind, ShellKind::Wsl { .. }) {
+            v.extend(crate::shelldetect::wsl_entries(&nabi_pty::wsl_distros()));
+            continue;
+        }
+        if nabi_pty::resolve_shell(&kind).is_some() {
+            v.push((label.to_string(), kind));
+        }
+    }
+    v.extend(crate::shelldetect::extras(&|p| std::path::Path::new(p).is_file()));
+    v
 }

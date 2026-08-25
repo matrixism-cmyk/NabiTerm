@@ -72,6 +72,7 @@ mod updatemodal;
 mod shellintegprompt;
 mod agentguide;
 mod aicli; mod aiclipage;
+mod envcat; mod envpath; mod shelldetect; mod envwsl; mod envstate; mod envrun; mod envmgr; mod envmgrui;
 mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay;
 mod aistatus; mod agentwatch;

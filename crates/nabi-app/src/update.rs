@@ -132,6 +132,7 @@ impl eframe::App for NabiApp {
         self.show_docked_floats(ctx); // "창 안에 띄우기" 오버레이(P3).
         self.show_pad_recovery(ctx); // 지난 실행에서 잃을 뻔한 문서 되살리기.
         self.show_log_view(ctx); // 진단 로그 보기(도움말).
+        self.show_env_mgr(ctx); // 환경 관리자(도구 메뉴).
         self.show_find_all(ctx); // 모든 창에서 찾기.
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
         // 밖에서 부른 요청(탐색기 '여기서 열기')이면 창을 앞으로 — 뒤에서 열리면 열린 줄 모른다.

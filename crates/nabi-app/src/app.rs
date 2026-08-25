@@ -26,6 +26,8 @@ pub struct NabiApp {
     pub pad_recover: Vec<crate::padrecover::Recovered>,
     /// 진단 로그 보기 창(Some=열림). 안쪽 None은 '로그 파일이 없다'는 뜻이다.
     pub log_view: Option<Option<crate::logview::LogText>>,
+    /// 환경 관리자 창(도구 메뉴). 열려 있을 때만 Some.
+    pub env_mgr: Option<crate::envmgr::EnvMgr>,
     /// '모든 창에서 찾기' 상태(Some=열림).
     pub find_all: Option<crate::findallui::FindAll>,
     /// 업데이트 뒤 첫 실행의 '새로워진 점'(Some=열림, 안쪽 None=노트를 못 챙김).

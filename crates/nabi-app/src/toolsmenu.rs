@@ -32,6 +32,7 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
         ("sftp.history", PaletteAction::XferHistory),
         ("sync.title", PaletteAction::OpenSync),
         ("keygen.title", PaletteAction::OpenKeygen),
+        ("env.title", PaletteAction::OpenEnvMgr),
         ("snap.list", PaletteAction::SnapshotList),
         ("bcast.results", PaletteAction::BroadcastResults),
     ] {

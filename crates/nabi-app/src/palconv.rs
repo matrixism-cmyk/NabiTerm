@@ -28,6 +28,7 @@ pub(crate) fn to_menu(a: &PaletteAction) -> Option<MenuAction> {
         PaletteAction::ToggleBroadcast => MenuAction::ToggleBroadcast,
         PaletteAction::ToggleFloatOnTop => MenuAction::ToggleFloatOnTop,
         PaletteAction::OpenKeygen => MenuAction::OpenKeygen,
+        PaletteAction::OpenEnvMgr => MenuAction::OpenEnvMgr,
         PaletteAction::OpenForward => MenuAction::OpenForward,
         PaletteAction::OpenSettings => MenuAction::OpenSettings,
         PaletteAction::OpenVault => MenuAction::OpenVault,
