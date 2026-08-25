@@ -100,6 +100,8 @@ mod helppages;
 mod help;
 mod hostkeyui;
 mod knownhostsui;
+mod importscan;
+mod importui;
 mod logview;
 mod logviewui;
 mod menu;

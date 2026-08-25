@@ -123,6 +123,11 @@ impl NabiApp {
         let (ordinal, backlog, float_geom) = self.spawn_ctx.take().unwrap_or((None, None, None));
         self.next_spawn_seq += 1;
         let seq = self.next_spawn_seq;
+        // 새 pane은 **지금 쓰던 pane의 글꼴**을 물려받는다. 작업 디렉터리를 물려받는 것과
+        // 같은 이유다 — 사용자는 방금 쓰던 환경이 이어지길 기대한다. 예전에는 전역 기본으로
+        // 떨어져서, 복원된 탭들을 크게 키워 쓰던 사람에게는 새 탭만 유난히 작게 열렸다
+        // (사용자 보고 2026-08-25 "새 AI 터미널 텍스트가 엄청 작게").
+        let font = self.focused_pane().and_then(|p| self.pane_font.get(&p).copied());
         self.pending_spawns.insert(
             seq,
             PendingSpawn {
@@ -131,6 +136,7 @@ impl NabiApp {
                 backlog,
                 ordinal,
                 float_geom,
+                font,
             },
         );
         seq

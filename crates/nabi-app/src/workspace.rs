@@ -14,6 +14,8 @@ pub(crate) struct PendingSpawn {
     pub backlog: Option<Vec<u8>>,     // 로컬 복원 스크롤백(표시 전용)
     pub ordinal: Option<usize>,       // 워크스페이스 레이아웃 매핑용 ordinal(복원만)
     pub float_geom: Option<[f32; 4]>, // Some이면 도크가 아닌 분리 OS 창으로 복원([x,y,w,h], P10)
+    /// 새 pane에 물려줄 글꼴 크기. 지금 쓰던 pane의 크기를 이어받는다(None이면 전역 기본).
+    pub font: Option<f32>,
 }
 
 /// 복원 중 비동기 스폰을 모았다가 분할 레이아웃을 재구성하는 상태.

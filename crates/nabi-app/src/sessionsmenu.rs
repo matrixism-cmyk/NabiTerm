@@ -2,7 +2,7 @@
 
 use crate::menu::MenuAction;
 use nabi_i18n::{tr, Lang};
-use nabi_session::{SavedSession, SessionKind};
+use nabi_session::SavedSession;
 
 /// Sessions 메뉴 본문을 그리고 선택된 액션을 돌려준다(saved는 이름순 정렬 가정).
 pub(crate) fn sessions_menu(ui: &mut egui::Ui, lang: Lang, saved: &[SavedSession], last_conn: &std::collections::BTreeMap<String, i64>, active: &std::collections::HashSet<String>) -> Option<MenuAction> {
@@ -86,6 +86,7 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
         });
     };
     group(ui, "menu.import", vec![
+        ("menu.importscreen", MenuAction::OpenImportScreen),
         ("menu.importsessions", MenuAction::ImportSessions),
         ("menu.importsshconfig", MenuAction::ImportSshConfig),
         ("menu.importfilezilla", MenuAction::ImportFileZilla),
@@ -137,7 +138,7 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
         let nm = if s.is_ftp { format!("{dot}{} (FTP)", s.name) } else { format!("{dot}{}", s.name) };
         // 이름 영역을 넓게(아이콘 공간만 남기고) — 행 대부분에서 연결된다. 이름은 좌측정렬로 직접 그린다
         // (add_sized는 centered_and_justified라 텍스트가 가운데로 몰림 — 그 회피).
-        let bw = (ui.available_width() - 118.0).max(80.0);
+        let bw = (ui.available_width() - 44.0).max(80.0); // 아이콘이 하나뿐이라 이름을 넓게.
         let (rect, nb) =
             ui.allocate_exact_size(egui::vec2(bw, ui.spacing().interact_size.y), egui::Sense::click());
         let vis = ui.style().interact(&nb);
@@ -165,28 +166,10 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
         nbr.context_menu(|ui| {
             if let Some(a) = crate::sessionctx::session_menu_items(ui, s, lang, folders) { action = Some(a); }
         });
-        // 남은 폭을 오른쪽 정렬로 — 아이콘이 행 우측 끝에 모인다(오른쪽→왼쪽 추가 순서).
+        // 행마다 아이콘 넷(삭제·편집·SFTP·더보기)을 늘어놓으니 목록이 복잡했다 —
+        // 세션이 여남은 개만 돼도 이름보다 아이콘이 먼저 눈에 들어온다(사용자 지적 2026-08-25).
+        // 사이드바처럼 **이름 위주**로 두고, 동작은 "..."과 우클릭에 모은다(둘 다 같은 메뉴다).
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let icon = |ui: &mut egui::Ui, g: &str, key: &str| {
-                ui.small_button(g).on_hover_text(tr(lang, key)).clicked()
-            };
-            if icon(ui, "\u{2715}", "sessions.delete") {
-                action = Some(MenuAction::DeleteSession(s.name.clone()));
-                ui.close();
-            }
-            if icon(ui, "\u{270e}", "sessions.edit") {
-                action = Some(MenuAction::EditSession(s.clone()));
-                ui.close();
-            }
-            // SFTP 열기: 일반 SSH 세션만(FTP 세션은 연결이 곧 FTP 브라우저).
-            if matches!(s.kind, SessionKind::Ssh { .. })
-                && !s.is_ftp
-                && icon(ui, "\u{1f5a7}", "sessions.opensftp")
-            {
-                action = Some(MenuAction::OpenSftp(s.clone()));
-                ui.close();
-            }
-            // 더보기 "⋯" = 사이드바와 동일한 공용 전체 메뉴(고정·메모·복제·복사·연결테스트·그룹이동 등, 기능 통일).
             ui.menu_button("\u{22ef}", |ui| {
                 if let Some(a) = crate::sessionctx::session_menu_items(ui, s, lang, folders) { action = Some(a); }
             });

@@ -65,7 +65,9 @@ fn by_group(ui: &mut egui::Ui, lang: Lang, kind: &str) -> Option<BarAction> {
             }
             continue;
         }
-        ui.menu_button(format!("{} \u{25b8}", tr(lang, g.label)), |ui| {
+        // 삼각형을 직접 붙이지 않는다 — `menu_button`이 하위 메뉴 화살표를 스스로 그려서
+        // 두 개가 나란히 찍혔다(사용자 보고 2026-08-25).
+        ui.menu_button(tr(lang, g.label), |ui| {
             ui.set_min_width(200.0);
             for bc in g.cmds {
                 if let Some(a) = row(ui, lang, bc) { send = Some(a); }

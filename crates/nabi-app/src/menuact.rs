@@ -104,6 +104,7 @@ impl NabiApp {
                 };
                 self.notify = Some((msg, std::time::Instant::now()));
             }
+            MenuAction::OpenImportScreen => self.open_import_screen(),
             MenuAction::ImportWinScp => {
                 // WinSCP는 설치 방식에 따라 레지스트리 또는 WinSCP.ini에 둔다 — 둘 다 찾아본다.
                 let text = crate::winscp::find_config().or_else(|| {

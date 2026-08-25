@@ -132,6 +132,7 @@ impl eframe::App for NabiApp {
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
         self.drain_hashes(); // 곁 스레드가 낸 파일 해시 반영.
         self.show_file_props(ctx); // 파일 속성 창.
+        self.show_import_screen(ctx); // 가져오기 한 화면.
         self.show_vault_unlock(ctx);
         // 스플래시는 **맨 마지막**에 그린다 — 무엇 위에든 덮여야 한다.
         if let Some(t) = self.splash_since {

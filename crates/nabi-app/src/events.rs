@@ -27,6 +27,9 @@ impl NabiApp {
                                 self.inject_restore_backlog(pane, b); // 로컬 복원 스크롤백(표시 전용).
                             }
                             self.pane_origins.insert(pane, ps.origin);
+                            if let Some(f) = ps.font {
+                                self.pane_font.insert(pane, f); // 앞 pane의 글꼴을 이어받는다.
+                            }
                             if let Some(cmd) = ps.oncmd.filter(|c| !c.is_empty()) {
                                 let mut data = cmd.into_bytes();
                                 data.push(b'\r');

@@ -6,6 +6,8 @@ use nabi_i18n::tr;
 use nabi_proto::ShellKind;
 use nabi_session::SavedSession;
 
+/// 목록에서 골라 나중에 실행하는 곳이 있어 Clone 이어야 한다(가져오기 한 화면).
+#[derive(Clone)]
 pub(crate) enum MenuAction {
     Spawn(ShellKind),
     /// AI 터미널 프로필 i번으로 새 터미널(세션▸새 AI 터미널 — aiprof.rs).
@@ -37,6 +39,8 @@ pub(crate) enum MenuAction {
     ImportPuTTY,
     /// WinSCP 사이트 가져오기(레지스트리 또는 WinSCP.ini).
     ImportWinScp,
+    /// 가져오기 한 화면(설치 자동 탐지).
+    OpenImportScreen,
     /// 설정·세션·known_hosts를 한 파일로 백업(볼트 제외).
     BackupAll,
     /// 백업 파일에서 되돌린다(기존 파일은 .bak으로 밀어 둔다).

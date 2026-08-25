@@ -34,6 +34,8 @@ pub struct NabiApp {
     pub boot: Option<crate::boottime::Boot>,
     /// 파일 속성 창(Some=열림).
     pub file_props: Option<crate::fileprops::Props>,
+    /// 가져오기 한 화면(Some=열림, 훑어 본 결과).
+    pub import_screen: Option<Vec<crate::importscan::Source>>,
     /// 곁 스레드 해시 결과 통로(경로, 해시).
     pub hash_tx: std::sync::mpsc::Sender<(std::path::PathBuf, String)>,
     pub hash_rx: std::sync::mpsc::Receiver<(std::path::PathBuf, String)>,

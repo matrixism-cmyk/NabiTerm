@@ -148,9 +148,16 @@ pub(crate) fn about_page(
             crate::paneurl::os_open("https://nabisori.kr");
         }
     });
+    // 문의처는 두 기관이다 — 한 줄에 몰아 적으면 어느 주소가 어디인지 알 수 없다.
     ui.horizontal(|ui| {
         ui.label(format!("{}:", tr(lang, "help.about.inquiry")));
-        if ui.link("AI메타버스센터 (metahubs.kr)").clicked() {
+        if ui.link("AI메타버스센터 (aimeta.or.kr)").clicked() {
+            crate::paneurl::os_open("https://aimeta.or.kr");
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.label(" "); // 위 줄과 세로로 맞춘다(라벨을 두 번 적지 않는다).
+        if ui.link("서남권가상융합산업허브센터 (metahubs.kr)").clicked() {
             crate::paneurl::os_open("https://metahubs.kr");
         }
     });

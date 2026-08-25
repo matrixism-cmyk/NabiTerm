@@ -28,10 +28,35 @@ pub(crate) struct AiPicks {
 }
 
 /// 바 버튼 글자 크기 — 드롭다운(menu_button)과 일반 버튼의 **높이를 같게** 맞춘다.
-const BAR_TEXT: f32 = 12.0;
+/// 명령 바 글씨의 기준 크기(터미널 글꼴에 비례해 정한다).
+///
+/// 예전에는 12px로 못박혀 있었다. 터미널 글꼴을 크게 쓰는 사람에게는 바만 유난히 작아
+/// 보인다(사용자 보고 2026-08-25). 터미널보다 조금 작게, 그러나 함께 커지게 한다.
+fn bar_size(pane_font: f32) -> f32 {
+    (pane_font * 0.8).clamp(10.0, 20.0)
+}
+
+/// 이번 프레임의 바 글씨 크기(그리기 직전에 정해 둔다 — RichText 헬퍼가 읽는다).
+///
+/// UI는 한 스레드에서만 도므로 경쟁이 없지만, 전역으로 두는 편이 헬퍼마다 크기를 들고
+/// 다니는 것보다 호출부가 깨끗하다. f32를 비트로 담는다(원자적으로 다룰 수 있게).
+static BAR_SIZE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// 이번 프레임의 바 글씨 크기를 정한다.
+fn set_bar_size(px: f32) {
+    BAR_SIZE.store(px.to_bits(), std::sync::atomic::Ordering::Relaxed);
+}
+
+/// 지금 정해진 바 글씨 크기(아직 안 정했으면 기본 12px).
+fn cur_bar_size() -> f32 {
+    match BAR_SIZE.load(std::sync::atomic::Ordering::Relaxed) {
+        0 => 12.0,
+        b => f32::from_bits(b),
+    }
+}
 
 fn bar_text(s: impl Into<String>) -> egui::RichText {
-    egui::RichText::new(s.into()).size(BAR_TEXT)
+    egui::RichText::new(s.into()).size(cur_bar_size())
 }
 
 /// 열려 있는 버튼의 강조색(노랑 배경 + 검은 글자) — 한눈에 "지금 이게 떠 있다"를 보여준다.
@@ -141,6 +166,9 @@ fn screen_state(
 impl crate::tabs::TermTabViewer<'_> {
     /// 탭 pane에 AI 명령 바를 그린다(공통 구현 위임).
     pub(crate) fn ai_bar(&mut self, ui: &mut egui::Ui, pane: nabi_types::PaneId) {
+        // 바 글씨를 이 pane의 터미널 글꼴에 맞춘다 — 큰 글꼴에서 바만 작아 보이지 않게.
+        let pf = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
+        set_bar_size(bar_size(pf));
         let mut st = AiBarState {
             enabled: self.ai_cmd_bar,
             run_cmd: self.run_cmd,
@@ -240,4 +268,32 @@ pub(crate) fn show_bar(ui: &mut egui::Ui, lang: nabi_i18n::Lang, v: &BarView) ->
         }
     });
     send
+}
+
+#[cfg(test)]
+mod bar_size_tests {
+    use super::{bar_size, cur_bar_size, set_bar_size};
+
+    /// 바 글씨는 터미널 글꼴을 **따라 커진다** — 12px에 못박혀 있던 것을 고쳤다.
+    #[test]
+    fn the_bar_grows_with_the_terminal_font() {
+        assert!(bar_size(24.0) > bar_size(14.0));
+        assert!(bar_size(14.0) < 14.0, "터미널보다는 작아야 한다");
+    }
+
+    /// 아주 작거나 큰 글꼴에서도 읽을 수 있는 범위를 지킨다.
+    #[test]
+    fn it_stays_inside_a_readable_range() {
+        assert_eq!(bar_size(4.0), 10.0);
+        assert_eq!(bar_size(100.0), 20.0);
+    }
+
+    /// 아직 정하지 않았으면 예전 기본값(12px)으로 그린다.
+    #[test]
+    fn before_the_first_frame_it_falls_back_to_the_old_default() {
+        assert_eq!(cur_bar_size(), 12.0);
+        set_bar_size(17.5);
+        assert_eq!(cur_bar_size(), 17.5);
+        set_bar_size(12.0);
+    }
 }
