@@ -64,6 +64,8 @@ pub enum Event {
     SftpSearchResults { id: SftpId, results: Vec<String> },
     /// 원격 디렉터리 집계 결과(경로, 파일 수, 폴더 수, 총 바이트).
     SftpDirSize { id: SftpId, path: String, files: u64, dirs: u64, bytes: u64 },
+    /// 여유 공간(모르면 None — 서버가 statvfs를 지원하지 않는다).
+    SftpFreeSpace { id: SftpId, free: Option<u64> },
     /// 미리보기 결과. `more`는 뒤에 내용이 더 있는지. 실패는 `err`에 담는다 —
     /// 조용히 빈 화면을 보여 주면 "빈 파일"과 구분이 안 된다.
     SftpPreview { id: SftpId, path: String, data: Vec<u8>, more: bool, err: Option<String> },

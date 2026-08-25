@@ -16,6 +16,8 @@ use tokio::sync::mpsc;
 /// 액터로 보내는 요청.
 pub enum SftpReq {
     List(String),
+    /// 여유 공간 묻기.
+    FreeSpace(String),
     /// 앞부분만 읽기(미리보기).
     Preview { path: String, max: usize },
     Download { xfer: u64, remote: String, local: String, resume: u64 },
@@ -189,6 +191,10 @@ pub fn spawn_sftp(
                 SftpReq::Search { root, needle } => {
                     let results = fs.search(&root, &needle, 500).await;
                     let _ = ev.send(Event::SftpSearchResults { id, results });
+                }
+                SftpReq::FreeSpace(path) => {
+                    let free = fs.free_space(&path).await;
+                    let _ = ev.send(Event::SftpFreeSpace { id, free });
                 }
                 SftpReq::Preview { path, max } => {
                     let (data, more, err) = match fs.preview(&path, max).await {

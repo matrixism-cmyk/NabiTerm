@@ -28,6 +28,16 @@ impl Conn {
     /// FTP에는 부분 읽기 통로가 없어 통째로 읽은 뒤 잘라 낸다. 회선을 아끼자고 만든
     /// 기능인데 FTP에서만 그 이득이 없는 셈이지만, **되긴 되는 편**이 낫다 — 안 되면
     /// 사용자는 FTP에서만 메뉴가 죽은 이유를 알 길이 없다.
+    /// 원격 파일시스템의 여유 공간. 서버가 statvfs를 지원하지 않으면 None.
+    ///
+    /// FTP에는 이에 해당하는 표준 명령이 없다 — 모른다고 말하는 편이 낫다.
+    pub(crate) async fn free_space(&mut self, p: &str) -> Option<u64> {
+        match self {
+            Conn::Sftp(f) => f.free_space(p).await,
+            Conn::Ftp(_) => None,
+        }
+    }
+
     pub(crate) async fn preview(&mut self, p: &str, max: usize) -> Result<(Vec<u8>, bool), String> {
         match self {
             Conn::Sftp(f) => f.preview(p, max).await,

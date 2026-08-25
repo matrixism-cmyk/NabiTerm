@@ -116,7 +116,28 @@ impl NabiApp {
     pub(crate) fn command_markdown(&self, p: PaneId) -> Option<String> {
         let cmd = self.run_cmd.get(&p).or_else(|| self.last_run_cmd.get(&p)).cloned()?;
         let out = self.pane_cmd_output(p)?;
-        Some(format!("```console\n$ {cmd}\n{}\n```", out.trim_end()))
+        // 종료 코드를 함께 담는다 — 붙여 넣어 물어볼 때 성공·실패가 가장 먼저 필요하다.
+        let tail = match self.last_exit.get(&p) {
+            Some(0) | None => String::new(),
+            Some(c) => format!("\n# exit {c}"),
+        };
+        Some(format!("```console\n$ {cmd}\n{}{tail}\n```", out.trim_end()))
+    }
+
+    /// 마지막 명령 블록(명령+출력+종료코드)을 클립보드에 담는다.
+    ///
+    /// `command_markdown`은 진작 있었는데 **아무 데서도 부르지 않았다** — 만들어 두고 안
+    /// 쓰는 것은 없는 것과 같다. 팔레트·탭 메뉴에서 부를 수 있게 한다.
+    pub(crate) fn copy_command_block(&mut self, ctx: &egui::Context) {
+        let Some(p) = self.focused_pane() else { return };
+        let key = match self.command_markdown(p) {
+            Some(md) => {
+                ctx.copy_text(md);
+                "block.copied"
+            }
+            None => "block.none",
+        };
+        self.notify = Some((nabi_i18n::tr(self.lang, key).to_string(), std::time::Instant::now()));
     }
 
     /// pane의 마지막 명령 출력(OSC 133 우선, 폴백=화면 마지막 30줄).

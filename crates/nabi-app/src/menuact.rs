@@ -220,6 +220,7 @@ impl NabiApp {
             MenuAction::EditAutoForwards(n) => self.open_auto_forwards(n),
             MenuAction::OpenCmdHistory => self.open_cmd_history(),
             MenuAction::OpenSupportBundle => self.open_support_bundle(),
+            MenuAction::CopyCommandBlock => self.copy_command_block(ctx),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
             MenuAction::TogglePin(name) => {
                 let v = &mut self.config.appearance.pinned_sessions;

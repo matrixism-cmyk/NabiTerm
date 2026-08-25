@@ -294,4 +294,31 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ("edit.cursors", "Cursors", "커서 개수", "カーソル数"),
     ("edit.clearcursors", "Single cursor (Esc)", "커서 하나로 (Esc)", "カーソルを1つに (Esc)"),
     ("editor.viewwrapcol", "Fold view at column (window width by default)", "화면에서 접을 폭(기본은 창 폭)", "画面で折り返す幅(既定はウィンドウ幅)"),
+    (
+        "settings.linkruleshint",
+        "Turn words in the terminal into clickable links. One rule per line: a regular expression, then -> and the address. Use $0 for the whole match, $1.. for groups.",
+        "터미널의 낱말을 클릭할 수 있는 주소로 만듭니다. 한 줄에 규칙 하나 — 정규식, `->`, 주소 순서입니다. `$0`은 맞은 전체, `$1`부터는 괄호로 묶은 부분입니다.",
+        "端末の語をクリック可能なリンクにします。1行に1規則 — 正規表現、`->`、アドレスの順です。`$0`は一致全体、`$1`以降は括弧のグループです。",
+    ),
+    ("settings.addlinkrule", "Add link rule", "링크 규칙 추가", "リンク規則を追加"),
+    (
+        "settings.linkrules.form",
+        "needs `pattern -> address`",
+        "`패턴 -> 주소` 꼴이어야 합니다",
+        "`パターン -> アドレス` の形にしてください",
+    ),
+    ("settings.linkrules.regex", "the pattern is not a valid regular expression", "정규식이 올바르지 않습니다", "正規表現が正しくありません"),
+    ("block.copy", "Copy last command block", "마지막 명령 블록 복사", "直前のコマンドブロックをコピー"),
+    (
+        "block.copied",
+        "Copied the command and its output.",
+        "명령과 출력을 복사했습니다.",
+        "コマンドと出力をコピーしました。",
+    ),
+    (
+        "block.none",
+        "No command block to copy yet.",
+        "복사할 명령 블록이 아직 없습니다.",
+        "コピーできるコマンドブロックがまだありません。",
+    ),
 ];

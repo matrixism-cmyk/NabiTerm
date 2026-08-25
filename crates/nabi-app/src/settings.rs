@@ -135,6 +135,8 @@ impl NabiApp {
         self.font_size = self.config.appearance.font_size;
         self.lang = nabi_i18n::Lang::from_code(&self.config.appearance.language);
         self.theme = build_theme(&self.config);
+        // 사용자 링크 규칙을 렌더러에 넣는다 — 설정에서 고치면 그 자리에서 반영된다.
+        nabi_render::urlrules::set_rules(&self.config.terminal.link_rules);
         let fam = self.config.appearance.font_family.clone();
         if fam != self.settings_live_font {
             self.settings_live_font = fam.clone();

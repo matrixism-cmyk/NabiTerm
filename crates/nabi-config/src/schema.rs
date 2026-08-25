@@ -287,6 +287,9 @@ pub struct TerminalCfg {
     /// 이유는 paletteorder 문서 참고 — 동작에는 pane 번호 같은 그때뿐인 값이 들어 있다.
     #[serde(default)]
     pub palette_recent: Vec<String>,
+    /// 사용자 정의 링크 규칙(`정규식 -> 주소틀`). 로그의 낱말을 클릭 가능한 주소로.
+    #[serde(default)]
+    pub link_rules: Vec<String>,
     /// 세션 이름 → 접속 시 자동으로 열 터널(`로컬:원격호스트:원격포트`).
     /// 세션 파일이 아니라 여기 두는 이유는 autofwd 문서 참고(last_connected와 같은 선례).
     #[serde(default)]
@@ -338,6 +341,7 @@ impl Default for TerminalCfg {
             palette_recent: Vec::new(),
             cmd_secs: Vec::new(),
             auto_forwards: std::collections::BTreeMap::new(),
+            link_rules: Vec::new(),
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,

@@ -37,9 +37,18 @@ pub fn row_urls(row: &[RenderCell]) -> Vec<UrlSpan> {
 /// 평탄화된 (문자, 소유 셀 인덱스)에서 URL을 찾는다 — 반환 span은 **셀 인덱스** 기준.
 pub fn row_urls_from(chars: &[char], owner: &[usize]) -> Vec<UrlSpan> {
     let mut spans = Vec::new();
+    // 사용자 정의 규칙을 **먼저** 본다. 회사마다 다른 것(PROJ-1234, #4821)이라 우리가
+    // 아는 일반 규칙보다 사용자 뜻이 앞선다. 겹치는 자리는 아래에서 건너뛴다.
+    let custom = custom_spans(chars, owner);
+    spans.extend(custom.iter().cloned());
     let n = chars.len();
     let mut i = 0;
     while i < n {
+        // 사용자 규칙이 이미 잡은 자리는 지나친다(두 링크가 같은 글자를 덮으면 클릭이 엉킨다).
+        if let Some(sp) = custom.iter().find(|sp| owner[i] >= sp.start && owner[i] <= sp.end) {
+            i = owner.iter().rposition(|o| *o == sp.end).map_or(n, |k| k + 1);
+            continue;
+        }
         let scheme = ["https://", "http://", "ftp://", "file://", "ssh://", "sftp://", "git://"]
             .iter()
             .find(|s| starts_with(chars, i, s));
@@ -164,6 +173,18 @@ pub(crate) fn starts_with(chars: &[char], i: usize, pat: &str) -> bool {
 
 pub(crate) fn is_url_char(c: char) -> bool {
     !c.is_whitespace() && !matches!(c, '"' | '\'' | '<' | '>' | '`' | ')' | ']' | '}')
+}
+
+/// 사용자 정의 규칙에 맞는 자리들(`urlrules`). 규칙이 없으면 빈 목록이라 비용이 없다.
+fn custom_spans(chars: &[char], owner: &[usize]) -> Vec<UrlSpan> {
+    let text: String = chars.iter().collect();
+    crate::urlrules::scan(&text)
+        .into_iter()
+        .filter_map(|(s, e, url)| {
+            let (a, b) = (owner.get(s)?, owner.get(e.saturating_sub(1))?);
+            Some(UrlSpan { start: *a, end: *b, url })
+        })
+        .collect()
 }
 
 #[cfg(test)]

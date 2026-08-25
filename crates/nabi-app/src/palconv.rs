@@ -31,6 +31,7 @@ pub(crate) fn to_menu(a: &PaletteAction) -> Option<MenuAction> {
         PaletteAction::OpenEnvMgr => MenuAction::OpenEnvMgr,
         PaletteAction::OpenCmdHistory => MenuAction::OpenCmdHistory,
         PaletteAction::OpenSupportBundle => MenuAction::OpenSupportBundle,
+        PaletteAction::CopyCommandBlock => MenuAction::CopyCommandBlock,
         PaletteAction::OpenForward => MenuAction::OpenForward,
         PaletteAction::OpenSettings => MenuAction::OpenSettings,
         PaletteAction::OpenVault => MenuAction::OpenVault,

@@ -124,6 +124,7 @@ pub fn handle_command(
         Command::SftpDirSize { id, path } => {
             sftp_request(id, SftpReq::DirSize(path), sftp)
         }
+        Command::SftpFreeSpace { id, path } => sftp_request(id, SftpReq::FreeSpace(path), sftp),
         Command::SftpPreview { id, path, max } => {
             sftp_request(id, SftpReq::Preview { path, max }, sftp)
         }

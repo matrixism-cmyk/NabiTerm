@@ -77,6 +77,9 @@ pub fn with_screen_urls<R>(
     build: impl FnOnce() -> Vec<ScreenUrl>,
     f: impl FnOnce(&[ScreenUrl]) -> R,
 ) -> R {
+    // 사용자 규칙이 바뀌면 화면 내용이 그대로여도 링크는 달라진다 — 세대를 섞어
+    // 규칙을 고친 순간 다시 훑게 한다(안 그러면 스크롤할 때까지 옛 링크가 남는다).
+    let gen = gen ^ (crate::urlrules::generation() << 32);
     let fresh = URL_CACHE
         .with(|c| c.borrow().get(&key).is_some_and(|(g, o, _)| *g == gen && *o == offset));
     if !fresh {

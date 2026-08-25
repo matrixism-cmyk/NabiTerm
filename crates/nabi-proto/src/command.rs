@@ -112,6 +112,8 @@ pub enum Command {
         root: String,
         needle: String,
     },
+    /// 원격 파일시스템 여유 공간(목록 새로고침 때 함께 묻는다).
+    SftpFreeSpace { id: SftpId, path: String },
     /// 원격 파일 **앞부분만** 읽어 온다(미리보기). 크기를 묻지 않고 max까지만 읽는다.
     SftpPreview {
         id: SftpId,

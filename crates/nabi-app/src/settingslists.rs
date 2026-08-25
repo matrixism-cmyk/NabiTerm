@@ -17,6 +17,44 @@ pub(crate) fn highlight_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang)
     ui.add_space(4.0);
     ui.checkbox(&mut cfg.terminal.auto_reply, tr(lang, "settings.autoreply"));
     ui.weak(tr(lang, "settings.autoreply.help"));
+    ui.separator();
+    ui.label(tr(lang, "settings.linkruleshint"));
+    link_rules(ui, cfg, lang);
+}
+
+/// 사용자 정의 링크 규칙 편집 — 잘못된 규칙은 **그 자리에서** 표시한다.
+///
+/// 저장하고 나서 링크가 안 생기는 것을 보고 원인을 찾게 하면 안 된다. 정규식은 조용히
+/// 틀리기 쉬운 것이라 특히 그렇다.
+fn link_rules(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    let mut remove = None;
+    for (i, rule) in cfg.terminal.link_rules.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::TextEdit::singleline(rule)
+                    .desired_width(320.0)
+                    .hint_text(r"PROJ-\d+ -> https://jira/browse/$0"),
+            );
+            if ui.small_button("\u{2715}").clicked() {
+                remove = Some(i);
+            }
+            if !rule.trim().is_empty() {
+                if let Some(why) = nabi_render::urlrules::rule_error(rule) {
+                    let key = match why.as_str() {
+                        "form" => "settings.linkrules.form",
+                        _ => "settings.linkrules.regex",
+                    };
+                    ui.colored_label(egui::Color32::from_rgb(0xd0, 0x4a, 0x3a), tr(lang, key));
+                }
+            }
+        });
+    }
+    if let Some(i) = remove {
+        cfg.terminal.link_rules.remove(i);
+    }
+    if ui.button(tr(lang, "settings.addlinkrule")).clicked() {
+        cfg.terminal.link_rules.push(String::new());
+    }
 }
 
 /// 명령 스니펫 편집(추가/수정/삭제). 메뉴에서 클릭하면 포커스 pane에 전송·실행.
