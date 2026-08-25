@@ -60,6 +60,10 @@ pub fn context_menu(
         eb.select_all_matches();
         ui.close();
     }
+    if eb.sel.len() > 1 && ui.button(tr(lang, "edit.clearcursors")).clicked() {
+        eb.sel.collapse_to_primary();
+        ui.close();
+    }
     if ui.button(tr(lang, "edit.addcursorup")).clicked() {
         eb.add_cursor_vertical(-1);
         ui.close();

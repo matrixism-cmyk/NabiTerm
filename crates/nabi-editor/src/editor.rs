@@ -48,6 +48,8 @@ pub struct EditorDoc {
     pub stats_cache: (usize, usize, usize),
     /// 미니맵(우측 축소 개요) 표시. 일반 텍스트 편집기에서만.
     pub minimap: bool,
+    /// 줄바꿈 폭(열). 0이면 창 폭에 맞춘다 — `wrapcol` 참고.
+    pub wrap_col: usize,
     /// 개요(좌측 아웃라인) 패널 표시 — 헤더/정의 줄 목록 클릭 점프.
     pub outline: bool,
     /// 좌측 줄 번호 거터 표시(기본 true, 보기 메뉴에서 토글).
@@ -118,7 +120,7 @@ impl EditorDoc {
         EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None, huge: None,
-            find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+            find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, wrap_col: 0, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
             lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
         }

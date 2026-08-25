@@ -108,9 +108,17 @@ impl NabiApp {
                     // 오류)는 모달로 띄워 무한 재시도 루프를 방지한다. ssh_connect_time 재사용.
                     let stable = self.ssh_connect_time.get(&pane).is_some_and(|t| t.elapsed().as_secs() >= 20);
                     self.ssh_connect_time.remove(&pane);
-                    if self.config.terminal.auto_reconnect && stable {
+                    // 물러서며 여러 번 시도한다(S1). 예전에는 "안정적으로 붙었다 끊긴"
+                    // 경우에만 **한 번** 시도해서, 깨어나는 중이거나 VPN이 잠깐 끊긴
+                    // 흔한 경우에 그 한 번이 실패하고 끝났다.
+                    //
+                    // 안정 연결이 끊겼으면 새로 센다. 이미 재시도 중이었다면 그 횟수를
+                    // 이어받는다(붙자마자 또 끊기는 경우) — 그래야 무한 반복이 안 된다.
+                    let carry = self.reconnect_carry.take();
+                    if self.config.terminal.auto_reconnect && (stable || carry.is_some()) {
                         self.notify = Some((format!("\u{21bb} {message}"), std::time::Instant::now()));
-                        self.do_reconnect(pane);
+                        // 한 번 시도하고 포기하던 것을 물러서며 여러 번으로 바꿨다(S1).
+                        self.begin_auto_reconnect(pane, message, carry);
                     } else {
                         self.reconnect_ask = Some((pane, message)); // pane 유지(마지막 화면 보존).
                     }

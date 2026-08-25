@@ -96,7 +96,8 @@ impl NabiApp {
                 title, path, remote: None, text: String::new(), dirty: false, loaded: true,
                 font_size: self.font_size, encoding, eol: "-", highlight: false,
                 wrap: false, show_ws: false, readonly: true, big: Some(big), edit: None, huge: None,
-                find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+                find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0),
+                minimap: false, wrap_col: 0, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
                 diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
                 lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
             });

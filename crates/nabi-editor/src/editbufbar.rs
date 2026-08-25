@@ -44,6 +44,12 @@ pub(crate) fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize),
             ui.separator();
             ui.label(format!("Sel {sel}"));
         }
+        // 커서가 여럿이면 몇 개인지 보여 준다 — 지난 배치에 늘리는 길을 냈는데 개수가
+        // 안 보여서, 몇 군데를 고치고 있는지 모른 채 타자를 치게 됐다.
+        if eb.sel.len() > 1 {
+            ui.separator();
+            ui.label(format!("\u{25c9} {}", eb.sel.len())).on_hover_text(tr(lang, "edit.cursors"));
+        }
         ui.separator();
         ui.label(format!("{} lines \u{00b7} {}", eb.rope.len_lines(), crate::humanfmt::human(eb.rope.len_bytes() as u64)));
         ui.separator();

@@ -10,6 +10,8 @@ impl NabiApp {
         if !self.config.appearance.show_statusbar {
             return;
         }
+        // 재접속 중이면 그것부터 보인다 — 지금 무슨 일이 벌어지는지가 가장 급한 정보다.
+        crate::reconnect::reconnect_bar(self, ui);
         let lang = self.lang;
         let focused = self.focused_pane();
         let title = if self.sftp_pane.is_some() && focused == self.sftp_pane {

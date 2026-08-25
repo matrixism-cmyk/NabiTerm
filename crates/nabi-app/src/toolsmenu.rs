@@ -49,13 +49,14 @@ pub(crate) fn tools_menu(ui: &mut egui::Ui, lang: Lang, snippets: &[String]) -> 
 type Group = (&'static str, &'static [(&'static str, PaletteAction)]);
 
 const GROUPS: &[Group] = &[
-    // 이 PC와 서버를 갖추는 일.
+    // 이 PC와 서버를 갖추는 일 + 문제를 물어볼 때 필요한 것.
     (
         "tools.grp.setup",
         &[
             ("env.title", PaletteAction::OpenEnvMgr),
             ("keygen.title", PaletteAction::OpenKeygen),
             ("help.agent.title", PaletteAction::OpenAiCli),
+            ("bundle.title", PaletteAction::OpenSupportBundle),
         ],
     ),
     // 지나간 것을 되찾는 일.
@@ -64,19 +65,18 @@ const GROUPS: &[Group] = &[
         &[
             ("cmdhist.title", PaletteAction::OpenCmdHistory),
             ("sftp.history", PaletteAction::XferHistory),
-            ("snap.save", PaletteAction::SnapshotSave),
-            ("snap.list", PaletteAction::SnapshotList),
             ("bcast.results", PaletteAction::BroadcastResults),
         ],
     ),
-    // 지금 화면·작업 공간을 다루는 일.
+    // 지금 화면·작업 공간을 다루는 일(스냅샷은 이 화면을 담는 것이라 여기에 있다).
     (
         "tools.grp.workspace",
         &[
             ("wt.create", PaletteAction::WorktreeCreate),
             ("wt.list", PaletteAction::WorktreeList),
             ("qsel.title", PaletteAction::QuickSelect),
-            ("ai.dashboard", PaletteAction::AiDashboard),
+            ("snap.save", PaletteAction::SnapshotSave),
+            ("snap.list", PaletteAction::SnapshotList),
         ],
     ),
     // 옮기고 잇는 일.
@@ -154,7 +154,8 @@ mod group_tests {
     fn no_group_grows_past_a_glance() {
         for (name, items) in GROUPS {
             assert!(!items.is_empty(), "{name}: 빈 묶음");
-            assert!(items.len() <= 6, "{name}: {}개 — 다시 나눌 때다", items.len());
+            // 한도를 6에서 5로 조였다 — 6에 닿고 나서야 나누면 이미 읽기 불편하다(2026-08-25).
+            assert!(items.len() <= 5, "{name}: {}개 — 다시 나눌 때다", items.len());
         }
     }
 

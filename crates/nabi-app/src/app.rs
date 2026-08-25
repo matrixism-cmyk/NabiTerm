@@ -304,6 +304,12 @@ pub struct NabiApp {
     pub diff_pick: Option<PaneId>,
     /// 자동 터널을 편집 중인 세션 이름.
     pub fwd_edit: Option<String>,
+    /// 재접속을 기다리는 pane — (물러서기 상태, 다음 시도 시각, 끊김 사유).
+    pub reconnecting: HashMap<PaneId, (crate::backoff::Backoff, std::time::Instant, String)>,
+    /// 방금 시도한 재접속의 상태 — 새 pane이 뜨면 그 pane으로 옮겨 붙인다.
+    pub reconnect_carry: Option<(crate::backoff::Backoff, String)>,
+    /// 진단 묶음 창(도움말·팔레트).
+    pub bundle: Option<Vec<crate::supportbundle::Piece>>,
     /// 다음 PaneSpawned를 분할 배치(Some(true)=오른쪽, Some(false)=아래).
     pub pending_split: Option<bool>,
     /// pane별 글꼴 크기 오버라이드(Ctrl+휠 확대/축소). 없으면 전역 font_size.

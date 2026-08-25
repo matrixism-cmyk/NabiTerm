@@ -41,6 +41,19 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
         if ui.button(tr(lang, "editor.saveas")).clicked() { act.save_as = true; }
         ui.toggle_value(&mut doc.highlight, "\u{1f3a8}").on_hover_text(tr(lang, "editor.highlight"));
         ui.toggle_value(&mut doc.wrap, "\u{21b5}").on_hover_text(tr(lang, "editor.wrap"));
+        // 줄바꿈이 켜져 있을 때만 폭을 고를 수 있다 — 꺼져 있으면 뜻이 없다.
+        if doc.wrap {
+            egui::ComboBox::from_id_salt("wrap_col")
+                .selected_text(crate::wrapcol::label(doc.wrap_col))
+                .width(52.0)
+                .show_ui(ui, |ui| {
+                    for c in crate::wrapcol::CHOICES {
+                        ui.selectable_value(&mut doc.wrap_col, *c, crate::wrapcol::label(*c));
+                    }
+                })
+                .response
+                .on_hover_text(tr(lang, "editor.viewwrapcol"));
+        }
         ui.toggle_value(&mut doc.show_ws, "\u{00b7}").on_hover_text(tr(lang, "editor.showws"));
         ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
         if doc.dirty { ui.colored_label(WARN, "\u{25cf}"); }
@@ -158,6 +171,7 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
 /// 라인번호 거터 + TextEdit(+ syntect 하이라이트 layouter). 커서 (Ln, Col, 선택 글자수)를 돌려준다.
 fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut EditorAct) -> (usize, usize, usize) {
     let (wrap, readonly, show_ws) = (doc.wrap, doc.readonly, doc.show_ws);
+    let wrap_col = doc.wrap_col;
     let mono = egui::FontId::monospace(doc.font_size);
     let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let lines = doc.text_stats().1.max(1); // 거터 폭(길이 변화 시에만 재스캔 — D 성능).
@@ -174,7 +188,9 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
     // 0.34: layouter 인자가 &str → &dyn TextBuffer로 바뀌었다(as_str로 동일 사용).
     let mut layouter = move |ui: &egui::Ui, buf: &dyn egui::TextBuffer, wrap_w: f32| {
         let text = buf.as_str();
-        let max_w = if wrap { wrap_w } else { f32::INFINITY };
+        // 창 폭이 아니라 정해진 열에서 접을 수 있다(wrapcol). 글자 폭은 글꼴에서 잰다.
+        let char_w = ui.fonts_mut(|f| f.glyph_width(&egui::FontId::monospace(fsize), 'M'));
+        let max_w = crate::wrapcol::wrap_width(wrap, wrap_col, char_w, wrap_w);
         let mut job = if hl {
             crate::editorhl::highlight(hl_id, text, &ext, fsize)
         } else {
@@ -196,7 +212,7 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         let out = te.show(ui);
         if out.response.changed() { doc.dirty = true; } crate::editorextra::apply_pending_cursor(ui, out.response.id, doc);
         crate::editorctx::editor_context_menu(&out, doc, lang, readonly, act); // 우클릭 표준 메뉴.
-        if show_ws { draw_whitespace(ui, &out.galley, out.galley_pos, &mono); }
+        if show_ws { crate::editortabws::draw_whitespace(ui, &out.galley, out.galley_pos, &mono); }
         // 커서/선택(블럭)의 galley 행을 구해, 한 번 순회로 논리 줄 번호로 환산.
         let rows = &out.galley.rows;
         // 0.34: rcursor가 사라져 CCursor→행/열은 galley.layout_from_cursor로 구한다.
@@ -264,25 +280,4 @@ fn editor_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Edi
         if doc.text.len() < crate::editorhl::MAX_HL_BYTES { crate::editorextra::unicode_word_dblclick(ui, &out, &doc.text); }
     });
     (cur.0, cur.1, sel_chars)
-}
-
-/// 공백/탭을 흐린 점·화살표로 오버레이(편집 가이드). 보이는 행만 처리(클립 밖은 건너뜀).
-fn draw_whitespace(ui: &egui::Ui, galley: &egui::Galley, origin: egui::Pos2, mono: &egui::FontId) {
-    let clip = ui.clip_rect();
-    let faint = ui.visuals().weak_text_color();
-    let painter = ui.painter();
-    for row in &galley.rows {
-        let y = origin.y + row.rect().top();
-        if y + row.rect().height() < clip.top() || y > clip.bottom() {
-            continue; // 화면 밖 행은 그리지 않음(대용량 정상 파일에서 비용 절감).
-        }
-        for g in &row.glyphs {
-            let mark = match g.chr {
-                ' ' => "\u{00b7}",
-                '\t' => "\u{2192}",
-                _ => continue,
-            };
-            painter.text(origin + g.pos.to_vec2(), egui::Align2::LEFT_TOP, mark, mono.clone(), faint);
-        }
-    }
 }

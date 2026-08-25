@@ -73,6 +73,7 @@ pub(crate) enum PaletteAction {
     OpenKeygen,
     OpenEnvMgr,
     OpenCmdHistory,
+    OpenSupportBundle,
     /// 폴더 동기화 다이얼로그(S6-51).
     OpenSync,
     /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
