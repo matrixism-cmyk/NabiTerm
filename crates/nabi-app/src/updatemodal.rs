@@ -49,6 +49,7 @@ impl NabiApp {
         let lang = self.lang;
         let updater = self.updater.clone();
         let quit = self.update_quit.clone();
+        let cfg_dir = self.cfg_dir(); // '새로워진 점' 노트를 적어 둘 곳.
         let mut action = PromptAction::None;
         let mut open = true;
         egui::Window::new(tr(lang, "update.newtitle"))
@@ -56,7 +57,7 @@ impl NabiApp {
             .resizable(false)
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .open(&mut open)
-            .show(ctx, |ui| prompt_body(ui, lang, &status, &updater, &quit, &mut action));
+            .show(ctx, |ui| prompt_body(ui, lang, &status, &updater, &quit, &cfg_dir, &mut action));
         if !open {
             action = PromptAction::Later; // 창 X = 다음에.
         }
@@ -106,12 +107,17 @@ fn prompt_body(
     status: &UpdateStatus,
     updater: &UpdateChecker,
     quit: &Arc<AtomicBool>,
+    cfg_dir: &std::path::Path,
     action: &mut PromptAction,
 ) {
     match status {
         UpdateStatus::Available(release) => {
             ui.colored_label(BLUE, format!("\u{2b06} {}", tr(lang, "update.available")));
             ui.heading(format!("v{APP_VERSION}  \u{2192}  v{}", release.version));
+            // 다음 실행에 "새로워진 점"으로 보여 줄 노트를 지금 적어 둔다 — 설치가 끝나면
+            // 이 프로세스는 사라진다. 넘기더라도 적어 두는 편이 낫다: 나중에 직접 설치해도
+            // 판이 맞으면 그대로 쓰인다(안 맞으면 whatsnew::take가 버린다).
+            crate::whatsnew::stash(cfg_dir, &release.version, &release.notes);
             if !release.notes.trim().is_empty() {
                 ui.add_space(4.0);
                 egui::ScrollArea::vertical().max_height(180.0).show(ui, |ui| {

@@ -146,14 +146,25 @@ impl NabiApp {
                 ui.separator();
                 egui::ScrollArea::vertical().id_salt("palette_scroll").max_height(320.0).show(ui, |ui| {
                     let mut first: Option<usize> = None;
-                    for (i, (label, _)) in cmds.iter().enumerate() {
+                    for (i, (label, act)) in cmds.iter().enumerate() {
                         if !q.is_empty() && !fuzzy_match(&label.to_lowercase(), &q) {
                             continue;
                         }
                         if first.is_none() {
                             first = Some(i);
                         }
-                        if ui.selectable_label(false, label).clicked() {
+                        // 단축키가 있으면 오른쪽 끝에 흐리게 적는다 — 팔레트는 명령을 찾는
+                        // 자리이면서 단축키를 배우는 자리이기도 하다.
+                        let row = ui.horizontal(|ui| {
+                            let hit = ui.selectable_label(false, label).clicked();
+                            if let Some(k) = crate::palettekeys::accel(act) {
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    ui.weak(k);
+                                });
+                            }
+                            hit
+                        });
+                        if row.inner {
                             chosen = Some(i);
                         }
                     }

@@ -26,6 +26,7 @@ impl eframe::App for NabiApp {
             }
             // 지난 실행이 비정상 종료였는지 확인 — 미저장 문서가 남아 있으면 되살릴지 묻는다.
             self.load_pad_recovery();
+            self.load_whatsnew(); // 업데이트 뒤 첫 실행이면 '새로워진 점'을 준비.
             // 첫 프레임이 떴다 = 그래픽 초기화를 무사히 통과했다. 표식을 지운다(gpupick).
             crate::gpupick::mark_ok();
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
@@ -124,6 +125,7 @@ impl eframe::App for NabiApp {
         self.show_pad_recovery(ctx); // 지난 실행에서 잃을 뻔한 문서 되살리기.
         self.show_log_view(ctx); // 진단 로그 보기(도움말).
         self.show_find_all(ctx); // 모든 창에서 찾기.
+        self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
         self.show_vault_unlock(ctx);
         // 스플래시는 **맨 마지막**에 그린다 — 무엇 위에든 덮여야 한다.
         if let Some(t) = self.splash_since {

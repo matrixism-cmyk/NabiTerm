@@ -28,6 +28,8 @@ pub struct NabiApp {
     pub log_view: Option<Option<crate::logview::LogText>>,
     /// '모든 창에서 찾기' 상태(Some=열림).
     pub find_all: Option<crate::findallui::FindAll>,
+    /// 업데이트 뒤 첫 실행의 '새로워진 점'(Some=열림, 안쪽 None=노트를 못 챙김).
+    pub whatsnew: Option<Option<String>>,
     /// 프로필 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것. 창이 닫히면 비운다.
     pub ai_prof_backup: Option<Vec<nabi_config::AiProfileCfg>>,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).

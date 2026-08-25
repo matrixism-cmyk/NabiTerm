@@ -81,7 +81,7 @@ const LICENSES: [(&str, &str, &str); 22] = [
 ];
 
 /// (단축키, 설명 i18n 키). 설명을 함께 보여 무슨 기능인지 알 수 있게 한다.
-const KEYS: [(&str, &str); 24] = [
+pub(crate) const KEYS: [(&str, &str); 24] = [
     ("Ctrl+Shift+T", "help.key.newtab"),
     ("Ctrl+Shift+N", "help.key.connect"),
     ("Ctrl+Shift+W", "help.key.close"),
