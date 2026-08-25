@@ -62,7 +62,7 @@ pub(crate) enum MenuAction {
     ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
     RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenCmdHistory, OpenSupportBundle,
-    CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String),
+    CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), ToggleMark, PrevMark, NextMark, ClearMarks,
     TearOff,
     DockFloat,
     Arrange(ArrangeMode),
@@ -201,6 +201,14 @@ impl NabiApp {
                         ui.close();
                     }
                     if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close(); }
+                    // 표식은 하위 묶음으로 — 항목 넷을 편집 메뉴에 늘어놓으면 메뉴가 길어진다.
+                    ui.menu_button(tr(lang, "mark.group"), |ui| {
+                        if ui.button(tr(lang, "mark.toggle")).clicked() { action = Some(MenuAction::ToggleMark); ui.close(); }
+                        if ui.button(tr(lang, "mark.prev")).clicked() { action = Some(MenuAction::PrevMark); ui.close(); }
+                        if ui.button(tr(lang, "mark.next")).clicked() { action = Some(MenuAction::NextMark); ui.close(); }
+                        ui.separator();
+                        if ui.button(tr(lang, "mark.clear")).clicked() { action = Some(MenuAction::ClearMarks); ui.close(); }
+                    });
                     // 스니펫은 도구 메뉴로 이동(T3-1 — 편집=텍스트 조작, 도구=생산성 도구).
                 });
                 ui.menu_button(tr(lang, "menu.view"), |ui| {

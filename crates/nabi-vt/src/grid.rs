@@ -257,6 +257,17 @@ impl TermModel {
         }
     }
 
+    /// 지금 화면 맨 위에 있는 줄의 절대 번호. [`scroll_to_abs_line`]의 반대다.
+    ///
+    /// 표식(스크롤백 마크)이 "지금 보는 자리"를 잡으려면 이 값이 필요하다. 표시 오프셋만
+    /// 들고 있으면 출력이 흘렀을 때 같은 자리를 가리키지 못한다 — 오프셋은 최신 기준이라
+    /// 새 줄이 올 때마다 같은 화면이 다른 값이 된다.
+    pub fn top_abs_line(&self) -> usize {
+        let rows = self.size().rows() as usize;
+        let total = self.history_size() + rows;
+        total.saturating_sub(rows).saturating_sub(self.scrollback_offset())
+    }
+
     /// 절대 줄 번호(0 = 스크롤백 맨 위)가 화면 맨 위에 오도록 스크롤한다.
     ///
     /// 표시 오프셋은 "최신에서 얼마나 거슬러 올라갔나"이고 절대 줄은 "맨 위에서 몇 번째"라
@@ -293,6 +304,30 @@ impl TermModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **왕복이 맞아야 한다** — 표식은 이 두 함수 사이에서 자리를 잃지 않아야 한다.
+    #[test]
+    fn the_top_line_survives_a_round_trip() {
+        let mut m = TermModel::new(GridSize::new(20, 5), 1000);
+        for i in 0..100 {
+            m.process(format!("line {i}\r\n").as_bytes());
+        }
+        for target in [0usize, 7, 42, 90] {
+            m.scroll_to_abs_line(target);
+            assert_eq!(m.top_abs_line(), target, "{target}줄로 갔다가 다른 자리를 돌려줬다");
+        }
+    }
+
+    /// 맨 아래(최신)에서는 화면 맨 위가 '전체 - 화면높이'다.
+    #[test]
+    fn at_the_bottom_the_top_line_is_the_last_screenful() {
+        let mut m = TermModel::new(GridSize::new(20, 5), 1000);
+        for i in 0..30 {
+            m.process(format!("line {i}\r\n").as_bytes());
+        }
+        m.scroll_to_bottom();
+        assert_eq!(m.top_abs_line(), m.total_abs_lines().saturating_sub(5));
+    }
 
     #[test]
     fn soft_wrap_sets_row_wrapped() {

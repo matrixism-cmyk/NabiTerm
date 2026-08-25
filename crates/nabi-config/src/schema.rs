@@ -274,6 +274,16 @@ pub struct TerminalCfg {
     /// SSH 리소스 경보 임계(%) — CPU/MEM/디스크가 이 값 이상이면 빨강·토스트. 기본 90.
     #[serde(default = "default_alert_pct")]
     pub ssh_stats_alert_pct: u32,
+    /// 이 초 이상 걸린 명령이 **보이지 않는 자리에서** 끝나면 알린다. 0=시간 알림 끔
+    /// (실패 알림은 남는다). 예전에는 10초가 코드에 박혀 있었다.
+    #[serde(default = "default_slow_command_secs")]
+    pub slow_command_secs: u64,
+    /// 세션 이름 → 접속 시 보낼 환경변수(`KEY=VALUE` 여러 줄).
+    ///
+    /// `SavedSession`이 아니라 여기 두는 것은 `auto_forwards`·`last_connected`와 같은 이유다 —
+    /// 세션 구조체를 만드는 자리가 서른 곳이 넘어 필드를 더하면 그만큼을 함께 고쳐야 한다.
+    #[serde(default)]
+    pub session_env: std::collections::HashMap<String, String>,
     /// 세션별 마지막 접속 시각(이름→unix초). 세션 목록에 상대시간 표시(D4).
     #[serde(default)]
     pub last_connected: std::collections::BTreeMap<String, i64>,
@@ -321,6 +331,8 @@ pub struct TerminalCfg {
 }
 
 fn default_alert_pct() -> u32 { 90 }
+/// 30초. 사람이 "자리를 뜰까" 망설이기 시작하는 지점이라 알림이 쓸모 있어지는 첫 구간이다.
+fn default_slow_command_secs() -> u64 { 30 }
 fn default_control_mode() -> String { "ask".into() }
 fn default_stats_secs() -> u64 { 3 }
 fn default_keepalive() -> u64 { 30 }
@@ -341,6 +353,8 @@ impl Default for TerminalCfg {
             ssh_stats_secs: 3,
             auto_reconnect: false,
             ssh_stats_alert_pct: 90,
+            slow_command_secs: default_slow_command_secs(),
+            session_env: Default::default(),
             last_connected: std::collections::BTreeMap::new(),
             dir_visits: std::collections::BTreeMap::new(),
             cmd_history: Vec::new(),

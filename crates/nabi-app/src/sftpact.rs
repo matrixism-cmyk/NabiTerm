@@ -7,6 +7,24 @@ use nabi_i18n::tr;
 use nabi_proto::Command;
 
 impl NabiApp {
+    /// 묶음이 끝났을 때 한 줄 요약. 실패가 있으면 붉게 — 개수만 보고도 손을 대야 할지 안다.
+    pub(crate) fn sftp_xfer_summary(&mut self, ctx: &egui::Context, t: crate::xfersummary::Summary) {
+        let lang = self.lang;
+        let mut msg = format!(
+            "\u{2713} {} {} \u{00b7} {}",
+            nabi_i18n::tr(lang, "sftp.q.summaryok"),
+            t.done,
+            crate::browserfs::human(t.bytes)
+        );
+        if t.failed > 0 {
+            msg = format!("\u{2717} {} {} \u{00b7} {}", nabi_i18n::tr(lang, "sftp.q.summaryfail"), t.failed, msg);
+        }
+        self.notify = Some((msg, std::time::Instant::now()));
+        if ctx.input(|i| !i.focused) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(egui::UserAttentionType::Informational));
+        }
+    }
+
     /// SFTP 전송 완료 알림(H6): 토스트 + 큐가 비고 창이 비포커스면 작업표시줄 attention(E3 재사용).
     pub(crate) fn sftp_xfer_notify(&mut self, ctx: &egui::Context, ok: bool, name: &str, drained: bool) {
         let icon = if ok { "\u{2713}" } else { "\u{2717}" };
@@ -183,6 +201,7 @@ impl NabiApp {
             }
         }
         self.apply_queue_act(a.queue);
+        if a.open_find { self.open_sftp_find(); }
         if a.sync_up { self.sync_upload_diff(); }
         if a.sync_down { self.sync_download_diff(); }
         if a.sync_apply { self.apply_sync_pending(); }

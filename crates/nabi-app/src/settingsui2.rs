@@ -189,6 +189,10 @@ pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.statsalert"));
     ui.add(egui::Slider::new(&mut cfg.terminal.ssh_stats_alert_pct, 50..=100).suffix("%"));
     ui.end_row();
+    ui.label(tr(lang, "settings.slowcmd"));
+    ui.add(egui::DragValue::new(&mut cfg.terminal.slow_command_secs).range(0..=3600).suffix(" s"))
+        .on_hover_text(tr(lang, "settings.slowcmdhint"));
+    ui.end_row();
 }
 
 /// 전송·SFTP 페이지 — 속도/병렬/무결성/파일명 인코딩 + 다운로드 폴더를 한자리에.

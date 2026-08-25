@@ -19,6 +19,10 @@ pub struct SshParams {
     /// 그래서 전역이 아니라 세션마다 켠다(믿는 서버에만).
     #[serde(default)]
     pub agent_forward: bool,
+    /// 접속할 때 서버에 보낼 환경변수(`SendEnv`). 서버가 `AcceptEnv`로 허락한 것만 받으며,
+    /// **거절은 오류가 아니다** — 답을 기다리지 않고 보내고 실패해도 세션은 연다.
+    #[serde(default)]
+    pub env: Vec<(String, String)>,
 }
 
 impl SshParams {
@@ -35,6 +39,7 @@ impl SshParams {
             auth: SshAuth::Password(pw.into()),
             jump: None,
             agent_forward: false,
+            env: Vec::new(),
         }
     }
 
@@ -46,7 +51,7 @@ impl SshParams {
 
     /// 실행 중인 ssh-agent의 키로 인증(키 파일·비밀번호 없이).
     pub fn agent(host: impl Into<String>, port: u16, user: impl Into<String>) -> Self {
-        Self { host: host.into(), port, user: user.into(), auth: SshAuth::Agent, jump: None, agent_forward: false }
+        Self { host: host.into(), port, user: user.into(), auth: SshAuth::Agent, jump: None, agent_forward: false, env: Vec::new() }
     }
 
     /// 개인키 파일 인증(선택적 passphrase).
@@ -67,6 +72,7 @@ impl SshParams {
             },
             jump: None,
             agent_forward: false,
+            env: Vec::new(),
         }
     }
 }

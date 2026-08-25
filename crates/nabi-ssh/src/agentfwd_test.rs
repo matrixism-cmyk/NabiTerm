@@ -78,6 +78,7 @@ async fn run_remote(host: &str, user: &str, forward: bool, cmd: &str) -> String 
         auth: nabi_proto::SshAuth::Agent,
         jump: None,
         agent_forward: forward,
+        env: Vec::new(),
     };
     let kh = std::env::temp_dir().join(format!("nabi-fwd-known-{}", std::process::id()));
     let _ = std::fs::remove_file(&kh);

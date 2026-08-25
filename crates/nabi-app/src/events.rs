@@ -185,8 +185,12 @@ impl NabiApp {
                     if let Some(d) = dur { self.last_duration.insert(pane, d.as_millis()); }
                     if let Some(code) = block.exit_code {
                         self.last_exit.insert(pane, code);
-                        // 비포커스 pane: 실패 또는 오래 걸린(≥10s) 명령 완료를 토스트+작업표시줄 attention으로 알림(E3).
-                        if focused != Some(pane) && (code != 0 || dur.is_some_and(|d| d.as_secs() >= 10)) {
+                        // 보이지 않는 자리에서 끝난 명령을 알린다(slowcmd). 창이 뒤에 있을 때도
+                        // 센다 — 빌드를 걸어 놓고 다른 창으로 넘어가는 것이 가장 흔한 경우다.
+                        let win_focused = ctx.input(|i| i.focused);
+                        let secs = dur.map(|d| d.as_secs()).unwrap_or(0);
+                        let thr = self.config.terminal.slow_command_secs;
+                        if crate::slowcmd::should_notify(focused == Some(pane), win_focused, code != 0, secs, thr) {
                             let title = self.orch.panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.title.clone())).unwrap_or_default();
                             let msg = if code == 0 { format!("\u{2713} {title}") } else { format!("{title} {} (exit {code})", nabi_i18n::tr(self.lang, "notify.bgfail")) };
                             self.notify = Some((msg, std::time::Instant::now()));

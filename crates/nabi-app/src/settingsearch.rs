@@ -76,6 +76,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.speedlimit", 3),
     ("settings.sshkeepalive", 3),
     ("settings.statsalert", 3),
+    ("settings.slowcmd", 3),
     ("settings.uploadmode", 3),
     ("settings.verifyhash", 3),
     ("settings.addalert", 4),

@@ -190,6 +190,8 @@ impl NabiApp {
         // D4: 명명된 세션의 마지막 접속 시각 기록(목록에 상대시간 표시).
         if !s.name.is_empty() { self.config.terminal.last_connected.insert(s.name.clone(), chrono::Local::now().timestamp()); let _ = nabi_config::save(&self.config_path, &self.config); }
         self.start_auto_forwards(&s); // 이 세션에 걸어 둔 터널을 함께 연다(S1).
+        // 아래에서 kind가 move되므로 이름을 먼저 잡는다(세션별 환경변수를 찾는 열쇠).
+        let sess_name = s.name.clone();
         if s.is_ftp {
             self.open_sftp_saved(s, true); // FTP 세션은 FTP 브라우저로.
             return;
@@ -227,9 +229,21 @@ impl NabiApp {
                     self.prefill_ssh(host, port, user);
                     return;
                 };
-                // ProxyJump(B4): 저장된 점프 호스트가 있으면 같은 인증으로 경유.
-                let params = match jump.as_deref().and_then(crate::qcparse::parse_connect) {
-                    Some(jp) => { let mut j = nabi_proto::SshParams::password(jp.host, jp.port.unwrap_or(22), jp.user.unwrap_or_else(|| user.clone()), String::new()); j.auth = params.auth.clone(); params.with_jump(j) }
+                // 세션에 저장된 것들을 params에 싣는다.
+                //
+                // 셋 다 예전에는 여기서 빠져 있었다:
+                //  * 에이전트 포워딩 — 세션에 켜 두어도 **터미널로 열면 적용되지 않았다**
+                //    (빠른 연결 경로만 반영). 켠 사람은 켜졌다고 믿고 원격에서 git을 쓴다.
+                //  * 점프 체인 — 여기만 `parse_connect`로 **한 홉**만 봤다. 같은 세션을
+                //    SFTP로 열면 `build_jumps`가 콤마 체인을 다 타므로 둘의 결과가 달랐다.
+                //  * 환경변수 — 새로 추가(session_env).
+                let mut params = params;
+                params.agent_forward = fwd;
+                params.env = nabi_ssh::envvars::parse(
+                    self.config.terminal.session_env.get(&sess_name).map(String::as_str).unwrap_or(""),
+                );
+                let params = match jump.as_deref().and_then(|j| crate::sshjump::build_jumps(j, &params.auth, &user)) {
+                    Some(chain) => params.with_jump(chain),
                     None => params,
                 };
                 let origin = SessionKind::Ssh { host, port, user, credential_ref: cred, key_path: kp, jump, agent_forward: fwd };

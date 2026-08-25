@@ -70,6 +70,7 @@ pub(crate) fn render_toolbar(
         }
         ui.separator();
         sync_menu(ui, lang, a);
+        find_button(ui, lang, a);
         view_menu(ui, sftp, lang, sort_desc, a);
         tools_menu(ui, lang, a);
         ui.separator();
@@ -105,6 +106,17 @@ fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], a: &mut Sf
     })
     .response
     .on_hover_text(tr(lang, "sftp.bookmarks"));
+}
+
+/// 서버에서 파일 찾기 — 동기화 묶음에 넣지 않는다. 견주는 일이 아니라 찾는 일이다.
+fn find_button(ui: &mut egui::Ui, lang: Lang, a: &mut SftpAct) {
+    if ui
+        .button(format!("\u{1f50d} {}", tr(lang, "sftp.find.title")))
+        .on_hover_text(tr(lang, "sftp.find.hint"))
+        .clicked()
+    {
+        a.open_find = true;
+    }
 }
 
 /// 로컬↔원격을 견주는 기능 묶음(비교 색칠·동기 이동·차이만 전송).

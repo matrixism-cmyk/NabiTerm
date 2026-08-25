@@ -160,6 +160,8 @@ pub struct NabiApp {
     /// 폴더 동기화 다이얼로그(S6-51) + 트리 수집 상관 seq.
     pub sync_dlg: Option<crate::sftpsyncui::SyncDlg>,
     pub sync_seq: u64,
+    /// 원격 파일 찾기 창(sftpfindui). None이면 닫혀 있다.
+    pub sftp_find: Option<crate::sftpfindui::SftpFind>,
     /// 원격 최신유지 감시(S6-54, Some=켜짐).
     pub sync_watch: Option<crate::sftpwatch::SyncWatch>,
     /// 방금 끝난 명령(pane별) — 실패 AI 인계 컨텍스트(run_cmd는 종료 시 비워짐).
@@ -280,6 +282,8 @@ pub struct NabiApp {
     pub server_stats: HashMap<PaneId, nabi_proto::stats::ServerStats>,
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,
+    /// pane별 스크롤백 표식 — 긴 로그에서 되짚을 자리(scrollmark).
+    pub scroll_marks: HashMap<PaneId, crate::scrollmark::Marks>,
     /// 세션(접속 정보)별 마지막 연결 실패 — 목록에서 왜 안 붙었는지 보여 준다.
     pub last_fail: crate::lastfail::FailMap,
     pub ssh_alert_on: HashMap<PaneId, bool>, pub ctx_alert_on: HashMap<PaneId, bool>,
@@ -306,6 +310,8 @@ pub struct NabiApp {
     pub diff_pick: Option<PaneId>,
     /// 자동 터널을 편집 중인 세션 이름.
     pub fwd_edit: Option<String>,
+    /// 세션별 환경변수 편집 창(세션 이름).
+    pub env_edit: Option<String>,
     /// 재접속을 기다리는 pane — (물러서기 상태, 다음 시도 시각, 끊김 사유).
     pub reconnecting: HashMap<PaneId, (crate::backoff::Backoff, std::time::Instant, String)>,
     /// 방금 시도한 재접속의 상태 — 새 pane이 뜨면 그 pane으로 옮겨 붙인다.

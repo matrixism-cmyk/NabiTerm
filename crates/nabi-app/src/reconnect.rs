@@ -46,10 +46,11 @@ impl NabiApp {
     pub(crate) fn do_reconnect(&mut self, pane: nabi_types::PaneId) {
         if let Some(kind) = self.pane_origins.get(&pane).cloned() {
             self.orch.send(nabi_proto::Command::ClosePane { pane });
-            self.connect_saved(nabi_session::SavedSession {
-                name: String::new(), folder: None, kind, on_connect: None,
-                cwd: None, is_ftp: false, open_sftp: false, tag: Default::default(),
-            });
+            // 출처가 같은 **저장 세션을 되찾아** 그대로 쓴다. 예전에는 이름 없는 세션을
+            // 새로 지어 붙였는데, 터널 규칙이 세션 이름을 열쇠로 살기 때문에 재접속이
+            // 성공해도 터널이 돌아오지 않았다(접속 후 명령도 함께 사라졌다).
+            let s = crate::reconnectsess::session_for(&self.sessions.sessions, &kind);
+            self.connect_saved(s);
         }
     }
 }

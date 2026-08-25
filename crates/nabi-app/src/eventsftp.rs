@@ -42,7 +42,12 @@ impl NabiApp {
                     ctx.request_repaint();
                 }
             }
-            Event::SftpTree { seq, files, .. } => self.on_sync_tree(seq, files),
+            Event::SftpTree { seq, files, .. } => {
+                // 찾기와 동기화가 같은 번호줄을 쓴다 — 찾기가 자기 것이 아니면 동기화로 넘긴다.
+                if !self.on_find_tree(seq, files.clone()) {
+                    self.on_sync_tree(seq, files);
+                }
+            }
             Event::SftpFreeSpace { id, free } => {
                 if let Some(p) = self.remote_panel_mut(id) {
                     p.free_space = free;
@@ -156,14 +161,29 @@ impl NabiApp {
             // 영영 막으면 안 된다(완료 토스트는 여전히 "전부 끝남" 기준이다).
             let quiet = crate::sftpxfer::settled(&p.transfers);
             let refresh = crate::sftpxfer::take_refresh(quiet, &mut p.dir_stale);
-            (refresh, p.path.clone(), drained, rec)
+            // 묶음이 끝났으면 무엇이 어떻게 끝났는지 함께 센다 — 마지막 파일 이름만으로는
+            // 스무 건을 걸어 두고 자리를 비운 사람에게 아무 답이 되지 않는다.
+            let tally = drained.then(|| {
+                let f: Vec<(bool, u64)> = p
+                    .transfers
+                    .iter()
+                    .filter(|t| t.state.finished())
+                    .map(|t| (t.state != crate::sftpxfer::XferState::Failed, t.bytes))
+                    .collect();
+                crate::xfersummary::tally(&f)
+            });
+            (refresh, p.path.clone(), drained, rec, tally)
         });
         self.sftp_ctl_take_xfer(xfer, ok, &message, &name); // 제어평면 회신은 패널 유무와 무관(닫혀도 CLI가 기다린다).
-        let Some((refresh, path, drained, rec)) = res else { return };
+        let Some((refresh, path, drained, rec, tally)) = res else { return };
         if let Some((up, size, secs)) = rec {
             self.record_xfer(&name, up, ok, size, secs, &message); // 전송 히스토리(S6-60).
         }
-        self.sftp_xfer_notify(ctx, ok, &name, drained); // H6 완료 토스트+attention.
+        // 묶음이 끝났고 알릴 만하면 요약으로 대신한다(파일 하나는 조용히 지나간다).
+        match tally.filter(|t| t.worth_saying()) {
+            Some(t) => self.sftp_xfer_summary(ctx, t),
+            None => self.sftp_xfer_notify(ctx, ok, &name, drained),
+        }
         if ok {
             self.on_edit_download(&name); // 외부 편집기 오픈 또는 내장 에디터 적재.
         }

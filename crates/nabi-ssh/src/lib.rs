@@ -13,6 +13,7 @@ pub mod knownhosts;
 pub mod agent;
 pub mod agentfwd;
 pub mod diagnose;
+pub mod envvars;
 #[cfg(test)]
 mod agentfwd_test;
 pub mod legacy;

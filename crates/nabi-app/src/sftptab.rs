@@ -41,6 +41,8 @@ pub(crate) struct SftpAct {
     pub sync_down: bool,
     /// 동기화 미리보기 확인: 적용 / 취소.
     pub sync_apply: bool,
+    /// 서버에서 파일 찾기 창 열기.
+    pub open_find: bool,
     pub sync_cancel: bool,
     pub close: bool,
     pub over: bool,

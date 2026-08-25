@@ -84,6 +84,12 @@ async fn run(
     }
 
     let channel = handle.channel_open_session().await?;
+    // 세션에 걸어 둔 환경변수를 보낸다. **답을 기다리지 않는다**(want_reply=false) —
+    // 서버는 `AcceptEnv`에 적힌 것만 받고 나머지는 거절하는데, 그 거절은 오류가 아니다.
+    // 기다렸다가 실패로 다루면 대부분의 서버에서 접속 자체가 안 되는 것처럼 보인다.
+    for (k, v) in &params.env {
+        let _ = channel.set_env(false, k.as_str(), v.as_str()).await;
+    }
     // ssh-agent 포워딩(세션에서 켠 경우에만). 원격에서 다시 git/ssh를 쓸 때 내 키로 서명한다.
     // 실패해도 세션은 그대로 연다 — 포워딩이 안 될 뿐 로그인은 이미 끝났다.
     if params.agent_forward {

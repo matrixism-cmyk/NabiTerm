@@ -52,21 +52,22 @@ mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui;
 mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
 
-mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sessionlog; mod sessionnote; mod sessionctx;
+mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sessionlog; mod sessionnote; mod sessenvui; mod sessionctx;
 mod extwatch; mod triggers; mod findall; mod findallui; mod findfiles; mod difflines; mod dupfiles; mod largefiles;
 
 mod dirtools; mod replaceui; mod sftpbookmark; mod sshcmd; mod sshjump; mod helppages; mod help; mod hostkeyui; mod knownhostsui; mod importscan; mod importui; mod logview; mod logviewui; mod menu;
 mod menuact; mod menuactio; mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod palettekeys; mod pathline; mod quake; mod qcparse; mod paneio; mod panewheel; mod paneurl;
-mod osc52policy; mod openhere; mod padrecover; mod padrecoverui; mod paste; mod promptfocus; mod qcbar; mod reconnect; mod renameui; mod scrollbar; mod selection; mod sessionsmenu; mod sessiondel;
+mod osc52policy; mod openhere; mod padrecover; mod padrecoverui; mod paste; mod promptfocus; mod qcbar; mod reconnect; mod reconnectsess; mod renameui; mod scrollbar; mod selection; mod sessionsmenu; mod sessiondel;
 mod snippetvars; mod recent; mod sftpact; mod sftpentries; mod sftpentryfmt; mod sftpnav; mod sftppanel; mod sftprestore; mod sftptab; mod shellinteg; mod sidebar; mod sidebarsel; mod tabbar;
 mod tiling; mod toolsmenu; mod update; mod updateui; mod viewmenu; mod sftptable; mod sftplist; mod viewmode; mod sftpview; mod syncbrowse;
-mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer; mod sftphistory; mod controlsftp; mod splash;
+mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer; mod sftpfind; mod sftpfindui; mod sftphistory; mod controlsftp; mod splash;
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sshconfig; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
+mod sshconfig; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod scrollmark; mod scrollmarkui; mod slowcmd;
+mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
-mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod backup; mod boottime;
+mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;
 mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;

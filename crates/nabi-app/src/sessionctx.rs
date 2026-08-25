@@ -35,6 +35,10 @@ pub(crate) fn session_menu_items(ui: &mut egui::Ui, s: &SavedSession, lang: Lang
         action = Some(MenuAction::EditAutoForwards(s.name.clone()));
         ui.close();
     }
+    if matches!(s.kind, SessionKind::Ssh { .. }) && ui.button(tr(lang, "sessenv.title")).clicked() {
+        action = Some(MenuAction::EditSessionEnv(s.name.clone()));
+        ui.close();
+    }
     if ui.button(tr(lang, "sessions.edit")).clicked() { action = Some(MenuAction::EditSession(s.clone())); ui.close(); }
     if ui.button(tr(lang, "sessions.duplicate")).clicked() { action = Some(MenuAction::DuplicateSession(s.clone())); ui.close(); }
     // 분할로 연결(MobaXterm식) — 현재 pane 옆/아래에 이 세션을 새 분할로 연다.

@@ -28,6 +28,13 @@ pub(crate) enum PaletteAction {
     ZoomPane,
     PrevPrompt,
     NextPrompt,
+    /// 지금 보는 자리에 표식을 남기거나 지운다(scrollmark).
+    ToggleMark,
+    PrevMark,
+    NextMark,
+    ClearMarks,
+    /// 서버에서 파일 찾기(sftpfindui).
+    SftpFind,
     ResetTerm,
     QuickConnect,
     ToggleBroadcast,

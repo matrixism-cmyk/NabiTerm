@@ -301,6 +301,7 @@ mod real_failures {
             auth: nabi_proto::SshAuth::Agent,
             jump: None,
             agent_forward: false,
+        env: Vec::new(),
         };
         let kh = std::env::temp_dir().join(format!("nabi-diag-{}", std::process::id()));
         let _ = std::fs::remove_file(&kh);
