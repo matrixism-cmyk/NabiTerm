@@ -96,6 +96,8 @@ mod helppages;
 mod help;
 mod hostkeyui;
 mod knownhostsui;
+mod logview;
+mod logviewui;
 mod menu;
 mod menuact; mod menuactio;
 mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod pathline;
@@ -170,7 +172,8 @@ mod windndvirt;
 mod windndfolder;
 mod viewportcmd;
 mod windows;
-mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
+mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod backup;
+mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
 

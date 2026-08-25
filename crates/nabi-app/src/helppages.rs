@@ -115,6 +115,7 @@ pub(crate) fn about_page(
     cfg_dir: Option<&Path>,
     updater: &nabi_release::UpdateChecker,
     update_quit: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+    open_logs: &mut bool,
 ) {
     ui.heading("\u{1f98b} nabiTerm (나비텀)");
     ui.label(tr(lang, "help.desc"));
@@ -166,12 +167,11 @@ pub(crate) fn about_page(
         if ui.link(dir.to_string_lossy()).clicked() {
             let _ = std::process::Command::new("explorer").arg(dir).spawn();
         }
-        // 진단 로그(crash.log·회전 로그) 폴더 — 사후 문제 분석용(G1).
+        // 진단 로그 — 앱 안에서 바로 보여 준다. 폴더만 열어 주면 어느 파일인지, 어디부터가
+        // 문제인지 사용자가 골라야 한다. 원격 지원에서 그건 또 하나의 숙제다.
         ui.add_space(4.0);
         if ui.button(tr(lang, "help.diaglogs")).clicked() {
-            let logs = dir.join("logs");
-            let _ = std::fs::create_dir_all(&logs);
-            let _ = std::process::Command::new("explorer").arg(&logs).spawn();
+            *open_logs = true;
         }
     }
 }

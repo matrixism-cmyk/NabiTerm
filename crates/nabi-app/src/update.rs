@@ -122,6 +122,7 @@ impl eframe::App for NabiApp {
         self.show_floating(ctx);
         self.show_docked_floats(ctx); // "창 안에 띄우기" 오버레이(P3).
         self.show_pad_recovery(ctx); // 지난 실행에서 잃을 뻔한 문서 되살리기.
+        self.show_log_view(ctx); // 진단 로그 보기(도움말).
         self.show_vault_unlock(ctx);
         // 스플래시는 **맨 마지막**에 그린다 — 무엇 위에든 덮여야 한다.
         if let Some(t) = self.splash_since {

@@ -24,6 +24,8 @@ pub struct NabiApp {
     pub splash_since: Option<std::time::Instant>,
     /// 지난 실행이 비정상 종료라 되살릴 수 있는 미저장 문서들(padrecover). 비면 물어보지 않는다.
     pub pad_recover: Vec<crate::padrecover::Recovered>,
+    /// 진단 로그 보기 창(Some=열림). 안쪽 None은 '로그 파일이 없다'는 뜻이다.
+    pub log_view: Option<Option<crate::logview::LogText>>,
     /// 프로필 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것. 창이 닫히면 비운다.
     pub ai_prof_backup: Option<Vec<nabi_config::AiProfileCfg>>,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).

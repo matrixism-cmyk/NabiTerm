@@ -37,6 +37,10 @@ pub(crate) enum MenuAction {
     ImportPuTTY,
     /// WinSCP 사이트 가져오기(레지스트리 또는 WinSCP.ini).
     ImportWinScp,
+    /// 설정·세션·known_hosts를 한 파일로 백업(볼트 제외).
+    BackupAll,
+    /// 백업 파일에서 되돌린다(기존 파일은 .bak으로 밀어 둔다).
+    RestoreAll,
     ImportXshell,
     ExportFileZilla,
     ExportMobaXterm,

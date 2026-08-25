@@ -31,6 +31,7 @@ impl NabiApp {
         // AI CLI 자동 업데이트 설정은 이 창에서 바꿀 수 있다 — 바뀌면 즉시 저장한다.
         let mut auto_cli = self.config.terminal.ai_cli_auto_update;
         let mut cfg_changed = false;
+        let mut open_logs = false; // 도움말에서 '진단 로그'를 눌렀는가.
         egui::Window::new(tr(lang, "help.title"))
             .open(&mut open)
             .collapsible(false)
@@ -57,7 +58,7 @@ impl NabiApp {
                             .max_height(480.0)
                             .show(ui, |ui| match cat {
                                 0 => crate::helppages::about_page(
-                                    ui, lang, cfg_dir.as_deref(), &updater, &quit,
+                                    ui, lang, cfg_dir.as_deref(), &updater, &quit, &mut open_logs,
                                 ),
                                 1 => crate::helppages::shortcut_page(ui, lang),
                                 2 => crate::helppages::features_page(ui, lang),
@@ -71,6 +72,9 @@ impl NabiApp {
                 });
             });
         ctx.data_mut(|d| d.insert_temp(cat_id, cat));
+        if open_logs {
+            self.open_log_view();
+        }
         if cfg_changed {
             self.config.terminal.ai_cli_auto_update = auto_cli;
             let _ = nabi_config::save(&self.config_path, &self.config);

@@ -86,6 +86,24 @@ impl NabiApp {
                     self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell", "xshell");
                 }
             }
+            MenuAction::BackupAll => {
+                let layout = nabi_config::StorageLayout::resolve();
+                let text = crate::backup::to_text(&crate::backup::collect(&layout));
+                self.export_sessions_to(text, "nabiterm-backup.json", "json", "menu.backupall");
+            }
+            MenuAction::RestoreAll => {
+                // 되돌리기는 되돌릴 수 없다 — 파일을 고르는 것 자체가 확인 절차다.
+                let picked = rfd::FileDialog::new().add_filter("nabiTerm backup", &["json"]).pick_file();
+                let loaded = picked.and_then(|p| std::fs::read_to_string(p).ok());
+                let msg = match loaded.as_deref().and_then(crate::backup::from_text) {
+                    Some(b) => match crate::backup::restore(&b, &nabi_config::StorageLayout::resolve()) {
+                        Ok(n) => format!("{} ({n}) \u{2713}", tr(self.lang, "menu.restoreall")),
+                        Err(e) => format!("\u{2715} {e}"),
+                    },
+                    None => format!("\u{2715} {}", tr(self.lang, "menu.restoreall.bad")),
+                };
+                self.notify = Some((msg, std::time::Instant::now()));
+            }
             MenuAction::ImportWinScp => {
                 // WinSCP는 설치 방식에 따라 레지스트리 또는 WinSCP.ini에 둔다 — 둘 다 찾아본다.
                 let text = crate::winscp::find_config().or_else(|| {

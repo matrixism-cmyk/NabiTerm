@@ -92,10 +92,12 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
         ("menu.importmobaxterm", MenuAction::ImportMobaXterm),
         ("menu.importputty", MenuAction::ImportPuTTY),
         ("menu.importwinscp", MenuAction::ImportWinScp),
+        ("menu.restoreall", MenuAction::RestoreAll),
         ("menu.importxshell", MenuAction::ImportXshell),
     ]);
     group(ui, "menu.export", vec![
         ("menu.exportsessions", MenuAction::ExportSessions),
+        ("menu.backupall", MenuAction::BackupAll),
         ("menu.exportsshconfig", MenuAction::ExportSshConfig),
         ("menu.exportfilezilla", MenuAction::ExportFileZilla),
         ("menu.exportmobaxterm", MenuAction::ExportMobaXterm),
