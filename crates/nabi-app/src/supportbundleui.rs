@@ -30,10 +30,11 @@ impl NabiApp {
         v.push(Piece {
             title: tr(lang, "bundle.part.counts").to_string(),
             body: format!(
-                "sessions={} panes={} editors={}",
+                "sessions={} panes={} editors={} pruned_logs={}",
                 self.sessions.ssh_count().1,
                 self.orch.panes.read().map(|p| p.len()).unwrap_or(0),
-                self.editors.len()
+                self.editors.len(),
+                self.pruned_logs
             ),
         });
         // 로그는 뒷부분만, 그리고 비밀 꼴을 지운 뒤에.

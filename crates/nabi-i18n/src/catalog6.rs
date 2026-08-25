@@ -329,4 +329,7 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ("reach.none", "No SSH sessions to check.", "확인할 SSH 세션이 없습니다.", "確認するSSHセッションがありません。"),
     ("reach.tip", "Only checks whether the port is open — it does not log in.", "포트가 열려 있는지만 확인합니다 — 로그인은 하지 않습니다.", "ポートが開いているかのみ確認します — ログインはしません。"),
     ("diff.hexcapped", "Only the first 64 MB of each file was compared.", "각 파일의 앞 64MB만 견줬습니다.", "各ファイルの先頭64MBのみ比較しました。"),
+    ("settings.logkeep", "Keep diagnostic logs for", "진단 로그 보관 기간", "診断ログの保存期間"),
+    ("settings.logkeepunithint", " days", "일", "日"),
+    ("settings.logkeep.hint", "Older log files are removed at startup. 0 keeps everything.", "더 오래된 로그 파일은 시작할 때 지웁니다. 0이면 지우지 않습니다.", "それより古いログは起動時に削除します。0なら削除しません。"),
 ];

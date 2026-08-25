@@ -287,6 +287,9 @@ pub struct TerminalCfg {
     /// 이유는 paletteorder 문서 참고 — 동작에는 pane 번호 같은 그때뿐인 값이 들어 있다.
     #[serde(default)]
     pub palette_recent: Vec<String>,
+    /// 진단 로그 보관 일수. 0이면 정리하지 않는다(끄는 길).
+    #[serde(default = "default_log_keep_days")]
+    pub log_keep_days: u32,
     /// 사용자 정의 링크 규칙(`정규식 -> 주소틀`). 로그의 낱말을 클릭 가능한 주소로.
     #[serde(default)]
     pub link_rules: Vec<String>,
@@ -342,6 +345,7 @@ impl Default for TerminalCfg {
             cmd_secs: Vec::new(),
             auto_forwards: std::collections::BTreeMap::new(),
             link_rules: Vec::new(),
+            log_keep_days: default_log_keep_days(),
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,
@@ -391,4 +395,9 @@ impl Default for TerminalCfg {
 /// 조용히 허용하면 원격이 클립보드를 바꿔치기해도 사용자가 알 길이 없다.
 fn default_osc52() -> u8 {
     1
+}
+
+/// 로그 기본 보관 일수 — 문제를 되짚기에 넉넉하되 폴더가 부풀지 않을 만큼.
+fn default_log_keep_days() -> u32 {
+    30
 }

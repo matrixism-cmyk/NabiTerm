@@ -312,6 +312,8 @@ pub struct NabiApp {
     pub bundle: Option<Vec<crate::supportbundle::Piece>>,
     /// 세션 도달성 일괄 확인 결과 — (호스트, 포트) → 상태.
     pub reach_all: std::sync::Arc<std::sync::Mutex<std::collections::HashMap<(String, u16), crate::reachall::Reach>>>,
+    /// 이번 시작에서 정리한 오래된 로그 개수(진단 묶음에 적는다).
+    pub pruned_logs: usize,
     /// 다음 PaneSpawned를 분할 배치(Some(true)=오른쪽, Some(false)=아래).
     pub pending_split: Option<bool>,
     /// pane별 글꼴 크기 오버라이드(Ctrl+휠 확대/축소). 없으면 전역 font_size.

@@ -71,6 +71,11 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         tr(lang, "settings.autoreconnect"),
         &mut cfg.terminal.auto_reconnect,
     );
+    // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
+    ui.label(tr(lang, "settings.logkeep"));
+    ui.add(egui::DragValue::new(&mut cfg.terminal.log_keep_days).range(0..=365).suffix(tr(lang, "settings.logkeepunithint")))
+        .on_hover_text(tr(lang, "settings.logkeep.hint"));
+    ui.end_row();
     chk(
         ui,
         tr(lang, "settings.copyonselect"),

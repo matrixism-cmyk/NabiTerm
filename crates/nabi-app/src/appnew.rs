@@ -19,6 +19,20 @@ impl NabiApp {
         crate::editorsyntax::init(&layout.base, editor_config.theme.clone(), editor_config.ext_map.clone());
         nabi_editor::editortext::set_wrap_col(editor_config.wrap_col); // '줄바꿈' 변환 폭.
         crate::fonts::install_cjk_fonts(&cc.egui_ctx, &config.appearance.font_family);
+        // 사용자 링크 규칙을 시작할 때 넣어 둔다. 설정을 열어야만 먹으면 규칙이 있는데도
+        // 링크가 안 생긴다(내가 앞 배치에서 이 줄을 빠뜨렸다).
+        nabi_render::urlrules::set_rules(&config.terminal.link_rules);
+        // 오래된 진단 로그를 한 번 정리한다(보관 일수 0이면 아무것도 안 한다).
+        // 시작 때 한 번이면 충분하다 — 하루에 한 파일씩만 늘어난다.
+        let pruned_logs = {
+            use chrono::Datelike;
+            let t = chrono::Local::now();
+            crate::logprune::prune(
+                &layout.base.join("logs"),
+                (t.year(), t.month(), t.day()),
+                config.terminal.log_keep_days,
+            )
+        };
         crate::theme_ui::apply_theme(&cc.egui_ctx);
         // egui의 ID 충돌 디버그 경고("First use of … ID …")는 개발자 진단용 UI 오버레이로,
         // egui 내부에서 영어로 생성돼 현지화가 불가능하다. 최종 사용자에게 노출하지 않도록 끈다.
@@ -209,7 +223,7 @@ impl NabiApp {
             autosave_at: std::time::Instant::now(), note_edit: None,
             alert_marks: HashMap::new(), alert_check: std::time::Instant::now(),
             auto_reply_seen: HashMap::new(), auto_reply_streak: HashMap::new(), auto_reply_check: std::time::Instant::now(), cmd_started: HashMap::new(),
-            diff_pick: None, fwd_edit: None, reconnecting: HashMap::new(), reconnect_carry: None, bundle: None, reach_all: Default::default(),
+            diff_pick: None, fwd_edit: None, reconnecting: HashMap::new(), reconnect_carry: None, bundle: None, reach_all: Default::default(), pruned_logs,
             pending_split: None,
             pane_font: HashMap::new(),
             pane_zoom: false,
