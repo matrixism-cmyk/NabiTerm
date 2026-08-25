@@ -16,6 +16,16 @@
 use std::fs;
 use std::process::ExitCode;
 
+/// 옛 클라이언트가 묻는 저장소 — **여기에도 계속 올려야 한다.**
+///
+/// v0.1.446 이하로 설치된 앱은 이 저장소를 묻도록 컴파일돼 있다. 새 릴리스가 여기 없으면
+/// 그 사용자들은 스스로 넘어올 방법이 없어 영원히 갇힌다. 그래서 이 목록은 "전환기 임시
+/// 조치"가 아니라 **그 버전들이 사라질 때까지 계속되는 약속**이다.
+///
+/// 이 값이 앱 런타임에 쓰이지 않는 것은 맞다 — 옛 버전에만 박혀 있는 사실이라 지금 코드가
+/// 참조할 곳이 없다. 그래서 **배포 절차를 담당하는 xtask가 들고 있는다.**
+const LEGACY_MIRRORS: &[&str] = &["matrixism-cmyk/NabiTermPub"];
+
 /// `REPO_PATH` 상수에서 `소유자/저장소`를 뽑는다.
 ///
 /// 형식은 `/repos/<소유자>/<저장소>/releases/latest`. 모양이 달라지면 조용히 틀린 값을
@@ -30,22 +40,32 @@ pub(crate) fn parse_repo(src: &str) -> Option<String> {
     ok.then(|| repo.to_string())
 }
 
+/// 릴리스를 올려야 할 곳 전부 — 첫 줄이 앱이 묻는 곳, 나머지는 옛 클라이언트용 거울.
+pub(crate) fn all_targets(src: &str) -> Option<Vec<String>> {
+    let mut v = vec![parse_repo(src)?];
+    v.extend(LEGACY_MIRRORS.iter().map(|s| s.to_string()));
+    Some(v)
+}
+
+/// `--all`이면 거울까지, 아니면 앱이 묻는 곳 하나만 찍는다(스크립트가 그대로 받아 쓴다).
 pub(crate) fn run() -> ExitCode {
     let p = "crates/nabi-release/src/lib.rs";
     let Ok(src) = fs::read_to_string(p) else {
         eprintln!("{p}를 읽지 못했습니다");
         return ExitCode::FAILURE;
     };
-    match parse_repo(&src) {
-        Some(repo) => {
-            println!("{repo}");
-            ExitCode::SUCCESS
+    let Some(repo) = parse_repo(&src) else {
+        eprintln!("{p}에서 REPO_PATH를 해석하지 못했습니다 — 상수 모양이 바뀌었습니까?");
+        return ExitCode::FAILURE;
+    };
+    if std::env::args().any(|a| a == "--all") {
+        for r in all_targets(&src).unwrap_or_default() {
+            println!("{r}");
         }
-        None => {
-            eprintln!("{p}에서 REPO_PATH를 해석하지 못했습니다 — 상수 모양이 바뀌었습니까?");
-            ExitCode::FAILURE
-        }
+    } else {
+        println!("{repo}");
     }
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]
@@ -67,6 +87,17 @@ mod tests {
         let repo = parse_repo(&src).expect("REPO_PATH를 해석하지 못했습니다");
         assert!(repo.contains('/'), "{repo}");
         assert!(!repo.ends_with("Pub"), "일몰된 저장소를 가리키고 있습니다: {repo}");
+    }
+
+    /// **옛 클라이언트가 묻는 곳이 목록에서 빠지면 안 된다.** 빠뜨리면 그 사용자들은
+    /// 새 릴리스를 영영 못 보고, 릴리스는 매번 성공하므로 아무 경고도 뜨지 않는다.
+    #[test]
+    fn the_legacy_mirror_is_included_alongside_the_primary() {
+        let src = "pub(crate) const REPO_PATH: &str = \"/repos/acme/Widget/releases/latest\";";
+        let t = super::all_targets(src).expect("목록을 만들지 못했습니다");
+        assert_eq!(t[0], "acme/Widget", "첫 줄은 앱이 묻는 곳이어야 한다");
+        assert!(t.iter().any(|r| r.ends_with("NabiTermPub")), "{t:?}");
+        assert!(t.len() >= 2);
     }
 
     /// 모양이 어긋나면 **틀린 값을 돌려주느니 실패한다.**

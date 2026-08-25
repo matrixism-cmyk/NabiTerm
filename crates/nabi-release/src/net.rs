@@ -261,7 +261,7 @@ mod live {
     #[test]
     #[ignore = "네트워크 필요"]
     fn live_download_real_asset() {
-        let url = "https://github.com/matrixism-cmyk/NabiTermPub/releases/download/v0.1.410/nabiTerm-setup.exe";
+        let url = "https://github.com/matrixism-cmyk/NabiTerm/releases/download/v0.1.410/nabiTerm-setup.exe";
         let status = std::sync::Arc::new(std::sync::Mutex::new(crate::UpdateStatus::Idle));
         let dest = std::env::temp_dir().join("nabi-live-dl.exe");
         match super::https_download_file(url, dest.to_str().unwrap(), &status) {

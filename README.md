@@ -62,7 +62,7 @@ Grab it from [**Releases**](https://github.com/matrixism-cmyk/NabiTerm/releases)
 
 After installation, **auto-update** notifies you of new versions and applies them in one step (manual check in Help ▸ About).
 
-> Installs at v0.1.446 or older check the legacy repository ([NabiTermPub](https://github.com/matrixism-cmyk/NabiTermPub/releases)); releases are dual-published there during the transition, so simply updating brings you onto this repository.
+> Installs at v0.1.446 or older check the legacy repository ([NabiTermPub](https://github.com/matrixism-cmyk/NabiTermPub/releases)). **Every release is published to both**, so simply updating brings you onto this repository.
 
 ### Building from source
 
