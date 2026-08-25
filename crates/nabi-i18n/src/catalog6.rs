@@ -247,4 +247,23 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ),
     ("fwd.auto.add", "Add tunnel", "터널 추가", "トンネル追加"),
     ("fwd.auto.bad", "Not a valid rule", "형식이 아닙니다", "形式が正しくありません"),
+    ("sched.registered", "Schedule added:", "스케줄 등록:", "スケジュール登録:"),
+    ("sched.error", "Schedule error:", "스케줄 오류:", "スケジュールエラー:"),
+    (
+        "sched.disabled.failing",
+        "disabled after 10 failures in a row",
+        "10회 연속 실패로 비활성화",
+        "10回連続失敗のため無効化",
+    ),
+    (
+        "ai.context.near",
+        "context reached — compaction is close",
+        "컨텍스트 도달 — 컴팩션 임박",
+        "コンテキスト到達 — コンパクション間近",
+    ),
+    ("ai.waiting.input", "waiting for input", "입력 대기", "入力待ち"),
+    ("srv.resource.alert", "Server resources critical:", "서버 리소스 임계:", "サーバーリソース逼迫:"),
+    ("tg.pair.request", "Telegram pairing request:", "텔레그램 페어링 요청:", "Telegramペアリング要求:"),
+    ("tg.pair.code", "code", "코드", "コード"),
+    ("find.files.unit", "files", "개 파일", "ファイル"),
 ];

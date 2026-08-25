@@ -5,6 +5,7 @@
 //! command(숨김 셸 실행), notify(토스트). toml로 영속(재시작 생존), 연속 실패 10회면
 //! 자동 비활성(무한 재시도 금지 — OpenClaw 백오프 규칙의 단순형).
 
+use nabi_i18n::tr;
 use serde::{Deserialize, Serialize};
 
 /// 등록된 잡 하나(toml 영속).
@@ -77,7 +78,7 @@ impl crate::app::NabiApp {
             if j.fails >= 10 {
                 j.enabled = false; // 자동 비활성 — 조용한 무한 실패 금지.
                 let name = j.name.clone();
-                self.notify = Some((format!("\u{23f0} 스케줄 '{name}' 10회 연속 실패 — 비활성화"), std::time::Instant::now()));
+                self.notify = Some((format!("\u{23f0} {name}: {}", tr(self.lang, "sched.disabled.failing")), std::time::Instant::now()));
             }
             changed = true;
         }

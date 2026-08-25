@@ -26,7 +26,7 @@ impl NabiApp {
                 ui.end_row();
             });
             if let Some((f, m)) = self.replace_count {
-                ui.colored_label(crate::theme_ui::ACCENT, format!("{m} \u{00d7} · {f} files"));
+                ui.colored_label(crate::theme_ui::ACCENT, format!("{m} \u{00d7} · {f} {}", tr(lang, "find.files.unit")));
             }
             ui.add_space(4.0);
             ui.horizontal(|ui| {

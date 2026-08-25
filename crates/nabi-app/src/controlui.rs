@@ -77,7 +77,7 @@ impl NabiApp {
         let now_alert = crate::aistatus::context_alert(gauge, 0.8);
         if now_alert && !self.ctx_alert_on.insert(pane, now_alert).unwrap_or(false) {
             let pct = (gauge.unwrap_or(0.0) * 100.0) as u32;
-            self.notify = Some((format!("\u{26a0} 컨텍스트 {pct}% 도달 — 컴팩션 임박"), std::time::Instant::now()));
+            self.notify = Some((format!("\u{26a0} {pct}% {}", tr(self.lang, "ai.context.near")), std::time::Instant::now()));
         } else if !now_alert {
             self.ctx_alert_on.insert(pane, false);
         }
@@ -97,7 +97,7 @@ impl NabiApp {
             if self.focused_pane() != Some(pane) {
                 let title = self.orch.panes.read().ok()
                     .and_then(|m| m.get(&pane).map(|v| v.title.clone())).unwrap_or_default();
-                self.notify = Some((format!("\u{23f8} {title}: 입력 대기"), std::time::Instant::now()));
+                self.notify = Some((format!("\u{23f8} {title}: {}", tr(self.lang, "ai.waiting.input")), std::time::Instant::now()));
                 if self.config.terminal.agent_sound {
                     crate::bell::system_beep(); // A7 — 화면 감지 경로와 동일 정책.
                 }

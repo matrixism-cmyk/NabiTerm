@@ -1,5 +1,6 @@
 //! 제어 평면 앱 동작(AppCtl) 적용 — controlui.rs에서 분리(라인 한도).
 
+use nabi_i18n::tr;
 use nabi_proto::AppCtl;
 
 impl crate::app::NabiApp {
@@ -86,8 +87,8 @@ impl crate::app::NabiApp {
                 AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title } => {
                     let label = if name.is_empty() { spec.clone() } else { name.clone() };
                     match self.add_schedule(name, spec, kind, payload, pane_title) {
-                        Ok(()) => self.notify = Some((format!("\u{23f0} 스케줄 등록: {label}"), std::time::Instant::now())),
-                        Err(e) => self.notify = Some((format!("\u{2715} 스케줄 오류: {e}"), std::time::Instant::now())),
+                        Ok(()) => self.notify = Some((format!("\u{23f0} {} {label}", tr(self.lang, "sched.registered")), std::time::Instant::now())),
+                        Err(e) => self.notify = Some((format!("\u{2715} {} {e}", tr(self.lang, "sched.error")), std::time::Instant::now())),
                     }
                 }
                 AppCtl::PaneStatus { pane, key, value, ttl_ms } => {

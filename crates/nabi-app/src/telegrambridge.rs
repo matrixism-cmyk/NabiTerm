@@ -1,6 +1,7 @@
 //! 텔레그램 브리지 — 백그라운드 폴링(수신)·전송(회신) 스레드 + 앱 라우터.
 //! 토큰·화이트리스트는 start 시 전달(토큰은 keyring에서). 보안: 화이트리스트 chat만 처리(무인).
 
+use nabi_i18n::tr;
 use crate::app::NabiApp;
 use crossbeam_channel::{Receiver, Sender};
 use nabi_telegram::TgMessage;
@@ -175,7 +176,7 @@ impl NabiApp {
         let exp = now + std::time::Duration::from_secs(3600);
         self.telegram.reply(chat, format!("페어링 코드: {code} — nabiTerm 설정 \u{25b8} 텔레그램에서 이 코드를 확인하고 승인하면 사용할 수 있습니다(1시간 유효)."));
         self.telegram_pending.push((chat, code.clone(), exp));
-        self.notify = Some((format!("\u{2708} 텔레그램 페어링 요청: chat {chat} \u{b7} 코드 {code}"), now));
+        self.notify = Some((format!("\u{2708} {} chat {chat} \u{b7} {} {code}", tr(self.lang, "tg.pair.request"), tr(self.lang, "tg.pair.code")), now));
     }
 
     /// 대상 pane의 출력을 캡처해 텔레그램으로 회신한다(OSC133이면 마지막 명령 출력, 아니면 화면 끝 N줄).

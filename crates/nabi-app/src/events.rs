@@ -1,5 +1,6 @@
 //! 오케스트레이터 이벤트 처리(pane 생성/종료/출력/클립보드/cwd).
 
+use nabi_i18n::tr;
 use crate::app::NabiApp;
 use nabi_proto::Event;
 
@@ -120,7 +121,7 @@ impl NabiApp {
                     let now_alert = stats.alert(self.config.terminal.ssh_stats_alert_pct as f32);
                     let summary = stats.summary();
                     if now_alert && !self.ssh_alert_on.insert(pane, now_alert).unwrap_or(false) {
-                        self.notify = Some((format!("\u{26a0} 서버 리소스 임계: {summary}"), std::time::Instant::now()));
+                        self.notify = Some((format!("\u{26a0} {} {summary}", tr(self.lang, "srv.resource.alert")), std::time::Instant::now()));
                     } else if !now_alert {
                         self.ssh_alert_on.insert(pane, false);
                     }
