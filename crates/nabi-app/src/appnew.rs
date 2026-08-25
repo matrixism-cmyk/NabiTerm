@@ -208,6 +208,7 @@ impl NabiApp {
             editor_mtimes: HashMap::new(), editor_extcheck: std::time::Instant::now(),
             autosave_at: std::time::Instant::now(), note_edit: None,
             alert_marks: HashMap::new(), alert_check: std::time::Instant::now(),
+            auto_reply_seen: HashMap::new(), auto_reply_streak: HashMap::new(), auto_reply_check: std::time::Instant::now(), cmd_started: HashMap::new(), diff_pick: None, fwd_edit: None,
             pending_split: None,
             pane_font: HashMap::new(),
             pane_zoom: false,

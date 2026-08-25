@@ -3292,6 +3292,7 @@ dependencies = [
  "egui",
  "nabi-types",
  "nabi-vt",
+ "regex",
 ]
 
 [[package]]

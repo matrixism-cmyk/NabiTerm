@@ -77,6 +77,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.uploadmode", 3),
     ("settings.verifyhash", 3),
     ("settings.addalert", 4),
+    ("settings.autoreply", 4),
     ("settings.addhighlight", 4),
     ("settings.addsnippet", 4),
     ("settings.alertactions", 4),

@@ -83,6 +83,7 @@ impl NabiApp {
             }
             if let Some(rp) = a.open_recent { self.open_editor_local(rp.into()); }
             if a.diff_disk { self.diff_editor_against_disk(p); }
+            if a.diff_open { self.open_compare_picker(p); }
             if let Some(c) = a.run_in_term { self.run_in_first_terminal(c); }
             // LSP(T6-4 2단계): 컨텍스트/메뉴에서 온 코드 요청 + 참조 목록의 타 파일 점프.
             if a.lsp_goto_def { self.lsp_goto_definition_for(p); }

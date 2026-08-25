@@ -217,6 +217,7 @@ impl NabiApp {
             MenuAction::DisbandGroup(f) => self.rename_folder(&f, ""),
             MenuAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             MenuAction::OpenEnvMgr => self.open_env_mgr(),
+            MenuAction::EditAutoForwards(n) => self.open_auto_forwards(n),
             MenuAction::OpenCmdHistory => self.open_cmd_history(),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
             MenuAction::TogglePin(name) => {

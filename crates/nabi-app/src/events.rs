@@ -73,6 +73,7 @@ impl NabiApp {
                     self.tui_overlay.remove(&pane);
                     self.wheel_keys_off.remove(&pane);
                     self.agent_watch.forget(pane);
+                    self.forget_auto_reply(pane);
                     self.telegram_targets.retain(|_, p| *p != pane);
                     self.pane_status_ttl.retain(|(p, _), _| *p != pane);
                     // 출처를 "닫힌 세션" 스택에 적재(실수로 닫은 탭 재열기용, 최근 16개).
@@ -159,6 +160,7 @@ impl NabiApp {
                     self.run_cmd.insert(pane, cmd); // 실행 시작 — 종료(133;D) 시 제거.
                 }
                 Event::CommandStarted { pane } => {
+                    self.cmd_started.insert(pane, std::time::Instant::now()); // 소요 시간 계측 시작.
                     self.cmd_start.insert(pane, std::time::Instant::now());
                 }
                 Event::CommandBlock { pane, block } => {

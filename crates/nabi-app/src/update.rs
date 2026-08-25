@@ -107,6 +107,7 @@ impl eframe::App for NabiApp {
         self.poll_edits(); // 편집 임시파일 저장 감지 → 원격 재업로드.
         self.flush_session_logs(); // 세션 로깅(활성 pane 출력→파일).
         self.check_output_alerts(ctx); // 출력 트리거 패턴 알림.
+        self.check_auto_reply(); // 자동 응답(-> reply: 규칙, 기본 꺼짐).
         self.check_external_changes(ctx); // 외부 파일 변경 감지(자동 리로드/경고).
         self.autosave_tick(); // 자동 저장(설정 켜짐 시 주기적).
         self.tick_telegram(); // 텔레그램 브리지: 설정 동기화 + 수신 메시지→pane 주입.
@@ -135,6 +136,8 @@ impl eframe::App for NabiApp {
         self.show_env_mgr(ctx); // 환경 관리자(도구 메뉴).
         self.show_cmd_history(ctx); // 명령 기록(도구 메뉴).
         self.show_preview(ctx); // 원격 파일 미리보기(SFTP).
+        self.show_compare_picker(ctx); // 열린 문서끼리 비교 상대 고르기.
+        self.show_auto_forwards(ctx); // 세션별 자동 터널 편집.
         self.show_find_all(ctx); // 모든 창에서 찾기.
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
         // 밖에서 부른 요청(탐색기 '여기서 열기')이면 창을 앞으로 — 뒤에서 열리면 열린 줄 모른다.

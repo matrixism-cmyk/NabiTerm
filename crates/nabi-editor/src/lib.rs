@@ -9,6 +9,9 @@ pub mod editbig;
 pub mod editbuf;
 pub mod editbufboxsel;
 pub mod editbufmatch;
+pub mod editbufvcursor;
+#[cfg(test)]
+mod editbufvcursortest;
 #[cfg(test)]
 mod editbufmatchtest;
 pub mod editbufcol;

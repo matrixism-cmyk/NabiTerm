@@ -7,6 +7,8 @@ use nabi_i18n::{tr, Lang};
 use nabi_proto::ShellKind;
 use std::path::PathBuf;
 
+// 메뉴 표에서 값을 꺼내 쓰려면 복제가 필요하다(toolsmenu의 묶음 표).
+#[derive(Clone)]
 pub(crate) enum PaletteAction {
     /// git 워크트리 만들기/목록(B6).
     WorktreeCreate,

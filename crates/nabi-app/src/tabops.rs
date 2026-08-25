@@ -189,6 +189,7 @@ impl NabiApp {
     pub(crate) fn connect_saved(&mut self, s: SavedSession) {
         // D4: 명명된 세션의 마지막 접속 시각 기록(목록에 상대시간 표시).
         if !s.name.is_empty() { self.config.terminal.last_connected.insert(s.name.clone(), chrono::Local::now().timestamp()); let _ = nabi_config::save(&self.config_path, &self.config); }
+        self.start_auto_forwards(&s); // 이 세션에 걸어 둔 터널을 함께 연다(S1).
         if s.is_ftp {
             self.open_sftp_saved(s, true); // FTP 세션은 FTP 브라우저로.
             return;

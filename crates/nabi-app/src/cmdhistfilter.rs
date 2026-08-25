@@ -16,6 +16,13 @@ pub(crate) struct Row {
     pub ts: i64,
 }
 
+impl Row {
+    /// 이 명령이 얼마나 걸렸는가(모르면 None — 옛 기록에는 없다).
+    pub fn secs(&self, table: &[(i64, u32)]) -> Option<u32> {
+        crate::cmdhist::secs_for(table, self.ts)
+    }
+}
+
 /// 무엇을 볼 것인가.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub(crate) struct Filter {

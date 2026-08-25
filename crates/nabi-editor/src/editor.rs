@@ -151,6 +151,8 @@ pub struct EditorAct {
     pub open_recent: Option<String>,
     /// 현재 문서를 디스크 원본과 비교(변경사항 diff).
     pub diff_disk: bool,
+    /// 다른 열린 문서와 비교(상대는 앱이 고르게 한다).
+    pub diff_open: bool,
     /// 선택 텍스트를 포커스 외 첫 터미널 pane에서 실행(우클릭 ▸ 터미널에서 실행).
     pub run_in_term: Option<String>,
     /// LSP(T6-4 2단계): 정의로 이동/심볼 정보/참조 찾기 요청(rs 문서 — 앱 허브가 처리).

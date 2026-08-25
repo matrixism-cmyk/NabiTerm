@@ -44,6 +44,10 @@ impl NabiApp {
         let lang = self.lang;
         let mut open = true;
         let mut copy: Option<String> = None;
+        // 미리보기는 "확인"이고, 확인 다음은 대개 "고치기"나 "가져오기"다. 창을 닫고 다시
+        // 목록에서 찾게 하면 그 사이가 끊긴다.
+        let mut go_edit = false;
+        let mut go_download = false;
         egui::Window::new(format!("{} — {}", tr(lang, "sftp.preview"), st.path))
             .open(&mut open)
             .default_size([760.0, 520.0])
@@ -58,10 +62,33 @@ impl NabiApp {
                 Some(Err(e)) => {
                     ui.colored_label(egui::Color32::from_rgb(0xd0, 0x4a, 0x3a), e);
                 }
-                Some(Ok(p)) => body(ui, lang, p, &mut copy),
+                Some(Ok(p)) => {
+                    body(ui, lang, p, &mut copy);
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        go_edit = ui.button(tr(lang, "sftp.edit")).clicked();
+                        go_download = ui.button(tr(lang, "sftp.preview.download")).clicked();
+                    });
+                }
             });
         if let Some(c) = copy {
             ctx.copy_text(c);
+        }
+        // 이어가기 — 원격 경로에서 이름만 떼어 기존 경로를 그대로 탄다(별도 길을 내지 않는다).
+        let name = st.path.rsplit('/').next().unwrap_or_default().to_string();
+        if go_edit {
+            self.preview = None;
+            self.edit_remote_dispatch(name);
+            return;
+        }
+        if go_download {
+            self.preview = None;
+            // 목록에서 누른 것과 **같은 길**을 탄다(목적지 묻기·다중 선택 규칙 그대로).
+            if let Some(id) = self.sftp.id {
+                let size = self.sftp.entries.iter().find(|e| e.name == name).map(|e| e.size).unwrap_or(0);
+                self.download_prompt(id, vec![(name, size)]);
+            }
+            return;
         }
         if !open {
             self.preview = None;

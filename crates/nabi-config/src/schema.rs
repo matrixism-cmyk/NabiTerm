@@ -229,6 +229,10 @@ pub struct TerminalCfg {
     /// 출력 트리거: 이 패턴(부분 문자열, 대소문자 무시)이 새 출력에 나타나면 알림(빌드 완료·에러 감시).
     #[serde(default)]
     pub alert_patterns: Vec<String>,
+    /// **자동 응답을 켤 것인가.** 기본은 꺼짐 — 원격에 우리가 대신 글자를 보내는 일이라
+    /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
+    #[serde(default)]
+    pub auto_reply: bool,
     /// SSH keepalive 간격(초). 0=끄기. 방화벽/유휴 타임아웃 대응(ServerAliveInterval). 기본 30.
     #[serde(default = "default_keepalive")]
     pub ssh_keepalive_secs: u64,
@@ -283,6 +287,15 @@ pub struct TerminalCfg {
     /// 이유는 paletteorder 문서 참고 — 동작에는 pane 번호 같은 그때뿐인 값이 들어 있다.
     #[serde(default)]
     pub palette_recent: Vec<String>,
+    /// 세션 이름 → 접속 시 자동으로 열 터널(`로컬:원격호스트:원격포트`).
+    /// 세션 파일이 아니라 여기 두는 이유는 autofwd 문서 참고(last_connected와 같은 선례).
+    #[serde(default)]
+    pub auto_forwards: std::collections::BTreeMap<String, Vec<String>>,
+    /// 명령 소요 시간((끝난 unix초, 걸린 초)) — cmd_history와 **따로** 둔다.
+    /// 기존 튜플을 늘리면 옛 설정 파일이 파싱에 실패하고, 그러면 설정 전체가 초기화된다
+    /// (load는 extract().unwrap_or_default()다). 새 필드는 없으면 기본값이라 안전하다.
+    #[serde(default)]
+    pub cmd_secs: Vec<(i64, u32)>,
     /// SFTP 원격 경로 북마크(FileZilla식 즐겨찾기).
     #[serde(default)]
     pub sftp_bookmarks: Vec<String>,
@@ -323,6 +336,8 @@ impl Default for TerminalCfg {
             dir_visits: std::collections::BTreeMap::new(),
             cmd_history: Vec::new(),
             palette_recent: Vec::new(),
+            cmd_secs: Vec::new(),
+            auto_forwards: std::collections::BTreeMap::new(),
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,
@@ -356,6 +371,7 @@ impl Default for TerminalCfg {
             browser_show_hidden: false,
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
+            auto_reply: false,
             ssh_keepalive_secs: default_keepalive(),
             browser_sort_desc: false,
             browser_view: 0,

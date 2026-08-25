@@ -33,6 +33,7 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
             if ui.button(tr(lang, "editor.saveas")).clicked() { act.save_as = true; ui.close(); }
             if plain && ui.button(tr(lang, "editor.reload")).clicked() { act.reload = true; ui.close(); }
             if plain && ui.button(tr(lang, "editor.diffdisk")).clicked() { act.diff_disk = true; ui.close(); }
+            if ui.button(tr(lang, "editor.diffopen")).clicked() { act.diff_open = true; ui.close(); }
             ui.separator();
             let path = doc.path.to_string_lossy().into_owned();
             if ui.button(tr(lang, "nabipad.reveal")).clicked() {

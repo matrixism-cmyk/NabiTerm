@@ -7,10 +7,16 @@ use nabi_i18n::{tr, Lang};
 pub(crate) fn highlight_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.highlightshint"));
     list_editor(ui, &mut cfg.terminal.highlight_keywords, 220.0, tr(lang, "settings.addhighlight"));
+    ui.weak(tr(lang, "settings.highlightsregexhint")); // 정규식 문법 안내 — 모르면 없는 기능이다.
     ui.separator();
     ui.label(tr(lang, "settings.alertshint")); // 출력 트리거 알림 패턴.
     list_editor(ui, &mut cfg.terminal.alert_patterns, 220.0, tr(lang, "settings.addalert"));
     ui.weak(tr(lang, "settings.alertactions")); // C4: 접미 액션 문법 안내.
+    // 자동 응답은 같은 규칙 목록의 `-> reply:` 액션으로 쓴다(목록을 둘로 나누지 않는다).
+    // 스위치를 바로 옆에 두는 이유는 **켜야 동작한다**는 것을 규칙 옆에서 알리기 위해서다.
+    ui.add_space(4.0);
+    ui.checkbox(&mut cfg.terminal.auto_reply, tr(lang, "settings.autoreply"));
+    ui.weak(tr(lang, "settings.autoreply.help"));
 }
 
 /// 명령 스니펫 편집(추가/수정/삭제). 메뉴에서 클릭하면 포커스 pane에 전송·실행.

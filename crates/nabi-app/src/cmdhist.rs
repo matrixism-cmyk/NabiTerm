@@ -33,7 +33,12 @@ impl crate::app::NabiApp {
     pub(crate) fn record_cmd_history(&mut self, pane: nabi_types::PaneId, exit: i32) {
         let Some(cmd) = self.run_cmd.get(&pane).cloned() else { return };
         let cwd = self.cwds.get(&pane).map(|c| crate::workspace::strip_uri_slash(c)).unwrap_or_default();
-        record(&mut self.config.terminal.cmd_history, &cmd, &cwd, exit, chrono::Local::now().timestamp(), 500);
+        let ts = chrono::Local::now().timestamp();
+        record(&mut self.config.terminal.cmd_history, &cmd, &cwd, exit, ts, 500);
+        // 얼마나 걸렸는지도 남긴다("아까 그 빌드 얼마나 걸렸지"는 매일 나오는 질문이다).
+        if let Some(start) = self.cmd_started.remove(&pane) {
+            record_secs(&mut self.config.terminal.cmd_secs, ts, start.elapsed().as_secs() as u32, 500);
+        }
         if self.dir_save_at.elapsed().as_secs() >= 20 {
             let _ = nabi_config::save(&self.config_path, &self.config);
             self.dir_save_at = std::time::Instant::now();
@@ -73,5 +78,89 @@ mod tests {
         }
         assert_eq!(h.len(), 3);
         assert_eq!(h.first().unwrap().0, "cmd2"); // 오래된 cmd0,cmd1 제거
+    }
+}
+
+/// 명령 **소요 시간** — (끝난 시각 unix초, 걸린 초).
+///
+/// ## 왜 `cmd_history` 튜플에 넣지 않았는가
+///
+/// 설정 로드는 `.extract().unwrap_or_default()`다 — **한 필드라도 파싱에 실패하면 설정
+/// 전체가 기본값으로 초기화된다.** `cmd_history`의 4-튜플을 5-튜플로 바꾸면 옛 config.toml은
+/// 4칸 배열을 5-튜플에 넣지 못하고, 그 순간 사용자의 모든 설정이 사라진다. 소요 시간
+/// 하나 보자고 치를 값이 아니다.
+///
+/// 반면 **새 필드를 더하는 것은 안전하다** — 옛 파일에 없으면 `#[serde(default)]`가 빈 값을
+/// 준다. 그래서 곁에 따로 둔다. 완료 시각으로 맞춰 본다.
+pub(crate) type CmdSecs = Vec<(i64, u32)>;
+
+/// 소요 시간을 적는다. 같은 시각이 이미 있으면 갈아 끼운다.
+pub(crate) fn record_secs(v: &mut CmdSecs, ts: i64, secs: u32, cap: usize) {
+    v.retain(|(t, _)| *t != ts);
+    v.push((ts, secs));
+    let n = v.len();
+    if n > cap {
+        v.drain(0..n - cap);
+    }
+}
+
+/// 그 시각에 끝난 명령이 얼마나 걸렸는가.
+pub(crate) fn secs_for(v: &[(i64, u32)], ts: i64) -> Option<u32> {
+    v.iter().rev().find(|(t, _)| *t == ts).map(|(_, s)| *s)
+}
+
+/// 사람이 읽는 소요 시간. 초 단위는 `12s`, 분이 넘으면 `3m 07s`, 시간이 넘으면 `1h 04m`.
+pub(crate) fn human_secs(s: u32) -> String {
+    match s {
+        0..=59 => format!("{s}s"),
+        60..=3599 => format!("{}m {:02}s", s / 60, s % 60),
+        _ => format!("{}h {:02}m", s / 3600, (s % 3600) / 60),
+    }
+}
+
+#[cfg(test)]
+mod secs_tests {
+    use super::*;
+
+    #[test]
+    fn a_duration_can_be_looked_up_by_its_finish_time() {
+        let mut v = CmdSecs::new();
+        record_secs(&mut v, 100, 7, 10);
+        record_secs(&mut v, 200, 90, 10);
+        assert_eq!(secs_for(&v, 100), Some(7));
+        assert_eq!(secs_for(&v, 200), Some(90));
+        assert_eq!(secs_for(&v, 300), None);
+    }
+
+    /// 같은 시각이 다시 오면 덮어쓴다 — 두 값이 쌓이면 어느 쪽이 맞는지 알 수 없다.
+    #[test]
+    fn the_same_finish_time_is_replaced_not_duplicated() {
+        let mut v = CmdSecs::new();
+        record_secs(&mut v, 100, 7, 10);
+        record_secs(&mut v, 100, 9, 10);
+        assert_eq!(v.len(), 1);
+        assert_eq!(secs_for(&v, 100), Some(9));
+    }
+
+    /// 무한히 자라면 설정 파일이 부푼다.
+    #[test]
+    fn the_table_stays_bounded_dropping_the_oldest() {
+        let mut v = CmdSecs::new();
+        for i in 0..20 {
+            record_secs(&mut v, i, i as u32, 5);
+        }
+        assert_eq!(v.len(), 5);
+        assert_eq!(secs_for(&v, 0), None, "가장 오래된 것이 남았다");
+        assert_eq!(secs_for(&v, 19), Some(19));
+    }
+
+    #[test]
+    fn durations_read_the_way_people_say_them() {
+        assert_eq!(human_secs(0), "0s");
+        assert_eq!(human_secs(45), "45s");
+        assert_eq!(human_secs(60), "1m 00s");
+        assert_eq!(human_secs(187), "3m 07s");
+        assert_eq!(human_secs(3600), "1h 00m");
+        assert_eq!(human_secs(3840), "1h 04m");
     }
 }

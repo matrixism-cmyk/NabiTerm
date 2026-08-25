@@ -60,6 +60,14 @@ pub fn context_menu(
         eb.select_all_matches();
         ui.close();
     }
+    if ui.button(tr(lang, "edit.addcursorup")).clicked() {
+        eb.add_cursor_vertical(-1);
+        ui.close();
+    }
+    if ui.button(tr(lang, "edit.addcursordown")).clicked() {
+        eb.add_cursor_vertical(1);
+        ui.close();
+    }
     if ui.button(tr(lang, "menu.selectall")).clicked() {
         eb.select_all();
         ui.close();

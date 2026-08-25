@@ -293,6 +293,17 @@ pub struct NabiApp {
     pub editor_extcheck: std::time::Instant, pub autosave_at: std::time::Instant,
     pub note_edit: Option<(String, String)>, pub alert_marks: HashMap<PaneId, usize>,
     pub alert_check: std::time::Instant,
+    /// 자동 응답: 마지막으로 본 화면 끝(같은 화면에 두 번 답하지 않기 위해).
+    pub auto_reply_seen: HashMap<PaneId, String>,
+    /// 자동 응답: (규칙 번호, 연속 발동 횟수) — 되먹임 차단.
+    pub auto_reply_streak: HashMap<PaneId, (usize, u32)>,
+    pub auto_reply_check: std::time::Instant,
+    /// 명령이 시작된 시각(소요 시간 계측). 끝나면 지운다.
+    pub cmd_started: HashMap<PaneId, std::time::Instant>,
+    /// 비교 상대를 고르는 중인 문서(열린 문서끼리 비교).
+    pub diff_pick: Option<PaneId>,
+    /// 자동 터널을 편집 중인 세션 이름.
+    pub fwd_edit: Option<String>,
     /// 다음 PaneSpawned를 분할 배치(Some(true)=오른쪽, Some(false)=아래).
     pub pending_split: Option<bool>,
     /// pane별 글꼴 크기 오버라이드(Ctrl+휠 확대/축소). 없으면 전역 font_size.

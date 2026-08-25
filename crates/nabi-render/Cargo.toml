@@ -6,6 +6,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+regex = "1"               # 터미널 강조 규칙의 정규식(re: 접두).
 nabi-types = { workspace = true }
 nabi-vt = { workspace = true }
 egui = { workspace = true }

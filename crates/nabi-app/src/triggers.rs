@@ -16,8 +16,13 @@ impl NabiApp {
             return;
         }
         self.alert_check = Instant::now();
+        // 자동 응답 규칙(-> reply:)은 **여기서 다루지 않는다.** 알림은 "새로 생긴 줄"을 보는데
+        // 프롬프트는 줄바꿈 없이 커서 앞에 머물러 새 줄로 안 잡힌다. 그쪽은 화면 끝을 보는
+        // 별도 경로(autoreply)가 맡는다 — 여기 섞으면 답도 안 되면서 토스트만 뜬다.
         let pats: Vec<(String, Action)> = self.config.terminal.alert_patterns.iter()
-            .filter_map(|p| parse_rule(p)).collect();
+            .filter_map(|p| parse_rule(p))
+            .filter(|(_, a)| !matches!(a, Action::Reply(_)))
+            .collect();
         // (pane, 신규줄 텍스트) 수집(가드 분리).
         let mut hits: Vec<(PaneId, String, Action)> = Vec::new();
         if let Ok(panes) = self.orch.panes.read() {
@@ -43,6 +48,8 @@ impl NabiApp {
                         self.telegram.reply(owner, format!("\u{1f514} {pat}"));
                     }
                 }
+                // 위에서 걸러 냈으므로 여기 올 수 없다. 그래도 조용히 넘기지 않고 남긴다.
+                Action::Reply(_) => {}
                 Action::Command(cmd) => {
                     use std::os::windows::process::CommandExt;
                     let _ = std::process::Command::new("powershell")
@@ -70,6 +77,9 @@ pub(crate) enum Action {
     Toast,
     Telegram,
     Command(String),
+    /// **원격에 이 글자를 보낸다**(자동 응답). 안전장치는 `autoreply` 참고 —
+    /// 알림과 달리 이것은 되돌릴 수 없는 결과를 낼 수 있어 별도 판정을 거친다.
+    Reply(String),
 }
 
 /// 규칙 한 줄 파싱: `패턴 [-> 액션]`. 패턴은 소문자 비교(기존 동작 유지).
@@ -85,6 +95,9 @@ pub(crate) fn parse_rule(entry: &str) -> Option<(String, Action)> {
                 Action::Telegram
             } else if let Some(c) = a.strip_prefix("command:") {
                 Action::Command(c.trim().to_string())
+            } else if let Some(r) = a.strip_prefix("reply:") {
+                // 답의 앞뒤 공백은 뜻이 있을 수 있어(들여쓰기 응답) 끝의 공백만 남긴다.
+                Action::Reply(r.trim_start().to_string())
             } else {
                 Action::Toast // 모르는 액션은 토스트로 강등(조용한 무시 금지).
             };

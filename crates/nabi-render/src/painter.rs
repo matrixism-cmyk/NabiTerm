@@ -37,10 +37,9 @@ pub fn paint(
     let (cw, ch) = cell_size(ui, &font);
     painter.rect_filled(rect, egui::CornerRadius::ZERO, to_c32(theme.bg));
     // 키워드 규칙을 한 번만 파싱(단어 + 색). "단어=#RRGGBB" 형식, 색 생략 시 검색 일치색.
-    let rules: Vec<(&str, Rgba)> = keywords
+    let rules: Vec<crate::highlight::HlRule> = keywords
         .iter()
-        .filter(|k| !k.is_empty())
-        .map(|k| crate::highlight::split_highlight_rule(k, theme.match_color))
+        .filter_map(|k| crate::highlight::parse_highlight_rule(k, theme.match_color))
         .collect();
     // 렌더 행은 캐시 사용(내용·스크롤·테마 불변 프레임은 재할당 없이 빌려 씀 — 스크롤/유휴 비용↓).
     let rows_v = model.rows_cached(theme);
@@ -88,22 +87,20 @@ pub fn paint(
         if query.is_some() || !rules.is_empty() {
             hl = vec![None; row.len()];
             scan.rebuild(row);
-            let mut apply = |pat: &str, color: Rgba, hl: &mut Vec<Option<Rgba>>| {
-                marks.clear();
-                marks.resize(row.len(), false);
-                scan.mark(pat, &mut marks);
-                for (i, m) in marks.iter().enumerate() {
-                    // 방어적 get_mut — 길이 어긋남 시에도 렌더러 패닉(UI 스레드 즉사) 방지(과거 ul_map 패닉 클래스).
-                    if *m {
-                        if let Some(slot) = hl.get_mut(i) { *slot = Some(color); }
-                    }
-                }
-            };
             if let Some(q) = query {
-                apply(q, theme.match_color, &mut hl);
+                mark_into(&mut scan, &mut marks, row.len(), &mut hl, theme.match_color, Pat::Plain(q));
             }
-            for (word, color) in &rules {
-                apply(word, *color, &mut hl); // 키워드 규칙이 검색 강조를 덮어쓴다(기존 순서 유지).
+            // 키워드 규칙이 검색 강조를 덮어쓴다(기존 순서 유지).
+            for rule in &rules {
+                let what = match rule.regex {
+                    // 잘못된 정규식은 없는 것이 된다 — 렌더 중에 터지면 UI 스레드가 죽는다.
+                    true => match crate::findhl::compiled(&rule.pat) {
+                        Some(re) => Pat::Re(re),
+                        None => continue,
+                    },
+                    false => Pat::Plain(&rule.pat),
+                };
+                mark_into(&mut scan, &mut marks, row.len(), &mut hl, rule.color, what);
             }
         }
         // 밑줄 캐시(cached_underlines, 키=render_gen/offset)와 rows_v(rows_cached, 키=dirty_gen/
@@ -289,3 +286,38 @@ fn paint_cursor(
 fn to_c32(c: Rgba) -> Color32 {
     Color32::from_rgb(c.r, c.g, c.b)
 }
+/// 강조로 찾을 것 — 글자 그대로 또는 정규식.
+enum Pat<'a> {
+    Plain(&'a str),
+    Re(regex::Regex),
+}
+
+/// 한 행에서 패턴에 맞는 셀을 색칠한다.
+///
+/// 예전에는 클로저였는데 정규식 경로가 `scan`을 가변으로 써야 해서(행 문자열을 그때 만든다)
+/// 빌림이 겹쳤다. 자유 함수로 빼면 빌림이 호출마다 끝난다.
+fn mark_into(
+    scan: &mut crate::findhl::RowScan,
+    marks: &mut Vec<bool>,
+    len: usize,
+    hl: &mut [Option<Rgba>],
+    color: Rgba,
+    what: Pat<'_>,
+) {
+    marks.clear();
+    marks.resize(len, false);
+    match what {
+        Pat::Plain(p) => scan.mark(p, marks),
+        Pat::Re(re) => scan.mark_regex(&re, marks),
+    }
+    for (i, m) in marks.iter().enumerate() {
+        // 방어적 get_mut — 길이 어긋남 시에도 렌더러 패닉(UI 스레드 즉사) 방지
+        // (과거 ul_map 패닉 클래스).
+        if *m {
+            if let Some(slot) = hl.get_mut(i) {
+                *slot = Some(color);
+            }
+        }
+    }
+}
+

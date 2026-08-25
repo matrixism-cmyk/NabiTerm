@@ -149,7 +149,7 @@ impl NabiApp {
     }
 
     /// 다음 터널 id를 발급한다.
-    fn next_fwd_id(&mut self) -> u64 {
+    pub(crate) fn next_fwd_id(&mut self) -> u64 {
         self.forward.seq += 1;
         self.forward.seq
     }

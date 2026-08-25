@@ -69,7 +69,11 @@ impl NabiApp {
                                 if ui.small_button("\u{1f4cb}").on_hover_text(tr(lang, "menu.copy")).clicked() {
                                     copy = Some(r.cmd.clone());
                                 }
-                                ui.weak(short(&r.cwd, 34));
+                                ui.weak(short(&r.cwd, 30));
+                                // 얼마나 걸렸는지. 옛 기록에는 없으므로 있을 때만 적는다.
+                                if let Some(sec) = r.secs(&self.config.terminal.cmd_secs) {
+                                    ui.weak(crate::cmdhist::human_secs(sec));
+                                }
                             });
                         });
                     }

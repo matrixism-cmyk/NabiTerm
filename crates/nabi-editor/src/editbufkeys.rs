@@ -67,6 +67,13 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
             Key::L if m.shift => {
                 eb.select_all_matches();
             }
+            // Ctrl+Alt+↑/↓ — 같은 열의 위아래로 커서를 늘린다(VS Code·Sublime과 같은 조합).
+            Key::ArrowUp if m.alt => {
+                eb.add_cursor_vertical(-1);
+            }
+            Key::ArrowDown if m.alt => {
+                eb.add_cursor_vertical(1);
+            }
             Key::Z if !readonly && !m.shift => eb.undo(),
             Key::Z if !readonly && m.shift => eb.redo(),
             Key::Y if !readonly => eb.redo(),
