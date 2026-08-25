@@ -30,8 +30,9 @@ pub(crate) fn op_done(id: SftpId, name: &str, res: Result<(), String>) -> Event 
 pub(crate) fn to_entry(e: nabi_fs::FileEntry) -> SftpEntry {
     SftpEntry {
         name: e.name,
-        is_dir: matches!(e.kind, FileKind::Dir),
-        is_link: matches!(e.kind, FileKind::Symlink),
+        // 폴더 링크는 **둘 다** 참이다 — 들어갈 수 있고(is_dir), 링크로 보인다(is_link).
+        is_dir: matches!(e.kind, FileKind::Dir | FileKind::LinkDir),
+        is_link: matches!(e.kind, FileKind::Symlink | FileKind::LinkDir),
         size: e.size,
         mode: e.mode,
         mtime: e.mtime,

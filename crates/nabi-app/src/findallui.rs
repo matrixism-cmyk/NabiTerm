@@ -9,6 +9,10 @@ pub(crate) struct FindAll {
     pub query: String,
     pub regex: bool,
     pub whole: bool,
+    /// 맞는 줄을 **빼고** 본다 — 잡음 걷어내기.
+    pub invert: bool,
+    /// 지금 보고 있는 창만 훑는다(로그 하나를 걸러 볼 때가 대부분이다).
+    pub this_pane_only: bool,
     pub results: Vec<crate::findall::Hit>,
     /// 상한에 걸려 결과를 다 담지 못했는가.
     pub truncated: bool,
@@ -30,13 +34,19 @@ impl NabiApp {
 
     /// 열려 있는 모든 터미널 pane을 훑어 결과를 채운다.
     fn run_find_all(&mut self) {
+        let here = self.focused_pane();
         let Some(st) = self.find_all.as_mut() else { return };
         st.results.clear();
         st.truncated = false;
         let Some(m) = crate::find::build_matcher(&st.query, st.regex, st.whole) else { return };
         crate::findall::push_history(&mut st.history, &st.query);
         let limit = self.config.terminal.search_limit;
-        let panes: Vec<_> = self.dock.iter_all_tabs().map(|(_, p)| *p).collect();
+        let only = if st.this_pane_only { here } else { None };
+        let invert = st.invert;
+        let panes: Vec<_> = match only {
+            Some(p) => vec![p],
+            None => self.dock.iter_all_tabs().map(|(_, p)| *p).collect(),
+        };
         let mut budget = crate::findall::TOTAL;
         let Ok(map) = self.orch.panes.read() else { return };
         for p in panes {
@@ -49,7 +59,7 @@ impl NabiApp {
             let total = model.total_abs_lines();
             let from = total.saturating_sub(limit);
             let lines = model.lines_abs_text(from, total);
-            let got = crate::findall::scan_pane(p, &view.title, &lines, from, &m, budget);
+            let got = crate::findall::scan_pane(p, &view.title, &lines, from, &m, invert, budget);
             budget = budget.saturating_sub(got.hits.len());
             st.truncated |= got.more;
             st.results.extend(got.hits);
@@ -62,7 +72,7 @@ impl NabiApp {
             return;
         }
         let lang = self.lang;
-        let (mut open, mut search, mut goto) = (true, false, None);
+        let (mut open, mut search, mut goto, mut save) = (true, false, None, false);
         let st = self.find_all.clone().unwrap_or_default();
         let mut next = st.clone();
         egui::Window::new(tr(lang, "findall.title"))
@@ -84,6 +94,13 @@ impl NabiApp {
                     }
                     ui.checkbox(&mut next.regex, tr(lang, "find.regex"));
                     ui.checkbox(&mut next.whole, tr(lang, "find.whole"));
+                    // 제외 — 찾기의 반대편 절반. 로그에서는 "이것만 빼고"가 자주 필요하다.
+                    if ui.checkbox(&mut next.invert, tr(lang, "find.invert")).changed() {
+                        search = true;
+                    }
+                    if ui.checkbox(&mut next.this_pane_only, tr(lang, "findall.thispane")).changed() {
+                        search = true;
+                    }
                 });
                 // 검색어 이력 — 같은 것을 다시 치게 만들지 않는다.
                 if !st.history.is_empty() {
@@ -100,6 +117,15 @@ impl NabiApp {
                 ui.separator();
                 ui.horizontal(|ui| {
                     ui.label(format!("{}: {}", tr(lang, "findall.found"), st.results.len()));
+                    // 걸러 낸 결과를 가져가는 길 — 안 그러면 다시 손으로 옮겨 적게 된다.
+                    if !st.results.is_empty() {
+                        if ui.button(tr(lang, "findall.copy")).clicked() {
+                            ui.ctx().copy_text(crate::findall::to_text(&st.results));
+                        }
+                        if ui.button(tr(lang, "findall.save")).clicked() {
+                            save = true;
+                        }
+                    }
                     if st.truncated {
                         // 상한에 걸렸으면 말해 준다 — 조용히 자르면 없는 것으로 오해한다.
                         ui.colored_label(crate::theme_ui::BROADCAST, tr(lang, "findall.truncated"));
@@ -125,9 +151,25 @@ impl NabiApp {
         if search {
             self.run_find_all();
         }
+        if save {
+            self.save_find_all(&st.results);
+        }
         if let Some((pane, line)) = goto {
             self.jump_to_scrollback(pane, line);
         }
+    }
+
+    /// 걸러 낸 결과를 파일로 남긴다. 저장 대화상자는 기존 통로를 그대로 쓴다.
+    fn save_find_all(&mut self, hits: &[crate::findall::Hit]) {
+        let text = crate::findall::to_text(hits);
+        let Some(path) = rfd::FileDialog::new().set_file_name("filtered.txt").add_filter("text", &["txt", "log"]).save_file() else {
+            return;
+        };
+        let msg = match std::fs::write(&path, text) {
+            Ok(()) => tr(self.lang, "findall.saved").to_string(),
+            Err(e) => format!("{}: {e}", tr(self.lang, "findall.savefail")),
+        };
+        self.notify = Some((msg, std::time::Instant::now()));
     }
 
     /// 그 pane을 앞으로 가져오고 해당 줄로 스크롤한다.

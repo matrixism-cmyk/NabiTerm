@@ -108,13 +108,16 @@ impl NabiApp {
                 let all_folders: Vec<String> = { let mut f: Vec<String> = saved.iter().filter_map(|s| s.folder.clone()).collect(); f.sort(); f.dedup(); f };
                 // 드래그 가능한 세션 한 줄(side_row를 드래그 소스로 감싼다).
                 let marked = self.sidebar_marked.clone();
+                let fails = self.last_fail.clone();
                 let mut click_out: Option<(String, bool, bool)> = None;
                 let mut drag_row = |ui: &mut egui::Ui, s: &SavedSession, sel: Option<&str>, ns: &mut Option<String>| -> Option<MenuAction> {
                     let live = matches!(&s.kind, SessionKind::Ssh { host, user, port, .. } if active.contains(&format!("{user}@{host}:{port}")));
                     let last = last_conn.get(&s.name).copied();
                     let reach = reach_map.get(&s.name).copied();
+                    // 실패는 접속 정보로 찾는다 — 이름은 바뀌어도 접속 정보는 그대로다.
+                    let fail = fails.get(&s.kind).cloned();
                     // 드래그 소스는 side_row 내부에서 이름 라벨에만 적용 — 우측 아이콘 클릭이 드래그에 가로채이지 않게.
-                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, RowState { live, reach }, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
+                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, RowState { live, reach, fail }, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
                 };
                 // 선택 막대: 몇 개 골랐는지 + 한 번에 연결 / 선택 해제.
                 if !self.sidebar_marked.is_empty() {
@@ -267,12 +270,14 @@ fn kind_icon(s: &SavedSession) -> &'static str {
 }
 
 /// 한 줄의 살아 있는 상태 — 인자를 하나 더 늘리는 대신 묶었다(이 함수는 이미 인자가 많다).
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Default)]
 pub(crate) struct RowState {
     /// 지금 연결돼 있는가.
     pub live: bool,
     /// 마지막 일괄 확인 결과(안 훑었으면 None).
     pub reach: Option<crate::reachall::Reach>,
+    /// 마지막 연결 실패(성공하면 지워진다).
+    pub fail: Option<crate::lastfail::LastFail>,
 }
 
 /// 사이드바 세션 한 줄: 클릭=연결(SSH 열기), 드래그=그룹 이동, 우클릭=메뉴, 우측 아이콘(✎편집·✕삭제·🖧SFTP·⋯더보기).
@@ -346,12 +351,26 @@ fn side_row(
                 rc.color(),
             );
         }
+        // 마지막 연결 실패 — 이름 앞 경고 표시. 연결 중이면 이미 지워졌으므로 뜨지 않는다.
+        let mut warn_rect = None;
+        if let (Some(f), false) = (st.fail.as_ref(), st.live) {
+            let pos = egui::pos2(rect.left() + 16.0, rect.center().y);
+            let g = ui.painter().text(pos, egui::Align2::LEFT_CENTER, "\u{26a0}", egui::FontId::proportional(10.0), crate::theme_ui::ERR);
+            warn_rect = Some((g, crate::lastfail::detail(lang, f)));
+        }
         // 이름(+메모 📝) — 폭 넘치면 … 말줄임.
         let note = if notes.get(&s.name).is_some_and(|n| !n.is_empty()) { " \u{1f4dd}" } else { "" };
         let mut job = egui::text::LayoutJob::simple_singleline(format!("{}{note}", s.name), font, vis.text_color());
         job.wrap = egui::text::TextWrapping { max_width: (rect.width() - 26.0).max(16.0), max_rows: 1, break_anywhere: true, overflow_character: Some('\u{2026}') };
         let galley = ui.fonts_mut(|f| f.layout_job(job));
         ui.painter().galley(egui::pos2(rect.left() + 24.0, rect.center().y - galley.size().y / 2.0), galley, vis.text_color());
+        // 왜 실패했는지는 **가리켰을 때** 보여 준다. 목록에 늘 펼쳐 두면 이름이 밀린다.
+        if let Some((wr, tip)) = warn_rect {
+            // 경고 글리프 자리에만 감지 영역을 둔다 — 행 전체에 붙이면 이름 위에서도 떠서
+            // 목록을 훑는 내내 말풍선이 따라다닌다.
+            let id = egui::Id::new(("failtip", &s.name));
+            ui.interact(wr, id, egui::Sense::hover()).on_hover_text(tip);
+        }
         // 드래그(길게 눌러 이동) 페이로드 + 고스트(커서 옆에 이름).
         if r.drag_started() { r.dnd_set_drag_payload(s.name.clone()); }
         if r.dragged() {

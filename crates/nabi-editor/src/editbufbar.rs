@@ -55,7 +55,15 @@ pub(crate) fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize),
         ui.separator();
         ui.label(&eb.enc);
         ui.separator();
-        ui.label(eb.eol);
+        // 대용량 경로는 저장할 때 온 파일을 `eol` 하나로 되돌린다. 원본이 섞여 있었다면
+        // 손대지 않은 줄까지 바뀌므로, 그 사실을 **저장 전에** 알려야 한다.
+        if eb.eols.mixed() {
+            let warn = format!("\u{26a0} {}", eb.eols.label());
+            ui.colored_label(egui::Color32::from_rgb(0xE5, 0xA5, 0x0A), warn)
+                .on_hover_text(format!("{}\n{} \u{2192} {}", tr(lang, "editor.eol.mixedbig"), eb.eols.label(), eb.eol));
+        } else {
+            ui.label(eb.eol);
+        }
         ui.separator();
         ui.label(format!("{}px", doc.font_size as i32));
         ui.separator();

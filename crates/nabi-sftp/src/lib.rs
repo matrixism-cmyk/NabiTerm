@@ -6,6 +6,7 @@
 
 pub mod fs;
 pub mod hashcheck;
+mod linkres;
 mod pipeline;
 pub mod raw;
 mod recurse;

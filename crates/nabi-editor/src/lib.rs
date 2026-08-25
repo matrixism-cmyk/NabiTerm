@@ -9,6 +9,7 @@ pub mod editbuf;
 pub mod editbufboxsel;
 pub mod editbufmatch;
 pub mod editbufvcursor;
+pub mod eolmix;
 pub mod guides;
 pub mod hexdiff;
 pub mod rulers;

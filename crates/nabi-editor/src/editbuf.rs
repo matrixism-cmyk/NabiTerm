@@ -17,6 +17,8 @@ pub enum EditKind {
 
 /// rope 편집 버퍼 — 선택(커서 포함)/undo·redo 스택 + 원본 인코딩·EOL.
 pub struct EditBuf {
+    /// 원본의 줄 끝 종류별 개수(정규화 전에 센다) — 섞였는지 화면에 알린다.
+    pub eols: crate::eolmix::EolCounts,
     pub rope: Rope,
     /// 편집 선택. 지금은 항상 범위 1개지만 자료구조는 멀티커서를 담을 수 있다(editsel).
     pub sel: crate::editsel::Selection,
@@ -55,6 +57,7 @@ impl EditBuf {
     /// LF 정규화 텍스트로 빈 히스토리 버퍼를 만든다(open·테스트 공용).
     pub fn new_buf(lf: &str, enc: String, eol: &'static str) -> EditBuf {
         EditBuf {
+            eols: crate::eolmix::EolCounts::default(),
             rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
@@ -70,15 +73,20 @@ impl EditBuf {
     /// 이제 ① LF 정규화를 한 번에 하고(`\r`이 없으면 사본을 아예 안 만든다)
     /// ② rope를 만들기 **전에** 원본 바이트를 버린다.
     pub fn open(path: &Path) -> Option<EditBuf> {
-        let (lf, enc, eol) = {
+        let (lf, enc, eol, eols) = {
             let bytes = std::fs::read(path).ok()?;
             if bytes.len() as u64 > EDIT_CAP {
                 return None;
             }
             let (text, enc, eol) = crate::editload::decode(&bytes);
-            (crate::editload::normalize_lf(text), enc, eol)
+            // **정규화하기 전에** 센다. 이 경로는 저장할 때 온 파일을 `eol` 하나로
+            // 되돌리므로, 원본이 섞여 있었다면 건드리지 않은 줄까지 바뀐다.
+            let eols = crate::eolmix::count_eols(&text);
+            (crate::editload::normalize_lf(text), enc, eol, eols)
         }; // 여기서 원본 바이트가 풀린다 — rope 할당과 겹치지 않는다.
-        Some(Self::new_buf(&lf, enc, eol))
+        let mut b = Self::new_buf(&lf, enc, eol);
+        b.eols = eols;
+        Some(b)
     }
 
     /// 저장용 바이트(원본 EOL로 복원한 UTF-8).

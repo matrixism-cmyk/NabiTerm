@@ -48,13 +48,15 @@ pub(crate) fn scan_pane(
     lines: &[String],
     from_abs: usize,
     m: &Matcher,
+    invert: bool,
     budget: usize,
 ) -> PaneHits {
     let cap = PER_PANE.min(budget);
     let mut hits = Vec::new();
     let mut more = false;
     for (i, line) in lines.iter().enumerate() {
-        if !m.is_match(line) {
+        // 뒤집기(제외)는 로그에서 잡음을 걷어낼 때 쓴다 — 찾기의 반대편 절반이다.
+        if m.is_match(line) == invert {
             continue;
         }
         if hits.len() >= cap {
@@ -77,6 +79,26 @@ fn clip(s: &str, max: usize) -> String {
         Some((i, _)) => format!("{}\u{2026}", &s[..i]),
         None => s.to_string(),
     }
+}
+
+/// 결과를 글로 옮긴다 — 복사·저장용.
+///
+/// 원본 줄 번호를 앞에 붙인다. 걸러 낸 것을 어디서 가져왔는지 남기지 않으면, 붙여넣은
+/// 쪽에서는 그저 출처 없는 줄 몇 개가 된다. 창이 여럿이면 창 이름도 사이에 끼운다.
+pub(crate) fn to_text(hits: &[Hit]) -> String {
+    let mut out = String::new();
+    let mut last: Option<nabi_types::PaneId> = None;
+    for h in hits {
+        if last != Some(h.pane) {
+            if last.is_some() {
+                out.push('\n');
+            }
+            out.push_str(&format!("# {}\n", h.title));
+            last = Some(h.pane);
+        }
+        out.push_str(&format!("{:>7}  {}\n", h.abs_line + 1, h.text));
+    }
+    out
 }
 
 /// 검색어 이력에 한 줄 올린다 — 최신 우선·중복 제거·상한.
@@ -109,7 +131,7 @@ mod tests {
     #[test]
     fn it_finds_matching_lines_and_remembers_where_they_were() {
         let src = lines(&["hello", "an error here", "bye", "another error"]);
-        let got = scan_pane(PaneId(1), "shell", &src, 100, &m("error"), TOTAL);
+        let got = scan_pane(PaneId(1), "shell", &src, 100, &m("error"), false, TOTAL);
         assert_eq!(got.hits.len(), 2);
         assert_eq!(got.hits[0].abs_line, 101, "절대 줄 번호는 from_abs 를 더한 값이다");
         assert_eq!(got.hits[1].abs_line, 103);
@@ -121,7 +143,7 @@ mod tests {
     #[test]
     fn hitting_the_cap_is_reported_not_hidden() {
         let src: Vec<String> = (0..500).map(|i| format!("error {i}")).collect();
-        let got = scan_pane(PaneId(1), "t", &src, 0, &m("error"), TOTAL);
+        let got = scan_pane(PaneId(1), "t", &src, 0, &m("error"), false, TOTAL);
         assert_eq!(got.hits.len(), PER_PANE);
         assert!(got.more, "더 있다는 사실이 남아야 한다");
     }
@@ -130,7 +152,7 @@ mod tests {
     #[test]
     fn a_small_budget_limits_one_pane() {
         let src: Vec<String> = (0..50).map(|i| format!("x {i}")).collect();
-        let got = scan_pane(PaneId(1), "t", &src, 0, &m("x"), 5);
+        let got = scan_pane(PaneId(1), "t", &src, 0, &m("x"), false, 5);
         assert_eq!(got.hits.len(), 5);
         assert!(got.more);
     }
@@ -138,7 +160,7 @@ mod tests {
     #[test]
     fn long_lines_are_clipped_for_the_list() {
         let long = "e".repeat(400);
-        let got = scan_pane(PaneId(1), "t", &lines(&[&long]), 0, &m("eee"), TOTAL);
+        let got = scan_pane(PaneId(1), "t", &lines(&[&long]), 0, &m("eee"), false, TOTAL);
         assert!(got.hits[0].text.chars().count() <= 161);
         assert!(got.hits[0].text.ends_with('\u{2026}'));
     }
@@ -146,7 +168,7 @@ mod tests {
     /// 표시용으로 앞뒤 공백을 뗀다 — 들여쓰기 깊은 줄이 목록에서 밀려 보이지 않게.
     #[test]
     fn surrounding_space_is_trimmed_for_display() {
-        let got = scan_pane(PaneId(1), "t", &lines(&["      spaced out      "]), 0, &m("spaced"), TOTAL);
+        let got = scan_pane(PaneId(1), "t", &lines(&["      spaced out      "]), 0, &m("spaced"), false, TOTAL);
         assert_eq!(got.hits[0].text, "spaced out");
     }
 
@@ -171,10 +193,37 @@ mod tests {
     fn it_uses_the_same_rules_as_the_single_pane_search() {
         let src = lines(&["cat", "concat", "the cat sat"]);
         let whole = build_matcher("cat", false, true).unwrap();
-        let got = scan_pane(PaneId(1), "t", &src, 0, &whole, TOTAL);
+        let got = scan_pane(PaneId(1), "t", &src, 0, &whole, false, TOTAL);
         assert_eq!(got.hits.len(), 2, "concat 은 단어 단위로 걸리지 않는다");
         let re = build_matcher(r"c.t$", true, false).unwrap();
-        let got = scan_pane(PaneId(1), "t", &src, 0, &re, TOTAL);
+        let got = scan_pane(PaneId(1), "t", &src, 0, &re, false, TOTAL);
         assert_eq!(got.hits.len(), 2);
     }
+
+    /// **제외** — 잡음 줄을 빼고 보는 쪽. 찾기의 반대편 절반이다.
+    #[test]
+    fn inverting_keeps_everything_but_the_match() {
+        let src = lines(&["noise a", "signal", "noise b"]);
+        let got = scan_pane(PaneId(1), "t", &src, 10, &m("noise"), true, TOTAL);
+        assert_eq!(got.hits.len(), 1);
+        assert_eq!(got.hits[0].text, "signal");
+        assert_eq!(got.hits[0].abs_line, 11, "제외해도 줄 번호는 원본 그대로다");
+    }
+
+    /// 복사본에는 **원본 줄 번호와 창 이름**이 함께 나가야 한다 — 출처 없는 줄은 쓸모가 적다.
+    #[test]
+    fn the_copied_text_carries_line_numbers_and_titles() {
+        let a = Hit { pane: PaneId(1), title: "shell".into(), abs_line: 41, text: "boom".into() };
+        let b = Hit { pane: PaneId(2), title: "ssh".into(), abs_line: 7, text: "bang".into() };
+        let t = to_text(&[a, b]);
+        assert!(t.contains("# shell") && t.contains("# ssh"), "{t}");
+        assert!(t.contains("42  boom"), "{t}");
+        assert!(t.contains("8  bang"), "{t}");
+    }
+
+    #[test]
+    fn copying_nothing_gives_nothing() {
+        assert_eq!(to_text(&[]), "");
+    }
+
 }

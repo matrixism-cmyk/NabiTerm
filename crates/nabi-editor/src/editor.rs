@@ -54,6 +54,8 @@ pub struct EditorDoc {
     pub rulers: String,
     /// 들여쓰기 안내선을 그릴 것인가(눈금과 같은 "보조선" 묶음).
     pub guides: bool,
+    /// 열 때 센 줄 끝 종류별 개수 — 섞였는지 판단하고 상태바에 보인다.
+    pub eols: crate::eolmix::EolCounts,
     /// 개요(좌측 아웃라인) 패널 표시 — 헤더/정의 줄 목록 클릭 점프.
     pub outline: bool,
     /// 좌측 줄 번호 거터 표시(기본 true, 보기 메뉴에서 토글).
@@ -121,11 +123,14 @@ impl EditorDoc {
         encoding: String,
         eol: &'static str,
     ) -> Self {
+        // 줄 끝 개수는 **여기 한 곳에서** 센다 — 문서를 만드는 자리가 여럿이라
+        // 각자 세게 하면 어느 하나는 반드시 빠진다.
+        let text_for_eols = crate::eolmix::count_eols(&text);
         EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None, huge: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false,
-            wrap_col: 0, rulers: String::new(), guides: false, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+            wrap_col: 0, rulers: String::new(), guides: false, eols: text_for_eols, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
             lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
         }

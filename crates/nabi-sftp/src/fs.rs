@@ -53,6 +53,39 @@ impl SftpFs {
         }
     }
 
+    /// 링크가 가리키는 것이 폴더인지 알아내 `Dir`로 바꾼다(표시는 그대로 링크).
+    ///
+    /// `readdir`는 링크 자신의 속성을 주므로, 따라가는 `stat`을 한 번 더 물어야 한다.
+    /// 확인하지 못한 링크는 **건드리지 않는다** — 모르는 것을 폴더로 단정하지 않는다.
+    async fn resolve_links(&self, dir: &str, out: &mut [FileEntry]) {
+        let kinds: Vec<FileKind> = out.iter().map(|e| e.kind).collect();
+        let names: Vec<String> = out.iter().map(|e| e.name.clone()).collect();
+        let idx = crate::linkres::to_resolve(&kinds, &names);
+        // 상한에 걸린 만큼은 링크 그대로 남는다. 조용히 넘기면 나중에 "왜 이 링크만
+        // 안 들어가지느냐"를 아무도 설명하지 못하므로 로그에는 남긴다.
+        let left = crate::linkres::unresolved(&kinds);
+        if left > 0 {
+            tracing::info!(dir = %dir, unresolved = left, "링크 대상 확인 상한 초과");
+        }
+        for chunk in idx.chunks(crate::linkres::BATCH) {
+            // 지연이 큰 회선에서 하나씩 물으면 개수 × 왕복이 그대로 대기가 된다.
+            let reqs = chunk.iter().map(|i| {
+                let p = crate::linkres::target_path(dir, &out[*i].name);
+                let raw = self.raw.clone();
+                async move { raw.stat(&p).await }
+            });
+            for (n, r) in futures_util::future::join_all(reqs).await.into_iter().enumerate() {
+                // 실패는 조용히 넘긴다 — 끊어진 링크(dangling)는 흔하고, 그것 때문에
+                // 목록 전체를 실패시키면 폴더를 아예 못 연다.
+                if let Ok(a) = r {
+                    if matches!(a.file_type(), FileType::Dir) {
+                        out[chunk[n]].kind = FileKind::LinkDir;
+                    }
+                }
+            }
+        }
+    }
+
     /// 전송 속도 제한 설정(bytes/sec, 0=무제한).
     pub fn set_limit(&mut self, bps: u64) {
         self.limit_bps = bps;
@@ -114,7 +147,7 @@ impl SftpFs {
 impl RemoteFs for SftpFs {
     async fn list_dir(&mut self, path: &str) -> Result<Vec<FileEntry>, String> {
         let files = self.raw.list(path).await?;
-        Ok(files
+        let mut out: Vec<FileEntry> = files
             .into_iter()
             .map(|(name, a)| FileEntry {
                 name,
@@ -123,7 +156,9 @@ impl RemoteFs for SftpFs {
                 mode: a.permissions.unwrap_or(0),
                 mtime: a.mtime.unwrap_or(0) as u64,
             })
-            .collect())
+            .collect();
+        self.resolve_links(path, &mut out).await;
+        Ok(out)
     }
 
     async fn read_file(&mut self, path: &str) -> Result<Vec<u8>, String> {

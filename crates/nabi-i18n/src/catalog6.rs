@@ -343,4 +343,5 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ("settings.sec.linkrules", "Link rules", "링크 규칙", "リンク規則"),
     ("editor.guides", "Indent guides", "들여쓰기 안내선", "インデントガイド"),
     ("editor.guides.hint", "Faint vertical lines showing how deeply each line is nested.", "각 줄이 몇 단계 안쪽인지 보여 주는 흐린 세로선입니다.", "各行の入れ子の深さを示す薄い縦線です。"),
+    ("editor.eol.mixed", "This file mixes line endings. Saving would change every line — pick one here first if that is what you want.", "이 파일은 줄 끝이 섞여 있습니다. 저장하면 모든 줄이 바뀝니다 — 그럴 뜻이라면 여기서 하나를 고르세요.", "このファイルは改行コードが混在しています。保存すると全行が変わります — その意図なら、ここで一つ選んでください。"),
 ];

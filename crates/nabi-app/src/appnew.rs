@@ -213,7 +213,7 @@ impl NabiApp {
             schedules, schedules_path, sched_last_tick: std::time::Instant::now(),
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),
-            pane_status: HashMap::new(), ssh_connect_time: HashMap::new(),
+            pane_status: HashMap::new(), ssh_connect_time: HashMap::new(), last_fail: Default::default(),
             ssh_alert_on: HashMap::new(), ctx_alert_on: HashMap::new(),
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),

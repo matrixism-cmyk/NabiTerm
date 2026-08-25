@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// 세션 종류.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum SessionKind {
     /// 로컬 셸(프로그램 이름).
     Local { shell: String },

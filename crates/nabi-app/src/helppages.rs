@@ -28,6 +28,24 @@ pub(crate) fn features_page(ui: &mut egui::Ui, lang: Lang) {
         ui.label(tr(lang, key));
         ui.add_space(2.0);
     }
+    // 무인 설치 — 여러 대에 밀어 넣는 사람만 찾는 정보라 접어 둔다.
+    ui.add_space(8.0);
+    ui.collapsing(tr(lang, "help.silent.title"), |ui| {
+        ui.label(tr(lang, "help.silent.intro"));
+        ui.add_space(4.0);
+        for line in [
+            "nabiTerm-setup.exe /VERYSILENT /NOLAUNCH",
+            "nabiTerm-setup.exe /VERYSILENT /ALLUSERS /NOLAUNCH",
+            r#"nabiTerm-setup.exe /VERYSILENT /DIR="D:\Apps\nabiTerm" /TASKS="desktopicon""#,
+            r#"nabiTerm-setup.exe /VERYSILENT /LOG="C:\temp\nabi-install.log""#,
+        ] {
+            if ui.add(egui::Label::new(egui::RichText::new(line).monospace()).sense(egui::Sense::click())).clicked() {
+                ui.ctx().copy_text(line.to_string());
+            }
+        }
+        ui.add_space(4.0);
+        ui.label(tr(lang, "help.silent.note"));
+    });
 }
 
 /// 사용한 주요 오픈소스 (이름, 용도, 라이선스). 전이 의존성 660여 개는 대부분 MIT/Apache-2.0.

@@ -23,6 +23,9 @@ pub(crate) struct QueueAct {
     pub move_by: Option<(u64, i32)>,
     /// 실패 항목 재시도.
     pub retry: Option<u64>,
+    /// **실패한 것 전부** 재시도. 연결이 한 번 끊기면 수십 건이 함께 실패하는데,
+    /// 그때 항목마다 ↻를 누르게 하는 것은 일이 아니라 벌이다.
+    pub retry_all: bool,
 }
 
 /// 진행 중 항목들의 (진행률%, 합산 속도, 남은 시간) 요약 문구.
@@ -76,6 +79,14 @@ pub(crate) fn show_queue(ui: &mut egui::Ui, transfers: &[Transfer], lang: Lang) 
             && ui.small_button("\u{23f9}").on_hover_text(tr(lang, "sftp.q.cancelall")).clicked()
         {
             act.cancel_all = true;
+        }
+        // 실패가 둘 이상일 때만 낸다 — 하나뿐이면 그 줄의 ↻가 이미 있다.
+        let failed = transfers.iter().filter(|t| t.state == XferState::Failed).count();
+        if failed > 1 {
+            let b = ui.small_button(format!("\u{21bb}{failed}"));
+            if b.on_hover_text(tr(lang, "sftp.q.retryall")).clicked() {
+                act.retry_all = true;
+            }
         }
     });
     egui::ScrollArea::vertical()

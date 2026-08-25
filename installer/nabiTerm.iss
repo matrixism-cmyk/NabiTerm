@@ -23,7 +23,9 @@ DisableProgramGroupPage=yes
 ; 프로그램의 약속이라 그쪽을 지킨다. 전체 설치가 필요하면 아래 다이얼로그에서 "모든
 ; 사용자"를 고르면 되고, 그때 경로가 Program Files가 된다.
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+; dialog 만 두면 `/ALLUSERS`가 명령줄에서 **거부된다** — 무인 배포에서는 대화상자를
+; 띄울 수 없으므로 전체 설치를 지정할 방법이 아예 없었다. commandline 을 함께 허용한다.
+PrivilegesRequiredOverridesAllowed=dialog commandline
 OutputDir=..\dist
 OutputBaseFilename=nabiTerm-setup
 Compression=lzma2
@@ -70,4 +72,27 @@ Name: "{autodesktop}\nabiTerm"; Filename: "{app}\nabiTerm.exe"; Tasks: desktopic
 ; 업데이트는 조용한 설치(/SILENT)로 돌기 때문에, 그 플래그가 있으면 재실행이 통째로
 ; 건너뛰어진다("업데이트했는데 다시 안 켜진다", 사용자 보고 2026-08-22).
 ; runasoriginaluser: 설치가 관리자로 올라갔더라도 앱은 원래 사용자 권한으로 켠다.
-Filename: "{app}\nabiTerm.exe"; Description: "{cm:LaunchProgram,nabiTerm}"; Flags: nowait postinstall runasoriginaluser
+; Check: /NOLAUNCH 를 주면 켜지 않는다 — 100대에 밀어 넣는데 창이 100개 뜨면 곤란하다.
+;        기본은 그대로 "켠다"라서, 옛 버전이 보내는 /SILENT 도 지금처럼 재실행된다.
+Filename: "{app}\nabiTerm.exe"; Description: "{cm:LaunchProgram,nabiTerm}"; Flags: nowait postinstall runasoriginaluser; Check: ShouldLaunch
+
+[Code]
+// 명령줄에 이 스위치가 있는가(대소문자 무시).
+function HasFlag(const Flag: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), Flag) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+// 설치 후 nabiTerm 을 켤 것인가. 무인 배포(/NOLAUNCH)에서만 끈다.
+function ShouldLaunch(): Boolean;
+begin
+  Result := not HasFlag('/NOLAUNCH');
+end;

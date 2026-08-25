@@ -88,9 +88,9 @@ async fn run(
     // 실패해도 세션은 그대로 연다 — 포워딩이 안 될 뿐 로그인은 이미 끝났다.
     if params.agent_forward {
         if let Err(e) = channel.agent_forward(false).await {
-            let msg = format!("
-[{}: {e}]
-", nabi_i18n::trc("ssh.agentfwd.failed"));
+            // CRLF다. 터미널에 LF만 내면 다음 줄이 현재 칸에서 시작해 계단으로 밀린다
+            // (과거 이스케이프가 풀리며 진짜 개행이 박혀 있었다).
+            let msg = format!("\r\n[{}: {e}]\r\n", nabi_i18n::trc("ssh.agentfwd.failed"));
             let _ = out_tx.send((pane, Bytes::from(msg)));
         }
     }

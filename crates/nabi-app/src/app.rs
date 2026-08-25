@@ -280,6 +280,8 @@ pub struct NabiApp {
     pub server_stats: HashMap<PaneId, nabi_proto::stats::ServerStats>,
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,
+    /// 세션(접속 정보)별 마지막 연결 실패 — 목록에서 왜 안 붙었는지 보여 준다.
+    pub last_fail: crate::lastfail::FailMap,
     pub ssh_alert_on: HashMap<PaneId, bool>, pub ctx_alert_on: HashMap<PaneId, bool>,
     pub blocked_alert: HashMap<PaneId, bool>, pub ai_dash_open: bool, pub floating_on_top: bool,
     pub snippet_prompt: Option<SnippetPrompt>, pub dir_save_at: std::time::Instant,

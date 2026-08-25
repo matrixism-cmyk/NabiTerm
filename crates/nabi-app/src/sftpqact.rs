@@ -55,6 +55,12 @@ impl NabiApp {
                 t.state = XferState::Waiting; // 명령은 그대로 — 다운로드는 이어받기로 재개된다.
             }
         }
+        if a.retry_all {
+            // 순서는 건드리지 않는다. 실패한 것만 다시 대기로 돌리면 큐가 원래 차례대로 다시 흐른다.
+            for t in self.sftp.transfers.iter_mut().filter(|t| t.state == XferState::Failed) {
+                t.state = XferState::Waiting;
+            }
+        }
         if let Some(x) = a.remove {
             self.remove_xfer(id, x);
         }

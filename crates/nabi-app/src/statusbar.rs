@@ -36,8 +36,14 @@ impl NabiApp {
         // SSH 서버 통계(MobaXterm식) — 채워진 값이 있을 때만. 90% 초과면 빨강. 연결 지속시간 + OS/커널 툴팁.
         let stats = focused.and_then(|p| self.server_stats.get(&p)).filter(|s| !s.is_empty()).cloned();
         let conn = focused.and_then(|p| self.ssh_connect_time.get(&p))
-            .map(|t| format!(" \u{00b7} \u{23f1}{}", nabi_proto::stats::human_uptime(t.elapsed().as_secs())));
-        let stats_txt = stats.as_ref().map(|s| s.summary() + conn.as_deref().unwrap_or(""));
+            .map(|t| format!("\u{23f1}{}", nabi_proto::stats::human_uptime(t.elapsed().as_secs())));
+        // 서버 통계가 없어도 **연결 유지 시간은 보여 준다** — 통계 폴링은 서버 쪽 사정으로
+        // 자주 비고, 그때마다 "얼마나 붙어 있었나"까지 같이 사라지면 안 된다.
+        let stats_txt = match (stats.as_ref(), conn.as_deref()) {
+            (Some(s), Some(c)) => Some(format!("{} \u{00b7} {c}", s.summary())),
+            (Some(s), None) => Some(s.summary()),
+            (None, c) => c.map(str::to_string),
+        };
         let stats_tip = stats.as_ref().map(|s| s.detail()).filter(|d| !d.is_empty());
         let stats_alert = stats.as_ref().is_some_and(|s| s.alert(self.config.terminal.ssh_stats_alert_pct as f32));
         // AI 도구 상태: 발행값(pane_status) 우선, 없으면 셸통합 run_cmd 자동 감지(🤖+경과).
@@ -103,6 +109,10 @@ impl NabiApp {
         egui::Panel::bottom("statusbar").frame(sbar).show(ui, |ui| {
             // 배경이 하드코딩 네이비라 텍스트도 밝게 강제(테마 무관 가독성).
             ui.visuals_mut().override_text_color = Some(crate::theme_ui::TEXT_BRIGHT);
+            // 좁은 창에서 오른쪽 칩이 그냥 잘려 나가던 것을 단계로 접는다(statusfit).
+            let fit = crate::statusfit::tier(ui.available_width());
+            // 접힌 칩은 버리지 않고 여기 담아 ⋯ 안에서 보여 준다.
+            let mut folded: Vec<(egui::Color32, String)> = Vec::new();
             ui.horizontal(|ui| {
                 // 연결 종류별 색 점: SSH=시안, 로컬=녹색.
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
@@ -199,7 +209,11 @@ impl NabiApp {
                     } else {
                         format!("📢 {}", tr(lang, "status.broadcast"))
                     };
-                    ui.colored_label(crate::theme_ui::BROADCAST, label);
+                    if fit.shows(crate::statusfit::Tier::Wide) {
+                        ui.colored_label(crate::theme_ui::BROADCAST, label);
+                    } else {
+                        folded.push((crate::theme_ui::BROADCAST, label));
+                    }
                 }
                 if tg_on {
                     ui.separator();
@@ -209,15 +223,29 @@ impl NabiApp {
                     };
                     let hint = if tg_err { "tg.r.connerr" } else { "tg.grantall.hint" };
                     let label = format!("\u{2708} {}{sfx}", tr(lang, "settings.sec.telegram"));
-                    ui.colored_label(c, label).on_hover_text(tr(lang, hint));
+                    if fit.shows(crate::statusfit::Tier::Wide) {
+                        ui.colored_label(c, label).on_hover_text(tr(lang, hint));
+                    } else {
+                        folded.push((c, label));
+                    }
                 }
+                let plain = crate::theme_ui::TEXT_BRIGHT;
                 if let Some(info) = &sel_info {
-                    ui.separator();
-                    ui.label(info);
+                    if fit.shows(crate::statusfit::Tier::Wide) {
+                        ui.separator();
+                        ui.label(info);
+                    } else {
+                        folded.push((plain, info.clone()));
+                    }
                 }
                 if let Some(z) = zoom {
-                    ui.separator();
-                    ui.label(format!("\u{1f50d} {}pt", z as i32));
+                    let zl = format!("\u{1f50d} {}pt", z as i32);
+                    if fit.shows(crate::statusfit::Tier::Wide) {
+                        ui.separator();
+                        ui.label(zl);
+                    } else {
+                        folded.push((plain, zl));
+                    }
                 }
                 if fwd_n > 0 {
                     ui.separator();
@@ -229,8 +257,31 @@ impl NabiApp {
                         open_fwd = true;
                     }
                 }
-                crate::netinfo::ip_status(ui, lang, &local_ip, &public_ip); // NIC/공인 IP.
-                if let Some(c) = &clock { ui.separator(); ui.label(format!("\u{1f550} {c}")); }
+                if fit.shows(crate::statusfit::Tier::Full) {
+                    crate::netinfo::ip_status(ui, lang, &local_ip, &public_ip); // NIC/공인 IP.
+                } else if !local_ip.is_empty() {
+                    folded.push((plain, local_ip.clone()));
+                }
+                if let Some(c) = &clock {
+                    let cl = format!("\u{1f550} {c}");
+                    if fit.shows(crate::statusfit::Tier::Full) {
+                        ui.separator();
+                        ui.label(cl);
+                    } else {
+                        folded.push((plain, cl));
+                    }
+                }
+                // 접힌 것을 버리지 않는다 — 한 번 눌러 볼 수 있어야 접은 것이다.
+                if !folded.is_empty() {
+                    ui.separator();
+                    ui.menu_button("\u{22ef}", |ui| {
+                        for (c, t) in &folded {
+                            ui.colored_label(*c, t);
+                        }
+                    })
+                    .response
+                    .on_hover_text(tr(lang, "status.folded"));
+                }
             });
         });
         if clock.is_some() { ctx.request_repaint_after(std::time::Duration::from_secs(1)); } // 시계 1Hz

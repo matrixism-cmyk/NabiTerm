@@ -104,6 +104,10 @@ impl NabiApp {
                 }
                 Event::SshDisconnected { pane, message } => {
                     self.server_stats.remove(&pane);
+                    // 왜 안 붙었는지를 그 세션 옆에 남긴다 — 토스트는 스치고 사라진다.
+                    if let Some(kind) = self.pane_origins.get(&pane).cloned() {
+                        crate::lastfail::note(&mut self.last_fail, kind, &message);
+                    }
                     // P7: 자동 재접속은 "안정적으로 연결됐다 끊긴 경우(≥20s)"만 — 즉시 실패(인증/서버
                     // 오류)는 모달로 띄워 무한 재시도 루프를 방지한다. ssh_connect_time 재사용.
                     let stable = self.ssh_connect_time.get(&pane).is_some_and(|t| t.elapsed().as_secs() >= 20);
@@ -135,6 +139,10 @@ impl NabiApp {
                     }
                     self.server_stats.insert(pane, *stats);
                     self.ssh_connect_time.entry(pane).or_insert_with(std::time::Instant::now);
+                    // 붙었으면 옛 실패 표시를 지운다. 남겨 두면 멀쩡한 세션이 고장 난 것으로 읽힌다.
+                    if let Some(kind) = self.pane_origins.get(&pane).cloned() {
+                        crate::lastfail::clear(&mut self.last_fail, &kind);
+                    }
                 }
                 Event::HostKeyPrompt { id, host, port, algorithm, fingerprint } => {
                     self.hostkey_prompt = Some((id, host, port, algorithm, fingerprint));

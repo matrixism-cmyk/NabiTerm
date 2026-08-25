@@ -265,6 +265,7 @@ pub(crate) const CATALOG_EDITOR2: &[(&str, &str, &str, &str)] = &[
         "Document too large — select a range to transform",
         "문서가 너무 큽니다 — 범위를 선택해 변환하세요",
         "文書が大きすぎます — 範囲を選択してください"),
+    ("editor.eol.mixedbig", "Mixed line endings; saving rewrites the whole file to one kind", "줄 끝이 섞여 있습니다. 저장하면 온 파일이 한 가지로 바뀝니다", "改行が混在しています。保存するとファイル全体が1種類になります"),
 ];
 
 #[cfg(test)]

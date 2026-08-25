@@ -78,7 +78,9 @@ pub fn classify(raw: &str) -> Cause {
     if has("passphrase") || has("key is corrupt") || has("could not read key") || has("keyiscorrupt") {
         return Cause::KeyFile;
     }
-    if has("not authenticated") || has("no more auth") || has("permission denied") || has("authentication") {
+    // "auth failed"는 russh가 쓰는 말은 아니지만 sshpass·중계 도구가 그대로 뱉는다.
+    // 이 표기를 빠뜨리면 가장 흔한 실패가 "알 수 없음"으로 떨어진다(시험이 잡았다).
+    if has("not authenticated") || has("no more auth") || has("permission denied") || has("authentication") || has("auth failed") {
         return Cause::AuthFailed;
     }
     // russh는 "Unknown server key"라고 말한다 — "unknown key"만 찾으면 못 잡는다(시험이 잡았다).
@@ -226,6 +228,13 @@ pub fn render(raw: &str, auth: AuthKind) -> String {
 #[cfg(test)]
 mod render_tests {
     use super::*;
+
+    /// 흔한 표기 "auth failed"도 인증 실패로 본다 — 놓치면 가장 잦은 실패가 미분류로 떨어진다.
+    #[test]
+    fn the_common_short_wording_still_counts_as_auth_failure() {
+        assert_eq!(classify("Auth failed"), Cause::AuthFailed);
+        assert_eq!(classify("auth failed for user root"), Cause::AuthFailed);
+    }
 
     /// **원문을 잃으면 안 된다.** 우리 번역은 실마리고, 남에게 물을 때 쓰이는 건 원문이다.
     #[test]

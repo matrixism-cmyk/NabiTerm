@@ -3,11 +3,16 @@
 use async_trait::async_trait;
 
 /// 파일 종류.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FileKind {
     File,
     Dir,
     Symlink,
+    /// 폴더를 가리키는 심볼릭 링크.
+    ///
+    /// `Dir`로 합치지 않는 이유: 링크라는 사실은 사용자에게 의미가 있다(지우면 무엇이
+    /// 지워지는지, 권한이 어디에 붙는지가 다르다). 그래서 **들어갈 수는 있되 링크로 보인다.**
+    LinkDir,
     Other,
 }
 

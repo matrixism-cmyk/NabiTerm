@@ -51,7 +51,13 @@ pub fn editor_status(
             }
         }
         ui.separator();
-        ui.menu_button(doc.eol, |ui| {
+        // 섞인 파일은 종류 하나만 보이면 안 된다 — 저장할 때 온 파일이 그 하나로
+        // 바뀌는데, 그 사실이 화면 어디에도 없으면 사용자는 모르고 지나간다.
+        let eol_label = match doc.eols.mixed() {
+            true => format!("\u{26a0} {}", doc.eols.label()),
+            false => doc.eol.to_string(),
+        };
+        ui.menu_button(eol_label, |ui| {
             for e in EOLS {
                 if ui.selectable_label(doc.eol == e, e).clicked() {
                     set_eol = Some(e);
@@ -60,7 +66,10 @@ pub fn editor_status(
             }
         })
         .response
-        .on_hover_text(tr(lang, "editor.eol"));
+        .on_hover_text(match doc.eols.mixed() {
+            true => tr(lang, "editor.eol.mixed").to_string(),
+            false => tr(lang, "editor.eol").to_string(),
+        });
         ui.separator();
         // 현재 구문 강조 언어 — 클릭하면 언어 선택(VS Code 언어 모드). syntax_ext 우선(lang_ext).
         let synlang = doc.lang_ext();

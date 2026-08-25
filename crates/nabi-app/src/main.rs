@@ -45,7 +45,7 @@ mod fileprops; mod filepropsui; mod filezilla; mod xshell; mod mobaxterm; mod pu
 mod floatpanels; mod floatterm; mod linkmenu; mod settingsfont; mod worklayout; mod updatemodal; mod shellintegprompt; mod agentguide; mod aicli; mod aiclipage;
 mod envcat; mod envpath; mod shelldetect; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter;
 mod cmdhistui; mod sftppreview; mod sftppreviewui; mod autoreply; mod autoreplyrun; mod diffopen; mod diffopenui;
-mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui; mod freespace; mod reachall; mod logprune; mod agentkeys; mod reopenclosed;
+mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui; mod freespace; mod reachall; mod lastfail; mod logprune; mod agentkeys; mod reopenclosed;
 #[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan;
 #[cfg(test)] mod i18nlint; mod envwsl; mod envstate; mod envrun; mod envmgr; mod envmgrui;
@@ -64,7 +64,7 @@ mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod setti
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sshconfig; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod splitmenu; mod statusbar; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
+mod sshconfig; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod backup; mod boottime;
 mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
