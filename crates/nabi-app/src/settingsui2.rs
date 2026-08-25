@@ -72,8 +72,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         &mut cfg.terminal.auto_reconnect,
     );
     // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
-    ui.label(tr(lang, "settings.logkeep"));
-    ui.add(egui::DragValue::new(&mut cfg.terminal.log_keep_days).range(0..=365).suffix(tr(lang, "settings.logkeepunithint")))
+    ui.label(tr(lang, "settings.logkeep")); ui.add(egui::DragValue::new(&mut cfg.terminal.log_keep_days).range(0..=365).suffix(tr(lang, "settings.logkeepunithint")))
         .on_hover_text(tr(lang, "settings.logkeep.hint"));
     ui.end_row();
     chk(
@@ -221,6 +220,10 @@ pub(crate) fn transfer_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
 
 /// SFTP 전송·파일명 인코딩 그룹(전송 페이지에서 호출 — settingsui.rs 라인 한도로 분리).
 fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    // 외부 편집기 — 원격 파일을 밖에서 열 때. 비우면 기존처럼 OS 기본 앱.
+    ui.label(tr(lang, "settings.exteditor")); ui.add(egui::TextEdit::singleline(&mut cfg.terminal.external_editor).hint_text("code").desired_width(160.0))
+        .on_hover_text(tr(lang, "settings.exteditorhint"));
+    ui.end_row();
     ui.label(tr(lang, "settings.speedlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
     ui.label(tr(lang, "settings.maxparallel"));

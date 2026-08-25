@@ -127,3 +127,47 @@ fn describe(id: &AgentIdentity) -> String {
         _ => "certificate".to_string(),
     }
 }
+/// 에이전트가 든 키 목록을 **동기로** 가져온다(배경 스레드에서 부를 것).
+///
+/// 화면 쪽(`nabi-app`)에는 tokio가 없다. 그 하나 때문에 GUI 크레이트에 비동기 런타임을
+/// 통째로 들이는 것은 값이 안 맞는다 — 여기서 잠깐 런타임을 세워 쓰고 접는다.
+/// 한 번 왕복하고 끝나는 일이라 현재 스레드 런타임으로 충분하다.
+pub fn agent_identities_blocking() -> Vec<String> {
+    match tokio::runtime::Builder::new_current_thread().enable_all().build() {
+        Ok(rt) => rt.block_on(agent_identities()),
+        // 런타임조차 못 세우면 "에이전트로는 못 붙는다"와 같은 뜻이다.
+        Err(_) => Vec::new(),
+    }
+}
+
+
+/// 에이전트 키 목록을 **실제 에이전트**로 확인한다.
+///
+/// 인프로세스로는 흉내 낼 수 없다 — 파이프 너머에 진짜 에이전트가 있어야 한다.
+/// 그리고 **꺼 놓고도 확인해야** 뜻이 있다(이 저장소는 그때만 보이는 결함을 이미 겪었다).
+///
+/// ```text
+/// $env:NABI_AGENT_REAL="on"   # 에이전트를 켜고 키를 올린 뒤
+/// $env:NABI_AGENT_REAL="off"  # 서비스를 내린 뒤
+/// cargo test -p nabi-ssh real_agent -- --ignored --nocapture
+/// ```
+#[cfg(test)]
+mod real_agent {
+    #[test]
+    #[ignore = "실제 ssh-agent 필요(NABI_AGENT_REAL=on|off)"]
+    fn real_agent_listing_matches_the_service_state() {
+        let Ok(mode) = std::env::var("NABI_AGENT_REAL") else {
+            eprintln!("NABI_AGENT_REAL 없음 — 건너뜀");
+            return;
+        };
+        let keys = super::agent_identities_blocking();
+        eprintln!("[{mode}] 키 {}개: {keys:?}", keys.len());
+        match mode.as_str() {
+            "on" => assert!(!keys.is_empty(), "에이전트가 켜져 있고 키를 올렸는데 빈 목록이다"),
+            // 꺼져 있으면 빈 목록이어야 한다. 예전에 파이프는 열리고 목록에서 오류가 나던
+            // 부류의 결함이 있었으므로, "터지지 않고 빈 목록"이라는 것까지 확인한다.
+            "off" => assert!(keys.is_empty(), "에이전트가 꺼졌는데 키가 보인다: {keys:?}"),
+            other => panic!("NABI_AGENT_REAL은 on 또는 off여야 한다: {other}"),
+        }
+    }
+}

@@ -60,11 +60,14 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorC
             grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang));
         }
         // 사용자 규칙(4): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
+        // 사용자 규칙(4): 한 장에 네 가지가 쌓여 있어 무엇이 무엇인지 읽기 어려웠다.
+        // 하는 일별로 소제목을 달아 나눈다(2026-08-25 IA 정리).
         4 => {
             group(ui, lang, "settings.sec.highlights");
             crate::settingslists::highlight_rows(ui, cfg, lang);
-            group(ui, lang, "settings.sec.snippets");
-            crate::settingslists::snippet_rows(ui, cfg, lang);
+            group(ui, lang, "settings.sec.triggers"); crate::settingslists::alert_rows(ui, cfg, lang);
+            group(ui, lang, "settings.sec.linkrules"); crate::settingslists::link_rule_rows(ui, cfg, lang);
+            group(ui, lang, "settings.sec.snippets"); crate::settingslists::snippet_rows(ui, cfg, lang);
         }
         // 자동화(5): 내장 스케줄러 + 텔레그램 브리지.
         _ => {
@@ -111,9 +114,11 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     ui.add(egui::Slider::new(&mut e.wrap_col, 40..=200));
     ui.end_row();
     // 세로 눈금 — 접지 않고 규약 폭을 보여 준다(줄바꿈 폭과 다른 것이라 나란히 둔다).
-    ui.label(tr(lang, "editor.rulers"));
-    ui.add(egui::TextEdit::singleline(&mut e.rulers).hint_text("80,100").desired_width(120.0))
+    ui.label(tr(lang, "editor.rulers")); ui.add(egui::TextEdit::singleline(&mut e.rulers).hint_text("80,100").desired_width(120.0))
         .on_hover_text(tr(lang, "editor.rulers.hint"));
+    ui.end_row();
+    // 안내선과 눈금은 둘 다 "보조선"이라 나란히 둔다 — 흩어 놓으면 하나만 찾게 된다.
+    ui.label(tr(lang, "editor.guides")); ui.checkbox(&mut e.guides, "").on_hover_text(tr(lang, "editor.guides.hint"));
     ui.end_row();
     crate::editorsyntax::settings_ui(ui, e, lang);
 }

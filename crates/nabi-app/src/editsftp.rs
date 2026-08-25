@@ -80,9 +80,23 @@ impl NabiApp {
             .iter_mut()
             .find(|e| !e.started && e.temp.to_string_lossy() == local)
         {
-            let _ = std::process::Command::new("cmd")
-                .args(["/C", "start", "", local])
-                .spawn();
+            // 지정한 편집기가 있으면 그것으로, 없으면 OS 기본 앱으로(기존 동작).
+            // WinSCP가 오래 갖고 있는 기능인데 우리는 기본 앱으로만 열 수 있었다.
+            let ed = self.config.terminal.external_editor.trim().to_string();
+            let spawned = match ed.is_empty() {
+                true => None,
+                false => std::process::Command::new(&ed).arg(local).spawn().ok(),
+            };
+            if spawned.is_none() {
+                // 지정한 편집기가 안 뜨면 조용히 아무 일도 없는 것보다 기본 앱이 낫다.
+                if !ed.is_empty() {
+                    self.notify = Some((
+                        format!("{}: {ed}", nabi_i18n::tr(self.lang, "sftp.editorfail")),
+                        std::time::Instant::now(),
+                    ));
+                }
+                let _ = std::process::Command::new("cmd").args(["/C", "start", "", local]).spawn();
+            }
             e.started = true;
             e.mtime = file_mtime(&e.temp);
         }

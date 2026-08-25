@@ -30,6 +30,9 @@ pub struct EditorConfig {
     /// 세로 눈금을 그을 열들(`"80,100"`). 비우면 안 그린다.
     #[serde(default)]
     pub rulers: String,
+    /// 들여쓰기 안내선.
+    #[serde(default)]
+    pub guides: bool,
     /// 탭 대신 공백으로 들여쓰기.
     pub indent_spaces: bool,
     /// 현재 줄 강조.
@@ -62,6 +65,7 @@ impl Default for EditorConfig {
             tab_size: 4,
             wrap_col: 80,
             rulers: String::new(),
+            guides: false,
             indent_spaces: true,
             highlight_current_line: true,
             trim_on_save: false,

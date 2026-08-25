@@ -89,6 +89,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "bundle.title").to_string(), PaletteAction::OpenSupportBundle),
         (tr(lang, "block.copy").to_string(), PaletteAction::CopyCommandBlock),
         (tr(lang, "reach.all").to_string(), PaletteAction::CheckAllReachable),
+        (tr(lang, "editor.reopenclosed").to_string(), PaletteAction::ReopenClosedDoc),
         (tr(lang, "sync.title").to_string(), PaletteAction::OpenSync),
         (tr(lang, "handoff.last").to_string(), PaletteAction::HandoffLast),
         (tr(lang, "handoff.copymd").to_string(), PaletteAction::CopyLastMd),

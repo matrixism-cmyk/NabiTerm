@@ -3,16 +3,17 @@
 //! 문서 모델(EditorDoc)·렌더(editortab)·HEX(edithex*)·대용량 rope(editbuf*)·변환 도구·
 //! 구문 강조(editorsyntax/hl*)·인코딩 목록까지 편집기 전부가 여기 산다. 앱은 열기/저장/
 //! 닫기/원격 글루(nabi-app editor{open,save,close,sftp,app}.rs)만 가진다.
-//! 원격 외부편집 세션(EditSession)은 extsession(구 editor.rs).
 
 pub mod editbig;
 pub mod editbuf;
 pub mod editbufboxsel;
 pub mod editbufmatch;
 pub mod editbufvcursor;
+pub mod guides;
 pub mod hexdiff;
 pub mod rulers;
 pub mod wrapcol;
+mod editortabguide;
 mod editortabws;
 #[cfg(test)]
 mod editbufvcursortest;
@@ -105,5 +106,3 @@ pub mod uiutil;
 #[cfg(test)]
 mod editornum_tests;
 
-pub mod extsession;
-pub use extsession::EditSession;

@@ -53,7 +53,13 @@ pub(crate) fn select(
         if f.this_dir_only && !cwd.is_empty() && dir != cwd {
             continue;
         }
-        if !q.is_empty() && !cmd.to_lowercase().contains(&q) && !dir.to_lowercase().contains(&q) {
+        // 부분일치만 보면 `cargo tst`로 `cargo test`를 못 찾는다. 팔레트와 **같은**
+        // 매처를 쓴다 — 두 벌을 두면 곧 서로 다르게 동작한다.
+        let hit = |s: &str| {
+            let low = s.to_lowercase();
+            low.contains(&q) || crate::palette::fuzzy_match(&low, &q)
+        };
+        if !q.is_empty() && !hit(cmd) && !hit(dir) {
             continue;
         }
         total += 1;
@@ -118,6 +124,20 @@ mod tests {
         let f = Filter { this_dir_only: true, ..Default::default() };
         let (rows, _) = select(&hist(), "", f, "", 10);
         assert_eq!(rows.len(), 4);
+    }
+
+    /// **띄엄띄엄 쳐도 찾혀야 한다** — `cargo tst`로 `cargo test`를.
+    #[test]
+    fn a_fuzzy_query_finds_the_command() {
+        let (rows, _) = select(&hist(), "cgtst", Filter::default(), "", 10);
+        assert!(rows.iter().any(|r| r.cmd == "cargo test"), "{rows:?}");
+    }
+
+    /// 아무 글자나 다 맞는 것은 아니다 — 순서가 맞아야 한다.
+    #[test]
+    fn a_fuzzy_query_still_respects_order() {
+        let (rows, _) = select(&hist(), "tsetgrac", Filter::default(), "", 10);
+        assert!(rows.is_empty(), "순서가 뒤집힌 질의에 맞았다: {rows:?}");
     }
 
     #[test]

@@ -60,6 +60,11 @@ impl NabiApp {
             return;
         }
         let lang = self.lang;
+        // 창이 열릴 때 한 번만 에이전트에 묻는다(매 프레임 파이프를 열면 UI가 끊긴다).
+        let agent_keys = self
+            .agent_keys
+            .get_or_insert_with(|| crate::agentkeys::probe(ctx))
+            .clone();
         let mut open = true;
         let mut do_connect = false;
         let mut save = false;
@@ -133,6 +138,17 @@ impl NabiApp {
                     // 둘 다 비어 있으면 ssh-agent로 붙는다(ssh(1)과 같은 규칙) — 눈에 보이게 알린다.
                     if qc.password.is_empty() && qc.key_path.trim().is_empty() {
                         ui.weak(tr(lang, "qc.agenthint"));
+                        // 에이전트에 키가 없으면 이대로 붙어 봐야 실패한다 — 미리 알린다.
+                        if let Some((text, warn)) = crate::agentkeys::summary(&agent_keys) {
+                            let r = match warn {
+                                true => ui.colored_label(egui::Color32::from_rgb(0xd0, 0x8a, 0x3a), text),
+                                false => ui.weak(text),
+                            };
+                            let d = crate::agentkeys::detail(&agent_keys);
+                            if !d.is_empty() {
+                                r.on_hover_text(d);
+                            }
+                        }
                     }
                     ui.horizontal(|ui| {
                         ui.checkbox(&mut qc.save_password, tr(lang, "qc.savepw"));

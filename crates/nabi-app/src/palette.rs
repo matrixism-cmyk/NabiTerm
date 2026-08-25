@@ -76,6 +76,7 @@ pub(crate) enum PaletteAction {
     OpenSupportBundle,
     CopyCommandBlock,
     CheckAllReachable,
+    ReopenClosedDoc,
     /// 폴더 동기화 다이얼로그(S6-51).
     OpenSync,
     /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
@@ -200,7 +201,7 @@ impl NabiApp {
 }
 
 /// 부분순서(서브시퀀스) 매치: needle의 글자가 순서대로 hay에 나타나면 true.
-fn fuzzy_match(hay: &str, needle: &str) -> bool {
+pub(crate) fn fuzzy_match(hay: &str, needle: &str) -> bool {
     let mut it = hay.chars();
     needle.chars().all(|nc| it.any(|hc| hc == nc))
 }

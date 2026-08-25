@@ -20,6 +20,8 @@ const FN_PAGE: &[(&str, usize)] = &[
     ("transfer_rows", 3),
     ("sftp_rows", 3),
     ("highlight_rows", 4),
+    ("alert_rows", 4),
+    ("link_rule_rows", 4),
     ("snippet_rows", 4),
 ];
 

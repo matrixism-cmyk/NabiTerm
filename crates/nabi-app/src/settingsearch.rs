@@ -67,6 +67,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.tipai", 2),
     ("settings.tipcachepath", 2),
     ("settings.tipoverlay", 2),
+    ("settings.exteditor", 3),
     ("settings.downloadask", 3),
     ("settings.downloaddir", 3),
     ("settings.maxparallel", 3),

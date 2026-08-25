@@ -18,6 +18,11 @@ impl NabiApp {
     /// 에디터 pane을 완전히 닫는다(문서·도크 탭·분리 창 정리).
     pub(crate) fn close_editor_pane(&mut self, p: nabi_types::PaneId) {
         crate::padrecover::drop_one(&self.cfg_dir(), p.0); // 닫았다 = 사용자가 버린 것.
+        // 실수로 닫았을 수 있다 — 경로만 기억해 둔다(내용은 padrecover 소관).
+        if let Some(d) = self.editors.get(&p) {
+            let path = d.path.to_string_lossy().into_owned();
+            crate::reopenclosed::remember(&mut self.closed_docs, &path);
+        }
         self.editors.remove(&p);
         if let Some(loc) = self.dock.find_tab(&p) {
             self.dock.remove_tab(loc);

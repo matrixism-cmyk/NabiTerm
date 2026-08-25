@@ -287,6 +287,9 @@ pub struct TerminalCfg {
     /// 이유는 paletteorder 문서 참고 — 동작에는 pane 번호 같은 그때뿐인 값이 들어 있다.
     #[serde(default)]
     pub palette_recent: Vec<String>,
+    /// 외부 편집기 실행 파일(비우면 OS 기본 앱). 원격 파일을 밖에서 열 때 쓴다.
+    #[serde(default)]
+    pub external_editor: String,
     /// 진단 로그 보관 일수. 0이면 정리하지 않는다(끄는 길).
     #[serde(default = "default_log_keep_days")]
     pub log_keep_days: u32,
@@ -346,6 +349,7 @@ impl Default for TerminalCfg {
             auto_forwards: std::collections::BTreeMap::new(),
             link_rules: Vec::new(),
             log_keep_days: default_log_keep_days(),
+            external_editor: String::new(),
             sftp_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,
