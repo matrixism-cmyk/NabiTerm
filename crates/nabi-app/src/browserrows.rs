@@ -18,6 +18,8 @@ pub(crate) struct RowActs {
     pub dl_into: Option<(String, RemoteName)>,
     /// 재귀 크기 계산을 요청한 폴더 이름.
     pub calc_size: Option<String>,
+    /// 속성 창을 열 대상(파일 또는 폴더 이름).
+    pub props: Option<String>,
     /// 복제를 요청한 항목 이름.
     pub duplicate: Option<String>,
     /// 컬럼 헤더 클릭으로 선택한 정렬 기준.
@@ -118,6 +120,10 @@ pub(crate) fn row_interact(
             let _ = std::process::Command::new("explorer")
                 .arg(format!("/select,{}", full.display()))
                 .spawn();
+            ui.close();
+        }
+        if ui.button(tr(lang, "browser.props")).clicked() {
+            acts.props = Some(row.name.clone());
             ui.close();
         }
         if row.is_dir && ui.button(tr(lang, "browser.calcsize")).clicked() {

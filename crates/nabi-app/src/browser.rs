@@ -29,6 +29,8 @@ pub(crate) struct BrowserAct {
     /// 빈 영역에 원격 항목 드롭(현재 폴더로 다운로드).
     pub drop_remote: Option<RemoteName>,
     pub calc_size: Option<String>,
+    /// 속성 창을 열 대상.
+    pub props: Option<String>,
     pub duplicate: Option<String>,
     pub new_folder: bool,
     pub new_file: bool,
@@ -249,6 +251,7 @@ fn render_inner(
         a.upload = acts.upload;
         a.dl_into = acts.dl_into;
         a.calc_size = acts.calc_size;
+        a.props = acts.props;
         a.duplicate = acts.duplicate;
         a.set_sort = acts.set_sort;
         a.select = acts.select;

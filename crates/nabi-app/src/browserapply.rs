@@ -147,6 +147,9 @@ impl NabiApp {
         if let Some(pat) = a.content_search { self.content_search(pat); } // Find in Files(내용 검색).
         if a.dir_tree { self.open_dir_tree(); }
         if a.dir_stats { self.open_dir_stats(); }
+        if let Some(name) = a.props {
+            self.open_file_props(path.join(&name));
+        }
         if let Some(name) = a.calc_size {
             let (files, bytes) = crate::browserops::dir_stats(&path.join(&name));
             self.notify = Some((format!("{name}: {} \u{00b7} {files}", crate::browserfs::human(bytes)), std::time::Instant::now()));

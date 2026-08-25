@@ -50,6 +50,8 @@ impl NabiApp {
         let mode = nabi_control::policy::Mode::parse(&config.terminal.control_mode);
         let (control_policy, control_ask_rx) = nabi_control::policy::ControlPolicy::new(mode);
         let (control_app_tx, control_app_rx) = crossbeam_channel::unbounded();
+        // 파일 속성 창의 해시 계산은 곁 스레드가 돌린다 — 큰 파일에 창이 멈추지 않게.
+        let (hash_tx, hash_rx) = std::sync::mpsc::channel();
         let control_events = nabi_control::subscribe::EventHub::new();
         if mode != nabi_control::policy::Mode::Off {
             if let (Ok(pipe), Ok(token)) =
@@ -78,7 +80,8 @@ impl NabiApp {
             theme,
             lang,
             quick_connect: crate::connect::QuickConnect::default(),
-            ai_prof_open: false, ai_prof_backup: None, splash_since: None, pad_recover: Vec::new(), log_view: None, find_all: None, whatsnew: None,
+            ai_prof_open: false, ai_prof_backup: None, splash_since: None, pad_recover: Vec::new(), log_view: None, find_all: None, whatsnew: None, boot: None,
+            file_props: None, hash_tx, hash_rx,
             ai_picks: std::collections::HashMap::new(),
             ai_pick_out: None,
             ai_screen: std::collections::HashMap::new(),

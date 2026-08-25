@@ -45,6 +45,8 @@ mod drives;
  mod editorsave;
 mod editoropen; mod editorclose; mod editorlsp; mod editorlsp2;
 
+mod fileprops;
+mod filepropsui;
 mod filezilla; mod xshell;
 mod mobaxterm;
 mod putty;
@@ -178,6 +180,7 @@ mod windndfolder;
 mod viewportcmd;
 mod windows;
 mod workspace; mod workspace2; mod worksnap; mod worksnapui; mod backup;
+mod boottime;
 mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
@@ -225,6 +228,8 @@ fn run_cli_safe(args: &[String]) -> i32 {
 }
 
 fn main() -> eframe::Result<()> {
+    // 시작 시간 계측 시작(로그 전용) — 느려졌을 때 언제부터인지 알 수 있게.
+    let mut boot = crate::boottime::Boot::start();
     // `nabi cli <verb>`: 제어 클라이언트 모드 — GUI 없이 파이프 왕복 후 종료.
     let args: Vec<String> = std::env::args().collect();
     if args.get(1).map(String::as_str) == Some("cli") {
@@ -302,9 +307,14 @@ fn main() -> eframe::Result<()> {
         dithering: false,
         ..Default::default()
     };
+    boot.window_ready(); // 설정·로그·그래픽 선택까지 끝났다 — 이제 창을 만든다.
     eframe::run_native(
         "nabi",
         options,
-        Box::new(|cc| Ok(Box::new(NabiApp::new(cc)) as Box<dyn eframe::App>)),
+        Box::new(move |cc| {
+            let mut app = NabiApp::new(cc);
+            app.boot = Some(boot); // 첫 프레임에서 총 시간을 기록한다(update.rs).
+            Ok(Box::new(app) as Box<dyn eframe::App>)
+        }),
     )
 }

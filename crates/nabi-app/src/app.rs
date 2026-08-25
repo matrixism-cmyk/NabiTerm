@@ -30,6 +30,13 @@ pub struct NabiApp {
     pub find_all: Option<crate::findallui::FindAll>,
     /// 업데이트 뒤 첫 실행의 '새로워진 점'(Some=열림, 안쪽 None=노트를 못 챙김).
     pub whatsnew: Option<Option<String>>,
+    /// 시작 시간 계측 시계 — 첫 프레임에서 기록하고 비운다(boottime).
+    pub boot: Option<crate::boottime::Boot>,
+    /// 파일 속성 창(Some=열림).
+    pub file_props: Option<crate::fileprops::Props>,
+    /// 곁 스레드 해시 결과 통로(경로, 해시).
+    pub hash_tx: std::sync::mpsc::Sender<(std::path::PathBuf, String)>,
+    pub hash_rx: std::sync::mpsc::Receiver<(std::path::PathBuf, String)>,
     /// 프로필 창을 열 때 찍어 두는 원본 — '취소'로 되돌리기 위한 것. 창이 닫히면 비운다.
     pub ai_prof_backup: Option<Vec<nabi_config::AiProfileCfg>>,
     /// pane별 AI 명령 바에서 고른 모델·노력(버튼에 현재 상태 표시 — aicmdbar.rs).
