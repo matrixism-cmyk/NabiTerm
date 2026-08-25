@@ -4,19 +4,19 @@ use crate::app::NabiApp;
 use nabi_i18n::tr;
 
 /// 검색 매처: 리터럴(스마트케이스) 또는 정규식. 단어 단위는 두 경우 모두 정규식으로 만든다.
-enum Matcher {
+pub(crate) enum Matcher {
     Lit { needle: String, cs: bool },
     Re(regex::Regex),
 }
 
 impl Matcher {
-    fn is_match(&self, line: &str) -> bool {
+    pub(crate) fn is_match(&self, line: &str) -> bool {
         match self {
             Matcher::Lit { needle, cs } => if *cs { line.contains(needle.as_str()) } else { line.to_lowercase().contains(needle.as_str()) },
             Matcher::Re(re) => re.is_match(line),
         }
     }
-    fn count(&self, line: &str) -> usize {
+    pub(crate) fn count(&self, line: &str) -> usize {
         match self {
             Matcher::Lit { needle, cs } => if *cs { line.matches(needle.as_str()).count() } else { line.to_lowercase().matches(needle.as_str()).count() },
             Matcher::Re(re) => re.find_iter(line).count(),
@@ -28,7 +28,7 @@ impl Matcher {
 ///
 /// 단어 단위(whole)는 리터럴이든 정규식이든 `\b…\b`로 감싼 정규식이 된다 — 리터럴은
 /// escape해서 넣으므로 `a.b` 같은 쿼리가 갑자기 정규식처럼 동작하지 않는다.
-fn build_matcher(query: &str, regex: bool, whole: bool) -> Option<Matcher> {
+pub(crate) fn build_matcher(query: &str, regex: bool, whole: bool) -> Option<Matcher> {
     if query.is_empty() {
         return None;
     }

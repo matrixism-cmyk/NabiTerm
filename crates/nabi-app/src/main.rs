@@ -85,6 +85,8 @@ mod modal; mod onboarding; mod editorapp; mod encsuggest;
 mod sessionlog; mod sessionnote; mod sessionctx;
 mod extwatch;
 mod triggers;
+mod findall;
+mod findallui;
 mod findfiles;
 mod difflines;
 mod dupfiles;

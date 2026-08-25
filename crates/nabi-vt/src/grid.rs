@@ -257,6 +257,22 @@ impl TermModel {
         }
     }
 
+    /// 절대 줄 번호(0 = 스크롤백 맨 위)가 화면 맨 위에 오도록 스크롤한다.
+    ///
+    /// 표시 오프셋은 "최신에서 얼마나 거슬러 올라갔나"이고 절대 줄은 "맨 위에서 몇 번째"라
+    /// 방향이 반대다. 그래서 전체에서 화면 높이와 목표를 빼서 뒤집는다. 범위를 벗어나면
+    /// 코어가 알아서 클램프한다.
+    pub fn scroll_to_abs_line(&mut self, abs: usize) {
+        let rows = self.size().rows() as usize;
+        let total = self.history_size() + rows;
+        let delta = total.saturating_sub(rows).saturating_sub(abs);
+        self.term.scroll_display(Scroll::Bottom);
+        if delta > 0 {
+            self.term.scroll_display(Scroll::Delta(delta.min(i32::MAX as usize) as i32));
+        }
+        self.dirty = true;
+    }
+
     /// 스크롤백 맨 위(가장 오래된)로 이동한다.
     pub fn scroll_to_top(&mut self) {
         self.term.scroll_display(Scroll::Top);
@@ -347,5 +363,33 @@ mod tests {
         assert_eq!(m.scrollback_offset(), 0); // 하단(라이브) 복귀.
         m.scroll_to_top();
         assert!(m.scrollback_offset() > 0); // 맨 위(가장 오래된).
+    }
+
+    /// 절대 줄로 보내면 그 줄이 화면에 들어와야 한다 — "모든 창에서 찾기"가 이걸로 점프한다.
+    #[test]
+    fn jumping_to_an_absolute_line_brings_it_on_screen() {
+        let mut m = TermModel::new(GridSize::new(20, 4), 500);
+        for i in 0..100 {
+            m.process(format!("line {i}
+").as_bytes());
+        }
+        let total = m.total_abs_lines();
+        m.scroll_to_abs_line(10);
+        let seen = m.lines_abs_text(0, total);
+        assert!(m.scrollback_offset() > 0, "과거로 거슬러 올라갔어야 한다");
+        // 화면 맨 위가 목표 줄 근처인지 — 정확히 같은 줄이 위에 오는지 본다.
+        let top = total - m.size().rows() as usize - m.scrollback_offset();
+        assert_eq!(top, 10, "요청한 절대 줄이 화면 맨 위여야 한다");
+        assert!(seen[10].contains("line"), "그 줄에 내용이 있어야 한다");
+    }
+
+    /// 범위를 벗어난 요청은 터지지 않고 끝으로 클램프된다.
+    #[test]
+    fn jumping_past_the_end_is_clamped_not_a_panic() {
+        let mut m = TermModel::new(GridSize::new(20, 4), 100);
+        m.process(b"only one line
+");
+        m.scroll_to_abs_line(999_999);
+        assert_eq!(m.scrollback_offset(), 0, "미래로는 갈 수 없다");
     }
 }

@@ -35,6 +35,8 @@ pub(crate) enum PaletteAction {
     ArrangeCascade,
     ToggleBrowser,
     OpenBrowserTab,
+    /// 열린 모든 창의 스크롤백을 한 번에 검색.
+    FindAll,
     ToggleSessionsPanel,
     ToggleStatusBar,
     OpenSettings,

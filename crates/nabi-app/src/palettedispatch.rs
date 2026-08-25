@@ -33,6 +33,7 @@ impl NabiApp {
             PaletteAction::ArrangeTile => self.pending_arrange = Some(ArrangeMode::Tile),
             PaletteAction::ArrangeCascade => self.pending_arrange = Some(ArrangeMode::Cascade),
             PaletteAction::ToggleBrowser => self.toggle_browser(),
+            PaletteAction::FindAll => self.open_find_all(),
             PaletteAction::OpenBrowserTab => {
                 self.open_browser_tab(); // 반환값(PaneId)은 쓰지 않는다.
             }
