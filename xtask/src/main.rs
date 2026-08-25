@@ -17,7 +17,8 @@ mod icon;
 mod lines;
 mod overrides;
 mod prerelease;
-mod soak; mod postverify; mod unsafeaudit;
+mod soak; mod postverify;
+mod releasetarget; mod unsafeaudit;
 
 use std::process::ExitCode;
 
@@ -33,6 +34,8 @@ fn main() -> ExitCode {
         "e2e" => e2e::run(std::env::args().nth(2)),
         "soak" => soak::run(std::env::args().nth(2)),
         "verify-release" => postverify::run(std::env::args().nth(2)),
+        // 릴리스 저장소는 문서가 아니라 코드에서 읽는다(releasetarget.rs 주석 참고).
+        "release-repo" => releasetarget::run(),
         "icon" => {
             let p = std::env::args()
                 .nth(2)
