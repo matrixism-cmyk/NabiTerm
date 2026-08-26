@@ -20,6 +20,7 @@ pub(crate) fn render_toolbar(
     sftp: &mut SftpPanel,
     lang: Lang,
     bookmarks: &[String],
+    recent: &[String],
     sort_desc: bool,
     a: &mut SftpAct,
 ) {
@@ -56,7 +57,7 @@ pub(crate) fn render_toolbar(
         } else if !r.has_focus() {
             sftp.addr = sftp.path.clone();
         }
-        bookmark_menu(ui, lang, bookmarks, a);
+        bookmark_menu(ui, lang, bookmarks, recent, a);
         ui.separator();
         // ── 만들기·붙여넣기 ──
         if icon(ui, "\u{1f4c1}+", lang, "sftp.newfolder") {
@@ -85,11 +86,23 @@ pub(crate) fn render_toolbar(
 }
 
 /// 즐겨찾기(FileZilla식): 현재 경로 추가 + 목록에서 이동/삭제.
-fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], a: &mut SftpAct) {
+fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], recent: &[String], a: &mut SftpAct) {
     ui.menu_button("\u{2b50}", |ui| {
         if ui.button(tr(lang, "sftp.addbookmark")).clicked() {
             a.bookmark_add = true;
             ui.close();
+        }
+        if !recent.is_empty() {
+            ui.separator();
+            ui.weak(tr(lang, "sftp.recent"));
+            for r in recent.iter().take(10) {
+                // 보이는 것은 `호스트:경로`지만 가는 곳은 경로다 — 호스트는 어느 서버의
+                // 자리였는지 알려 주는 표시일 뿐이고, 옮겨 가는 것은 지금 붙은 서버 안이다.
+                if ui.button(r).clicked() {
+                    a.bookmark_go = Some(crate::sftprecent::path_of(r).to_string());
+                    ui.close();
+                }
+            }
         }
         for b in bookmarks {
             ui.horizontal(|ui| {

@@ -270,6 +270,7 @@ impl NabiApp {
     /// SFTP 다운로드 완료 공통 처리: 외부 편집기 오픈 또는 내장 에디터 탭 적재.
     pub(crate) fn on_edit_download(&mut self, local: &str) {
         self.open_edit(local); // 외부 편집기 감시 항목.
+        self.on_diff_download(local); // 원격 비교로 받은 것이면 둘 다 왔을 때 연다.
         // 내장 에디터: 적재 대기 중인 탭이 이 경로면 내용 채움.
         if let Some(doc) = self.editors.values_mut().find(|d| !d.loaded && d.path.to_string_lossy() == local) {
             if let Ok(b) = std::fs::read(&doc.path) {

@@ -51,6 +51,20 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
         });
         ui.menu_button(tr(lang, "nabipad.menu.edit"), |ui| {
             if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close(); }
+            // 기억한 자리가 없으면 눌러도 아무 일이 없다 — 그럴 땐 아예 비활성으로 보인다.
+            let has_spots = doc.edit.as_ref().is_some_and(|e| !e.spots.is_empty());
+            // 낱말 완성 — LSP가 없는 파일에서도 긴 이름을 다시 치지 않게.
+            if ui.button(tr(lang, "editor.wordcomp")).clicked() {
+                act.complete_word = true;
+                ui.close();
+            }
+            if ui
+                .add_enabled(has_spots, egui::Button::new(tr(lang, "editor.lastedit")))
+                .clicked()
+            {
+                act.goto_last_edit = true;
+                ui.close();
+            }
             // 코드(LSP — rs 문서만): 컨텍스트 메뉴와 동일 항목(표면 일관).
             if doc.lang_ext() == "rs" {
                 ui.menu_button(tr(lang, "ctx.code"), |ui| {

@@ -103,7 +103,7 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
                 }
                 // 선택을 괄호/따옴표 쌍으로 감싸기(코드·마크다운 편집). 라벨이 기호라 i18n 불필요.
                 ui.menu_button(tr(lang, "ctx.surround"), |ui| {
-                    for (open, close) in [("(", ")"), ("[", "]"), ("{", "}"), ("<", ">"), ("\"", "\""), ("'", "'"), ("`", "`")] {
+                    for &(open, close) in crate::pairs::SURROUND {
                         if ui.button(format!("{open}{close}")).clicked() {
                             if let Some((a, b)) = range {
                                 let (ba, bb) = (byte_at(&doc.text, a), byte_at(&doc.text, b));

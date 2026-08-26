@@ -9,6 +9,8 @@ use nabi_session::SavedSession;
 #[derive(Clone, Copy)]
 pub(crate) struct ViewStates {
     pub broadcast: bool,
+    /// 동기 스크롤이 켜져 있나(동시 입력과 같은 그룹을 쓴다).
+    pub sync_scroll: bool,
     pub on_top: bool,
     pub fullscreen: bool,
     pub sessions_panel: bool,
@@ -88,6 +90,12 @@ pub(crate) fn view_menu(
         .clicked()
     {
         action = Some(MenuAction::ToggleBroadcast);
+        ui.close();
+    }
+    // 동시 입력 바로 아래 — 같은 그룹을 쓰는 짝이라 붙여 둔다.
+    let sync = st.sync_scroll;
+    if ui.selectable_label(sync, check(sync, tr(lang, "menu.syncscroll"))).clicked() {
+        action = Some(MenuAction::ToggleSyncScroll);
         ui.close();
     }
     if ui.selectable_label(on_top, check(on_top, tr(lang, "menu.ontop"))).clicked() {

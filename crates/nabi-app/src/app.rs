@@ -290,6 +290,15 @@ pub struct NabiApp {
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,
     /// pane별 스크롤백 표식 — 긴 로그에서 되짚을 자리(scrollmark).
+    /// 돌아가는 중인 낱말 완성(되풀이해 누르면 다음 후보).
+    pub word_cycle: Option<crate::wordcompui::WordCycle>,
+    /// 내려받기를 기다리는 원격 비교 한 건(둘 다 오면 열린다).
+    pub pending_diff: Option<crate::sftpdiff::PendingDiff>,
+    /// **동기 스크롤** — 켜면 한 창을 굴릴 때 같은 그룹이 함께 움직인다.
+    ///
+    /// 대상은 동시 입력과 **같은 규칙**을 쓴다(`panegroup::targets`). 둘이 다르면
+    /// "입력은 넷에 갔는데 스크롤은 셋만 움직이는" 일이 생긴다.
+    pub sync_scroll: bool,
     /// **고정한 탭** — 실수로 닫히지 않는다.
     ///
     /// 편집기만이 아니라 아무 탭이나 고정할 수 있게 뒀다. 자리를 지키고 싶은 것은

@@ -24,6 +24,12 @@ impl NabiApp {
         if act.reload {
             self.reload_editor_doc(pane);
         }
+        if act.complete_word {
+            self.complete_word(pane);
+        }
+        if act.goto_last_edit {
+            self.goto_last_edit(pane);
+        }
         if act.save {
             self.save_editor_doc(pane);
         }
@@ -104,6 +110,7 @@ impl NabiApp {
         let lang = self.lang;
         let active = Some(pane) == self.sftp_pane;
         let bm = self.config.terminal.sftp_bookmarks.clone();
+        let rc = self.config.terminal.sftp_recent.clone();
         let sd = (self.browser.sort, self.browser.sort_desc); // 클로저가 self를 가변 차용하므로 미리 캡처.
         let mut act = crate::sftptab::SftpAct::default();
         egui::CentralPanel::default().show(ui, |ui| {
@@ -114,7 +121,7 @@ impl NabiApp {
             } else {
                 return;
             };
-            act = crate::sftptab::render_sftp_tab(ui, panel, lang, &bm, sd);
+            act = crate::sftptab::render_sftp_tab(ui, panel, lang, &bm, &rc, sd);
         });
         if active {
             self.process_sftp_act(act, vctx);

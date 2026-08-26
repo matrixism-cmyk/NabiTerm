@@ -62,6 +62,13 @@ impl NabiApp {
                         };
                         let r = ui.horizontal(|ui| {
                             ui.colored_label(col, mark);
+                            // 걸린 시간은 앞쪽 고정 폭에 — 뒤에 두면 명령 길이에 따라 들쭉날쭉해
+                            // 세로로 훑을 수가 없다. 못 잰 것은 비워 둔다(0으로 꾸미지 않는다).
+                            let dur = b.ms.map(nabi_vt::human_ms).unwrap_or_default();
+                            ui.add_sized(
+                                [56.0, ui.spacing().interact_size.y],
+                                egui::Label::new(egui::RichText::new(dur).monospace().weak()),
+                            );
                             let txt = egui::RichText::new(&b.text).monospace();
                             ui.add(egui::Label::new(txt).truncate().selectable(false));
                         });

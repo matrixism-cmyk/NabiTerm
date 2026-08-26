@@ -158,6 +158,10 @@ pub struct EditorAct {
     /// nabiPad 자체 설정 창 열기 요청(메뉴 ▸ 설정).
     pub open_settings: bool,
     /// 파일 메뉴 ▸ 새 문서 / 열기(파일 대화상자) 요청(단독 에디터 필수).
+    /// 커서 앞 낱말을 문서 안의 낱말로 완성(되풀이하면 다음 후보).
+    pub complete_word: bool,
+    /// 마지막 고친 자리로 이동(누를 때마다 최근 자리를 돌아간다).
+    pub goto_last_edit: bool,
     pub new_doc: bool, pub open_file: bool,
     /// 최근 파일 메뉴에서 선택한 경로(열기).
     pub open_recent: Option<String>,

@@ -44,6 +44,7 @@ pub(crate) enum PaletteAction {
     ResetTerm,
     QuickConnect,
     ToggleBroadcast,
+    ToggleSyncScroll,
     TearOff,
     DockFloat,
     ArrangeTile,

@@ -80,20 +80,9 @@ impl TermTabViewer<'_> {
         if typed {
             self.clear_ai_active(pane); // 키보드로 화면을 닫았을 수 있다 — 바의 열림 표시 해제.
             if self.broadcast {
-                if self.broadcast_group.is_empty() {
-                    // 그룹 미지정 = "이 창의 터미널 전부". 테두리로 표시하는 대상과 정확히 일치시킨다.
-                    self.orch.send(Command::Broadcast {
-                        panes: self.window_panes.iter().copied().collect(),
-                        data: Bytes::from(bytes),
-                    });
-                } else {
-                    for p in self.broadcast_group.iter() {
-                        self.orch.send(Command::WriteInput {
-                            pane: *p,
-                            data: Bytes::from(bytes.clone()),
-                        });
-                    }
-                }
+                // 대상 규칙은 panegroup 한 곳에만 있다(동기 스크롤과 같은 뜻을 써야 한다).
+                let panes = crate::panegroup::targets(self.broadcast_group, self.window_panes);
+                self.orch.send(Command::Broadcast { panes, data: Bytes::from(bytes) });
             } else {
                 self.orch.send(Command::WriteInput {
                     pane,
@@ -163,6 +152,9 @@ impl TermTabViewer<'_> {
             }
         }
 
+        // 동기 스크롤로 남에게 옮겨 줄 양. 자물쇠를 쥔 채 남의 자물쇠를 잡지 않으려고
+        // 여기서 값만 받아 두고 **블록을 벗어난 뒤** 적용한다(교착 회피).
+        let mut sync = 0i32;
         let pane_model = self.orch.panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.model.clone()));
         if let Some(pane_model) = pane_model {
             if let Ok(mut model) = pane_model.lock() {
@@ -172,6 +164,7 @@ impl TermTabViewer<'_> {
                     model.scroll_to_top();
                 } else if scroll != 0 && !alt_screen {
                     model.scroll_by(scroll);
+                    sync = scroll; // 같은 그룹을 같은 만큼 옮긴다(아래, 자물쇠를 놓은 뒤).
                 }
                 // 텍스트 선택 추적(track_selection 내부에서 시각열→render 인덱스 변환=와이드 보정).
                 // 링크 메뉴가 열려 있으면 드래그로 덮어쓰지 않고 현재 선택(링크 전체)을 유지한다.
@@ -264,6 +257,27 @@ impl TermTabViewer<'_> {
                         *self.ssh_click = Some(rest.to_string());
                     } else {
                         *self.link_click = Some((pane, url));
+                    }
+                }
+            }
+        }
+        // **자물쇠를 다 놓은 뒤에** 남을 옮긴다 — 하나를 쥔 채 다른 하나를 잡으면 교착한다.
+        if self.sync_scroll && sync != 0 {
+            let others = crate::panegroup::targets(self.broadcast_group, self.window_panes);
+            // 읽기 자물쇠를 먼저 놓는다 — 모델 자물쇠를 잡기 전에 지도에서 손을 뗀다.
+            let models: Vec<_> = match self.orch.panes.read() {
+                Ok(map) => others
+                    .into_iter()
+                    .filter(|p| *p != pane)
+                    .filter_map(|p| map.get(&p).map(|v| v.model.clone()))
+                    .collect(),
+                Err(_) => Vec::new(),
+            };
+            for m in models {
+                if let Ok(mut md) = m.lock() {
+                    // 대체 화면(TUI)은 스크롤백이 없다 — 굴려도 뜻이 없으므로 건너뛴다.
+                    if !md.alt_screen() {
+                        md.scroll_by(sync);
                     }
                 }
             }

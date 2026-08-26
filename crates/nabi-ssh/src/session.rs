@@ -131,10 +131,8 @@ async fn open_authed(
     (client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>, bool),
     russh::Error,
 > {
-    // 죽은 호스트에서 무한 대기하지 않도록 제한을 둔다. 다만 이 시간에는 **호스트키 확인창을
-    // 사용자가 읽는 시간**도 포함된다 — 지문을 확인하고 신뢰를 누르면 이미 시간이 지나 있었다.
-    // 확인창이 뜰 수 있는 경우(verifier 있음)에만 넉넉하게 준다.
-    let d15 = std::time::Duration::from_secs(if verifier.is_some() { 180 } else { 15 });
+    // 제한을 정하는 규칙은 `conntimeout` 한 곳에 있다(시험도 거기 있다).
+    let d15 = crate::conntimeout::current(verifier.is_some());
     if let Some(jump) = &params.jump {
         // 옛 서버 대응(legacy.rs): 협상이 안 되면 SHA-1 목록으로 한 번만 다시 붙는다.
         let (mut jhandle, old_j) = crate::legacy::connect_compat(&opts, |cfg| {

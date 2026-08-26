@@ -40,6 +40,9 @@ impl EditBuf {
     /// 편집 후 공통 마무리 — 묶음 판정 기준 갱신 + 수정 표시 동기화 + 커서 따라가기.
     fn after_edit(&mut self) {
         self.last_at = self.cursor();
+        // 고친 자리를 남긴다 — 찾다가 자리를 잃었을 때 돌아갈 길이다.
+        self.spots.record(self.last_at);
+        self.spots.clamp(self.rope.len_chars());
         self.last_time = Some(std::time::Instant::now());
         self.ensure_visible = true;
         self.sync_dirty();

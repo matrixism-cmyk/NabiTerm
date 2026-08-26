@@ -22,6 +22,8 @@ pub struct EditBuf {
     pub rope: Rope,
     /// 편집 선택. 지금은 항상 범위 1개지만 자료구조는 멀티커서를 담을 수 있다(editsel).
     pub sel: crate::editsel::Selection,
+    /// 최근 고친 자리들 — "마지막 고친 자리로"가 여기서 온다.
+    pub spots: crate::editspots::EditSpots,
     pub dirty: bool,
     /// 다음 프레임에 커서를 보이도록 스크롤(키 이동/편집 후 set).
     pub ensure_visible: bool,
@@ -59,6 +61,7 @@ impl EditBuf {
         EditBuf {
             eols: crate::eolmix::EolCounts::default(),
             rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
+            spots: Default::default(),
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None, last_at: 0, last_time: None, saved_depth: Some(0),

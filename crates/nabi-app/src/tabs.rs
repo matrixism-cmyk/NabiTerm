@@ -24,6 +24,8 @@ pub struct TermTabViewer<'a> {
     pub find: Option<String>,
     /// 키워드 하이라이트 규칙(설정). 출력에서 이 단어들을 일치 색으로 표시.
     pub highlights: &'a [String],
+    /// 동기 스크롤이 켜져 있나 — 켜져 있으면 굴릴 때 같은 그룹을 함께 옮긴다.
+    pub sync_scroll: bool,
     /// 고정된 탭들 — 닫기 단추를 감추고 제목에 압정을 붙인다.
     pub pinned: &'a mut std::collections::HashSet<PaneId>,
     /// 사용자 지정 탭 이름(PaneId별). 비어 있으면 기본 제목 사용.
@@ -100,6 +102,8 @@ pub struct TermTabViewer<'a> {
     pub sftp_act: &'a mut crate::sftptab::SftpAct,
     /// SFTP 원격 경로 북마크(FileZilla식).
     pub sftp_bookmarks: &'a [String],
+    /// 스스로 쌓인 최근 원격 경로(북마크와 같은 메뉴에 붙는다).
+    pub sftp_recent: &'a [String],
     /// 현재 정렬 기준·방향(원격 목록 헤더 표시용) — 로컬 브라우저와 공유하는 상태.
     pub sort: (crate::browserfs::Sort, bool),
     /// 닫힌 원격 탭의 PaneId(있으면 central에서 정리).
@@ -280,7 +284,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             return;
         }
         if Some(pane) == self.sftp_pane {
-            *self.sftp_act = crate::sftptab::render_sftp_tab(ui, self.sftp, self.lang, self.sftp_bookmarks, self.sort);
+            *self.sftp_act = crate::sftptab::render_sftp_tab(ui, self.sftp, self.lang, self.sftp_bookmarks, self.sftp_recent, self.sort);
             return;
         }
         if let Some(p) = self.sftp_bg.get(&pane) {

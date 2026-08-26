@@ -32,6 +32,7 @@ impl NabiApp {
             PaletteAction::PrevFailed => self.jump_failed(false),
             PaletteAction::NextFailed => self.jump_failed(true),
             PaletteAction::BlockList => self.toggle_block_list(),
+            PaletteAction::ToggleSyncScroll => self.sync_scroll = !self.sync_scroll,
             PaletteAction::ToggleMark => self.toggle_scroll_mark(),
             PaletteAction::PrevMark => self.jump_scroll_mark(false),
             PaletteAction::NextMark => self.jump_scroll_mark(true),

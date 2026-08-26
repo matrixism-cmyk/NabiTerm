@@ -17,12 +17,27 @@ impl NabiApp {
             return;
         }
         let (pa, pb) = (self.browser.path.join(&sel[0]), self.browser.path.join(&sel[1]));
+        self.compare_paths(&sel[0], &pa, &sel[1], &pb);
+    }
+
+    /// **비교의 유일한 입구.** 로컬에서 고른 둘도, 원격에서 받아 온 둘도 여기로 들어온다.
+    ///
+    /// 이진이냐 글이냐를 가르는 판단도 여기 한 번만 있다. 두 곳이 되면 "로컬에선 HEX로
+    /// 보이는데 원격에선 글로 보이는" 일이 생긴다.
+    pub(crate) fn compare_paths(
+        &mut self,
+        na: &str,
+        pa: &std::path::Path,
+        nb: &str,
+        pb: &std::path::Path,
+    ) {
+        let sel = [na.to_string(), nb.to_string()];
         // 이진 파일이면 줄 비교가 뜻이 없다 — 바이트 자리로 견준다(hexdiff).
-        if nabi_editor::edithex::peek_is_binary(&pa) || nabi_editor::edithex::peek_is_binary(&pb) {
-            self.compare_binaries(&sel[0], &sel[1], &pa, &pb);
+        if nabi_editor::edithex::peek_is_binary(pa) || nabi_editor::edithex::peek_is_binary(pb) {
+            self.compare_binaries(&sel[0], &sel[1], pa, pb);
             return;
         }
-        let (Ok(a), Ok(b)) = (std::fs::read_to_string(&pa), std::fs::read_to_string(&pb)) else {
+        let (Ok(a), Ok(b)) = (std::fs::read_to_string(pa), std::fs::read_to_string(pb)) else {
             self.notify = Some((tr(self.lang, "diff.need2").to_string(), Instant::now()));
             return;
         };

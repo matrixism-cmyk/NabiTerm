@@ -28,6 +28,21 @@ impl EditBuf {
     /// 순수 변환을 적용한다. 적용했으면 true.
     ///
     /// 되돌리기는 한 단위로 묶인다 — 정렬 한 번을 Ctrl+Z 한 번으로 되돌릴 수 있어야 한다.
+    /// 구간을 다른 글로 바꾼다(되돌리기 한 묶음). 낱말 완성처럼 **자리를 아는** 편집이 쓴다.
+    ///
+    /// 되풀이해 부르면 한 묶음으로 이어 붙는다 — 후보를 여러 번 돌린 뒤 되돌리기 한 번에
+    /// 치던 글자로 돌아가야 하기 때문이다.
+    pub fn replace_chars(&mut self, a: usize, b: usize, s: &str) {
+        let (a, b) = (a.min(self.rope.len_chars()), b.min(self.rope.len_chars()));
+        if a > b {
+            return;
+        }
+        self.begin_transform();
+        self.rope.remove(a..b);
+        self.rope.insert(a, s);
+        self.sync_dirty();
+    }
+
     pub fn apply_transform(&mut self, f: impl Fn(&str) -> String) -> bool {
         let Some((a, b)) = target_range(self.selection(), self.rope.len_chars()) else {
             return false;

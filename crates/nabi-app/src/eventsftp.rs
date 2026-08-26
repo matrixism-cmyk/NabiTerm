@@ -29,6 +29,13 @@ impl NabiApp {
                 }
                 // 목록을 받을 때 여유 공간도 함께 묻는다 — 올리기 전에 알아야 뜻이 있다.
                 if let Some(path) = ask_free {
+                    // **도착했을 때** 기억한다. 보낼 때 기억하면 없는 폴더도 목록에 남는다.
+                    if Some(id) == self.sftp.id {
+                        let k = crate::sftprecent::key(&self.sftp.host, &path);
+                        crate::sftprecent::push(&mut self.config.terminal.sftp_recent, &k);
+                        // 디스크에는 종료할 때 쓴다 — 폴더를 옮길 때마다 설정 파일을
+                        // 두드리면 목록 하나 여는 일이 디스크 쓰기가 된다(워크스페이스와 같은 규칙).
+                    }
                     self.orch.send(nabi_proto::Command::SftpFreeSpace { id, path });
                 }
             }

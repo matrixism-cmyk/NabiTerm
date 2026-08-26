@@ -32,6 +32,11 @@ pub(crate) fn list_zone(
             // 선택/복사는 모두 "보이는 항목"만 대상으로 한다(필터로 가려진 파일 보호).
             if ui.button(format!("\u{2611} {}", t("menu.selectall"))).clicked() { sftp.multi = crate::sftptable::visible_names(sftp).into_iter().collect(); ui.close(); }
             if ui.button(format!("\u{21c4} {}", t("menu.invertsel"))).clicked() { let cur = sftp.multi.clone(); sftp.multi = crate::sftptable::visible_names(sftp).into_iter().filter(|n| !cur.contains(n)).collect(); ui.close(); }
+            // 둘을 골랐을 때만 뜼다 — 늘 보이면 눌러 놓고 왜 안 되는지 묻게 된다.
+            if sftp.multi.len() == 2 && ui.button(format!("\u{21c4} {}", t("diff.compare"))).clicked() {
+                a.compare = true;
+                ui.close();
+            }
             if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() {
                 // 선택이 없으면 보이는 항목 전체(로컬 브라우저와 같은 규칙).
                 let names: Vec<String> = if sftp.multi.is_empty() {

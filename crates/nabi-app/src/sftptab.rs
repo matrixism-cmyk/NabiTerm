@@ -54,6 +54,8 @@ pub(crate) struct SftpAct {
     pub toggle_compare: bool,
     pub toggle_sync: bool,
     pub search: bool,
+    /// 고른 원격 파일 둘을 내려받아 비교.
+    pub compare: bool,
     pub batch_toggle: bool,
     pub batch_apply: bool,
     /// 앱 내 DnD로 떨어진 로컬 경로(업로드).
@@ -74,7 +76,7 @@ pub(crate) struct SftpAct {
 }
 
 /// SFTP 패널 본문을 ui에 그리고 액션을 모은다(사이드 패널/탭 공용).
-pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, bookmarks: &[String], sort: (crate::browserfs::Sort, bool)) -> SftpAct {
+pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lang, bookmarks: &[String], recent: &[String], sort: (crate::browserfs::Sort, bool)) -> SftpAct {
     let mut a = SftpAct {
         // max_rect 기준(시작 시점 min_rect는 비어 있음) — 엄지 버튼/드롭 판정용.
         over: ui.rect_contains_pointer(ui.max_rect()),
@@ -90,7 +92,7 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
     if dz != 0.0 {
         sftp.font_size = (sftp.font_size + dz).clamp(9.0, 28.0);
     }
-    crate::sftptoolbar::render_toolbar(ui, sftp, lang, bookmarks, sort.1, &mut a);
+    crate::sftptoolbar::render_toolbar(ui, sftp, lang, bookmarks, recent, sort.1, &mut a);
     if !sftp.status.is_empty() {
         ui.horizontal(|ui| {
             // 진행 중(연결/전송/검색은 '…'로 끝남)이면 스피너 표시.

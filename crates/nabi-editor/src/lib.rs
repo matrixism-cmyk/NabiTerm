@@ -105,7 +105,11 @@ pub mod lspread;
 pub mod ropehl;
 pub mod ropets;
 pub mod textpos;
+mod editbufpairs;
+pub mod editspots;
+pub mod pairs;
 pub mod uiutil;
+pub mod wordcomp;
 #[cfg(test)]
 mod editornum_tests;
 

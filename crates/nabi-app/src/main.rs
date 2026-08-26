@@ -65,7 +65,8 @@ mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod setti
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sshconfig; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod blocklistui; mod errkey; mod scrollmark; mod scrollmarkui; mod slowcmd;
+mod sftpdiff; mod sftprecent; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod blocklistui; mod
+editspotsui; mod wordcompui; mod errkey; mod panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;

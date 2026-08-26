@@ -7,6 +7,13 @@ use crate::grid::TermModel;
 pub struct PromptMark {
     pub abs: i64,
     pub exit: Option<i32>,
+    /// 이 프롬프트가 찍힌 시각 — 명령이 끝나면 여기서 걸린 시간을 잰다.
+    ///
+    /// 시각을 따로 두지 않고 마크에 얹은 까닭: 프롬프트는 겹쳐 찍힐 수 있고(화면을 지우고
+    /// 다시 그리는 TUI), 그때 "마지막 하나"만 들고 있으면 짝이 어긋난다.
+    pub started: Option<std::time::Instant>,
+    /// 명령이 걸린 시간(밀리초). 끝나야 채워진다.
+    pub ms: Option<u64>,
 }
 
 impl TermModel {
@@ -15,7 +22,8 @@ impl TermModel {
     pub fn mark_prompt(&mut self) {
         let abs = self.history_size() as i64 + i64::from(self.cursor_line());
         if self.prompts.last().map(|p| p.abs) != Some(abs) {
-            self.prompts.push(PromptMark { abs, exit: None });
+            let started = Some(std::time::Instant::now());
+            self.prompts.push(PromptMark { abs, exit: None, started, ms: None });
         }
         if self.prompts.len() > 1000 {
             self.prompts.remove(0); // 무한 성장 방지.
@@ -26,6 +34,8 @@ impl TermModel {
     pub fn mark_command_done(&mut self, code: Option<i32>) {
         if let Some(last) = self.prompts.last_mut() {
             last.exit = code;
+            // 시각이 없으면(우리가 못 본 프롬프트) 0으로 꾸미지 않고 비워 둔다.
+            last.ms = last.started.map(|t| t.elapsed().as_millis() as u64);
         }
     }
 

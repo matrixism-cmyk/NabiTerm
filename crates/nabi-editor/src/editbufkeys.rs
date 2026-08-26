@@ -12,7 +12,8 @@ pub fn apply_keys(ui: &egui::Ui, eb: &mut EditBuf, page: i64, readonly: bool) {
     for ev in events {
         match ev {
             Event::Text(t) if !t.is_empty() && !t.chars().any(|c| c.is_control()) => {
-                if !readonly {
+                // 괄호·따옴표는 짝 규칙이 먼저 본다. 처리하지 않으면 보통 삽입으로 간다.
+                if !crate::editbufpairs::handle_typed(eb, &t, readonly) && !readonly {
                     eb.insert_multi(&t); // 박스 선택이면 모든 줄에 입력(<=1이면 기존 경로).
                 }
             }

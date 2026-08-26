@@ -45,6 +45,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "arrange.tile").to_string(), PaletteAction::ArrangeTile),
         (tr(lang, "arrange.cascade").to_string(), PaletteAction::ArrangeCascade),
         (tr(lang, "menu.broadcast").to_string(), PaletteAction::ToggleBroadcast),
+        (tr(lang, "menu.syncscroll").to_string(), PaletteAction::ToggleSyncScroll),
         (tr(lang, "menu.settings").to_string(), PaletteAction::OpenSettings),
         (tr(lang, "settings.sec.telegram").to_string(), PaletteAction::OpenTelegram),
         (tr(lang, "menu.vault").to_string(), PaletteAction::OpenVault),

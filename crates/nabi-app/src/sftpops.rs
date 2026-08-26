@@ -20,6 +20,9 @@ impl NabiApp {
             }
             self.prepare_remote_cmd(op, names);
         }
+        if a.compare {
+            self.compare_remote_selected();
+        }
         if let Some((name, size, dir)) = a.copy_here.take() {
             self.start_remote_copy(&name, size, dir);
         }

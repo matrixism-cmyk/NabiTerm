@@ -233,6 +233,15 @@ pub struct TerminalCfg {
     /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
     #[serde(default)]
     pub auto_reply: bool,
+    /// 다녀온 원격 경로(`호스트:경로`, 최신이 앞). 북마크와 달리 **스스로** 쌓인다.
+    #[serde(default)]
+    pub sftp_recent: Vec<String>,
+    /// SSH 접속 시간 제한(초). 0=기본(15). 폐쇄망·위성 회선처럼 느린 곳에서 늘린다.
+    ///
+    /// 호스트키 확인창이 뜰 수 있는 첫 접속에는 이 값과 무관하게 넉넉히 준다
+    /// (지문 읽는 시간이 여기 들어가기 때문 — `nabi_ssh::conntimeout`).
+    #[serde(default)]
+    pub ssh_connect_timeout_secs: u64,
     /// SSH keepalive 간격(초). 0=끄기. 방화벽/유휴 타임아웃 대응(ServerAliveInterval). 기본 30.
     #[serde(default = "default_keepalive")]
     pub ssh_keepalive_secs: u64,
@@ -402,6 +411,8 @@ impl Default for TerminalCfg {
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
             auto_reply: false,
+            sftp_recent: Vec::new(),
+            ssh_connect_timeout_secs: 0,
             ssh_keepalive_secs: default_keepalive(),
             browser_sort_desc: false,
             browser_view: 0,

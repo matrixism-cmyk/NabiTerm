@@ -46,6 +46,9 @@ impl NabiApp {
             MenuAction::ImportSshConfig => {
                 let path = crate::browser::home_dir().join(".ssh").join("config");
                 if let Ok(content) = std::fs::read_to_string(&path) {
+                    // 요즘 설정은 여러 파일로 쪼개져 있다 — 읽기 전에 Include를 펼친다.
+                    let base = path.parent().unwrap_or(&path).to_path_buf();
+                    let content = crate::sshinclude::expand(&content, &base);
                     let imported = crate::sshconfig::parse_ssh_config(&content);
                     self.import_sessions(imported, "menu.importsshconfig", "ssh-config");
                 }
@@ -259,6 +262,7 @@ impl NabiApp {
             }
             MenuAction::Arrange(m) => self.pending_arrange = Some(m),
             MenuAction::ToggleBroadcast => self.broadcast = !self.broadcast,
+            MenuAction::ToggleSyncScroll => self.sync_scroll = !self.sync_scroll,
             MenuAction::ToggleOnTop => {
                 self.always_on_top = !self.always_on_top;
                 self.pending_on_top = Some(self.always_on_top);

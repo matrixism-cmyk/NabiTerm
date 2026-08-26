@@ -20,6 +20,8 @@ pub struct BlockInfo {
     pub text: String,
     /// 이 블록이 뱉은 출력 줄 수(다음 프롬프트까지). 마지막 블록은 화면 끝까지.
     pub out_lines: usize,
+    /// 걸린 시간(밀리초). 아직 안 끝났거나 못 쟀으면 없다.
+    pub ms: Option<u64>,
 }
 
 impl TermModel {
@@ -45,7 +47,7 @@ impl TermModel {
             let text = line.first().map(|s| s.trim_end().to_string()).unwrap_or_default();
             // 프롬프트 줄 자신은 출력이 아니다 — 빼고 센다.
             let out_lines = (next - p.abs - 1).max(0) as usize;
-            out.push(BlockInfo { abs: p.abs, exit: p.exit, text, out_lines });
+            out.push(BlockInfo { abs: p.abs, exit: p.exit, text, out_lines, ms: p.ms });
         }
         out.reverse();
         out
@@ -129,5 +131,20 @@ mod tests {
     fn no_prompts_means_no_blocks() {
         let m = TermModel::new(GridSize::new(40, 5), 100);
         assert!(m.command_blocks().is_empty());
+    }
+
+    /// **끝난 명령에는 걸린 시간이 있고, 도는 명령에는 없다.**
+    ///
+    /// 값 자체는 기계마다 달라 시험할 수 없다 — 있는지 없는지만 본다. 못 잰 것을 0으로
+    /// 채우면 "눈 깜짝할 새 끝났다"와 "재지 못했다"가 같아 보인다.
+    #[test]
+    fn a_finished_command_knows_how_long_it_took() {
+        let mut m = TermModel::new(GridSize::new(60, 6), 300);
+        m.mark_prompt();
+        m.process(b"$ sleep
+");
+        assert_eq!(m.command_blocks()[0].ms, None, "도는 명령에 시간이 붙었다");
+        m.mark_command_done(Some(0));
+        assert!(m.command_blocks()[0].ms.is_some(), "끝났는데 시간이 없다");
     }
 }

@@ -70,6 +70,7 @@ pub(crate) enum MenuAction {
     TileTabs,
     TabifyTabs,
     ToggleBroadcast,
+    ToggleSyncScroll,
     ToggleOnTop,
     ToggleFullscreen,
     SplitSpawn(ShellKind, bool),
@@ -102,6 +103,7 @@ impl NabiApp {
         let lang = self.lang;
         let vstates = crate::viewmenu::ViewStates {
             broadcast: self.broadcast,
+            sync_scroll: self.sync_scroll,
             on_top: self.always_on_top,
             fullscreen: self.fullscreen,
             sessions_panel: self.config.appearance.show_sessions_panel,

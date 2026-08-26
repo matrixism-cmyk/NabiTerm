@@ -11,6 +11,7 @@ pub mod cell;
 pub mod cursor;
 mod blocklist;
 mod dump;
+mod durfmt;
 mod evsink;
 pub mod grid;
 mod images;
@@ -20,6 +21,7 @@ mod render;
 mod search;
 
 pub use blocklist::BlockInfo;
+pub use durfmt::human_ms;
 pub use cell::{CursorShape, RenderCell, Theme};
 pub use cursor::CursorState;
 pub use grid::TermModel;

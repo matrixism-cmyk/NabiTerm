@@ -63,6 +63,8 @@ impl NabiApp {
             if a.toggle_menu_bar { self.toggle_editor_menu_bar(); }
             if a.toggle_hex { self.toggle_editor_hex(p); }
             if a.reload { self.reload_editor_doc(p); }
+            if a.goto_last_edit { self.goto_last_edit(p); }
+            if a.complete_word { self.complete_word(p); }
             if a.save { self.save_editor_doc(p); }
             if a.save_all {
                 let n = self.save_all_docs();
