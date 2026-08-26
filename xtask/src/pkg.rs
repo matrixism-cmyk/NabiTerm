@@ -94,7 +94,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
     let head = |kind: &str| {
         [
             "# `cargo run -p xtask -- pkg` 가 만든다 — 손으로 고치지 말 것.".to_string(),
-            format!("# yaml-language-server: $schema=https://aka.ms/winget-manifest.{kind}.1.6.0.schema.json"),
+            format!("# yaml-language-server: $schema=https://aka.ms/winget-manifest.{kind}.1.12.0.schema.json"),
             String::new(),
             format!("PackageIdentifier: {WINGET_ID}"),
             format!("PackageVersion: {version}"),
@@ -107,7 +107,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         head("version"),
         "DefaultLocale: en-US".into(),
         "ManifestType: version".into(),
-        "ManifestVersion: 1.6.0".into(),
+        "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
     .join("
@@ -125,7 +125,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         format!("  InstallerUrl: {url}"),
         format!("  InstallerSha256: {sha_up}"),
         "ManifestType: installer".into(),
-        "ManifestVersion: 1.6.0".into(),
+        "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
     .join("
@@ -155,7 +155,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         "- korean".into(),
         "- rust".into(),
         "ManifestType: defaultLocale".into(),
-        "ManifestVersion: 1.6.0".into(),
+        "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
     .join("
