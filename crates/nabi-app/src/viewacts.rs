@@ -65,6 +65,7 @@ impl NabiApp {
             if a.reload { self.reload_editor_doc(p); }
             if a.goto_last_edit { self.goto_last_edit(p); }
             if a.complete_word { self.complete_word(p); }
+            if let Some(s) = a.diff_restore { self.restore_diff_side(p, s); }
             if a.save { self.save_editor_doc(p); }
             if a.save_all {
                 let n = self.save_all_docs();

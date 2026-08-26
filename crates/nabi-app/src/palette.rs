@@ -85,6 +85,7 @@ pub(crate) enum PaletteAction {
     GotoDefinition, LspHover, LspRefs, LspFormat,
     /// SSH ed25519 키 생성 모달.
     OpenKeygen,
+    CopyId,
     OpenEnvMgr,
     OpenCmdHistory,
     OpenSupportBundle,

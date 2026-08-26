@@ -107,6 +107,7 @@ pub mod ropets;
 pub mod textpos;
 mod editbufpairs;
 pub mod editspots;
+pub mod diffapply;
 pub mod pairs;
 pub mod uiutil;
 pub mod wordcomp;

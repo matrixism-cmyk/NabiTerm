@@ -26,7 +26,7 @@ pub(crate) fn places_menu(ui: &mut egui::Ui, lang: Lang, recent: &[String], a: &
         if !recent.is_empty() {
             ui.separator();
             ui.weak(nabi_i18n::tr(lang, "sftp.recent"));
-            for r in recent.iter().take(10) {
+            for r in recent.iter() {
                 if ui.button(r).clicked() {
                     a.nav = Some(std::path::PathBuf::from(crate::recentpaths::path_of(r)));
                     ui.close();

@@ -145,6 +145,7 @@ impl eframe::App for NabiApp {
         self.show_remote_cmd_confirm(ctx); // 원격 명령 — 실행 전 확인.
         self.show_remote_cmd_result(ctx); // 원격 명령 결과.
         self.show_block_list(ctx); // 명령 블록 목록.
+        self.show_copy_id(ctx); // 공개키 서버 설치 확인창.
         self.show_conn_history(ctx); // 접속 이력.
         self.show_support_bundle(ctx); // 진단 묶음.
         self.show_find_all(ctx); // 모든 창에서 찾기.

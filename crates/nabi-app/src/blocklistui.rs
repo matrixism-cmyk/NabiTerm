@@ -36,6 +36,7 @@ impl NabiApp {
         // 않으려고 자리만 받아 두고 아래에서 처리한다.
         let (mut copy_out, mut open_out) = (None, None);
         let mut only_failed = self.block_list_failed_only;
+        let mut filter = self.block_list_filter.clone();
         egui::Window::new(tr(lang, "blocks.title"))
             .open(&mut open)
             .default_size([560.0, 420.0])
@@ -46,16 +47,27 @@ impl NabiApp {
                     ui.separator();
                     ui.checkbox(&mut only_failed, format!("{} ({failed})", tr(lang, "blocks.failedonly")));
                 });
+                // 명령이 쌓이면 목록도 길어진다 — 이름으로 좁힌다(대소문자 무시).
+                ui.add(
+                    egui::TextEdit::singleline(&mut filter)
+                        .hint_text(tr(lang, "browser.filter"))
+                        .desired_width(f32::INFINITY),
+                );
                 ui.separator();
                 if blocks.is_empty() {
                     // 왜 비었는지 말해 준다 — 셸 통합이 없으면 표식 자체가 안 생긴다.
                     ui.weak(tr(lang, "blocks.empty"));
                     return;
                 }
+                let flow = filter.to_lowercase();
                 egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                     for b in &blocks {
                         let bad = b.exit.is_some_and(|c| c != 0);
                         if only_failed && !bad {
+                            continue;
+                        }
+                        // 거르는 글자가 있으면 명령 글자에서 찾는다(빈 칸이면 전부 보인다).
+                        if !flow.is_empty() && !b.text.to_lowercase().contains(&flow) {
                             continue;
                         }
                         let (mark, col) = match b.exit {
@@ -98,6 +110,7 @@ impl NabiApp {
                 });
             });
         self.block_list_failed_only = only_failed;
+        self.block_list_filter = filter;
         // 상한: 한 블록이 수십만 줄일 수 있다. 잘렸다는 사실은 문서 제목이 아니라 양으로 드러난다.
         let grab = |abs: i64| -> String {
             view.as_ref()

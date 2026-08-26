@@ -27,6 +27,9 @@ impl NabiApp {
         if act.complete_word {
             self.complete_word(pane);
         }
+        if let Some(s) = act.diff_restore {
+            self.restore_diff_side(pane, s);
+        }
         if act.goto_last_edit {
             self.goto_last_edit(pane);
         }

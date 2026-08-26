@@ -18,6 +18,7 @@ pub mod envvars;
 #[cfg(test)]
 mod agentfwd_test;
 pub mod conntimeout;
+pub mod copyid;
 pub mod legacy;
 pub mod handler;
 pub mod kexinfo;

@@ -290,6 +290,8 @@ pub struct NabiApp {
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,
     /// pane별 스크롤백 표식 — 긴 로그에서 되짚을 자리(scrollmark).
+    /// 진행 중인 공개키 설치 한 건(읽기 → 확인 → 넣기).
+    pub copy_id: Option<crate::copyidui::CopyId>,
     /// 돌아가는 중인 낱말 완성(되풀이해 누르면 다음 후보).
     pub word_cycle: Option<crate::wordcompui::WordCycle>,
     /// 내려받기를 기다리는 원격 비교 한 건(둘 다 오면 열린다).
@@ -306,6 +308,8 @@ pub struct NabiApp {
     pub pinned_tabs: std::collections::HashSet<PaneId>,
     /// 명령 블록 목록 창이 열려 있나.
     pub block_list_open: bool,
+    /// 블록 목록의 거르는 글자(명령 글자에서 찾는다).
+    pub block_list_filter: String,
     /// 그 창에서 실패한 것만 보고 있나.
     pub block_list_failed_only: bool,
     pub scroll_marks: HashMap<PaneId, crate::scrollmark::Marks>,

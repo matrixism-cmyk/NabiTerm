@@ -55,6 +55,7 @@ const GROUPS: &[Group] = &[
         &[
             ("env.title", PaletteAction::OpenEnvMgr),
             ("keygen.title", PaletteAction::OpenKeygen),
+            ("copyid.title", PaletteAction::CopyId),
             ("help.agent.title", PaletteAction::OpenAiCli),
             ("bundle.title", PaletteAction::OpenSupportBundle),
         ],

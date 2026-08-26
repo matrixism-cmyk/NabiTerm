@@ -95,7 +95,7 @@ fn bookmark_menu(ui: &mut egui::Ui, lang: Lang, bookmarks: &[String], recent: &[
         if !recent.is_empty() {
             ui.separator();
             ui.weak(tr(lang, "sftp.recent"));
-            for r in recent.iter().take(10) {
+            for r in recent.iter() {
                 // 보이는 것은 `호스트:경로`지만 가는 곳은 경로다 — 호스트는 어느 서버의
                 // 자리였는지 알려 주는 표시일 뿐이고, 옮겨 가는 것은 지금 붙은 서버 안이다.
                 if ui.button(r).clicked() {

@@ -420,6 +420,61 @@ async fn realserver_copies_a_whole_folder() {
     }
 }
 
+/// **공개키 설치가 실제로 되는지** 실서버에서 본다(ssh-copy-id).
+///
+/// 이 기능은 남의 서버의 `~/.ssh/authorized_keys`를 고친다. 인프로세스로는 흉내 낼 수
+/// 없고, 흉내 내 봐야 우리가 기대한 대로만 답한다. 실제로 확인해야 할 것 셋:
+/// 파일이 **덧붙여지는가**, 권한이 맞는가, 두 번 넣어도 **한 줄인가**.
+///
+/// 이 머신의 sshd는 Windows OpenSSH라 기본 셸이 `cmd.exe`일 수 있다. 그러면 이 명령은
+/// POSIX 셸을 못 찾아 실패한다 — **조용히 통과시키지 않고 건너뛴다고 말한다.**
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_installs_a_public_key() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    // `cmd.exe`는 "The syntax of the command is incorrect."를 뱉는다 — 비어 있지 않다고
+    // POSIX로 착각하면 안 된다(배치 O의 상한 시험에서 겪은 것과 같은 함정).
+    // 진짜 uname 답은 한 낱말이다(Linux · Darwin · FreeBSD · MINGW64_NT-10.0 …).
+    let (uname, _) = fs.exec_remote("uname -s", 4096).await.unwrap_or_default();
+    let u = uname.trim();
+    let posix = !u.is_empty() && u.split_whitespace().count() == 1 && u.len() <= 24;
+    if !posix {
+        eprintln!("POSIX 셸이 아니다(uname={u:?}) — 키 설치 검증을 건너뛴다(조용히 통과시키지 않는다)");
+        return;
+    }
+
+    // 진짜 authorized_keys를 건드리지 않도록, 시험 전에 백업하고 끝나면 되돌린다.
+    let (before, _) = fs.exec_remote(nabi_ssh::copyid::read_command(), 1 << 20).await.expect("read");
+    let key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGb7GQ2p7DbFPuhVpzOSVQXHDzHfF1lVMSCUmJ8UN0Rp nabi-copyid-test";
+    assert!(!nabi_ssh::copyid::already_present(&before, key), "시험용 키가 이미 있다");
+
+    let (out, code) = fs.exec_remote(&nabi_ssh::copyid::install_command(key), 1 << 16).await.expect("install");
+    assert!(out.contains(nabi_ssh::copyid::OK_MARK), "설치가 끝났다는 표시가 없다: {out:?}");
+    assert_eq!(code, Some(0), "설치 명령이 실패했다: {out:?}");
+
+    // 1) 실제로 들어갔나.
+    let (after, _) = fs.exec_remote(nabi_ssh::copyid::read_command(), 1 << 20).await.expect("read2");
+    assert!(nabi_ssh::copyid::already_present(&after, key), "넣었는데 없다");
+    // 2) **덧붙였나** — 앞서 있던 줄이 살아 있어야 한다.
+    for line in before.lines().filter(|l| !l.trim().is_empty()) {
+        assert!(after.contains(line), "덮어썼다! 사라진 줄: {line}");
+    }
+    // 3) 권한이 맞나(sshd가 이걸 안 맞추면 거부한다).
+    let (perm, _) = fs.exec_remote("stat -c %a ~/.ssh/authorized_keys", 256).await.expect("stat");
+    let perm = perm.trim();
+    if !perm.is_empty() {
+        assert_eq!(perm, "600", "authorized_keys 권한이 600이 아니다");
+    }
+
+    // 되돌리기: 시험용 키 줄만 지운다(앞서 있던 것은 그대로 둔다).
+    let _ = fs
+        .exec_remote("grep -v nabi-copyid-test ~/.ssh/authorized_keys > ~/.ssh/ak.tmp && mv ~/.ssh/ak.tmp ~/.ssh/authorized_keys", 4096)
+        .await;
+    let (restored, _) = fs.exec_remote(nabi_ssh::copyid::read_command(), 1 << 20).await.expect("read3");
+    assert!(!nabi_ssh::copyid::already_present(&restored, key), "시험용 키를 못 지웠다");
+}
+
 /// 실 서버에서 **명령 한 줄 실행** — 인프로세스 서버는 exec 를 구현하지 않아 여기서만 볼 수 있다.
 #[tokio::test]
 #[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]

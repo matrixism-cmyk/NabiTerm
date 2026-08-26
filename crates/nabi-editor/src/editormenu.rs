@@ -53,6 +53,19 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
             if ui.checkbox(&mut doc.readonly, tr(lang, "editor.readonly")).clicked() { ui.close(); }
             // 기억한 자리가 없으면 눌러도 아무 일이 없다 — 그럴 땐 아예 비활성으로 보인다.
             let has_spots = doc.edit.as_ref().is_some_and(|e| !e.spots.is_empty());
+            // diff 문서에서만 보인다 — 표시(`  `/`- `/`+ `)가 있는 글에서만 뜻이 있다.
+            if doc.text.lines().any(|l| l.starts_with("+ ") || l.starts_with("- ")) {
+                ui.menu_button(tr(lang, "diff.restoremenu"), |ui| {
+                    if ui.button(tr(lang, "diff.restoreleft")).clicked() {
+                        act.diff_restore = Some(crate::diffapply::Side::Left);
+                        ui.close();
+                    }
+                    if ui.button(tr(lang, "diff.restoreright")).clicked() {
+                        act.diff_restore = Some(crate::diffapply::Side::Right);
+                        ui.close();
+                    }
+                });
+            }
             // 낱말 완성 — LSP가 없는 파일에서도 긴 이름을 다시 치지 않게.
             if ui.button(tr(lang, "editor.wordcomp")).clicked() {
                 act.complete_word = true;

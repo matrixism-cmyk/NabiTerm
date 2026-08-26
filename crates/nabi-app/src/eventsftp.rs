@@ -49,7 +49,12 @@ impl NabiApp {
                     ctx.request_repaint();
                 }
             }
-            Event::SftpExecDone { cmd, out, code, .. } => self.on_remote_cmd_done(cmd, out, code),
+            Event::SftpExecDone { cmd, out, code, .. } => {
+                // 키 설치 흐름이 먼저 본다 — 그쪽 것이면 결과 창을 띄우지 않는다.
+                if !self.on_copy_id_reply(&out, code) {
+                    self.on_remote_cmd_done(cmd, out, code);
+                }
+            }
             Event::SftpTree { seq, files, .. } => {
                 // 찾기와 동기화가 같은 번호줄을 쓴다 — 찾기가 자기 것이 아니면 동기화로 넘긴다.
                 if !self.on_find_tree(seq, files.clone()) {
