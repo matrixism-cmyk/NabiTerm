@@ -51,8 +51,11 @@ pub(crate) fn pick<'a>(cands: &[&'a str], exists: &dyn Fn(&str) -> bool) -> Opti
             true => exists(&full).then(|| full.clone()),
             false => nabi_pty::resolve_program(&full).map(|p| p.to_string_lossy().into_owned()),
         };
+        // 실행되지 않는 스토어 별칭은 건너뛴다 — 다음 후보를 계속 본다.
         if let Some(p) = found {
-            return Some(p);
+            if !nabi_pty::is_store_alias(std::path::Path::new(&p)) {
+                return Some(p);
+            }
         }
     }
     None

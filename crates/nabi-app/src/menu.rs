@@ -317,7 +317,10 @@ fn detect_shells() -> Vec<(String, ShellKind)> {
             v.extend(crate::shelldetect::wsl_entries(&nabi_pty::wsl_distros()));
             continue;
         }
-        if nabi_pty::resolve_shell(&kind).is_some() {
+        // 스토어 앱 실행 별칭은 **파일처럼 보이지만 실행되지 않는다**(그 계정에 앱
+        // 라이선스가 없으면 0xC0E90002로 죽는다). 목록에 뜨는데 안 열리는 것이
+        // 가장 나쁘므로 아예 내놓지 않는다(사용자 지시 2026-08-26).
+        if nabi_pty::resolve_shell(&kind).is_some_and(|p| !nabi_pty::is_store_alias(&p)) {
             v.push((label.to_string(), kind));
         }
     }

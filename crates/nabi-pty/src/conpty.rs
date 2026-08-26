@@ -41,7 +41,7 @@ pub fn spawn_local(
     }
     // 제어 평면 자기 식별(파이프·토큰은 부모 프로세스 env로 상속됨).
     cmd.env("NABI_PANE_ID", pane.get().to_string());
-    let child = pair.slave.spawn_command(cmd).map_err(other)?;
+    let child = pair.slave.spawn_command(cmd).map_err(|e| explain(shell, e))?;
     drop(pair.slave);
     let reader = pair.master.try_clone_reader().map_err(other)?;
     let writer = pair.master.take_writer().map_err(other)?;
@@ -51,6 +51,23 @@ pub fn spawn_local(
         master: pair.master,
         writer,
     })
+}
+
+/// 스폰 오류를 사람이 읽을 수 있게 바꾼다.
+///
+/// 원문만 던지면 대부분의 사용자에게 아무 도움이 안 된다. 특히 스토어판 앱은
+/// `0xC0E90002`("관련 앱 라이선스를 찾을 수 없습니다")라는, 원인도 해법도 짐작할 수 없는
+/// 문구로 죽는다 — 목록에는 뜨는데 안 열린다(사용자 보고 2026-08-26).
+/// **원문은 지우지 않고** 아래에 남긴다.
+fn explain(shell: &ShellKind, e: impl std::fmt::Display) -> io::Error {
+    let raw = e.to_string();
+    let licensed = raw.contains("C0E90002") || raw.contains("라이선스") || raw.contains("app licenses");
+    let alias = crate::spawn::resolve_shell(shell).is_some_and(|p| crate::spawn::is_store_alias(&p));
+    if !(licensed || alias) {
+        return other(raw);
+    }
+    let name = crate::spawn::program_name(shell);
+    io::Error::other(format!("{name}은(는) Microsoft Store판으로 설치돼 있고, 이 계정에는 앱 라이선스가 없어 실행되지 않습니다.\n도구 > 환경 관리자에서 PowerShell 7을 설치하면 정식 설치본으로 열립니다.\n원문: {raw}"))
 }
 
 impl ByteChannel for LocalPty {

@@ -51,8 +51,17 @@ pub struct LspClient {
 
 impl LspClient {
     /// 서버를 띄우고 initialize 핸드셰이크를 시작한다(응답은 리더가 ready 플래그로).
+    ///
+    /// 인자가 필요 없는 서버용 지름길 — `start_with(server, &[], root)`와 같다.
     pub fn start(server: &str, root: &Path) -> Option<LspClient> {
+        Self::start_with(server, &[], root)
+    }
+
+    /// 인자를 붙여 띄운다. 서버마다 stdio 모드를 켜는 방법이 다르다
+    /// (`pyright-langserver --stdio`, `typescript-language-server --stdio` …).
+    pub fn start_with(server: &str, args: &[&str], root: &Path) -> Option<LspClient> {
         let mut child = Command::new(server)
+            .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::null())

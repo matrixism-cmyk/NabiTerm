@@ -105,12 +105,15 @@ pub(crate) fn install_script(tool: &crate::envcat::Tool, has_winget: bool) -> Op
     }
     if has_winget {
         if let Some(id) = tool.winget {
-            return Some(winget_install(id));
+            return Some(winget_install(id, tool.store_pkg));
         }
     }
+    // winget이 없으면 MSI를 직접 받는다. 이 길에도 스토어판 제거를 앞에 붙인다 —
+    // 안 그러면 정식 설치본을 깔아도 별칭이 PATH를 먼저 차지해 여전히 안 열린다.
+    let purge = purge_store(tool.store_pkg);
     match tool.fallback {
-        Some(s) if s.starts_with("GHMSI:") => crate::envcat::gh_msi_script(s),
-        Some(s) => Some(s.to_string()),
+        Some(s) if s.starts_with("GHMSI:") => crate::envcat::gh_msi_script(s).map(|x| purge + &x),
+        Some(s) => Some(purge + s),
         // winget이 없는데 winget 통로밖에 없다면, winget부터 깔라고 해야 한다.
         None => None,
     }
@@ -130,11 +133,31 @@ pub(crate) fn remove_script(tool: &crate::envcat::Tool, has_winget: bool) -> Opt
     })
 }
 
-fn winget_install(id: &str) -> String {
+/// 스토어판을 먼저 지우는 앞머리. 없으면 빈 문자열.
+///
+/// 스토어판이 남아 있으면 `WindowsApps` 의 앱 실행 별칭이 PATH를 먼저 차지한다. 그 계정에
+/// 앱 라이선스가 없으면 정식 설치본을 깔아도 별칭이 먼저 잡혀 여전히 실행되지 않는다
+/// (PowerShell 7에서 실제로 그랬다 — 사용자 보고 2026-08-26).
+///
+/// **`@@STEP`을 뱉지 않는다.** 뒤에 붙는 설치 스크립트가 제 번호를 매기는데 여기서
+/// 끼어들면 진행바가 어긋난다. 안 깔려 있으면 아무 일도 하지 않는다.
+pub(crate) fn purge_store(pkg: Option<&str>) -> String {
+    let Some(pkg) = pkg else { return String::new() };
     format!(
-        "Write-Output '@@STEP 1/2 installing'; winget install --id {id} --silent --disable-interactivity \
+        "Get-AppxPackage -Name {pkg}* | ForEach-Object {{ \
+           Remove-AppxPackage -Package $_.PackageFullName -ErrorAction SilentlyContinue }}; "
+    )
+}
+
+/// winget 설치 한 줄. **원본을 `winget`으로 못 박는다** — msstore 원본이 잡히면
+/// 방금 지운 스토어판이 도로 깔린다.
+fn winget_install(id: &str, store_pkg: Option<&str>) -> String {
+    format!(
+        "{}Write-Output '@@STEP 1/2 installing'; \
+         winget install --id {id} --source winget --silent --disable-interactivity \
          --accept-package-agreements --accept-source-agreements -e; \
-         if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}; Write-Output '@@STEP 2/2 done'"
+         if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}; Write-Output '@@STEP 2/2 done'",
+        purge_store(store_pkg)
     )
 }
 
@@ -142,6 +165,38 @@ fn winget_install(id: &str) -> String {
 mod tests {
     use super::*;
     use crate::envcat;
+
+    /// **스토어판을 먼저 지운다** — 남겨 두면 앱 실행 별칭이 PATH를 먼저 차지해
+    /// 정식 설치본을 깔아도 여전히 안 열린다.
+    #[test]
+    fn installing_powershell_removes_the_store_edition_first() {
+        let pwsh = envcat::find("pwsh").copied().expect("pwsh 항목이 있어야 한다");
+        assert_eq!(pwsh.store_pkg, Some("Microsoft.PowerShell"));
+        for has_winget in [true, false] {
+            let s = install_script(&pwsh, has_winget).expect("설치 통로가 있어야 한다");
+            assert!(s.contains("Remove-AppxPackage"), "winget={has_winget}: 스토어판을 안 지운다");
+            let purge_at = s.find("Remove-AppxPackage").unwrap();
+            let install_at = s.find("installing").or_else(|| s.find("msi")).unwrap_or(usize::MAX);
+            assert!(purge_at < install_at, "winget={has_winget}: 지우기가 설치보다 뒤에 있다");
+        }
+    }
+
+    /// **winget 원본을 못 박는다** — msstore 원본이 잡히면 스토어판이 도로 깔린다.
+    #[test]
+    fn the_winget_source_is_pinned() {
+        let pwsh = envcat::find("pwsh").copied().unwrap();
+        let s = install_script(&pwsh, true).unwrap();
+        assert!(s.contains("--source winget"), "{s}");
+    }
+
+    /// 스토어판이 없는 도구는 **아무 일도 하지 않는다**(쓸데없는 명령을 넣지 않는다).
+    #[test]
+    fn tools_without_a_store_edition_are_untouched() {
+        assert_eq!(purge_store(None), "");
+        let gh = envcat::find("gh").copied().unwrap();
+        let s = install_script(&gh, true).unwrap();
+        assert!(!s.contains("Remove-AppxPackage"), "{s}");
+    }
 
     /// **실패 이유가 사라지면 안 된다** — 실제로 0x80073CF3 전문이 통째로 날아갔었다.
     #[test]

@@ -103,4 +103,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("secret.found", "Lines that look like secrets:", "비밀로 보이는 줄:", "秘密らしい行:"),
     ("secret.partial", "only the first part was checked", "앞부분만 확인했습니다", "前半のみ確認"),
     ("secret.upload", "Uploading files that contain secret-looking lines (files · lines):", "비밀로 보이는 줄이 들어 있는 파일을 올립니다(파일 · 줄):", "秘密らしい行を含むファイルを送信します(ファイル · 行):"),
+    ("lsp.missing", "Language server not installed -", "언어 서버가 없습니다 -", "言語サーバーがありません -"),
 ];

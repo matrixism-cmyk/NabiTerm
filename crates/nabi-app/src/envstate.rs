@@ -46,12 +46,22 @@ pub(crate) fn scan() -> EnvScan {
 }
 
 /// PATH에 이 이름의 실행 파일이 있는가.
+/// 이 도구가 **실제로 쓸 수 있게** 설치돼 있는가.
+///
+/// `where`만 믿으면 안 된다. Microsoft Store판은 `WindowsApps\`에 0바이트 앱 실행
+/// 별칭을 놓는데, `where`는 그것도 찾아 준다. 그 계정에 앱 라이선스가 없으면 실행은
+/// 실패하므로(PowerShell 7에서 실제로 그랬다 — 사용자 보고 2026-08-26), 별칭뿐이면
+/// **설치되지 않은 것으로 본다.** 그래야 설치 단추가 나온다.
 fn on_path(name: &str) -> bool {
-    crate::aicli::hidden("where.exe")
-        .arg(name)
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    let Ok(o) = crate::aicli::hidden("where.exe").arg(name).output() else { return false };
+    if !o.status.success() {
+        return false;
+    }
+    String::from_utf8_lossy(&o.stdout)
+        .lines()
+        .map(|l| l.trim())
+        .filter(|l| !l.is_empty())
+        .any(|l| !nabi_pty::is_store_alias(std::path::Path::new(l)))
 }
 
 /// 온라인 목록과 설치된 목록을 한 번에 읽는다.

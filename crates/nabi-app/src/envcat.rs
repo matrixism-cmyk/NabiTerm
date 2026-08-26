@@ -40,6 +40,12 @@ pub(crate) struct Tool {
     pub fallback: Option<&'static str>,
     /// 제거 스크립트(winget이 있으면 winget으로 제거한다).
     pub remove: Option<&'static str>,
+    /// 같은 도구의 **Microsoft Store판** 패키지 이름(있으면).
+    ///
+    /// 스토어판이 깔려 있으면 `WindowsApps\`의 앱 실행 별칭이 PATH를 먼저 차지한다.
+    /// 그 계정에 앱 라이선스가 없으면 실행이 안 되므로(PowerShell 7에서 실제로 그랬다),
+    /// **정식 설치본을 넣기 전에 먼저 지운다.**
+    pub store_pkg: Option<&'static str>,
     /// 설명 i18n 키.
     pub desc: &'static str,
     /// **윈도우에서 쓸 수 없는 것**이면 그 이유 키. 되는 척하지 않는다.
@@ -140,6 +146,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: None,
         fallback: Some(WINGET_PS),
         remove: None,
+        store_pkg: None,
         desc: "env.desc.winget",
         unavailable: None,
     },
@@ -148,7 +155,9 @@ pub(crate) const TOOLS: &[Tool] = &[
         name: "PowerShell 7",
         probe: "pwsh",
         group: Group::Shell,
+        // winget 원본을 못 박는다 — msstore 원본이 잡히면 다시 스토어판이 깔린다.
         winget: Some("Microsoft.PowerShell"),
+        store_pkg: Some("Microsoft.PowerShell"),
         fallback: Some("GHMSI:PowerShell/PowerShell:*win-x64.msi"),
         remove: None,
         desc: "env.desc.pwsh",
@@ -162,6 +171,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: Some("GitHub.cli"),
         fallback: Some("GHMSI:cli/cli:*windows_amd64.msi"),
         remove: None,
+        store_pkg: None,
         desc: "env.desc.gh",
         unavailable: None,
     },
@@ -173,6 +183,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: Some("BurntSushi.ripgrep.MSVC"),
         fallback: None,
         remove: None,
+        store_pkg: None,
         desc: "env.desc.ripgrep",
         unavailable: None,
     },
@@ -184,6 +195,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: Some("junegunn.fzf"),
         fallback: None,
         remove: None,
+        store_pkg: None,
         desc: "env.desc.fzf",
         unavailable: None,
     },
@@ -195,6 +207,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: Some("jqlang.jq"),
         fallback: None,
         remove: None,
+        store_pkg: None,
         desc: "env.desc.jq",
         unavailable: None,
     },
@@ -206,6 +219,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         winget: None,
         fallback: None,
         remove: None,
+        store_pkg: None,
         desc: "env.desc.sshpass",
         // 윈도우 네이티브 빌드가 없다. 되는 척하는 대신 대안을 안내한다.
         unavailable: Some("env.na.sshpass"),

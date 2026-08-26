@@ -42,6 +42,35 @@ pub fn resolve_program(program: &str) -> Option<PathBuf> {
     None
 }
 
+/// 이 경로가 **Microsoft Store 앱 실행 별칭**인가.
+///
+/// 스토어판 앱은 `%LOCALAPPDATA%\Microsoft\WindowsApps\`에 0바이트 재분석 지점을 놓는다.
+/// 파일처럼 보여서 존재 확인은 통과하지만 진짜 실행 파일이 아니다. 그 계정에 앱
+/// 라이선스가 없으면 실행 순간 `0xC0E90002`("관련 앱 라이선스를 찾을 수 없습니다")로
+/// 죽는다 — 목록에는 뜨는데 안 열리는 이유다(사용자 보고 2026-08-26).
+pub fn is_store_alias(path: &Path) -> bool {
+    let zero = std::fs::metadata(path).map(|m| m.len() == 0).unwrap_or(false);
+    zero && path.to_string_lossy().to_ascii_lowercase().contains(r"\microsoft\windowsapps\")
+}
+
+/// PowerShell 7(pwsh.exe) 위치 — **정식 설치본을 먼저** 찾는다.
+///
+/// PATH만 훑으면 스토어 별칭이 먼저 걸리는 PC가 있다. 정식 설치본이 함께 있는데도
+/// 열리지 않는 일이 생기므로, 표준 설치 경로를 앞에 둔다.
+fn pwsh_path() -> Option<PathBuf> {
+    for var in ["ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA"] {
+        let Some(base) = std::env::var_os(var) else { continue };
+        for sub in [r"PowerShell\7\pwsh.exe", r"Microsoft\PowerShell\7\pwsh.exe"] {
+            let p = Path::new(&base).join(sub);
+            if p.is_file() {
+                return Some(p);
+            }
+        }
+    }
+    // 정식 설치본이 없으면 PATH(스토어 별칭 포함)를 쓴다 — 대부분의 PC에서는 이것도 열린다.
+    resolve_program("pwsh.exe")
+}
+
 /// Git Bash의 bash.exe 위치 — PATH에 없으면 기본 설치 경로(Program Files\Git…)를 찾는다.
 /// Git 설치 시 bash.exe가 PATH에 없는 경우가 흔해, 이를 보완해야 실제로 띄울 수 있다.
 fn git_bash_path() -> Option<PathBuf> {
@@ -95,6 +124,7 @@ fn parse_wsl_list(bytes: &[u8]) -> Vec<String> {
 pub fn resolve_shell(shell: &ShellKind) -> Option<PathBuf> {
     match shell {
         ShellKind::GitBash => git_bash_path(),
+        ShellKind::Pwsh => pwsh_path(),
         _ => resolve_program(&program_name(shell)),
     }
 }
@@ -103,7 +133,9 @@ pub fn resolve_shell(shell: &ShellKind) -> Option<PathBuf> {
 pub fn build_command(shell: &ShellKind) -> CommandBuilder {
     match shell {
         ShellKind::Pwsh => {
-            let mut c = CommandBuilder::new("pwsh.exe");
+            // 이름만 주면 PATH가 스토어 별칭을 먼저 집는 PC가 있다 — 찾은 경로를 그대로 쓴다.
+            let exe = pwsh_path().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| "pwsh.exe".into());
+            let mut c = CommandBuilder::new(exe);
             // -NoLogo: 배너 생략. -ExecutionPolicy Bypass: 시스템 정책이 Restricted여도 사용자 프로파일을
             // 로드(프로세스 스코프 — 시스템 정책 불변). 미적용 시 매 셸 기동마다 프로파일 로드 에러 발생.
             c.args(["-NoLogo", "-ExecutionPolicy", "Bypass"]);
@@ -145,6 +177,33 @@ mod tests {
     use super::{parse_wsl_list, program_name};
     use nabi_proto::ShellKind;
 
+    /// **0바이트 앱 실행 별칭**을 진짜 실행 파일로 세면, 목록에는 뜨는데 안 열린다.
+    #[test]
+    fn a_store_alias_is_recognised_for_what_it_is() {
+        use std::io::Write;
+        let dir = std::env::temp_dir().join(format!("nabi-alias-{}", std::process::id()));
+        let apps = dir.join("Microsoft").join("WindowsApps");
+        std::fs::create_dir_all(&apps).unwrap();
+        // 스토어 별칭 흉내 — 0바이트에 WindowsApps 아래.
+        let alias = apps.join("pwsh.exe");
+        std::fs::File::create(&alias).unwrap();
+        assert!(super::is_store_alias(&alias), "0바이트 WindowsApps 항목을 못 알아봤다");
+        // 같은 이름이라도 내용이 있으면 진짜 실행 파일로 본다.
+        let real = dir.join("pwsh.exe");
+        std::fs::File::create(&real).unwrap().write_all(b"MZ").unwrap();
+        assert!(!super::is_store_alias(&real));
+        // WindowsApps 밖의 0바이트 파일도 별칭이 아니다.
+        let empty = dir.join("empty.exe");
+        std::fs::File::create(&empty).unwrap();
+        assert!(!super::is_store_alias(&empty));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// 없는 파일에 물어도 터지지 않아야 한다(탐지 경로에서 늘 불린다).
+    #[test]
+    fn asking_about_a_missing_file_is_safe() {
+        assert!(!super::is_store_alias(std::path::Path::new(r"C:\nope\pwsh.exe")));
+    }
     #[test]
     fn program_names_per_shell() {
         assert_eq!(program_name(&ShellKind::Pwsh), "pwsh.exe");

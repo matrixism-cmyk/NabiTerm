@@ -8,8 +8,11 @@ impl NabiApp {
         if self.lsp_req_ctx(p).is_some() {
             let doc = &self.editors[&p];
             let (path, tab) = (doc.path.clone(), self.editor_config.tab_size.max(1) as u32);
-            self.lsp.pending_fmt =
-                self.lsp.client.as_ref().and_then(|c| c.request_formatting(&path, tab)).map(|id| (id, p));
+            let key = self.lsp.key_for(&path);
+            self.lsp.pending_fmt = self.lsp.client_for(&path)
+                .and_then(|c| c.request_formatting(&path, tab))
+                .zip(key)
+                .map(|(id, k)| (id, p, k));
         }
     }
 
@@ -23,19 +26,24 @@ impl NabiApp {
                 a -= 1;
             }
             // 요청 전 즉시 동기화(디바운스 우회) — 서버가 최신 텍스트 기준으로 답한다.
-            if let Some(c) = &self.lsp.client {
+            if let Some(c) = self.lsp.client_for(&path) {
                 c.did_change(&path, &doc.text);
             }
-            self.lsp.pending_comp =
-                self.lsp.client.as_ref().and_then(|c| c.request_completion(&path, line, col)).map(|id| (id, p, a));
+            let key = self.lsp.key_for(&path);
+            self.lsp.pending_comp = self.lsp.client_for(&path)
+                .and_then(|c| c.request_completion(&path, line, col))
+                .zip(key)
+                .map(|(id, k)| (id, p, a, k));
         }
     }
 
     /// 지정 pane에서 심볼 이름 바꾸기 요청(입력 팝업 확정 후).
     pub(crate) fn lsp_rename_for(&mut self, p: nabi_types::PaneId, new_name: &str) {
         if let Some((path, line, col)) = self.lsp_req_ctx(p) {
-            self.lsp.pending_rename =
-                self.lsp.client.as_ref().and_then(|c| c.request_rename(&path, line, col, new_name));
+            let key = self.lsp.key_for(&path);
+            self.lsp.pending_rename = self.lsp.client_for(&path)
+                .and_then(|c| c.request_rename(&path, line, col, new_name))
+                .zip(key);
         }
     }
 

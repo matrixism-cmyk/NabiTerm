@@ -147,7 +147,7 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
             });
         });
         // 코드(LSP — rs 문서만): 정의로 이동/심볼 정보/참조 찾기(+진단 목록). 앱 허브가 처리.
-        if doc.lang_ext() == "rs" {
+        if crate::lspservers::for_ext(&doc.lang_ext()).is_some() {
             ui.menu_button(tr(lang, "ctx.code"), |ui| {
                 if ui.button(tr(lang, "lsp.gotodef.short")).clicked() { act.lsp_goto_def = true; ui.close(); }
                 if ui.button(tr(lang, "lsp.hover")).clicked() { act.lsp_hover = true; ui.close(); }

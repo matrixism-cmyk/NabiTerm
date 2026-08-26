@@ -84,7 +84,7 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                 ui.close();
             }
             // 코드(LSP — rs 문서만): 컨텍스트 메뉴와 동일 항목(표면 일관).
-            if doc.lang_ext() == "rs" {
+            if crate::lspservers::for_ext(&doc.lang_ext()).is_some() {
                 ui.menu_button(tr(lang, "ctx.code"), |ui| {
                     if ui.button(tr(lang, "lsp.gotodef.short")).clicked() { act.lsp_goto_def = true; ui.close(); }
                     if ui.button(tr(lang, "lsp.hover")).clicked() { act.lsp_hover = true; ui.close(); }
