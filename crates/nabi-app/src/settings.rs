@@ -149,6 +149,8 @@ impl NabiApp {
         // SSH keepalive 간격을 라이브 반영(다음 연결부터 적용).
         nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
         nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);
+        // 팔레트도 같은 길로 — `ansi16` 한 곳이 이 값을 본다.
+        nabi_types::palette::set_active(nabi_types::palette::Palette::from_name(&self.config.appearance.palette));
         // SFTP 해시 검증 스위치 — 워커 풀 연결까지 전역으로 즉시 적용.
         nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
         nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩 라이브 반영.

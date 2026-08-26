@@ -27,6 +27,7 @@ impl NabiApp {
                 })
                 .unwrap_or_else(|| tr(lang, "status.nosession").to_owned())
         };
+        let cues_on = self.config.appearance.symbol_cues;
         let count = self.dock.iter_all_tabs().count(); let broadcast = self.broadcast; let tg_on = self.telegram.running(); let tg_err = self.telegram.has_error(); // 원격 제어 활성/오류(보안·피드백).
         let is_ssh = focused
             .and_then(|p| self.pane_origins.get(&p))
@@ -143,7 +144,9 @@ impl NabiApp {
                 if let Some(d) = &dims { ui.separator(); ui.label(d); }
                 if let Some(s) = &stats_txt {
                     ui.separator(); let c = if stats_alert { crate::theme_ui::ERR } else { crate::theme_ui::SESS_SSH };
-                    let r = ui.colored_label(c, format!("\u{1f5a5} {s}")); // OS·커널·접속자·RTT는 툴팁.
+                    // 색만으로는 경고가 전달되지 않는 사용자가 있다 — 켜면 기호가 붙는다.
+                    let mk = crate::cues::cue(cues_on && stats_alert, crate::cues::WARN);
+                    let r = ui.colored_label(c, format!("{mk}\u{1f5a5} {s}")); // OS·커널·접속자·RTT는 툴팁.
                     if let Some(t) = &stats_tip { r.on_hover_text(t); }
                 }
                 if let Some(a) = &ai {

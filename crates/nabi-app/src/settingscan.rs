@@ -23,6 +23,8 @@ const FN_PAGE: &[(&str, usize)] = &[
     ("alert_rows", 4),
     ("link_rule_rows", 4),
     ("snippet_rows", 4),
+    ("a11y_rows", 6),
+    ("contrast_note", 6),   // a11y_rows가 부르는 하위 행(대비 경고).
 ];
 
 /// 훑을 파일들.
@@ -32,6 +34,7 @@ const FILES: &[&str] = &[
     "settingslists.rs",
     "themeimport.rs",
     "settingsfont.rs",
+    "settingsa11y.rs",
 ];
 
 /// 단위 접미사 등 "항목이 아닌" 키.

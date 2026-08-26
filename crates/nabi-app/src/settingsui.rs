@@ -11,13 +11,16 @@ use nabi_i18n::{tr, Lang};
 // • 원격 연결: SSH와 전송(SFTP)을 한 페이지로. SSH는 항목이 둘뿐이라 탭 하나를 가질 양이 아니었다.
 // • AI 터미널(프로필)은 **여기서 뺐다** — 전용 창(터미널 메뉴 ▸ 프로필 관리)이 이미 있고,
 //   저장된 세션 목록처럼 '설정'이 아니라 '목록 관리'다.
-pub(crate) const PAGE_KEYS: [&str; 6] = [
+// • 접근성: 색·크기·움직임에 관한 것을 한자리에 모은다. 흩어 두면 정작 필요한 사람이
+//   못 찾는다 — 여기 있는 값 일부는 다른 페이지에도 그대로 있다(같은 값을 가리킨다).
+pub(crate) const PAGE_KEYS: [&str; 7] = [
     "settings.sec.general",
     "settings.sec.appearance",
     "settings.sec.terminal",
     "settings.sec.remote",
     "settings.sec.rules",
     "settings.sec.automation",
+    "settings.sec.a11y",
 ];
 
 /// 페이지에 필요한 앱 핸들(설정 외 상태) 묶음 — 승인 정책 + 폰트 설치기.
@@ -54,28 +57,27 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorC
         2 => grid(ui, "sec_terminal", |ui| terminal_rows(ui, cfg, lang)),
         // 원격 연결(3): SSH(접속 유지·통계) → 전송·SFTP(속도·병렬·무결성·다운로드 폴더).
         3 => {
-            group(ui, lang, "settings.sec.ssh");
-            grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang));
-            group(ui, lang, "settings.sec.transfer");
-            grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.ssh"); grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.transfer"); grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang));
         }
         // 사용자 규칙(4): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
         // 사용자 규칙(4): 한 장에 네 가지가 쌓여 있어 무엇이 무엇인지 읽기 어려웠다.
         // 하는 일별로 소제목을 달아 나눈다(2026-08-25 IA 정리).
         4 => {
-            group(ui, lang, "settings.sec.highlights");
-            crate::settingslists::highlight_rows(ui, cfg, lang);
+            group(ui, lang, "settings.sec.highlights"); crate::settingslists::highlight_rows(ui, cfg, lang);
             group(ui, lang, "settings.sec.triggers"); crate::settingslists::alert_rows(ui, cfg, lang);
             group(ui, lang, "settings.sec.linkrules"); crate::settingslists::link_rule_rows(ui, cfg, lang);
             group(ui, lang, "settings.sec.snippets"); crate::settingslists::snippet_rows(ui, cfg, lang);
         }
         // 자동화(5): 내장 스케줄러 + 텔레그램 브리지.
-        _ => {
+        5 => {
             group(ui, lang, "settings.sec.schedule");
             crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path);
             group(ui, lang, "settings.sec.telegram");
             grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending));
         }
+        // 접근성 — 색·크기·움직임. 일부는 다른 페이지에도 있다(같은 값을 가리킨다).
+        _ => grid(ui, "sec_a11y", |ui| crate::settingsa11y::a11y_rows(ui, cfg, lang)),
     }
 }
 

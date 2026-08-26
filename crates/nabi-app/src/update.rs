@@ -40,6 +40,8 @@ impl eframe::App for NabiApp {
             // 저장된 SSH keepalive 설정을 시작 시 반영(설정 열기 전 첫 연결에도 적용).
             nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
             nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);
+            // 팔레트도 같은 길로 — `ansi16` 한 곳이 이 값을 본다.
+            nabi_types::palette::set_active(nabi_types::palette::Palette::from_name(&self.config.appearance.palette));
             nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
             nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩(CP949 서버 한글).
             nabi_sftp::set_upload_mode(&self.config.terminal.sftp_upload_mode); // 업로드 권한 정규화.

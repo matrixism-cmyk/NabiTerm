@@ -33,6 +33,14 @@ pub struct Appearance {
     /// 색 스킴: "default" | "solarized" | "nord" | "gruvbox" | "light"
     pub theme: String,
     /// 커서 깜빡임.
+    /// ANSI 16색 팔레트 이름(`standard`·`deuteranopia`·`highcontrast`).
+    ///
+    /// 기본은 `standard` — 지금 쓰는 사람의 화면을 바꾸지 않는다.
+    #[serde(default)]
+    pub palette: String,
+    /// 색 말고 **기호로도** 알린다(전송 성공/실패 등).
+    #[serde(default)]
+    pub symbol_cues: bool,
     pub cursor_blink: bool,
     /// 커서 깜빡임 반주기(ms).
     pub blink_ms: u64,
@@ -109,6 +117,8 @@ impl Default for Appearance {
             font_family: "monospace".into(),
             language: "system".into(),
             theme: "default".into(),
+            palette: String::new(),
+            symbol_cues: false,
             cursor_blink: true,
             blink_ms: 530,
             visual_bell: true,

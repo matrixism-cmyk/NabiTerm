@@ -5,6 +5,8 @@
 
 pub mod attrs;
 pub mod color;
+pub mod contrast;
+pub mod palette;
 pub mod geometry;
 pub mod ids;
 pub mod textcol;
