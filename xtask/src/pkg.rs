@@ -52,18 +52,26 @@ pub fn run() -> ExitCode {
         eprintln!("{e}");
         return ExitCode::FAILURE;
     }
-    let files = [
-        ("nabiTerm.winget.yaml", winget_manifest(&version, &url, &sha)),
-        ("nabiTerm.scoop.json", scoop_manifest(&version, &url, &sha, &repo)),
-    ];
-    for (name, body) in files {
-        let p = out.join(name);
+    // winget 세 파일은 **제출 폴더 구조 그대로** 떨군다 — 그대로 복사해 PR 하면 된다.
+    // (`manifests/n/Nabisori/nabiTerm/<버전>/`)
+    let wdir = out.join("winget").join(&version);
+    if let Err(e) = std::fs::create_dir_all(&wdir) {
+        eprintln!("{e}");
+        return ExitCode::FAILURE;
+    }
+    let mut files: Vec<(std::path::PathBuf, String)> = winget_manifests(&version, &url, &sha)
+        .into_iter()
+        .map(|(n, b)| (wdir.join(n), b))
+        .collect();
+    files.push((out.join("nabiTerm.scoop.json"), scoop_manifest(&version, &url, &sha, &repo)));
+    for (p, body) in files {
         if let Err(e) = std::fs::write(&p, body) {
             eprintln!("{e}");
             return ExitCode::FAILURE;
         }
         println!("생성: {}", p.display());
     }
+    println!("winget 제출 경로: manifests/n/{PUBLISHER}/nabiTerm/{version}/");
     println!("버전 v{version} · SHA256 {sha}");
     ExitCode::SUCCESS
 }
@@ -73,53 +81,92 @@ pub fn asset_url(repo: &str, version: &str) -> String {
     format!("https://github.com/{repo}/releases/download/v{version}/nabiTerm-setup.exe")
 }
 
-/// winget 단일 매니페스트(1.6 스키마).
+/// winget 매니페스트 세 벌(version · installer · defaultLocale).
 ///
-/// 설치 방식은 `nullsoft`가 아니라 **Inno Setup**이다 — `/VERYSILENT`를 우리가 직접
-/// 넘긴다. 무인 스위치를 이번 판에서 만들어 둔 덕에 그대로 쓸 수 있다.
-pub fn winget_manifest(version: &str, url: &str, sha: &str) -> String {
+/// **`winget-pkgs` 는 단일 매니페스트를 받지 않는다.** 처음에는 singleton 스키마로
+/// 하나만 만들었는데, 실제 저장소를 열어 보니 모든 패키지가 세 파일로 되어 있었다
+/// (2026-08-27에 확인). 제출할 수 없는 형식을 만들어 두는 것은 안 만든 것보다 나쁘다 —
+/// 다 됐다고 착각하게 만들기 때문이다.
+///
+/// 설치 방식은 Inno Setup(`inno`)이고 무인 스위치를 우리가 직접 넘긴다.
+pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, String)> {
     let sha_up = sha.to_uppercase();
-    [
-        "# 이 파일은 `cargo run -p xtask -- pkg` 가 만든다. 손으로 고치지 말 것 —",
-        "# 버전·URL·해시는 릴리스 산출물에서 직접 읽는다.",
-        "$schema: https://aka.ms/winget-manifest.singleton.1.6.0.schema.json",
-        &format!("PackageIdentifier: {WINGET_ID}"),
-        &format!("PackageVersion: {version}"),
-        "PackageName: nabiTerm",
-        &format!("Publisher: {PUBLISHER}"),
-        "PublisherUrl: https://nabisori.kr",
-        &format!("PackageUrl: {HOMEPAGE}"),
-        "License: Apache-2.0",
-        "LicenseUrl: https://github.com/matrixism-cmyk/NabiTerm/blob/main/LICENSE",
-        "ShortDescription: Windows terminal multiplexer with SSH/SFTP client and editor",
-        "Description: |-",
-        "  A native Windows terminal, professional SFTP client and code editor in one window.",
-        "  Korean by default, free, Apache-2.0. Includes a local control plane so AI agents",
-        "  running in a pane can drive the terminal itself.",
-        "Moniker: nabiterm",
-        "Tags:",
-        "- terminal",
-        "- ssh",
-        "- sftp",
-        "- editor",
-        "- korean",
-        "- rust",
-        "Installers:",
-        "- Architecture: x64",
-        "  InstallerType: inno",
-        &format!("  InstallerUrl: {url}"),
-        &format!("  InstallerSha256: {sha_up}"),
-        "  InstallerSwitches:",
-        "    Silent: /VERYSILENT /NOLAUNCH",
-        "    SilentWithProgress: /SILENT /NOLAUNCH",
-        "  Scope: user",
-        "ManifestType: singleton",
-        "ManifestVersion: 1.6.0",
-        "",
-    ]
-    .join("\n")
-}
+    let head = |kind: &str| {
+        [
+            "# `cargo run -p xtask -- pkg` 가 만든다 — 손으로 고치지 말 것.".to_string(),
+            format!("# yaml-language-server: $schema=https://aka.ms/winget-manifest.{kind}.1.6.0.schema.json"),
+            String::new(),
+            format!("PackageIdentifier: {WINGET_ID}"),
+            format!("PackageVersion: {version}"),
+        ]
+        .join("
+")
+    };
 
+    let version_yaml = [
+        head("version"),
+        "DefaultLocale: en-US".into(),
+        "ManifestType: version".into(),
+        "ManifestVersion: 1.6.0".into(),
+        String::new(),
+    ]
+    .join("
+");
+
+    let installer_yaml = [
+        head("installer"),
+        "InstallerType: inno".into(),
+        "Scope: user".into(),
+        "InstallerSwitches:".into(),
+        "  Silent: /VERYSILENT /NOLAUNCH".into(),
+        "  SilentWithProgress: /SILENT /NOLAUNCH".into(),
+        "Installers:".into(),
+        "- Architecture: x64".into(),
+        format!("  InstallerUrl: {url}"),
+        format!("  InstallerSha256: {sha_up}"),
+        "ManifestType: installer".into(),
+        "ManifestVersion: 1.6.0".into(),
+        String::new(),
+    ]
+    .join("
+");
+
+    let locale_yaml = [
+        head("defaultLocale"),
+        "PackageLocale: en-US".into(),
+        format!("Publisher: {PUBLISHER}"),
+        "PublisherUrl: https://nabisori.kr".into(),
+        "PublisherSupportUrl: https://github.com/matrixism-cmyk/NabiTerm/issues".into(),
+        "PackageName: nabiTerm".into(),
+        format!("PackageUrl: {HOMEPAGE}"),
+        "License: Apache-2.0".into(),
+        "LicenseUrl: https://github.com/matrixism-cmyk/NabiTerm/blob/main/LICENSE".into(),
+        "ShortDescription: Windows terminal multiplexer with SSH/SFTP client and editor".into(),
+        "Description: |-".into(),
+        "  A native Windows terminal, professional SFTP client and code editor in one window.".into(),
+        "  Korean by default, free, Apache-2.0. Includes a local control plane and MCP server".into(),
+        "  so AI agents running in a pane can drive the terminal and move files over SFTP.".into(),
+        "Moniker: nabiterm".into(),
+        "Tags:".into(),
+        "- terminal".into(),
+        "- ssh".into(),
+        "- sftp".into(),
+        "- editor".into(),
+        "- korean".into(),
+        "- rust".into(),
+        "ManifestType: defaultLocale".into(),
+        "ManifestVersion: 1.6.0".into(),
+        String::new(),
+    ]
+    .join("
+");
+
+    vec![
+        (format!("{WINGET_ID}.yaml"), version_yaml),
+        (format!("{WINGET_ID}.installer.yaml"), installer_yaml),
+        (format!("{WINGET_ID}.locale.en-US.yaml"), locale_yaml),
+    ]
+}
 /// Scoop 매니페스트. `checkver`·`autoupdate`가 있으면 저장소가 **스스로 새 판을 따라온다**
 /// — 우리가 매번 올리러 가지 않아도 되므로 통로가 살아 있게 유지된다.
 pub fn scoop_manifest(version: &str, url: &str, sha: &str, repo: &str) -> String {
@@ -337,12 +384,23 @@ mod tests {
         assert!(url.contains("/releases/download/v1.2.3/nabiTerm-setup.exe"), "{url}");
 
         let sha = "abc123";
-        let w = winget_manifest("1.2.3", &url, sha);
-        assert!(w.contains("PackageVersion: 1.2.3"), "{w}");
-        assert!(w.contains(&url));
-        assert!(w.contains("ABC123"), "winget 해시는 대문자다");
-        assert!(w.contains("InstallerType: inno"));
-        assert!(w.contains("/VERYSILENT /NOLAUNCH"), "무인 스위치가 빠졌다");
+        // winget-pkgs 는 세 파일을 받는다 — 하나라도 빠지면 PR 이 거부된다.
+        let w = winget_manifests("1.2.3", &url, sha);
+        let names: Vec<&str> = w.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names.len(), 3, "{names:?}");
+        assert!(names.iter().any(|n| n.ends_with(".installer.yaml")), "{names:?}");
+        assert!(names.iter().any(|n| n.ends_with(".locale.en-US.yaml")), "{names:?}");
+        let all: String = w.iter().map(|(_, b)| b.as_str()).collect::<Vec<_>>().join("
+");
+        assert!(all.contains("PackageVersion: 1.2.3"));
+        assert!(all.contains(&url));
+        assert!(all.contains("ABC123"), "winget 해시는 대문자다");
+        assert!(all.contains("InstallerType: inno"));
+        assert!(all.contains("/VERYSILENT /NOLAUNCH"), "무인 스위치가 빠졌다");
+        // 세 파일 모두 자기 종류를 밝혀야 한다.
+        for kind in ["ManifestType: version", "ManifestType: installer", "ManifestType: defaultLocale"] {
+            assert!(all.contains(kind), "{kind} 가 없다");
+        }
 
         let s = scoop_manifest("1.2.3", &url, sha, "owner/Repo");
         assert!(s.contains("\"version\": \"1.2.3\""), "{s}");
