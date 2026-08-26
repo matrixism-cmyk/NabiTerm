@@ -68,12 +68,45 @@ impl TermModel {
     }
 
     /// 기록된 프롬프트를 화면 맨 위에 보이게 할 display offset(히스토리 캡 시 클램프).
-    fn prompt_offset(&self, abs: i64) -> i32 {
+    pub(crate) fn prompt_offset(&self, abs: i64) -> i32 {
         let h = self.history_size() as i64;
         (h - abs).clamp(0, h) as i32
     }
 
     /// 더 오래된(위쪽) 프롬프트로 점프. 이동했으면 true.
+    /// **실패한 명령으로만** 오간다(종료 코드가 0이 아닌 것).
+    ///
+    /// 긴 작업 뒤에 알고 싶은 것은 "무엇이 깨졌나"다. 프롬프트를 하나씩 되짚으면 성공한
+    /// 명령 오십 개를 지나야 그 하나에 닿는다. 종료 코드는 이미 블록에 있으므로,
+    /// 거르는 것만 더하면 된다.
+    ///
+    /// `back`이면 더 과거로, 아니면 더 최신으로. 이동했으면 true.
+    pub fn jump_failed_prompt(&mut self, back: bool) -> bool {
+        let cur = self.scrollback_offset() as i32;
+        let offs = self
+            .prompts
+            .iter()
+            .filter(|p| p.exit.is_some_and(|c| c != 0))
+            .map(|p| self.prompt_offset(p.abs));
+        // 오프셋은 "최신에서 얼마나 거슬러 올라갔나"라 과거일수록 크다.
+        let target = match back {
+            true => offs.filter(|&d| d > cur).min(),
+            false => offs.filter(|&d| d < cur).max(),
+        };
+        match target {
+            Some(d) => {
+                self.scroll_by(d - cur);
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// 실패한 명령이 몇 개나 있나(화면에 개수를 보여 주려면 필요하다).
+    pub fn failed_count(&self) -> usize {
+        self.prompts.iter().filter(|p| p.exit.is_some_and(|c| c != 0)).count()
+    }
+
     pub fn jump_prev_prompt(&mut self) -> bool {
         let cur = self.scrollback_offset() as i32;
         let target = self
@@ -118,6 +151,62 @@ impl TermModel {
 mod tests {
     use crate::TermModel;
     use nabi_types::GridSize;
+
+    /// **실패한 것만 지나간다** — 성공한 명령 사이를 하나씩 되짚지 않는다.
+    #[test]
+    fn jumping_by_failures_skips_the_successes() {
+        let mut m = TermModel::new(GridSize::new(40, 5), 400);
+        // 실패(BAD1) → 성공 셋 → 실패(BAD2) → 꼬리.
+        m.mark_prompt();
+        m.process(b"BAD1$ boom\r\n");
+        m.mark_command_done(Some(1));
+        for i in 0..3 {
+            for _ in 0..6 {
+                m.process(format!("filler {i}\r\n").as_bytes());
+            }
+            m.mark_prompt();
+            m.process(format!("OK{i}$ fine\r\n").as_bytes());
+            m.mark_command_done(Some(0));
+        }
+        for _ in 0..6 {
+            m.process(b"more\r\n");
+        }
+        m.mark_prompt();
+        m.process(b"BAD2$ boom again\r\n");
+        m.mark_command_done(Some(2));
+        for _ in 0..10 {
+            m.process(b"tail\r\n");
+        }
+        assert_eq!(m.failed_count(), 2, "실패를 잘못 셌다");
+        // 뒤로 한 번 → 성공 셋을 건너뛰고 BAD2.
+        assert!(m.jump_failed_prompt(true));
+        assert!(m.visible_row_text(0).contains("BAD2$"), "성공한 것에 멈췄다");
+        // 한 번 더 → BAD1.
+        assert!(m.jump_failed_prompt(true));
+        assert!(m.visible_row_text(0).contains("BAD1$"));
+        // 더 위로는 실패가 없다.
+        assert!(!m.jump_failed_prompt(true), "없는 곳으로 갔다");
+        // 앞으로 → BAD2로 돌아온다.
+        assert!(m.jump_failed_prompt(false));
+        assert!(m.visible_row_text(0).contains("BAD2$"));
+    }
+
+    /// 실패가 하나도 없으면 움직이지 않는다(움직이면 사용자가 자리를 잃는다).
+    #[test]
+    fn with_no_failures_nothing_moves() {
+        let mut m = TermModel::new(GridSize::new(40, 5), 200);
+        m.mark_prompt();
+        m.process(b"OK$ fine\r\n");
+        m.mark_command_done(Some(0));
+        for _ in 0..20 {
+            m.process(b"x\r\n");
+        }
+        let before = m.scrollback_offset();
+        assert!(!m.jump_failed_prompt(true));
+        assert!(!m.jump_failed_prompt(false));
+        assert_eq!(m.scrollback_offset(), before, "안 움직여야 하는데 움직였다");
+        assert_eq!(m.failed_count(), 0);
+    }
 
     #[test]
     fn jumps_between_prompts() {

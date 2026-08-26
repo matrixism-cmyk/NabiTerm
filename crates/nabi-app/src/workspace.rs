@@ -28,6 +28,8 @@ pub(crate) struct PendingLayout {
     pub fonts: Vec<f32>,
     pub names: Vec<String>,
     pub colors: Vec<[u8; 4]>,
+    /// 순서별 고정 여부 — 껐다 켜도 고정이 풀리지 않게.
+    pub pins: Vec<bool>,
     /// 먼저 생성된 브라우저 탭 pane들(레이아웃 서수 1000+i 매핑).
     pub browser_panes: Vec<nabi_types::PaneId>,
     /// 먼저 재연결한 원격(SFTP/FTP) 탭 pane들(레이아웃 서수 2000+i 매핑).
@@ -217,18 +219,11 @@ impl NabiApp {
                     .ok()
                     .and_then(|s| ron::from_str::<DockState<usize>>(&s).ok())
             {
-                let fonts = std::fs::read_to_string(self.workspace_path.with_extension("fonts"))
-                    .ok()
-                    .and_then(|s| ron::from_str::<Vec<f32>>(&s).ok())
-                    .unwrap_or_default();
-                let names = std::fs::read_to_string(self.workspace_path.with_extension("names"))
-                    .ok()
-                    .and_then(|s| ron::from_str::<Vec<String>>(&s).ok())
-                    .unwrap_or_default();
-                let colors = std::fs::read_to_string(self.workspace_path.with_extension("colors"))
-                    .ok()
-                    .and_then(|s| ron::from_str::<Vec<[u8; 4]>>(&s).ok())
-                    .unwrap_or_default();
+                // 같은 네 줄을 사이드카마다 되풀이하던 것을 하나로 모았다(read_sidecar).
+                let fonts = self.read_sidecar::<Vec<f32>>("fonts");
+                let names = self.read_sidecar::<Vec<String>>("names");
+                let colors = self.read_sidecar::<Vec<[u8; 4]>>("colors");
+                let pins = self.read_sidecar::<Vec<bool>>("pins");
                 self.pending_layout = Some(PendingLayout {
                     saved,
                     arrived: std::collections::HashMap::new(),
@@ -236,6 +231,7 @@ impl NabiApp {
                     fonts,
                     names,
                     colors,
+                    pins,
                     browser_panes,
                     sftp_panes,
                 });

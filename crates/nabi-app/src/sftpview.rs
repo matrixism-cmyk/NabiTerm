@@ -64,9 +64,14 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
             ui.close();
         }
         // 파일 다운로드(폴더는 아래 '폴더 다운로드'). 메뉴 최상단에 노출.
-        // 서버 안에서 사본 만들기. 폴더는 아직 안 된다(재귀는 다음 배치).
-        if !e.is_dir && ui.button(tr(lang, "sftp.copyhere")).clicked() {
-            click = Some(EClick::CopyHere(e.name.clone(), e.size));
+        // 서버에서 명령 돌리기 — 고르면 확인창에서 전문을 보여 준 뒤 실행한다.
+        if let Some(op) = crate::app::NabiApp::remote_cmd_menu(ui, lang) {
+            click = Some(EClick::RunCmd(e.name.clone(), op));
+            ui.close();
+        }
+        // 서버 안에서 사본 만들기 — 폴더면 하위까지 재귀로 옮긴다.
+        if ui.button(tr(lang, "sftp.copyhere")).clicked() {
+            click = Some(EClick::CopyHere(e.name.clone(), e.size, e.is_dir));
             ui.close();
         }
         if !e.is_dir && ui.button(tr(lang, "sftp.download")).clicked() {

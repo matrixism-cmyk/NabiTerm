@@ -71,6 +71,8 @@ pub enum Event {
     SftpPreview { id: SftpId, path: String, data: Vec<u8>, more: bool, err: Option<String> },
     /// 동기화 계획용 원격 파일 트리(상대경로, 크기, mtime) — SftpListTree(seq) 회신.
     SftpTree { id: SftpId, seq: u64, files: Vec<(String, u64, u64)> },
+    /// 원격 명령 결과 — 표준출력·표준오류를 함께 모은 글과 종료 코드.
+    SftpExecDone { id: SftpId, cmd: String, out: String, code: Option<i32> },
     /// 전송 진행(누적 바이트). `xfer`는 명령에 실어 보낸 큐 항목 식별자.
     SftpProgress { id: SftpId, xfer: u64, bytes: u64 },
     /// 파일 전송(다운로드/업로드) 완료. `xfer`로 큐 항목을 정확히 지목한다.

@@ -125,12 +125,20 @@ pub enum Command {
         id: SftpId,
         path: String,
     },
-    /// **서버 안에서 파일 복사.** 받았다 다시 올리지 않는다(디스크를 거치지 않는다).
+    /// **서버에서 명령 한 줄 실행.** 결과는 SftpExecDone 으로 온다.
+    SftpExec {
+        id: SftpId,
+        cmd: String,
+    },
+    /// **서버 안에서 복사.** 받았다 다시 올리지 않는다(디스크를 거치지 않는다).
+    ///
+    /// `dir`이면 폴더째 재귀 복사한다.
     SftpCopy {
         id: SftpId,
         xfer: u64,
         from: String,
         to: String,
+        dir: bool,
     },
     /// 권한을 재귀 적용(디렉터리 하위 전부).
     SftpChmodRecursive {

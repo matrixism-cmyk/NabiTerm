@@ -228,3 +228,37 @@ mod tag_tests {
         assert_eq!(keys.len(), SessionTag::ALL.len(), "i18n 키가 겹친다");
     }
 }
+
+/// **표식으로도 걸러진다** — 세션이 늘면 "운영만 보기"가 이름 검색만큼 자주 필요하다.
+#[test]
+fn the_filter_sees_tags_too() {
+    use crate::{session_matches, SessionTag};
+    let mut prod = ssh("Web", "example.com");
+    prod.tag = SessionTag::Prod;
+    let mut dev = ssh("Web2", "example.com");
+    dev.tag = SessionTag::Dev;
+    assert!(session_matches(&prod, "prod"));
+    assert!(!session_matches(&dev, "prod"), "개발 세션이 운영으로 걸렸다");
+    assert!(session_matches(&dev, "dev"));
+}
+
+/// 표식 낱말과 이름을 **함께** 쓸 수 있어야 한다(둘 다 맞아야 걸린다).
+#[test]
+fn a_tag_word_combines_with_the_name() {
+    use crate::{session_matches, SessionTag};
+    let mut a = ssh("web-01", "a.com");
+    a.tag = SessionTag::Prod;
+    let mut b = ssh("db-01", "b.com");
+    b.tag = SessionTag::Prod;
+    assert!(session_matches(&a, "prod web"));
+    assert!(!session_matches(&b, "prod web"), "이름이 안 맞는데 걸렸다");
+}
+
+/// 표식이 없는 세션이 아무 낱말에나 걸리면 안 된다(빈 낱말이 섞여 들어가는 실수).
+#[test]
+fn an_untagged_session_does_not_match_a_tag_word() {
+    use crate::session_matches;
+    let plain = ssh("Web", "example.com");
+    assert!(!session_matches(&plain, "prod"));
+    assert!(!session_matches(&plain, "dev"));
+}

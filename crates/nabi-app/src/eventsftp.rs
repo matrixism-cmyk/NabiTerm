@@ -42,6 +42,7 @@ impl NabiApp {
                     ctx.request_repaint();
                 }
             }
+            Event::SftpExecDone { cmd, out, code, .. } => self.on_remote_cmd_done(cmd, out, code),
             Event::SftpTree { seq, files, .. } => {
                 // 찾기와 동기화가 같은 번호줄을 쓴다 — 찾기가 자기 것이 아니면 동기화로 넘긴다.
                 if !self.on_find_tree(seq, files.clone()) {
@@ -89,6 +90,8 @@ impl NabiApp {
                 self.set_sftp_status(id, msg, ctx);
             }
             Event::SftpTransferDone { id, xfer, name, ok, message } => {
+                // 아래 층은 UI 언어를 모른다 — 키로 올라온 것을 여기서 우리말로 바꾼다.
+                let message = crate::errkey::human(self.lang, &message);
                 self.on_transfer_done(id, xfer, name, ok, message, ctx);
             }
             other => return Some(other), // SFTP 이벤트가 아니면 호출측으로 반환.

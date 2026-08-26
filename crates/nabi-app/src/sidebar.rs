@@ -97,6 +97,34 @@ impl NabiApp {
                         if ui.small_button("\u{2715}").clicked() { self.sidebar_rename_group = None; }
                     });
                 }
+                // 표식 칩 — 누르면 거르기 칸에 그 낱말이 들어간다. 다시 누르면 지워진다.
+                // 새 거르기 통로를 만들지 않는다: 칸 하나가 이름·호스트·표식을 다 본다.
+                ui.horizontal_wrapped(|ui| {
+                    for t in [
+                        nabi_session::SessionTag::Prod,
+                        nabi_session::SessionTag::Staging,
+                        nabi_session::SessionTag::Dev,
+                    ] {
+                        let w = t.word();
+                        let on = self.sidebar_filter.split_whitespace().any(|x| x == w);
+                        let (r8, g8, b8) = t.rgb();
+                        let txt = egui::RichText::new(tr(lang, t.key()))
+                            .small()
+                            .color(egui::Color32::from_rgb(r8, g8, b8));
+                        if ui.selectable_label(on, txt).clicked() {
+                            let mut words: Vec<String> = self
+                                .sidebar_filter
+                                .split_whitespace()
+                                .map(str::to_string)
+                                .filter(|x| x != w)
+                                .collect();
+                            if !on {
+                                words.push(w.to_string());
+                            }
+                            self.sidebar_filter = words.join(" ");
+                        }
+                    }
+                });
                 let filt = self.sidebar_filter.to_lowercase();
                 let vis: Vec<&SavedSession> = saved.iter().filter(|s| nabi_session::session_matches(s, &filt)).collect();
                 let cur_sel = self.sidebar_selected.clone();

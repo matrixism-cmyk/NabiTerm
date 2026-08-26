@@ -62,7 +62,8 @@ pub(crate) enum MenuAction {
     ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
     RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenCmdHistory, OpenSupportBundle,
-    CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), ToggleMark, PrevMark, NextMark, ClearMarks,
+    CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), BlockList, ToggleMark,
+    PrevMark, NextMark, ClearMarks, PrevFailed, NextFailed,
     TearOff,
     DockFloat,
     Arrange(ArrangeMode),
@@ -200,7 +201,16 @@ impl NabiApp {
                         action = Some(MenuAction::ResetTerm);
                         ui.close();
                     }
-                    if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close(); }
+                    // 명령 블록에 관한 것은 한 묶음으로 — 목록·오가기·출력 복사가 흩어져
+                    // 있으면 편집 메뉴가 길어지고, 같은 주제인 줄도 모른다.
+                    ui.menu_button(tr(lang, "blocks.group"), |ui| {
+                        if ui.button(tr(lang, "blocks.title")).clicked() { action = Some(MenuAction::BlockList); ui.close(); }
+                        ui.separator();
+                        if ui.button(tr(lang, "prompt.prevfail")).clicked() { action = Some(MenuAction::PrevFailed); ui.close(); }
+                        if ui.button(tr(lang, "prompt.nextfail")).clicked() { action = Some(MenuAction::NextFailed); ui.close(); }
+                        ui.separator();
+                        if ui.button(tr(lang, "cmd.copyoutput")).clicked() { action = Some(MenuAction::CopyLastOutput); ui.close(); }
+                    });
                     // 표식은 하위 묶음으로 — 항목 넷을 편집 메뉴에 늘어놓으면 메뉴가 길어진다.
                     ui.menu_button(tr(lang, "mark.group"), |ui| {
                         if ui.button(tr(lang, "mark.toggle")).clicked() { action = Some(MenuAction::ToggleMark); ui.close(); }

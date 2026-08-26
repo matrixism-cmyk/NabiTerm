@@ -250,6 +250,51 @@ impl RemoteFs for SftpFs {
         }
     }
 
+    /// 같은 SSH 연결에 exec 채널을 하나 열어 명령을 돌린다.
+    ///
+    /// SFTP 연결이 이미 SSH 위에 있으므로 **새로 붙지 않는다** — 다시 인증하지 않고,
+    /// 점프 호스트를 다시 타지도 않는다.
+    ///
+    /// 표준오류를 함께 모으는 이유: 명령이 실패하면 할 말은 대개 그쪽에 있다. 따로 두면
+    /// 화면이 비어 보이고 사용자는 아무 일도 안 일어난 줄 안다.
+    ///
+    /// `max`를 넘으면 **거기서 그만 모은다.** 서버가 기가바이트를 뱉는 명령을 돌릴 수도
+    /// 있는데, 그걸 다 담으면 우리가 죽는다.
+    async fn exec_remote(&mut self, cmd: &str, max: usize) -> Result<(String, Option<i32>), String> {
+        use russh::ChannelMsg;
+        let mut ch = self.handle.channel_open_session().await.map_err(|e| e.to_string())?;
+        ch.exec(true, cmd).await.map_err(|e| e.to_string())?;
+        let (mut buf, mut code, mut cut) = (Vec::new(), None, false);
+        loop {
+            match ch.wait().await {
+                // 표준출력과 표준오류를 한 흐름으로 모은다(서버가 보낸 순서 그대로).
+                Some(ChannelMsg::Data { data }) | Some(ChannelMsg::ExtendedData { data, .. }) => {
+                    if buf.len() < max {
+                        let room = max - buf.len();
+                        let take = room.min(data.len());
+                        buf.extend_from_slice(&data[..take]);
+                        cut |= take < data.len();
+                    } else {
+                        cut = true;
+                    }
+                }
+                Some(ChannelMsg::ExitStatus { exit_status }) => code = Some(exit_status as i32),
+                // **Eof에서 멈추면 안 된다.** 서버는 대개 Eof를 먼저 보내고 그 뒤에
+                // ExitStatus를 보낸다 — 여기서 끊으면 출력은 오는데 **종료 코드만 늘 빈다.**
+                // 실서버 시험이 이것을 잡았다(인프로세스 서버는 exec 자체가 없다).
+                Some(ChannelMsg::Eof) => {}
+                Some(ChannelMsg::Close) | None => break,
+                _ => {}
+            }
+        }
+        let mut out = String::from_utf8_lossy(&buf).into_owned();
+        if cut {
+            // 조용히 자르면 "이게 전부"로 읽힌다. 잘렸다는 사실은 화면에서 번역한다.
+            out.push_str("\n[exec.truncated]\n");
+        }
+        Ok((out, code))
+    }
+
     async fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), String> {
         let flags = OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNCATE;
         let h = self.raw.open(path, flags).await?;

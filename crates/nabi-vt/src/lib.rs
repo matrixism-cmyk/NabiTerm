@@ -9,6 +9,7 @@ mod altscroll;
 mod cache;
 pub mod cell;
 pub mod cursor;
+mod blocklist;
 mod dump;
 mod evsink;
 pub mod grid;
@@ -18,6 +19,7 @@ mod prompts;
 mod render;
 mod search;
 
+pub use blocklist::BlockInfo;
 pub use cell::{CursorShape, RenderCell, Theme};
 pub use cursor::CursorState;
 pub use grid::TermModel;

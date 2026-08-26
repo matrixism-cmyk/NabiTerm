@@ -9,8 +9,10 @@ use nabi_i18n::{tr, Lang};
 pub(crate) struct SftpAct {
     pub go: Option<String>,
     pub dl: Option<(String, u64)>,
+    /// 원격 명령: (이름, 고른 명령).
+    pub run_cmd: Option<(String, crate::remotecmd::RemoteOp)>,
     /// 서버 안에서 사본 만들기: (이름, 크기).
-    pub copy_here: Option<(String, u64)>,
+    pub copy_here: Option<(String, u64, bool)>,
     pub del: Option<String>,
     pub dldir: Option<String>,
     /// 폴더 크기 재귀 계산.

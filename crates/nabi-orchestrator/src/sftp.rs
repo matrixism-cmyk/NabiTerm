@@ -29,8 +29,10 @@ pub enum SftpReq {
     DownloadDir { xfer: u64, remote: String, local: String },
     DownloadDirSync { remote: String, local: String, done: std::sync::mpsc::Sender<bool> },
     UploadDir { xfer: u64, local: String, remote: String },
+    /// 서버에서 명령 한 줄 실행.
+    Exec { cmd: String },
     /// 서버 안에서 복사(큐 항목 xfer 로 진행률·완료를 짝짓는다).
-    Copy { xfer: u64, from: String, to: String },
+    Copy { xfer: u64, from: String, to: String, dir: bool },
     Chmod { path: String, mode: u32 },
     ChmodRec { path: String, mode: u32 },
     Search { root: String, needle: String },
@@ -182,13 +184,25 @@ pub fn spawn_sftp(
                     let res = fs.upload_dir(Path::new(&local), &remote, &mut p).await;
                     let _ = ev.send(transfer_done(id, xfer, &remote, res));
                 }
-                SftpReq::Copy { xfer, from, to } => {
+                SftpReq::Exec { cmd } => {
+                    // 상한은 넉넉히 두되 무한은 아니다 — 서버가 기가바이트를 뱉을 수 있다.
+                    let r = fs.exec_remote(&cmd, 256 * 1024).await;
+                    let (out, code) = match r {
+                        Ok(v) => v,
+                        Err(e) => (e, None),
+                    };
+                    let _ = ev.send(Event::SftpExecDone { id, cmd, out, code });
+                }
+                SftpReq::Copy { xfer, from, to, dir } => {
                     // 진행률은 전송과 같은 통로로 보낸다 — 큐에서 다른 전송과 나란히 보인다.
                     let ev2 = ev.clone();
                     let mut p = move |n: u64| {
                         let _ = ev2.send(Event::SftpProgress { id, xfer, bytes: n });
                     };
-                    let res = fs.copy_remote(&from, &to, &mut p).await.map(|_| ());
+                    let res = match dir {
+                        true => fs.copy_dir_remote(&from, &to, &mut p).await,
+                        false => fs.copy_remote(&from, &to, &mut p).await.map(|_| ()),
+                    };
                     let _ = ev.send(transfer_done(id, xfer, &to, res));
                 }
                 SftpReq::Chmod { path, mode } => {

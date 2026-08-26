@@ -192,6 +192,9 @@ impl NabiApp {
             if let Some(n) = pl.names.get(ord).filter(|n| !n.is_empty()) {
                 self.tab_names.insert(*p, n.clone());
             }
+            if pl.pins.get(ord).copied().unwrap_or(false) {
+                self.pinned_tabs.insert(*p);
+            }
             if let Some(c) = pl.colors.get(ord).filter(|c| c[3] != 0) {
                 self.tab_colors.insert(
                     *p,
@@ -211,7 +214,7 @@ impl NabiApp {
         count: usize,
     ) {
         if count != term_ordered.len() || ordered.is_empty() {
-            for ext in ["layout", "fonts", "names", "colors"] {
+            for ext in ["layout", "fonts", "names", "colors", "pins"] {
                 let _ = std::fs::remove_file(self.workspace_path.with_extension(ext));
             }
             return;
@@ -253,6 +256,18 @@ impl NabiApp {
             })
             .collect();
         self.write_sidecar("colors", &colors);
+        // 고정은 껐다 켜도 남아야 한다 — 안 그러면 고정이 아니라 이번 판 표시일 뿐이다.
+        let pins: Vec<bool> = term_ordered.iter().map(|p| self.pinned_tabs.contains(p)).collect();
+        self.write_sidecar("pins", &pins);
+    }
+
+    /// `.<ext>` 사이드카를 읽어 온다. 없거나 깨졌으면 기본값 — 워크스페이스 복원이
+    /// 사이드카 하나 때문에 통째로 실패하면 안 된다.
+    pub(crate) fn read_sidecar<T: serde::de::DeserializeOwned + Default>(&self, ext: &str) -> T {
+        std::fs::read_to_string(self.workspace_path.with_extension(ext))
+            .ok()
+            .and_then(|s| ron::from_str::<T>(&s).ok())
+            .unwrap_or_default()
     }
 
     /// 값을 RON으로 직렬화해 workspace 경로의 `.<ext>` 사이드카에 쓴다(실패는 무시).

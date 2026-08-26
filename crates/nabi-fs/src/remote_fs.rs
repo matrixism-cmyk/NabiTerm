@@ -56,6 +56,16 @@ pub trait RemoteFs: Send {
     ) -> Result<u64, String> {
         Err("서버 안 복사 미지원".into())
     }
+
+    /// **서버에서 명령 한 줄 실행.** 기본 미지원 — SFTP(SSH)만 구현한다.
+    ///
+    /// 표준출력과 표준오류를 **함께** 모아 돌려준다. 오류만 따로 두면 실패했을 때 화면이
+    /// 비어 보이고, 사용자는 아무 일도 안 일어난 줄 안다.
+    ///
+    /// 돌려주는 것은 (모은 글, 종료 코드). 종료 코드는 서버가 안 줄 수도 있어 Option이다.
+    async fn exec_remote(&mut self, _cmd: &str, _max: usize) -> Result<(String, Option<i32>), String> {
+        Err("원격 명령 미지원".into())
+    }
 }
 
 /// 백엔드 무관 파일 트리 수집(동기화 계획용) — root 아래 파일을 (상대경로, 크기, mtime)으로.

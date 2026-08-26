@@ -162,6 +162,10 @@ pub struct NabiApp {
     pub sync_seq: u64,
     /// 원격 파일 찾기 창(sftpfindui). None이면 닫혀 있다.
     pub sftp_find: Option<crate::sftpfindui::SftpFind>,
+    /// 확인 대기 중인 원격 명령(remotecmdui). 실행 전에 전문을 보여 준다.
+    pub rcmd_pending: Option<crate::remotecmdui::PendingCmd>,
+    /// 원격 명령 결과 창.
+    pub rcmd_result: Option<crate::remotecmdui::CmdResult>,
     /// 접속 이력(파일로 남는다 — connhist). 창이 열려 있으면 conn_hist_open.
     pub conn_hist: Vec<crate::connhist::Entry>,
     pub conn_hist_open: bool,
@@ -286,6 +290,15 @@ pub struct NabiApp {
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,
     /// pane별 스크롤백 표식 — 긴 로그에서 되짚을 자리(scrollmark).
+    /// **고정한 탭** — 실수로 닫히지 않는다.
+    ///
+    /// 편집기만이 아니라 아무 탭이나 고정할 수 있게 뒀다. 자리를 지키고 싶은 것은
+    /// 문서만이 아니고(운영 서버 셸이 더 그렇다), 드는 품도 같기 때문이다.
+    pub pinned_tabs: std::collections::HashSet<PaneId>,
+    /// 명령 블록 목록 창이 열려 있나.
+    pub block_list_open: bool,
+    /// 그 창에서 실패한 것만 보고 있나.
+    pub block_list_failed_only: bool,
     pub scroll_marks: HashMap<PaneId, crate::scrollmark::Marks>,
     /// 세션(접속 정보)별 마지막 연결 실패 — 목록에서 왜 안 붙었는지 보여 준다.
     pub last_fail: crate::lastfail::FailMap,

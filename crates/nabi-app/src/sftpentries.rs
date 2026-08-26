@@ -135,8 +135,10 @@ pub(crate) enum EClick {
     Chmod(String, u32),
     /// 권한 재귀 적용(하위 전부).
     ChmodRecursive(String, u32),
+    /// 이 파일에 원격 명령을 돌린다(remotecmd의 목록에서 고른 것).
+    RunCmd(String, crate::remotecmd::RemoteOp),
     /// 같은 폴더에 사본 만들기(서버 안에서 복사 — 받았다 올리지 않는다). (이름, 크기).
-    CopyHere(String, u64),
+    CopyHere(String, u64, bool),
     Rename(String),
     Delete(String),
     /// 로컬 경로를 이 (폴더, 로컬경로)로 업로드(폴더 행 드롭).

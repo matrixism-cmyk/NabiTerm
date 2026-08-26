@@ -11,12 +11,14 @@ use nabi_fs::{FileKind, RemoteFs};
 pub struct DirProgress<'c> {
     /// 완료된 파일들의 누적 바이트(진행 중 파일의 부분 진행은 여기에 더해 보고한다).
     pub done: u64,
+    /// 건너뛴 것(링크 등) 개수 — 조용히 빠뜨리면 복사가 덜 된 줄 모른다.
+    pub skipped: usize,
     pub cb: &'c mut (dyn FnMut(u64) + Send),
 }
 
 impl DirProgress<'_> {
     /// 진행 중 파일의 부분 바이트를 얹어 보고한다.
-    fn report(&mut self, partial: u64) {
+    pub(crate) fn report(&mut self, partial: u64) {
         let total = self.done + partial;
         (self.cb)(total);
     }
@@ -26,7 +28,7 @@ impl SftpFs {
     /// 원격 디렉터리를 로컬로 재귀 다운로드한다(하위 폴더·파일 전부).
     pub async fn download_dir(&mut self, remote: &str, local: &std::path::Path) -> Result<(), String> {
         let mut noop = |_: u64| {};
-        let mut p = DirProgress { done: 0, cb: &mut noop };
+        let mut p = DirProgress { done: 0, skipped: 0, cb: &mut noop };
         self.download_dir_progress(remote, local, &mut p).await
     }
 
@@ -62,7 +64,7 @@ impl SftpFs {
     /// 로컬 디렉터리를 원격으로 재귀 업로드한다(하위 폴더·파일 전부, 원격 폴더 생성).
     pub async fn upload_dir(&mut self, local: &std::path::Path, remote: &str) -> Result<(), String> {
         let mut noop = |_: u64| {};
-        let mut p = DirProgress { done: 0, cb: &mut noop };
+        let mut p = DirProgress { done: 0, skipped: 0, cb: &mut noop };
         self.upload_dir_progress(local, remote, &mut p).await
     }
 

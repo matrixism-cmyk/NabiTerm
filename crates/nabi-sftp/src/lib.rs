@@ -9,6 +9,7 @@ pub mod hashcheck;
 mod linkres;
 mod pipeline;
 pub mod raw;
+mod copytree;
 mod recurse;
 pub mod session;
 mod xfer;

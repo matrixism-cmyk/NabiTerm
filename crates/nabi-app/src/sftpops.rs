@@ -12,8 +12,16 @@ impl NabiApp {
         // 서버 안에서 사본 만들기. 같은 폴더라 이름이 겹칠 수밖에 없으므로 사본 이름을
         // 붙인다 — 로컬 브라우저의 복제와 **같은 규칙**을 쓴다(두 곳이 다르게 지으면
         // 사용자가 규칙을 두 번 배워야 한다).
-        if let Some((name, size)) = a.copy_here.take() {
-            self.start_remote_copy(&name, size);
+        // 고른 파일들에 명령을 건다. 여러 개 골랐으면 한 번에 넘긴다.
+        if let Some((name, op)) = a.run_cmd.take() {
+            let mut names = self.sftp.multi.iter().cloned().collect::<Vec<_>>();
+            if names.is_empty() {
+                names.push(name);
+            }
+            self.prepare_remote_cmd(op, names);
+        }
+        if let Some((name, size, dir)) = a.copy_here.take() {
+            self.start_remote_copy(&name, size, dir);
         }
         if let Some(name) = a.dirsize.take() {
             if let Some(id) = self.sftp.id {
@@ -73,7 +81,7 @@ impl NabiApp {
     }
 
     /// 같은 폴더에 사본을 만든다(서버 안에서). 큐에 넣어 진행률·취소를 그대로 쓴다.
-    fn start_remote_copy(&mut self, name: &str, size: u64) {
+    fn start_remote_copy(&mut self, name: &str, size: u64, dir: bool) {
         let Some(id) = self.sftp.id else { return };
         // 지금 목록에 있는 이름들을 피해 사본 이름을 짓는다.
         let taken: Vec<String> = self.sftp.entries.iter().map(|e| e.name.clone()).collect();
@@ -95,6 +103,7 @@ impl NabiApp {
             xfer,
             from,
             to,
+            dir,
         });
     }
 }

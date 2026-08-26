@@ -6,6 +6,7 @@ use crate::selection::Sel;
 use nabi_orchestrator::OrchestratorHandle;
 use nabi_proto::Command;
 use nabi_types::{GridSize, PaneId};
+use nabi_i18n::tr;
 use nabi_vt::Theme;
 use std::collections::HashMap;
 
@@ -23,6 +24,8 @@ pub struct TermTabViewer<'a> {
     pub find: Option<String>,
     /// 키워드 하이라이트 규칙(설정). 출력에서 이 단어들을 일치 색으로 표시.
     pub highlights: &'a [String],
+    /// 고정된 탭들 — 닫기 단추를 감추고 제목에 압정을 붙인다.
+    pub pinned: &'a mut std::collections::HashSet<PaneId>,
     /// 사용자 지정 탭 이름(PaneId별). 비어 있으면 기본 제목 사용.
     pub tab_names: &'a mut HashMap<PaneId, String>,
     pub lang: nabi_i18n::Lang,
@@ -165,6 +168,8 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
     }
 
     fn title(&mut self, tab: &mut PaneId) -> egui::WidgetText {
+        // 압정은 맨 앞에 — 닫기 단추가 없는 까닭을 한눈에 알려 준다.
+        let pin = if self.pinned.contains(tab) { "\u{1f4cc} " } else { "" };
         // pane ID 배지(설정 시) — 제어 평면 `nabi cli --pane <N>` 타깃 참조용.
         // 브라우저 탭은 UI 전용이라 제외(오케스트레이터 pane이 아님).
         let mut id = if self.show_pane_ids { format!("#{} ", tab.get()) } else { String::new() };
@@ -184,25 +189,31 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
                 .file_name()
                 .map(|s| s.to_string_lossy().into_owned())
                 .unwrap_or_else(|| b.path.display().to_string());
-            return format!("\u{1f4c1} {name}").into();
+            return format!("{pin}\u{1f4c1} {name}").into();
         }
         if let Some(e) = self.editors.get(tab) {
             let star = if e.dirty { " \u{25cf}" } else { "" }; // 미저장 ● — 본문 헤더·VS Code와 통일.
-            return format!("\u{270e} {}{star}", e.title).into();
+            return format!("{pin}\u{270e} {}{star}", e.title).into();
         }
         if let Some(host) = self.remote_host(*tab) {
             // 원격 패널도 브라우저 탭처럼 UI 전용이라 pane ID 배지를 붙이지 않는다.
             // 붙이면 내부 채번(u64::MAX-n)이 그대로 새어 "#18446744073709551614"가 보인다.
             let h = if host.is_empty() { "SFTP".to_string() } else { host };
-            return format!("\u{1f5a7} {h}").into();
+            return format!("{pin}\u{1f5a7} {h}").into();
         }
         let base =
             crate::tabmenu::tab_title(self.orch, self.tab_names, self.activity, self.cwds, tab);
         if self.broadcast && self.broadcast_group.contains(tab) {
-            format!("{id}\u{21c9} {base}").into()
+            format!("{pin}{id}\u{21c9} {base}").into()
         } else {
-            format!("{id}{base}").into()
+            format!("{pin}{id}{base}").into()
         }
+    }
+
+    /// **고정한 탭에는 닫기 단추가 없다.** 고정의 뜻이 여기에 있다 — 실수로 누르는
+    /// 일을 막는 것이지, 못 닫게 하는 것이 아니다(우클릭에서 고정을 풀면 닫힌다).
+    fn closeable(&mut self, tab: &mut PaneId) -> bool {
+        !self.pinned.contains(tab)
     }
 
     fn on_add(&mut self, path: egui_dock::NodePath) {
@@ -212,6 +223,17 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
 
     fn context_menu(&mut self, ui: &mut egui::Ui, tab: &mut PaneId, _path: egui_dock::NodePath) {
         *self.tab_ctx_tab = Some(*tab); // 어느 탭의 메뉴가 열려 있는지 기록(#3 중복 방지 판정용).
+        // 고정은 맨 위에 둔다 — 메뉴가 길어 아래로 내려가면 못 찾는다.
+        let pinned = self.pinned.contains(tab);
+        let label = if pinned { "tab.unpin" } else { "tab.pin" };
+        if ui.button(tr(self.lang, label)).clicked() {
+            match pinned {
+                true => self.pinned.remove(tab),
+                false => self.pinned.insert(*tab),
+            };
+            ui.close();
+        }
+        ui.separator();
         let is_ssh = matches!(
             self.pane_origins.get(tab),
             Some(nabi_session::SessionKind::Ssh { .. })

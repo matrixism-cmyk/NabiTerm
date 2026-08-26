@@ -97,6 +97,20 @@ impl SessionTag {
     }
 
     /// **되돌릴 수 없는 곳인가.** 붙여넣기·일괄 실행 전에 한 번 더 묻는 기준이다.
+    /// 거르기에 쓰는 **고정 낱말**. 화면 언어와 무관하다.
+    ///
+    /// `key()`는 i18n 키(`tag.prod` 같은)라 사용자가 칠 만한 말이 아니다. 여기서는
+    /// 짧고 외우기 쉬운 영문 한 낱말을 쓴다 — 칩을 누르면 이 낱말이 들어간다.
+    pub fn word(self) -> &'static str {
+        match self {
+            SessionTag::None => "",
+            SessionTag::Prod => "prod",
+            SessionTag::Staging => "staging",
+            SessionTag::Dev => "dev",
+            SessionTag::Note => "note",
+        }
+    }
+
     pub fn is_risky(self) -> bool {
         matches!(self, SessionTag::Prod)
     }
@@ -140,7 +154,12 @@ pub fn session_matches(s: &SavedSession, query: &str) -> bool {
     if q.is_empty() {
         return true;
     }
-    let mut t = format!("{} {}", s.name, s.folder.as_deref().unwrap_or(""));
+    // 표식도 거르기에 넣는다 — 세션이 늘면 "운영만 보기"가 이름 검색만큼 자주 필요하다.
+    //
+    // 표식 이름 대신 **고정된 낱말**(prod·staging·dev·note)로 맞춘다. 화면 언어가 바뀌어도
+    // 같은 낱말이 통하고, 이 크레이트가 화면 언어를 알 필요도 없다(층 분리).
+    // 사용자는 사이드바의 표식 칩을 눌러 그 낱말을 넣는다 — 외워야 할 것은 없다.
+    let mut t = format!("{} {} {}", s.name, s.folder.as_deref().unwrap_or(""), s.tag.word());
     if let SessionKind::Ssh { host, user, .. } = &s.kind {
         t.push_str(&format!(" {host} {user}"));
     }

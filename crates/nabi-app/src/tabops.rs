@@ -133,12 +133,8 @@ impl NabiApp {
     /// 포커스된 탭만 남기고 나머지를 닫는다.
     pub(crate) fn close_other_tabs(&mut self) {
         if let Some(keep) = self.focused_pane() {
-            let others: Vec<nabi_types::PaneId> = self
-                .dock
-                .iter_all_tabs()
-                .map(|(_, p)| *p)
-                .filter(|p| *p != keep)
-                .collect();
+            let all: Vec<nabi_types::PaneId> = self.dock.iter_all_tabs().map(|(_, p)| *p).collect();
+            let others = others_to_close(&all, keep, &self.pinned_tabs);
             for p in others {
                 self.orch.send(nabi_proto::Command::ClosePane { pane: p });
             }
@@ -262,5 +258,51 @@ impl NabiApp {
                 }
             }
         }
+    }
+}
+
+/// **닫힐 탭만 골라낸다** — 보고 있는 탭과 고정한 탭은 남긴다.
+///
+/// 순수 함수로 떼어 둔 까닭: "다른 탭 닫기"는 되돌릴 수 없는 일이라 규칙을
+/// 눈으로 확인할 수 있어야 한다. 도크 상태를 띄우지 않고는 시험할 길이 없다.
+pub(crate) fn others_to_close(
+    all: &[nabi_types::PaneId],
+    keep: nabi_types::PaneId,
+    pinned: &std::collections::HashSet<nabi_types::PaneId>,
+) -> Vec<nabi_types::PaneId> {
+    all.iter().copied().filter(|p| *p != keep && !pinned.contains(p)).collect()
+}
+
+#[cfg(test)]
+mod close_tests {
+    use super::others_to_close;
+    use nabi_types::PaneId;
+    use std::collections::HashSet;
+
+    fn p(n: u64) -> PaneId {
+        PaneId::new(n)
+    }
+
+    #[test]
+    fn the_focused_tab_is_never_closed() {
+        let all = [p(1), p(2), p(3)];
+        let got = others_to_close(&all, p(2), &HashSet::new());
+        assert_eq!(got, vec![p(1), p(3)]);
+    }
+
+    /// **고정한 탭은 살아남는다** — E2가 보장하려는 것이 바로 이것이다.
+    #[test]
+    fn a_pinned_tab_survives_close_others() {
+        let all = [p(1), p(2), p(3), p(4)];
+        let pinned: HashSet<PaneId> = [p(3)].into_iter().collect();
+        assert_eq!(others_to_close(&all, p(1), &pinned), vec![p(2), p(4)]);
+    }
+
+    /// 전부 고정돼 있으면 아무것도 닫지 않는다(빈 목록이지 오류가 아니다).
+    #[test]
+    fn pinning_everything_closes_nothing() {
+        let all = [p(1), p(2)];
+        let pinned: HashSet<PaneId> = all.iter().copied().collect();
+        assert!(others_to_close(&all, p(1), &pinned).is_empty());
     }
 }

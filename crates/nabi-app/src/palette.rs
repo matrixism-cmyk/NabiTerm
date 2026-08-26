@@ -29,6 +29,7 @@ pub(crate) enum PaletteAction {
     PrevPrompt,
     NextPrompt,
     /// 지금 보는 자리에 표식을 남기거나 지운다(scrollmark).
+    BlockList,
     ToggleMark,
     PrevMark,
     NextMark,
@@ -37,6 +38,9 @@ pub(crate) enum PaletteAction {
     SftpFind,
     /// 접속 이력 창(connhistui).
     ConnHistory,
+    /// 실패한 명령으로만 오간다(prompts).
+    PrevFailed,
+    NextFailed,
     ResetTerm,
     QuickConnect,
     ToggleBroadcast,

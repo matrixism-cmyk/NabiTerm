@@ -18,6 +18,26 @@ impl NabiApp {
     }
 
     /// 포커스 pane을 이전/다음 프롬프트(OSC 133;A 기록)로 스크롤한다(팔레트 액션).
+    /// **실패한 명령으로만** 오간다. 없으면 없다고 말한다 — 눌렀는데 아무 일도 없으면
+    /// 고장으로 읽힌다.
+    pub(crate) fn jump_failed(&mut self, next: bool) {
+        let Some(p) = self.focused_pane() else { return };
+        let moved = self
+            .orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&p).cloned())
+            .and_then(|v| v.model.lock().ok().map(|mut md| md.jump_failed_prompt(!next)))
+            .unwrap_or(false);
+        if !moved {
+            self.notify = Some((
+                nabi_i18n::tr(self.lang, "prompt.nofail").to_string(),
+                std::time::Instant::now(),
+            ));
+        }
+    }
+
     pub(crate) fn jump_prompt(&mut self, next: bool) {
         let Some(p) = self.focused_pane() else { return };
         if let Some(v) = self.orch.panes.read().ok().and_then(|m| m.get(&p).cloned()) {

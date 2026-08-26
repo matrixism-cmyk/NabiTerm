@@ -109,7 +109,7 @@ impl Conn {
     ) -> Result<(), String> {
         match self {
             Conn::Sftp(f) => {
-                let mut prog = nabi_sftp::DirProgress { done: 0, cb: p };
+                let mut prog = nabi_sftp::DirProgress { done: 0, skipped: 0, cb: p };
                 f.download_dir_progress(remote, local, &mut prog).await
             }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 다운로드 미지원".to_string()),
@@ -124,7 +124,7 @@ impl Conn {
     ) -> Result<(), String> {
         match self {
             Conn::Sftp(f) => {
-                let mut prog = nabi_sftp::DirProgress { done: 0, cb: p };
+                let mut prog = nabi_sftp::DirProgress { done: 0, skipped: 0, cb: p };
                 f.upload_dir_progress(local, remote, &mut prog).await
             }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 업로드 미지원".to_string()),
@@ -172,6 +172,14 @@ impl Conn {
             Conn::Ftp(f) => f.chmod(path, mode).await, // FTP는 단일 적용.
         }
     }
+    /// 서버에서 명령 한 줄 실행. **FTP는 못 한다** — 명령을 돌릴 통로가 없다.
+    pub(crate) async fn exec_remote(&mut self, cmd: &str, max: usize) -> Result<(String, Option<i32>), String> {
+        match self {
+            Conn::Sftp(f) => f.exec_remote(cmd, max).await,
+            Conn::Ftp(_) => Err("sftp.exec.ftp".to_string()),
+        }
+    }
+
     /// 서버 안에서 복사. **FTP는 못 한다** — 프로토콜에 그런 명령이 없다.
     ///
     /// 못 하는 것을 되는 척하며 받았다 다시 올리면, 사용자는 왜 이 파일만 오래 걸리는지
@@ -186,6 +194,22 @@ impl Conn {
     ) -> Result<u64, String> {
         match self {
             Conn::Sftp(f) => f.copy_remote(from, to, tick).await,
+            Conn::Ftp(_) => Err("sftp.copy.ftp".to_string()),
+        }
+    }
+
+    /// 폴더째 서버 안에서 복사(재귀). FTP는 못 한다.
+    pub(crate) async fn copy_dir_remote(
+        &mut self,
+        from: &str,
+        to: &str,
+        p: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<(), String> {
+        match self {
+            Conn::Sftp(f) => {
+                let mut prog = nabi_sftp::DirProgress { done: 0, skipped: 0, cb: p };
+                f.copy_dir_remote(from, to, &mut prog).await
+            }
             Conn::Ftp(_) => Err("sftp.copy.ftp".to_string()),
         }
     }

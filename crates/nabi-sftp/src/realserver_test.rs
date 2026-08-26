@@ -329,3 +329,89 @@ async fn realserver_copies_within_the_server() {
     let _ = fs.remove(src).await;
     let _ = fs.remove(dst).await;
 }
+
+/// 실 서버에서 **폴더째 서버 안 복사**(재귀) 검증.
+///
+/// 파일 하나 복사와 다른 점은 `mkdir`과 목록 읽기가 섞인다는 것이다 — 서버가 이미 있는
+/// 폴더에 `mkdir`을 어떻게 답하는지, 목록에 `.`/`..`을 넣는지가 판마다 다르다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_copies_a_whole_folder() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    let (src, dst) = ("nabi_realtest_tree", "nabi_realtest_tree_copy");
+    // 하위 폴더까지 만들어 재귀가 실제로 도는지 본다(한 겹이면 재귀인지 알 수 없다).
+    let _ = fs.mkdir(src).await;
+    let _ = fs.mkdir(&format!("{src}/sub")).await;
+    let a: Vec<u8> = (0..40_000u32).map(|i| (i % 251) as u8).collect();
+    fs.write_file(&format!("{src}/a.bin"), &a).await.expect("write a");
+    fs.write_file(&format!("{src}/sub/b.txt"), b"hello nabi").await.expect("write b");
+
+    let mut last = 0u64;
+    let mut cb = |n: u64| last = n;
+    let mut prog = crate::DirProgress { done: 0, skipped: 0, cb: &mut cb };
+    fs.copy_dir_remote(src, dst, &mut prog).await.expect("copy dir");
+
+    let got_a = fs.read_file(&format!("{dst}/a.bin")).await.expect("read a");
+    assert_eq!(got_a, a, "하위 파일 내용이 달라졌다");
+    let got_b = fs.read_file(&format!("{dst}/sub/b.txt")).await.expect("read b");
+    assert_eq!(got_b, b"hello nabi", "하위 폴더 파일이 안 왔다");
+    assert!(last > 0, "진행률이 한 번도 오지 않았다");
+
+    // **자기 안으로 복사하는 것은 거절해야 한다** — 안 그러면 디스크가 찰 때까지 돈다.
+    let inner = format!("{src}/inner");
+    let mut noop = |_: u64| {};
+    let mut p2 = crate::DirProgress { done: 0, skipped: 0, cb: &mut noop };
+    let err = fs.copy_dir_remote(src, &inner, &mut p2).await.expect_err("자기 안으로 복사가 됐다");
+    assert_eq!(err, "sftp.copy.intoself");
+
+    for f in [format!("{dst}/sub/b.txt"), format!("{dst}/a.bin"), format!("{src}/sub/b.txt"), format!("{src}/a.bin")] {
+        let _ = fs.remove(&f).await;
+    }
+    for d in [format!("{dst}/sub"), dst.to_string(), format!("{src}/sub"), src.to_string()] {
+        let _ = fs.remove(&d).await; // remove가 폴더면 rmdir로 넘어간다(raw.rs).
+    }
+}
+
+/// 실 서버에서 **명령 한 줄 실행** — 인프로세스 서버는 exec 를 구현하지 않아 여기서만 볼 수 있다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_runs_a_command() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    let (out, code) = fs.exec_remote("echo nabi-exec-ok", 64 * 1024).await.expect("exec");
+    assert!(out.contains("nabi-exec-ok"), "출력이 안 왔다: {out:?}");
+    assert_eq!(code, Some(0), "성공한 명령의 종료 코드가 0이 아니다");
+}
+
+/// **표준오류도 함께 모아야 한다** — 실패했을 때 할 말은 대개 그쪽에 있다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_exec_keeps_stderr_and_exit_code() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    // 없는 파일을 보면 셸이 표준오류로 말하고 0이 아닌 코드로 끝난다.
+    let (out, code) = fs.exec_remote("ls /nabi-no-such-path-xyz", 64 * 1024).await.expect("exec");
+    assert!(!out.trim().is_empty(), "표준오류를 버렸다 — 화면이 비어 보인다");
+    assert_ne!(code, Some(0), "실패한 명령이 0으로 끝났다: {out:?}");
+}
+
+/// **많이 뱉는 명령에 우리가 죽지 않아야 한다.** 상한에서 끊고 끊겼다고 말한다.
+///
+/// 많이 뱉게 하는 방법이 셸마다 다르다. 이 시험은 POSIX 셸에서만 뜻이 있으므로,
+/// 아니면 **건너뛴다고 말하고** 넘어간다 — 조용히 통과시키면 검증한 척이 된다
+/// (이 머신의 서버는 Windows OpenSSH라 기본 셸이 cmd.exe다).
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_exec_stops_at_the_cap() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    let (probe, _) = fs.exec_remote("uname -s", 4096).await.expect("probe");
+    if !probe.to_lowercase().contains("linux") && !probe.to_lowercase().contains("darwin") {
+        eprintln!("POSIX 셸이 아니다({}) — 상한 시험 건너뜀", probe.trim());
+        return;
+    }
+    let (out, _) = fs.exec_remote("yes nabi | head -c 300000", 4096).await.expect("exec");
+    assert!(out.len() < 20_000, "상한을 넘겨 모았다: {}바이트", out.len());
+    assert!(out.contains("exec.truncated"), "잘렸는데 말하지 않았다");
+}
