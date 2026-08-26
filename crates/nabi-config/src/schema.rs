@@ -243,6 +243,16 @@ pub struct TerminalCfg {
     /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
     #[serde(default)]
     pub auto_reply: bool,
+    /// **오프라인 모드** — 사용자가 시키지 않은 바깥 호출을 하지 않는다.
+    ///
+    /// 폐쇄망(정부·금융·공장)에서는 그런 호출이 보안 경보를 띄우고 프록시 로그에 남는다.
+    /// 사용자가 단추를 눌러 시작한 일(글꼴 내려받기 등)은 막지 않는다 — 눌렀는데 아무
+    /// 일도 없으면 그건 보호가 아니라 고장이다.
+    #[serde(default)]
+    pub offline_mode: bool,
+    /// 상태바에 공인 IP를 보여 준다(제삼자 서비스에 조회). **기본 켬**(지금 동작 유지).
+    #[serde(default = "yes")]
+    pub public_ip_lookup: bool,
     /// 명령 히스토리에 남길 때 비밀로 보이는 값을 가린다. **기본 켬.**
     ///
     /// 끄면 명령이 있는 그대로 설정 파일에 쌓인다 — 그 파일은 밖으로 나가기 쉽다.
@@ -439,6 +449,8 @@ impl Default for TerminalCfg {
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
             auto_reply: false,
+            offline_mode: false,
+            public_ip_lookup: true,
             redact_history: true,
             redact_logs: true,
             session_log_auto: false,

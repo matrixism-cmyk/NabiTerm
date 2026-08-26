@@ -11,6 +11,7 @@ impl NabiApp {
         }
         let lang = self.lang;
         let cfg_dir = self.config_path.parent().map(|p| p.to_path_buf());
+        let offline = self.config.terminal.offline_mode;
         let updater = self.updater.clone();
         let quit = self.update_quit.clone();
         let cat_id = egui::Id::new("help_cat");
@@ -24,6 +25,8 @@ impl NabiApp {
                     | nabi_release::UpdateStatus::Downloading(_)
                     | nabi_release::UpdateStatus::Downloaded(..)
             ) {
+                // 여기는 사용자가 도움말을 **연** 것이므로 오프라인이어도 막지 않는다.
+                // 눌렀는데 아무 일도 없으면 그건 보호가 아니라 고장이다.
                 updater.check_async();
             }
         }
@@ -64,6 +67,7 @@ impl NabiApp {
                                 3 => crate::helppages::agent_page(
                                     ui, lang, &mut copy, &mut save, &mut open_env,
                                 ),
+                                4 => crate::helppages::network_page(ui, lang, offline),
                                 _ => crate::helppages::licenses_page(ui, lang),
                             });
                     });

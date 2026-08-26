@@ -4,13 +4,44 @@ use nabi_i18n::{tr, Lang};
 use std::path::Path;
 
 /// 좌측 내비 카테고리(i18n 키). 인덱스가 페이지 번호.
-pub(crate) const HELP_CATS: [&str; 5] = [
+pub(crate) const HELP_CATS: [&str; 6] = [
     "help.cat.about",
     "help.cat.keys",
     "help.cat.features",
     "help.cat.agent",
+    "help.cat.network",
     "help.cat.licenses",
 ];
+
+/// **이 프로그램이 연결하는 곳** — 보안 검토에서 반드시 나오는 질문에 대한 답.
+///
+/// 목록은 `egress::ALL`에서 읽는다. 문서에만 적어 두면 코드가 바뀔 때 **조용히 틀린
+/// 답**이 되기 때문이다. 새 호출을 넣는 사람은 그 표에 한 줄을 더해야 한다.
+pub(crate) fn network_page(ui: &mut egui::Ui, lang: Lang, offline: bool) {
+    ui.heading(tr(lang, "help.cat.network"));
+    ui.label(tr(lang, "help.net.intro"));
+    ui.add_space(6.0);
+    if offline {
+        ui.colored_label(crate::theme_ui::OK, tr(lang, "help.net.offlineon"));
+        ui.add_space(6.0);
+    }
+    egui::Grid::new("help_egress").num_columns(3).spacing([16.0, 4.0]).show(ui, |ui| {
+        ui.strong(tr(lang, "help.net.host"));
+        ui.strong(tr(lang, "help.net.why"));
+        ui.strong(tr(lang, "help.net.when"));
+        ui.end_row();
+        for e in crate::egress::ALL {
+            ui.monospace(e.host);
+            ui.label(tr(lang, e.why));
+            // 시키지 않은 호출은 오프라인 모드가 막는다 — 그 사실이 표에서 보여야 한다.
+            match e.unattended {
+                true => ui.label(tr(lang, "help.net.auto")),
+                false => ui.weak(tr(lang, "help.net.manual")),
+            };
+            ui.end_row();
+        }
+    });
+}
 
 /// 기능 안내 — 우클릭 컨텍스트 메뉴·팔레트에 숨은 주요 기능을 발견하도록 요약.
 pub(crate) fn features_page(ui: &mut egui::Ui, lang: Lang) {

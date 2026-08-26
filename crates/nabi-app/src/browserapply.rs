@@ -261,9 +261,8 @@ impl NabiApp {
             }
         }
         if let Some(name) = a.upload {
-            for n in bulk(&name, &self.browser.multi.clone()) {
-                self.upload_local_path(path.join(&n)); // SFTP 업로드(다중 선택 일괄).
-            }
+            let names = bulk(&name, &self.browser.multi.clone());
+            self.upload_with_warning(names.iter().map(|n| path.join(n)).collect());
         }
         if a.cd_here {
             // 활성 탭이 실제 셸 pane이면 거기로 cd, 아니면(브라우저/에디터 탭 등) 새 터미널을 그 폴더에 연다.

@@ -158,6 +158,8 @@ pub struct EditorAct {
     /// nabiPad 자체 설정 창 열기 요청(메뉴 ▸ 설정).
     pub open_settings: bool,
     /// 파일 메뉴 ▸ 새 문서 / 열기(파일 대화상자) 요청(단독 에디터 필수).
+    /// 이 문서에서 비밀로 보이는 줄을 찾는다(막지 않고 알려 주기만 한다).
+    pub find_secrets: bool,
     /// diff 문서에서 한쪽 글을 복원해 새 문서로 연다(`Left`/`Right`).
     pub diff_restore: Option<crate::diffapply::Side>,
     /// 커서 앞 낱말을 문서 안의 낱말로 완성(되풀이하면 다음 후보).

@@ -11,8 +11,18 @@ pub(crate) struct NetInfo {
 
 impl NetInfo {
     /// 로컬 IP를 즉시 구하고, 공인 IP는 백그라운드 스레드로 조회한다(UI 비차단).
-    pub(crate) fn new() -> Self {
+    ///
+    /// `lookup`이 거짓이면 **바깥으로 나가지 않는다.** 공인 IP 조회는 내 IP를 제삼자에게
+    /// 알려 주는 일이라, 원하지 않는 사람은 끌 수 있어야 한다(폐쇄망에서는 더욱).
+    pub(crate) fn new(lookup: bool) -> Self {
         let public = Arc::new(Mutex::new("\u{2026}".to_string())); // 조회 전엔 "…".
+        if !lookup {
+            // 안 하는 것과 못 하는 것은 다르다 — `?`(실패)가 아니라 `—`(안 함)로 둔다.
+            if let Ok(mut g) = public.lock() {
+                *g = "\u{2014}".to_string();
+            }
+            return Self { local: local_ipv4(), public };
+        }
         let p = public.clone();
         std::thread::spawn(move || {
             let ip = fetch_public_ip().unwrap_or_else(|| "?".to_string());

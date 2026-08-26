@@ -42,6 +42,7 @@ impl eframe::App for NabiApp {
             nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);
             // 팔레트도 같은 길로 — `ansi16` 한 곳이 이 값을 본다.
             nabi_types::palette::set_active(nabi_types::palette::Palette::from_name(&self.config.appearance.palette));
+            crate::egress::set_offline(self.config.terminal.offline_mode);
             nabi_sftp::SFTP_VERIFY_HASH.store(self.config.terminal.sftp_verify_hash, std::sync::atomic::Ordering::Relaxed);
             nabi_sftp::set_name_charset(&self.config.terminal.sftp_name_charset); // 파일명 인코딩(CP949 서버 한글).
             nabi_sftp::set_upload_mode(&self.config.terminal.sftp_upload_mode); // 업로드 권한 정규화.
@@ -82,7 +83,10 @@ impl eframe::App for NabiApp {
             }
             // 시작 시 자동 업데이트 확인(옵션) — 백그라운드 스레드, UI 비차단.
             // "일주일 후에" 스누즈 기간 중이면 건너뛴다.
+            // 오프라인 모드면 **묻지 않은 호출**은 하지 않는다 — 폐쇄망에서는 이 한 번이
+            // 프록시 로그에 남고 보안 경보를 띄운다.
             if self.config.terminal.auto_check_update
+                && crate::egress::may_call_unattended()
                 && crate::updatemodal::now_unix() >= self.config.terminal.update_remind_after
             {
                 self.updater.check_async();

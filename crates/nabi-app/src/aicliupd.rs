@@ -121,6 +121,10 @@ impl crate::app::NabiApp {
     pub(crate) fn start_ai_cli_auto_update(&mut self) {
         let now = crate::updatemodal::now_unix();
         let cfg = &self.config.terminal;
+        // 자동 갱신도 **묻지 않은 호출**이다 — 오프라인 모드면 하지 않는다.
+        if !crate::egress::may_call_unattended() {
+            return;
+        }
         if !cfg.ai_cli_auto_update || now - cfg.ai_cli_checked_at < DAY_SECS {
             return;
         }

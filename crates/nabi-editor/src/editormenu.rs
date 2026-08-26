@@ -66,6 +66,11 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                     }
                 });
             }
+            // 저장을 막지 않는다 — 눌러서 확인하는 명령이다(오탐이 일을 가로막지 않게).
+            if ui.button(tr(lang, "editor.findsecrets")).clicked() {
+                act.find_secrets = true;
+                ui.close();
+            }
             // 낱말 완성 — LSP가 없는 파일에서도 긴 이름을 다시 치지 않게.
             if ui.button(tr(lang, "editor.wordcomp")).clicked() {
                 act.complete_word = true;

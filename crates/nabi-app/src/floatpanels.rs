@@ -30,6 +30,9 @@ impl NabiApp {
         if let Some(s) = act.diff_restore {
             self.restore_diff_side(pane, s);
         }
+        if act.find_secrets {
+            self.find_secrets_in_doc(pane);
+        }
         if act.goto_last_edit {
             self.goto_last_edit(pane);
         }

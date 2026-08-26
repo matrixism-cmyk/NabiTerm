@@ -78,6 +78,8 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.a11ymarks", 6),
     ("settings.contrast", 6),
     ("settings.contrastlow", 6),
+    ("settings.offline", 3),
+    ("settings.publicip", 3),
     ("settings.redacthist", 3),
     ("settings.redactlogs", 3),
     ("settings.autolog", 3),

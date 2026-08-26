@@ -16,6 +16,10 @@ impl NabiApp {
         // **어제 남은 토큰은 오늘도 토큰이다.** 가리기를 켜기 전에 쌓인 기록에는
         // 비밀이 그대로 있다 — 불러올 때 한 번 훑어 지운다(디스크에도 다음 저장에 반영).
         let config = crate::redact::sweep_history(config);
+        // 나가도 되는지·공인 IP를 볼지는 **여기서 한 번** 읽는다(아래 초기화에서 config가
+        // 옮겨진 뒤에는 못 읽는다).
+        let ip_lookup = config.terminal.public_ip_lookup && !config.terminal.offline_mode;
+        crate::egress::set_offline(config.terminal.offline_mode);
         // 구문 강조 자산 등록(사용자 폴더 base/nabipad/{syntaxes,themes}·테마·확장자 매핑).
         let editor_config = nabi_config::load_editor(&layout);
         let editor_config_path = layout.editor_file.clone();
@@ -179,7 +183,7 @@ impl NabiApp {
             selection: None,
             blink_start: std::time::Instant::now(),
             window_title: String::new(),
-            cwds: HashMap::new(), run_cmd: HashMap::new(), net_info: crate::netinfo::NetInfo::new(),
+            cwds: HashMap::new(), run_cmd: HashMap::new(), net_info: crate::netinfo::NetInfo::new(ip_lookup),
             activity: std::collections::HashSet::new(),
             last_exit: HashMap::new(),
             cmd_start: HashMap::new(),

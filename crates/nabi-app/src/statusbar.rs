@@ -28,6 +28,7 @@ impl NabiApp {
                 .unwrap_or_else(|| tr(lang, "status.nosession").to_owned())
         };
         let cues_on = self.config.appearance.symbol_cues;
+        let offline = self.config.terminal.offline_mode;
         let count = self.dock.iter_all_tabs().count(); let broadcast = self.broadcast; let tg_on = self.telegram.running(); let tg_err = self.telegram.has_error(); // 원격 제어 활성/오류(보안·피드백).
         let is_ssh = focused
             .and_then(|p| self.pane_origins.get(&p))
@@ -261,6 +262,12 @@ impl NabiApp {
                     }
                 }
                 if fit.shows(crate::statusfit::Tier::Full) {
+                    // 오프라인 모드는 **보여야** 한다 — 켠 줄 모르면 "왜 새 판이 안 뜨지"가 된다.
+                    if offline {
+                        ui.separator();
+                        ui.weak(format!("\u{2708} {}", tr(lang, "status.offline")))
+                            .on_hover_text(tr(lang, "settings.offlinehint"));
+                    }
                     crate::netinfo::ip_status(ui, lang, &local_ip, &public_ip); // NIC/공인 IP.
                 } else if !local_ip.is_empty() {
                     folded.push((plain, local_ip.clone()));
