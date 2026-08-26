@@ -202,4 +202,7 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
     ("find.willchange", "Will change", "바뀔 곳", "変わる箇所"),
     ("find.shownonly", "shown", "개만 보임", "件のみ表示"),
     ("browser.copyword", "copy", "사본", "コピー"),
+    ("sftp.copy.ftp", "FTP cannot copy on the server", "FTP는 서버 안 복사를 하지 못합니다", "FTPはサーバー内コピーができません"),
+    ("sftp.copyhere", "Copy here", "여기에 복사", "ここにコピー"),
+    ("sftp.copy.toomany", "Too many copies already", "사본이 너무 많습니다", "コピーが多すぎます"),
 ];

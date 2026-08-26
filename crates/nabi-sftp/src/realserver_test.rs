@@ -303,3 +303,29 @@ async fn realserver_free_space_is_known_or_honestly_unknown() {
         None => eprintln!("이 서버는 statvfs를 지원하지 않는다 — None이 맞는 답이다"),
     }
 }
+
+/// 실 OpenSSH 서버에서 **서버 안 복사** 검증.
+///
+/// 인프로세스 서버는 우리가 만든 것이라 우리가 기대하는 대로만 답한다. 실제로 두 번 다
+/// 실서버에서만 결함이 나왔다(읽기 길이를 허용치보다 적게 주는 서버, rename 덮어쓰기).
+/// 복사는 읽기와 쓰기를 번갈아 하므로 그런 차이가 그대로 드러난다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_copies_within_the_server() {
+    let Some(p) = params() else { return };
+    let mut fs = connect_sftp(&p, crate::sftp_boot::test_known_hosts(), None).await.expect("connect");
+    let src = "nabi_realtest_copy_src.bin";
+    let dst = "nabi_realtest_copy_dst.bin";
+    // 한 조각에 안 들어가는 크기로 — 조각 경계에서 어긋나는지 보려면 이게 필요하다.
+    let body: Vec<u8> = (0..900_000u32).map(|i| (i % 253) as u8).collect();
+    fs.write_file(src, &body).await.expect("write src");
+    let mut last = 0u64;
+    let n = fs.copy_remote(src, dst, &mut |b| last = b).await.expect("copy");
+    assert_eq!(n as usize, body.len(), "복사한 바이트 수가 다르다");
+    assert_eq!(last, n, "진행률이 끝까지 오지 않았다");
+    let got = fs.read_file(dst).await.expect("read back");
+    assert_eq!(got.len(), body.len(), "길이가 다르다");
+    assert_eq!(got, body, "내용이 달라졌다");
+    let _ = fs.remove(src).await;
+    let _ = fs.remove(dst).await;
+}

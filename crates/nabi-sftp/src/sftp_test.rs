@@ -265,3 +265,42 @@ async fn bare_server_skips_free_space_check() {
     assert_eq!(fs.read_file("/sp.bin").await.unwrap(), b"small");
     let _ = std::fs::remove_file(&local);
 }
+
+/// **서버 안에서 복사** — 내용이 그대로 옮겨져야 한다.
+#[tokio::test]
+async fn sftp_copies_within_the_server() {
+    let mut fs = connect_fs().await;
+    let body: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+    fs.write_file("/big.bin", &body).await.expect("write");
+    let mut seen = 0u64;
+    let n = fs
+        .copy_remote("/big.bin", "/big-copy.bin", &mut |p| seen = p)
+        .await
+        .expect("copy");
+    assert_eq!(n as usize, body.len(), "복사한 바이트 수가 다르다");
+    assert_eq!(seen, n, "진행률이 끝까지 오지 않았다");
+    let got = fs.read_file("/big-copy.bin").await.expect("read back");
+    assert_eq!(got, body, "내용이 달라졌다");
+}
+
+/// 원본이 없으면 **대상 파일을 만들지 않는다** — 빈 파일이 남으면 성공으로 오해한다.
+#[tokio::test]
+async fn a_missing_source_leaves_no_target() {
+    let mut fs = connect_fs().await;
+    let r = fs.copy_remote("/없는파일.bin", "/should-not-exist.bin", &mut |_| {}).await;
+    assert!(r.is_err(), "없는 파일을 복사했다고 한다");
+    assert!(
+        fs.read_file("/should-not-exist.bin").await.is_err(),
+        "실패했는데 대상 파일이 남았다"
+    );
+}
+
+/// 빈 파일도 복사된다(0바이트가 오류로 취급되면 안 된다).
+#[tokio::test]
+async fn an_empty_file_copies_too() {
+    let mut fs = connect_fs().await;
+    fs.write_file("/empty.txt", b"").await.expect("write");
+    let n = fs.copy_remote("/empty.txt", "/empty2.txt", &mut |_| {}).await.expect("copy");
+    assert_eq!(n, 0);
+    assert_eq!(fs.read_file("/empty2.txt").await.expect("read"), Vec::<u8>::new());
+}

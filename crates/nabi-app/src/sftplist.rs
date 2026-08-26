@@ -92,6 +92,7 @@ pub(crate) fn list_zone(
         Some(EClick::Preview(n)) => a.preview = Some(n),
         Some(EClick::Chmod(n, m)) => a.chmod = Some((n, m)),
         Some(EClick::ChmodRecursive(n, m)) => a.chmod_rec = Some((n, m)),
+        Some(EClick::CopyHere(n, s)) => a.copy_here = Some((n, s)),
         Some(EClick::Rename(n)) => a.rename = Some(n),
         Some(EClick::Delete(n)) => a.del = Some(n),
         Some(EClick::DropInto(folder, local)) => a.upload_into = Some((folder, local)),

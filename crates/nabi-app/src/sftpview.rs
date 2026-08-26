@@ -64,6 +64,11 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
             ui.close();
         }
         // 파일 다운로드(폴더는 아래 '폴더 다운로드'). 메뉴 최상단에 노출.
+        // 서버 안에서 사본 만들기. 폴더는 아직 안 된다(재귀는 다음 배치).
+        if !e.is_dir && ui.button(tr(lang, "sftp.copyhere")).clicked() {
+            click = Some(EClick::CopyHere(e.name.clone(), e.size));
+            ui.close();
+        }
         if !e.is_dir && ui.button(tr(lang, "sftp.download")).clicked() {
             click = Some(EClick::Download(e.name.clone(), e.size));
             ui.close();

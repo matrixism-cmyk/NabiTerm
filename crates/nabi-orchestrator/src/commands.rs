@@ -115,6 +115,9 @@ pub fn handle_command(
         Command::SftpTouch { id, path } => sftp_request(id, SftpReq::Touch(path), sftp),
         Command::SftpCancel { id } => crate::sftp::sftp_cancel(id, sftp),
         Command::SftpCancelXfer { id, xfer } => crate::sftp::sftp_cancel_xfer(id, xfer, sftp),
+        Command::SftpCopy { id, xfer, from, to } => {
+            sftp_request(id, SftpReq::Copy { xfer, from, to }, sftp)
+        }
         Command::SftpChmod { id, path, mode } => {
             sftp_request(id, SftpReq::Chmod { path, mode }, sftp)
         }

@@ -182,6 +182,74 @@ impl RemoteFs for SftpFs {
         r.map(|_| out)
     }
 
+    /// 서버 안에서 파일을 복사한다 — **디스크를 거치지 않는다.**
+    ///
+    /// 예전에는 받았다가 다시 올려야 했다. 그러면 회선을 두 번 타는 것에 더해 큰 파일에서는
+    /// 임시 파일이 디스크 한 벌을 차지하고, 중간에 끊기면 그 찌꺼기가 남는다.
+    ///
+    /// 여기서는 서버에서 조각을 읽어 곧바로 서버로 되쓴다. 회선은 여전히 두 번 타지만
+    /// (SFTP v3에는 서버 안에서 옮기라고 시킬 방법이 없다) **디스크는 건드리지 않는다.**
+    /// OpenSSH 9 이상의 `copy-data` 확장을 쓰면 회선도 안 타는데, 그건 서버가 알려 줄
+    /// 때만 되므로 후속으로 미룬다 — 지금 것은 **어느 서버에서나** 된다.
+    async fn copy_remote(
+        &mut self,
+        from: &str,
+        to: &str,
+        tick: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<u64, String> {
+        let src = self.raw.open(from, OpenFlags::READ).await?;
+        let dst = match self
+            .raw
+            .open(to, OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNCATE)
+            .await
+        {
+            Ok(h) => h,
+            // 대상을 못 열면 원본 손잡이를 두고 나가지 않는다 — 서버의 열린 파일 수는 한정돼 있다.
+            Err(e) => {
+                let _ = self.raw.close(&src).await;
+                return Err(e);
+            }
+        };
+        let chunk = self.raw.read_chunk();
+        let mut pos = 0u64;
+        let mut err = None;
+        loop {
+            // 취소는 전송과 같은 깃발을 쓴다(사용자가 멈추라면 여기서도 멈춘다).
+            if self.cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                err = Some("취소됨".to_string());
+                break;
+            }
+            match self.raw.read_at(&src, pos, chunk).await {
+                Ok(None) => break,
+                Ok(Some(d)) if d.is_empty() => break,
+                Ok(Some(d)) => {
+                    let n = d.len() as u64;
+                    if let Err(e) = self.raw.write_at(&dst, pos, d).await {
+                        err = Some(e);
+                        break;
+                    }
+                    pos += n;
+                    tick(pos);
+                }
+                Err(e) => {
+                    err = Some(e);
+                    break;
+                }
+            }
+        }
+        self.raw.fsync(&dst).await;
+        let _ = self.raw.close(&dst).await;
+        let _ = self.raw.close(&src).await;
+        match err {
+            // 반쯤 쓰다 만 파일을 남기지 않는다 — 있으면 성공한 복사로 오해한다.
+            Some(e) => {
+                let _ = self.raw.remove(to).await;
+                Err(e)
+            }
+            None => Ok(pos),
+        }
+    }
+
     async fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), String> {
         let flags = OpenFlags::WRITE | OpenFlags::CREATE | OpenFlags::TRUNCATE;
         let h = self.raw.open(path, flags).await?;

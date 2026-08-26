@@ -41,6 +41,21 @@ pub trait RemoteFs: Send {
     async fn chmod(&mut self, _path: &str, _mode: u32) -> Result<(), String> {
         Err("권한 변경 미지원".into())
     }
+    /// **서버 안에서 파일 복사.** 기본 미지원 — SFTP만 구현한다.
+    ///
+    /// 지금까지 서버 안에서 파일을 복사하려면 받았다가 다시 올려야 했다. 그러면 회선을
+    /// 두 번 타고, 큰 파일에서는 그 사이 디스크도 한 벌 쓴다. 여기서는 **디스크를 거치지
+    /// 않고** 서버에서 읽어 서버로 바로 쓴다.
+    ///
+    /// 돌려주는 값은 복사한 바이트 수. `tick`은 누적 바이트로 진행률을 알린다.
+    async fn copy_remote(
+        &mut self,
+        _from: &str,
+        _to: &str,
+        _tick: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<u64, String> {
+        Err("서버 안 복사 미지원".into())
+    }
 }
 
 /// 백엔드 무관 파일 트리 수집(동기화 계획용) — root 아래 파일을 (상대경로, 크기, mtime)으로.

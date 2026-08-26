@@ -29,6 +29,8 @@ pub enum SftpReq {
     DownloadDir { xfer: u64, remote: String, local: String },
     DownloadDirSync { remote: String, local: String, done: std::sync::mpsc::Sender<bool> },
     UploadDir { xfer: u64, local: String, remote: String },
+    /// 서버 안에서 복사(큐 항목 xfer 로 진행률·완료를 짝짓는다).
+    Copy { xfer: u64, from: String, to: String },
     Chmod { path: String, mode: u32 },
     ChmodRec { path: String, mode: u32 },
     Search { root: String, needle: String },
@@ -179,6 +181,15 @@ pub fn spawn_sftp(
                     let mut p = crate::sftppool::progress_sink(id, xfer, &ev);
                     let res = fs.upload_dir(Path::new(&local), &remote, &mut p).await;
                     let _ = ev.send(transfer_done(id, xfer, &remote, res));
+                }
+                SftpReq::Copy { xfer, from, to } => {
+                    // 진행률은 전송과 같은 통로로 보낸다 — 큐에서 다른 전송과 나란히 보인다.
+                    let ev2 = ev.clone();
+                    let mut p = move |n: u64| {
+                        let _ = ev2.send(Event::SftpProgress { id, xfer, bytes: n });
+                    };
+                    let res = fs.copy_remote(&from, &to, &mut p).await.map(|_| ());
+                    let _ = ev.send(transfer_done(id, xfer, &to, res));
                 }
                 SftpReq::Chmod { path, mode } => {
                     let res = fs.chmod(&path, mode).await;

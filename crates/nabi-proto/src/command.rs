@@ -125,6 +125,13 @@ pub enum Command {
         id: SftpId,
         path: String,
     },
+    /// **서버 안에서 파일 복사.** 받았다 다시 올리지 않는다(디스크를 거치지 않는다).
+    SftpCopy {
+        id: SftpId,
+        xfer: u64,
+        from: String,
+        to: String,
+    },
     /// 권한을 재귀 적용(디렉터리 하위 전부).
     SftpChmodRecursive {
         id: SftpId,

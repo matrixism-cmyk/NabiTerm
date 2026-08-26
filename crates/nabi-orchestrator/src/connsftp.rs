@@ -172,6 +172,24 @@ impl Conn {
             Conn::Ftp(f) => f.chmod(path, mode).await, // FTP는 단일 적용.
         }
     }
+    /// 서버 안에서 복사. **FTP는 못 한다** — 프로토콜에 그런 명령이 없다.
+    ///
+    /// 못 하는 것을 되는 척하며 받았다 다시 올리면, 사용자는 왜 이 파일만 오래 걸리는지
+    /// 알 수 없다. 안 되는 것은 안 된다고 말한다.
+    ///
+    /// 사유는 **i18n 키**로 돌려준다 — 이 층은 화면 언어를 모르고, 알아서도 안 된다.
+    pub(crate) async fn copy_remote(
+        &mut self,
+        from: &str,
+        to: &str,
+        tick: &mut (dyn FnMut(u64) + Send),
+    ) -> Result<u64, String> {
+        match self {
+            Conn::Sftp(f) => f.copy_remote(from, to, tick).await,
+            Conn::Ftp(_) => Err("sftp.copy.ftp".to_string()),
+        }
+    }
+
     pub(crate) async fn touch(&mut self, path: &str) -> Result<(), String> {
         match self {
             Conn::Sftp(f) => f.write_file(path, b"").await,
