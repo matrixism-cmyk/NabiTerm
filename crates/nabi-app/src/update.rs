@@ -200,6 +200,9 @@ impl eframe::App for NabiApp {
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);
         self.show_hostkey_prompt(ctx);
+        // 위험 명령 확인 — 호스트키와 같은 층(입력을 붙잡아 둔 상태라 최상위여야 한다).
+        self.show_guard(ctx);
+        self.show_editor_conflict(ctx);
         self.show_trzsz_ask(ctx);
         self.show_control_approval(ctx);
         self.show_about(ctx);

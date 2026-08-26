@@ -79,9 +79,17 @@ impl TermTabViewer<'_> {
                 && self.run_cmd.get(&pane).is_some_and(|c| crate::panewheel::is_tui_history_app(c)));
         if typed {
             self.clear_ai_active(pane); // 키보드로 화면을 닫았을 수 있다 — 바의 열림 표시 해제.
-            if self.broadcast {
-                // 대상 규칙은 panegroup 한 곳에만 있다(동기 스크롤과 같은 뜻을 써야 한다).
-                let panes = crate::panegroup::targets(self.broadcast_group, self.window_panes);
+            // 대상 규칙은 panegroup 한 곳에만 있다(동기 스크롤과 같은 뜻을 써야 한다).
+            let bpanes = self.broadcast.then(|| crate::panegroup::targets(self.broadcast_group, self.window_panes));
+            // 운영 표식 세션에서 되돌릴 수 없는 명령이면 붙잡아 확인한다(guard.rs).
+            // 붙잡지 않으면 바이트는 손대지 않은 채 그대로 나간다.
+            let targets: &[PaneId] = bpanes.as_deref().unwrap_or(&[]);
+            let held = crate::guard::guard_input(
+                self.guard_dangerous, self.risky_panes, &self.orch.panes, pane, &bytes, targets,
+            );
+            if let Some(p) = held {
+                *self.pending_send = Some(p);
+            } else if let Some(panes) = bpanes {
                 self.orch.send(Command::Broadcast { panes, data: Bytes::from(bytes) });
             } else {
                 self.orch.send(Command::WriteInput {

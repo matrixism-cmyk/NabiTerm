@@ -8,6 +8,30 @@ pub(crate) fn dedup_name(taken: impl Fn(&str) -> bool, base: &str, ext: &str) ->
     (1..).map(|i| format!("{base} ({i}){ext}")).find(|n| !taken(n)).unwrap_or(first)
 }
 
+/// 이 원격 경로를 지우는 것이 **되돌릴 수 없는 규모**인가.
+///
+/// 삭제 확인창은 이미 있지만 `/` 나 `/etc` 나 홈을 통째로 고른 것과 파일 하나를 고른
+/// 것을 같은 말로 묻는다. 규모가 다르면 묻는 말도 달라야 사람이 멈춘다.
+///
+/// 잡는 것은 **뿌리에 가까운 것**뿐이다 — 루트 자신, 루트 바로 아래 한 단계
+/// (`/etc` · `/var` · `/home`), 그리고 홈 디렉터리 자신. 그 아래로 내려간 경로는
+/// 평범한 작업이므로 건드리지 않는다.
+pub(crate) fn is_perilous(path: &str) -> bool {
+    let p = normalize(path);
+    let p = p.trim_end_matches("/");
+    if p.is_empty() {
+        return true; // 정규화하면 루트는 빈 문자열이 된다.
+    }
+    // 루트 바로 아래 한 단계(`/etc`)는 깊이 1이다.
+    let depth = p.matches('/').count();
+    if depth <= 1 {
+        return true;
+    }
+    // 홈 자신(`/home/kim` · `/Users/kim` · `/root`)도 통째로는 위험하다.
+    let parts: Vec<&str> = p.trim_start_matches('/').split('/').collect();
+    matches!(parts.as_slice(), [h, _] if *h == "home" || *h == "Users")
+}
+
 /// 디렉터리 경로 결합.
 pub(crate) fn join_path(base: &str, name: &str) -> String {
     if base.ends_with('/') {
@@ -84,7 +108,7 @@ pub(crate) fn normalize(path: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{crumbs, dedup_name, join_path, normalize, parent_dir, remote_basename, valid_name};
+    use super::{crumbs, dedup_name, is_perilous, join_path, normalize, parent_dir, remote_basename, valid_name};
 
     #[test]
     fn dedup_name_appends_sequence() {
@@ -150,5 +174,20 @@ mod tests {
         assert_eq!(parent_dir("/home/user/"), "/home"); // 후행 슬래시 무시.
         assert_eq!(parent_dir("/home"), "/"); // 최상위 직전 → 루트.
         assert_eq!(parent_dir("/"), "/"); // 루트의 부모는 루트.
+    }
+    /// **뿌리에 가까운 것**은 규모가 다르다 — 다른 말로 물어야 사람이 멈춘다.
+    #[test]
+    fn deleting_near_the_root_is_flagged() {
+        for p in ["/", "//", "/etc", "/var/", "/home", "/home/kim", "/Users/kim", ""] {
+            assert!(is_perilous(p), "{p:?} 를 안전하다고 봤다");
+        }
+    }
+
+    /// 평범한 작업 경로는 지금과 똑같이 묻는다.
+    #[test]
+    fn ordinary_working_paths_are_not_flagged() {
+        for p in ["/home/kim/work", "/var/log/app", "/srv/app/dist", "/etc/nginx/sites"] {
+            assert!(!is_perilous(p), "{p:?} 를 위험하다고 봤다");
+        }
     }
 }

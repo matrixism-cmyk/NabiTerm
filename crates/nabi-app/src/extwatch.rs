@@ -65,6 +65,27 @@ impl NabiApp {
         }
     }
 
+    /// 이 문서가 **열어 둔 사이에 밖에서 바뀌었는가**(저장 직전 확인용).
+    ///
+    /// 감시 루프와 **같은 기준점**(`editor_mtimes`)을 본다. 저장 경로가 따로 자취를
+    /// 남기면 둘이 어긋나 한쪽만 맞는 답을 하게 된다.
+    ///
+    /// 기준점이 없으면 `false` — 모른다고 저장을 막으면, 우리가 자취를 남기지 못한
+    /// 모든 경우에 사용자가 벌을 받는다.
+    pub(crate) fn editor_changed_outside(&self, pane: PaneId) -> bool {
+        let Some(d) = self.editors.get(&pane) else { return false };
+        // 원격 문서는 임시 파일을 거치므로 이 검사가 뜻이 없다.
+        if d.remote.is_some() || d.path.as_os_str().is_empty() {
+            return false;
+        }
+        let Some(known) = self.editor_mtimes.get(&pane) else { return false };
+        match std::fs::metadata(&d.path).and_then(|m| m.modified()) {
+            Ok(cur) => cur > *known,
+            // 열려 있던 파일이 사라졌다 — 이것도 알려 줘야 한다(저장하면 되살아난다).
+            Err(_) => true,
+        }
+    }
+
     /// 2초마다 열린 문서의 디스크 변경을 확인 → 미수정이면 리로드, 수정 중이면 경고(저장 시 덮어씀).
     pub(crate) fn check_external_changes(&mut self, ctx: &egui::Context) {
         if self.editor_extcheck.elapsed() < Duration::from_secs(2) {

@@ -178,6 +178,12 @@ impl NabiApp {
             self.save_editor_as(pane); // untitled(메모리 문서) → 다른 이름으로 저장 대화상자.
             return;
         }
+        // 열어 둔 사이에 밖에서 바뀌었는가 — 모르고 덮으면 그 변경은 말없이 사라진다.
+        // 기준점은 `editor_mtimes` **한 곳**이다(extwatch.rs가 이미 그것으로 감시한다).
+        if self.editor_changed_outside(pane) {
+            self.editor_conflict = Some(pane);
+            return;
+        }
         self.apply_save_format(pane); // VS Code식 저장 시 정리.
         let Some(doc) = self.editors.get(&pane) else { return };
         let (path, remote, title) = (doc.path.clone(), doc.remote.clone(), doc.title.clone());

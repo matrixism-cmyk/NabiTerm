@@ -61,10 +61,18 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         tr(lang, "update.autocheck"),
         &mut cfg.terminal.auto_check_update,
     );
+    // 확인이 필요한 것들을 한자리에 모은다 — 흩어 두면 "어디서 끄지?"가 된다.
     chk(
         ui,
         tr(lang, "settings.confirmclose"),
         &mut cfg.terminal.confirm_close,
+    );
+    chk_help(
+        ui,
+        tr(lang, "settings.guarddangerous"),
+        tr(lang, "settings.guarddangerous.hint"),
+        &mut cfg.terminal.guard_dangerous,
+        true,
     );
     chk(
         ui,

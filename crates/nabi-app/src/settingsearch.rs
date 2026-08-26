@@ -26,6 +26,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.builtineditor", 0),
     ("settings.clock", 0),
     ("settings.confirmclose", 0),
+    ("settings.guarddangerous", 0),
     ("settings.control", 0),
     ("settings.control.osc", 0),
     ("settings.copyonselect", 0),

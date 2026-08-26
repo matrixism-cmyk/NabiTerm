@@ -243,6 +243,12 @@ pub struct TerminalCfg {
     /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
     #[serde(default)]
     pub auto_reply: bool,
+    /// 운영 표식 세션에서 되돌릴 수 없는 명령을 보내기 전에 확인한다.
+    ///
+    /// 기본 켬이지만 **표식이 붙은 세션에서만** 동작하므로, 표식을 쓰지 않는 사람에게는
+    /// 아무 변화가 없다. 확인창이 거슬리면 여기서 끈다.
+    #[serde(default = "yes")]
+    pub guard_dangerous: bool,
     /// **오프라인 모드** — 사용자가 시키지 않은 바깥 호출을 하지 않는다.
     ///
     /// 폐쇄망(정부·금융·공장)에서는 그런 호출이 보안 경보를 띄우고 프록시 로그에 남는다.
@@ -449,6 +455,7 @@ impl Default for TerminalCfg {
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
             auto_reply: false,
+            guard_dangerous: true,
             offline_mode: false,
             public_ip_lookup: true,
             redact_history: true,

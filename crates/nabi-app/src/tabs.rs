@@ -51,6 +51,13 @@ pub struct TermTabViewer<'a> {
     pub blink_on: bool,
     /// 드래그 선택 종료 시 자동 복사 여부.
     pub copy_on_select: bool,
+    /// 이번 프레임에 **위험 표식**이 붙은 pane들(guard.rs). 표식은 앱만 알고,
+    /// 보내는 자리는 여기다 — 순서를 지키려면 판단이 보내는 자리에 있어야 한다.
+    pub risky_panes: &'a std::collections::HashSet<PaneId>,
+    /// 위험 명령 확인을 켤 것인가(`terminal.guard_dangerous`).
+    pub guard_dangerous: bool,
+    /// 위험 명령 확인 대기(붙잡힌 입력).
+    pub pending_send: &'a mut Option<crate::guard::PendingSend>,
     /// 활동(비포커스 출력) 표시 대상 pane 집합.
     pub activity: &'a std::collections::HashSet<PaneId>,
     /// pane 커스텀 상태(AI 도구 발행) — 있으면 탭에 🤖 배지(P5).

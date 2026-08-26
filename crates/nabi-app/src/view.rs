@@ -100,8 +100,16 @@ impl NabiApp {
                 })
                 .collect();
             let find_hl = self.find_highlight(); // 가변 차용 전에 먼저 계산(빌림 충돌 회피).
+            // 위험 표식이 붙은 창들 — 표식은 앱만 알고 보내는 자리는 뷰어다(guard.rs).
+            // 가변 차용 전에 미리 모은다.
+            let risky: std::collections::HashSet<nabi_types::PaneId> =
+                window_panes.iter().copied().filter(|p| self.pane_tag(*p).is_risky()).collect();
+            let guard_on = self.config.terminal.guard_dangerous;
             let mut viewer = crate::tabs::TermTabViewer {
                 orch: &self.orch,
+                risky_panes: &risky,
+                guard_dangerous: guard_on,
+                pending_send: &mut self.pending_send,
                 theme: self.theme,
                 font_size: self.font_size,
                 last_grid: &mut self.last_grid,

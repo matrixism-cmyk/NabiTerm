@@ -34,6 +34,10 @@ pub struct NabiApp {
     pub preview: Option<crate::sftppreviewui::PreviewState>,
     /// '모든 창에서 찾기' 상태(Some=열림).
     pub find_all: Option<crate::findallui::FindAll>,
+    /// 위험 명령 확인 대기 — 붙잡힌 입력(guard.rs).
+    pub pending_send: Option<crate::guard::PendingSend>,
+    /// 밖에서 바뀐 파일을 덮어쓰기 전에 묻는 중인 문서.
+    pub editor_conflict: Option<nabi_types::PaneId>,
     /// 업데이트 뒤 첫 실행의 '새로워진 점'(Some=열림, 안쪽 None=노트를 못 챙김).
     pub whatsnew: Option<Option<String>>,
     /// 시작 시간 계측 시계 — 첫 프레임에서 기록하고 비운다(boottime).

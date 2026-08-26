@@ -107,7 +107,12 @@ pub(crate) fn input_rows(
         } else {
             format!("{} {name}?", tr(lang, "sftp.delete"))
         };
+        // 뿌리에 가까운 경로는 규모가 다르다 — 같은 말로 물으면 사람이 멈추지 않는다.
+        let peril = crate::sftppath::is_perilous(&crate::sftppath::join_path(&panel.path, &name));
         ui.horizontal(|ui| {
+            if peril {
+                ui.colored_label(crate::theme_ui::ERR, tr(lang, "sftp.delperil"));
+            }
             ui.colored_label(crate::theme_ui::ERR, msg);
             if ui.small_button("\u{2713}").clicked() {
                 act = RowAction::DelOk;
