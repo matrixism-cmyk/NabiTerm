@@ -113,6 +113,9 @@ pub(crate) fn install_script(tool: &crate::envcat::Tool, has_winget: bool) -> Op
     let purge = purge_store(tool.store_pkg);
     match tool.fallback {
         Some(s) if s.starts_with("GHMSI:") => crate::envcat::gh_msi_script(s).map(|x| purge + &x),
+        // npm 패키지(언어 서버 등). Node가 없으면 그 안내를 먼저 내보낸다 — 조용히
+        // 실패하면 "왜 안 깔리지"만 남는다.
+        Some(s) if s.starts_with("NPM:") => Some(purge + &npm_install_script(&s["NPM:".len()..])),
         Some(s) => Some(purge + s),
         // winget이 없는데 winget 통로밖에 없다면, winget부터 깔라고 해야 한다.
         None => None,
@@ -131,6 +134,21 @@ pub(crate) fn remove_script(tool: &crate::envcat::Tool, has_winget: bool) -> Opt
              --disable-interactivity --accept-source-agreements; Write-Output '@@STEP 2/2 done'"
         )
     })
+}
+
+/// npm 전역 설치 스크립트. `@@STEP` 두 단계를 뱉는다.
+///
+/// Node가 없으면 **깔지 않고 알려 준다.** 여기서 Node까지 받아 오게 하면 이 함수가
+/// AI CLI 설치 경로(`aicli::install_npm_cli`)와 같은 일을 두 벌로 하게 된다 — 그쪽은
+/// 진행률까지 다루므로 훨씬 낫다. 언어 서버는 흔치 않은 경로라 안내로 충분하다.
+fn npm_install_script(package: &str) -> String {
+    format!(
+        "Write-Output '@@STEP 1/2 installing'; \
+         if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {{ \
+           Write-Error 'Node.js(npm)가 필요합니다. 도구 > 환경 관리자에서 AI CLI를 설치하면 Node도 함께 깔립니다.'; exit 1 }}; \
+         npm.cmd install -g {package}; \
+         if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}; Write-Output '@@STEP 2/2 done'"
+    )
 }
 
 /// 스토어판을 먼저 지우는 앞머리. 없으면 빈 문자열.

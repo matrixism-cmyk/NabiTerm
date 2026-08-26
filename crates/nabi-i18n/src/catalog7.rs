@@ -128,4 +128,11 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sftp.delperil", "⚠ Near the root —", "⚠ 뿌리에 가까운 곳입니다 —", "⚠ ルートに近い場所です —"),
     ("central.what", "Terminal, SFTP and editor — in one window", "터미널 · SFTP · 편집기를 한 창에서", "ターミナル・SFTP・エディタを一つの窓で"),
     ("central.agent", "An AI CLI in a pane can drive this window — Help ▸ AI control", "pane 안의 AI CLI가 이 창을 조작합니다 — 도움말 ▸ AI 제어", "pane 内のAI CLIがこの窓を操作できます — ヘルプ ▸ AI制御"),
+    ("settings.lsp", "Language servers", "언어 서버", "言語サーバー"),
+    ("settings.lsp.hint", "Used for go-to-definition and rename. Nothing happens unless the server is on your PATH — that is normal.", "정의로 가기·이름 바꾸기에 쓰입니다. 서버가 PATH에 없으면 아무 일도 일어나지 않습니다 — 그것이 기본입니다.", "定義へ移動・名前変更に使います。PATHになければ何も起きません — それが既定です。"),
+    ("settings.lsp.missing", "Not found on PATH", "PATH에서 찾지 못함", "PATHに見つかりません"),
+    ("settings.lsp.install", "Install the server yourself (cargo / npm / pip); nabiTerm picks it up on the next document you open.", "서버는 직접 설치하십시오(cargo·npm·pip). 다음에 여는 문서부터 알아서 붙습니다.", "サーバーはご自身で導入してください（cargo・npm・pip）。次に開く文書から接続します。"),
+    ("env.desc.rustanalyzer", "Rust language server — go to definition, rename, diagnostics in nabiPad", "Rust 언어 서버 — nabiPad에서 정의로 가기·이름 바꾸기·진단", "Rust言語サーバー — nabiPadで定義へ移動・名前変更・診断"),
+    ("env.desc.pyright", "Python language server (npm). Needs Node.js.", "Python 언어 서버(npm). Node.js가 필요합니다.", "Python言語サーバー（npm）。Node.jsが必要です。"),
+    ("env.desc.tsserver", "TypeScript / JavaScript language server (npm). Needs Node.js.", "TypeScript · JavaScript 언어 서버(npm). Node.js가 필요합니다.", "TypeScript・JavaScript言語サーバー（npm）。Node.jsが必要です。"),
 ];

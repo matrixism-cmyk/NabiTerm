@@ -97,6 +97,9 @@ fn group(ui: &mut egui::Ui, lang: Lang, key: &str) {
 /// nabiPad 자체 설정 창 본문(메인 설정의 에디터 페이지와 동일 UI 재사용, DRY).
 pub(crate) fn editor_settings_body(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     grid(ui, "nabipad_settings", |ui| editor_rows(ui, e, lang));
+    // 언어 서버는 **깔려 있지 않은 것이 기본**이라 아무 일도 안 일어나는 것이 정상이다.
+    // 그런데 사용자에게는 고장과 구별되지 않으므로, 무엇이 없어서 안 되는지 보여 준다.
+    crate::settingslsp::lsp_group(ui, lang);
 }
 
 /// nabiPad(내장 에디터) 설정 — 별도 파일(nabipad.toml)에 저장. 새로 여는 문서에 적용된다.
