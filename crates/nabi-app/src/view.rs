@@ -60,7 +60,14 @@ impl NabiApp {
         egui::CentralPanel::default().frame(cframe).show(ui, |ui| {
             if self.dock.iter_all_tabs().next().is_none() {
                 ui.vertical_centered(|ui| {
-                    ui.add_space(60.0);
+                    ui.add_space(48.0);
+                    // 열린 것이 없을 때만 보이는 자리다. 처음 온 사람이 여기서 멈추는데,
+                    // 지금까지는 단추 두 개뿐이라 **이 프로그램이 무엇인지** 한 줄도 없었다.
+                    // 짧게 셋만 적는다 — 길면 두 번째부터 방해물이 된다.
+                    ui.label(egui::RichText::new(nabi_i18n::tr(self.lang, "central.what")).size(15.0));
+                    ui.add_space(2.0);
+                    ui.weak(nabi_i18n::tr(self.lang, "central.agent"));
+                    ui.add_space(16.0);
                     if ui.button(nabi_i18n::tr(self.lang, "central.newtab")).clicked() {
                         spawn_empty = true;
                     }

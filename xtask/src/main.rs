@@ -18,7 +18,7 @@ mod lines;
 mod overrides;
 mod prerelease;
 mod soak; mod postverify;
-mod releasetarget; mod unsafeaudit;
+mod pkg; mod releasetarget; mod unsafeaudit;
 
 use std::process::ExitCode;
 
@@ -36,6 +36,8 @@ fn main() -> ExitCode {
         "verify-release" => postverify::run(std::env::args().nth(2)),
         // 릴리스 저장소는 문서가 아니라 코드에서 읽는다(releasetarget.rs 주석 참고).
         "release-repo" => releasetarget::run(),
+        // 패키지 저장소 매니페스트 — 통로를 늘리고, 덤으로 남이 세는 숫자가 생긴다.
+        "pkg" => pkg::run(),
         "icon" => {
             let p = std::env::args()
                 .nth(2)

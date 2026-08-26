@@ -40,6 +40,15 @@ pub(crate) fn parse_repo(src: &str) -> Option<String> {
     ok.then(|| repo.to_string())
 }
 
+/// 앱이 묻는 저장소(`소유자/저장소`). 못 읽으면 빈 문자열 대신 **알려진 기본값**을
+/// 돌려주지 않는다 — 조용히 틀린 곳을 가리키느니 눈에 띄게 비어 있는 편이 낫다.
+pub(crate) fn app_repo() -> String {
+    fs::read_to_string("crates/nabi-release/src/lib.rs")
+        .ok()
+        .and_then(|s| parse_repo(&s))
+        .unwrap_or_default()
+}
+
 /// 릴리스를 올려야 할 곳 전부 — 첫 줄이 앱이 묻는 곳, 나머지는 옛 클라이언트용 거울.
 pub(crate) fn all_targets(src: &str) -> Option<Vec<String>> {
     let mut v = vec![parse_repo(src)?];

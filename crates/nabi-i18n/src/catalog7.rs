@@ -126,4 +126,6 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("editconf.reload", "Reload from disk", "다시 읽기", "読み直す"),
     ("editconf.saveas", "Save as a new file", "다른 이름으로", "別名で保存"),
     ("sftp.delperil", "⚠ Near the root —", "⚠ 뿌리에 가까운 곳입니다 —", "⚠ ルートに近い場所です —"),
+    ("central.what", "Terminal, SFTP and editor — in one window", "터미널 · SFTP · 편집기를 한 창에서", "ターミナル・SFTP・エディタを一つの窓で"),
+    ("central.agent", "An AI CLI in a pane can drive this window — Help ▸ AI control", "pane 안의 AI CLI가 이 창을 조작합니다 — 도움말 ▸ AI 제어", "pane 内のAI CLIがこの窓を操作できます — ヘルプ ▸ AI制御"),
 ];

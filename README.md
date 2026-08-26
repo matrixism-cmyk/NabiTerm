@@ -23,6 +23,26 @@ nabiTerm is a terminal for working with local shells and remote servers in one w
 
 On top of a solid traditional core (robust VT engine, deep scrollback), it adds modern terminal features — command blocks, hyperlinks, inline images, styled underlines — and an **AI agent control plane**.
 
+### The part you won't find elsewhere
+
+An AI CLI running inside a pane can drive nabiTerm itself — list windows, read another
+pane's screen, open a shell, send input, wait for it to finish, move files over SFTP:
+
+```console
+$ nabi cli list --json
+[{"pane":1,"kind":"ssh","title":"web-01","state":"idle","cwd":"/srv/app"}]
+
+$ nabi cli spawn --shell pwsh --dock split-down
+pane 7
+$ nabi cli send --pane 7 --data "cargo test"
+$ nabi cli wait --pane 7 --idle 5
+$ nabi cli capture --pane 7 --lines 12
+test result: ok. 1601 passed; 0 failed
+```
+
+No network port is opened — it speaks over a Windows named pipe, and every verb is gated
+by an **off / ask / on** permission policy that defaults to *ask*.
+
 ## Features
 
 ### Terminal & sessions
@@ -58,7 +78,13 @@ On top of a solid traditional core (robust VT engine, deep scrollback), it adds 
 Grab it from [**Releases**](https://github.com/matrixism-cmyk/NabiTerm/releases).
 
 - `nabiTerm-setup.exe` — installer (per-user, no admin rights required)
-- `nabiTerm-standalone.zip` — portable (unzip and run)
+
+Deploying to many machines? The installer takes unattended switches:
+
+```powershell
+nabiTerm-setup.exe /VERYSILENT /NOLAUNCH            # install, don't start
+nabiTerm-setup.exe /VERYSILENT /ALLUSERS /NOLAUNCH  # machine-wide (needs admin)
+```
 
 After installation, **auto-update** notifies you of new versions and applies them in one step (manual check in Help ▸ About).
 

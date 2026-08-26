@@ -20,6 +20,26 @@
 
 nabiTerm은 로컬 셸과 원격 서버를 하나의 창에서 다루기 위한 터미널입니다. 탭·분할·분리 창으로 여러 세션을 배치하고, SSH/SFTP/FTP로 원격에 접속하며, 파일 브라우저·내장 에디터·비밀번호 볼트까지 한 프로그램 안에 담았습니다. 외부 런타임이나 설치 의존성 없이 **단일 exe**로 동작하며, 자동 업데이트를 지원합니다.
 
+### 다른 데서 못 보실 부분
+
+pane 안에서 도는 AI CLI가 **나비텀 자신을 조작**합니다 — 창 목록을 읽고, 다른 창의
+화면을 떠 가고, 셸을 띄우고, 명령을 보내고, 끝날 때까지 기다리고, SFTP로 파일을 옮깁니다.
+
+```console
+$ nabi cli list --json
+[{"pane":1,"kind":"ssh","title":"web-01","state":"idle","cwd":"/srv/app"}]
+
+$ nabi cli spawn --shell pwsh --dock split-down
+pane 7
+$ nabi cli send --pane 7 --data "cargo test"
+$ nabi cli wait --pane 7 --idle 5
+$ nabi cli capture --pane 7 --lines 12
+test result: ok. 1601 passed; 0 failed
+```
+
+네트워크 포트를 열지 않습니다 — 윈도우 named pipe로만 통하고, 모든 동작은
+**끔 / 물어봄 / 허용** 권한에 걸립니다(기본은 물어봄).
+
 전통적인 터미널의 안정성(견고한 VT 코어·스크롤백) 위에, 최신 터미널 트렌드(명령 블록, 하이퍼링크, 인라인 이미지, 스타일드 밑줄)와 **AI 에이전트 제어 평면**을 더한 것이 특징입니다.
 
 ## 주요 기능
@@ -57,7 +77,13 @@ nabiTerm은 로컬 셸과 원격 서버를 하나의 창에서 다루기 위한 
 [**Releases**](https://github.com/matrixism-cmyk/NabiTerm/releases)에서 받으세요.
 
 - `nabiTerm-setup.exe` — 설치본(관리자 권한 불필요, per-user 설치)
-- `nabiTerm-standalone.zip` — 포터블(압축 해제 후 실행)
+
+여러 대에 배포하실 때는 설치본이 무인 스위치를 받습니다:
+
+```powershell
+nabiTerm-setup.exe /VERYSILENT /NOLAUNCH            # 설치만, 실행하지 않음
+nabiTerm-setup.exe /VERYSILENT /ALLUSERS /NOLAUNCH  # 모든 사용자(관리자 권한 필요)
+```
 
 설치 후 **자동 업데이트**가 새 버전을 알리고 한 번에 적용합니다(도움말 ▸ 정보에서 수동 확인 가능).
 
