@@ -37,6 +37,16 @@ $ nabi cli capture --pane 7 --lines 12
 test result: ok. 1601 passed; 0 failed
 ```
 
+MCP 서버로도 같은 것을 노출합니다. Claude Code에 한 줄로 등록하시면 됩니다:
+
+```powershell
+claude mcp add nabiterm -- "C:\Program Files\Nabisori\NabiTerm\nabiTerm.exe" mcp
+```
+
+도구 16개 — 창 목록·화면 캡처·셸 띄우기·입력·대기·창 닫기 그리고
+**SFTP 목록·내려받기·올리기**. 에이전트가 명령만 치는 것이 아니라 붙어 있는 SSH
+세션으로 **원격 파일을 옮깁니다.**
+
 네트워크 포트를 열지 않습니다 — 윈도우 named pipe로만 통하고, 모든 동작은
 **끔 / 물어봄 / 허용** 권한에 걸립니다(기본은 물어봄).
 

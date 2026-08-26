@@ -40,6 +40,16 @@ $ nabi cli capture --pane 7 --lines 12
 test result: ok. 1601 passed; 0 failed
 ```
 
+The same surface is exposed as an **MCP server**. Register it with Claude Code in one line:
+
+```powershell
+claude mcp add nabiterm -- "C:\Program Files\Nabisori\NabiTerm\nabiTerm.exe" mcp
+```
+
+16 tools — list panes, capture a screen, spawn a shell, send input, wait, close, and
+**SFTP list / get / put**: the agent doesn't only run commands, it moves files over the
+SSH session you already have open.
+
 No network port is opened — it speaks over a Windows named pipe, and every verb is gated
 by an **off / ask / on** permission policy that defaults to *ask*.
 
