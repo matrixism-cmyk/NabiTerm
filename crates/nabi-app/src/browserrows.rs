@@ -22,6 +22,10 @@ pub(crate) struct RowActs {
     pub props: Option<String>,
     /// 복제를 요청한 항목 이름.
     pub duplicate: Option<String>,
+    /// zip으로 묶을 항목(고른 것이 있으면 그쪽이 우선).
+    pub zip_make: Option<String>,
+    /// 풀 zip 파일 이름.
+    pub zip_extract: Option<String>,
     /// 컬럼 헤더 클릭으로 선택한 정렬 기준.
     pub set_sort: Option<Sort>,
     /// 단일 클릭 선택: (이름, ctrl, shift).
@@ -134,6 +138,18 @@ pub(crate) fn row_interact(
             acts.duplicate = Some(row.name.clone());
             ui.close();
         }
+        // 압축은 한 묶음으로 — 항목 둘을 최상위에 늘어놓으면 이 메뉴가 또 길어진다.
+        ui.menu_button(tr(lang, "browser.zipmenu"), |ui| {
+            if ui.button(tr(lang, "browser.zipmake")).clicked() {
+                acts.zip_make = Some(row.name.clone());
+                ui.close();
+            }
+            // 푸는 것은 zip일 때만 보인다 — 아닌 파일에 보이면 눌러 놓고 왜 안 되는지 묻는다.
+            if row.name.to_ascii_lowercase().ends_with(".zip") && ui.button(tr(lang, "browser.zipextract")).clicked() {
+                acts.zip_extract = Some(row.name.clone());
+                ui.close();
+            }
+        });
         if ui.button(tr(lang, "sftp.rename")).clicked() {
             acts.rename = Some(row.name.clone());
             ui.close();

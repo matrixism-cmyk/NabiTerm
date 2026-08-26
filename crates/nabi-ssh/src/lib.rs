@@ -9,6 +9,7 @@
 
 pub mod channel;
 pub mod fingerprint;
+pub mod keychange;
 pub mod knownhosts;
 pub mod agent;
 pub mod agentfwd;

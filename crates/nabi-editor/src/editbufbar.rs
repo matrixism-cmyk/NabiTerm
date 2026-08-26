@@ -48,7 +48,14 @@ pub(crate) fn eb_status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize),
         // 안 보여서, 몇 군데를 고치고 있는지 모른 채 타자를 치게 됐다.
         if eb.sel.len() > 1 {
             ui.separator();
-            ui.label(format!("\u{25c9} {}", eb.sel.len())).on_hover_text(tr(lang, "edit.cursors"));
+            // 상한에서 끊겼으면 개수 옆에 `+`를 붙이고 까닭을 툴팁에 적는다 — 조용히
+            // 자르면 전부 잡힌 줄 알고 편집하게 되고, 나머지는 안 바뀐 채 남는다.
+            let mark = if eb.match_capped { "+" } else { "" };
+            let tip = match eb.match_capped {
+                true => tr(lang, "edit.cursors.capped"),
+                false => tr(lang, "edit.cursors"),
+            };
+            ui.label(format!("\u{25c9} {}{mark}", eb.sel.len())).on_hover_text(tip);
         }
         ui.separator();
         ui.label(format!("{} lines \u{00b7} {}", eb.rope.len_lines(), crate::humanfmt::human(eb.rope.len_bytes() as u64)));

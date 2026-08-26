@@ -22,6 +22,8 @@ pub struct EditBuf {
     pub rope: Rope,
     /// 편집 선택. 지금은 항상 범위 1개지만 자료구조는 멀티커서를 담을 수 있다(editsel).
     pub sel: crate::editsel::Selection,
+    /// 마지막 "모두 고르기"가 상한에서 끊겼나 — 화면이 그 사실을 말해야 한다.
+    pub match_capped: bool,
     /// 최근 고친 자리들 — "마지막 고친 자리로"가 여기서 온다.
     pub spots: crate::editspots::EditSpots,
     pub dirty: bool,
@@ -61,7 +63,7 @@ impl EditBuf {
         EditBuf {
             eols: crate::eolmix::EolCounts::default(),
             rope: Rope::from_str(lf), sel: crate::editsel::Selection::caret(0), dirty: false,
-            spots: Default::default(),
+            spots: Default::default(), match_capped: false,
             ensure_visible: false, enc, eol, tab: nabi_types::DEFAULT_TAB, spaces: true,
             seen_cols: 0, undo: Vec::new(), redo: Vec::new(),
             undo_open: false, last_kind: None, last_at: 0, last_time: None, saved_depth: Some(0),

@@ -53,6 +53,7 @@ impl nabi_ssh::HostKeyVerify for OrchVerifier {
             port: info.port,
             algorithm: info.algorithm,
             fingerprint: info.fingerprint,
+            old_fingerprint: info.changed.map(|c| c.old_fingerprint).unwrap_or_default(),
         });
         rx
     }

@@ -89,7 +89,7 @@ pub struct NabiApp {
     pub browser_tabs: HashMap<PaneId, crate::browserpanel::BrowserPanel>,
     pub sidebar_filter: String, // 세션 사이드바 필터.
     /// SSH 끊김 재연결 제안(끊긴 pane) / 미지 호스트키 TOFU 모달(id·host·port·algo·fp).
-    pub reconnect_ask: Option<(PaneId, String)>, pub hostkey_prompt: Option<(u64, String, u16, String, String)>,
+    pub reconnect_ask: Option<(PaneId, String)>, pub hostkey_prompt: Option<crate::hostkeyui::HostKeyAsk>,
     /// 탭바 빈 공간 우클릭 메뉴 위치(Some=표시 중).
     /// 탭바 우클릭 메뉴 위치 + 터미널 링크 길게 누름 메뉴((URL, 위치)).
     /// 마지막 필드: 인라인 이미지(Sixel) 텍스처 캐시(이미지 id → egui 텍스처).

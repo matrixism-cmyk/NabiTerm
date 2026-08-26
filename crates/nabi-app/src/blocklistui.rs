@@ -32,6 +32,9 @@ impl NabiApp {
         let failed = blocks.iter().filter(|b| b.exit.is_some_and(|c| c != 0)).count();
         let mut open = true;
         let mut goto = None;
+        // 출력을 꺼내는 두 갈래(복사 · 편집기로) — 창을 그리는 동안 모델을 다시 잠그지
+        // 않으려고 자리만 받아 두고 아래에서 처리한다.
+        let (mut copy_out, mut open_out) = (None, None);
         let mut only_failed = self.block_list_failed_only;
         egui::Window::new(tr(lang, "blocks.title"))
             .open(&mut open)
@@ -77,13 +80,43 @@ impl NabiApp {
                             Some(c) if c != 0 => format!("exit {c} \u{b7} {} \u{c904}", b.out_lines),
                             _ => format!("{} \u{c904}", b.out_lines),
                         };
-                        if hit.on_hover_text(tip).clicked() {
+                        if hit.clone().on_hover_text(tip).clicked() {
                             goto = Some(b.abs);
                         }
+                        // 오른쪽 클릭 — 그 블록의 출력만 꺼낸다(마지막 것만 되던 일).
+                        hit.context_menu(|ui| {
+                            if ui.button(tr(lang, "findall.copy")).clicked() {
+                                copy_out = Some(b.abs);
+                                ui.close();
+                            }
+                            if ui.button(tr(lang, "blocks.openout")).clicked() {
+                                open_out = Some((b.abs, b.text.clone()));
+                                ui.close();
+                            }
+                        });
                     }
                 });
             });
         self.block_list_failed_only = only_failed;
+        // 상한: 한 블록이 수십만 줄일 수 있다. 잘렸다는 사실은 문서 제목이 아니라 양으로 드러난다.
+        let grab = |abs: i64| -> String {
+            view.as_ref()
+                .and_then(|v| v.model.lock().ok())
+                .map(|m| m.block_output(abs, 200_000))
+                .unwrap_or_default()
+        };
+        if let Some(abs) = copy_out {
+            let t = grab(abs);
+            if !t.is_empty() {
+                ctx.copy_text(t);
+            }
+        }
+        if let Some((abs, title)) = open_out {
+            let t = grab(abs);
+            if !t.is_empty() {
+                self.open_text_as_doc(&title, t);
+            }
+        }
         if let Some(abs) = goto {
             if let Some(mut m) = view.as_ref().and_then(|v| v.model.lock().ok()) {
                 m.scroll_to_prompt(abs);

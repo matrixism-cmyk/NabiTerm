@@ -22,7 +22,13 @@ impl NabiApp {
             return;
         }
         let Some(path) = rfd::FileDialog::new().set_file_name("session.log").save_file() else { return };
-        let Ok(file) = std::fs::File::create(&path) else { return };
+        self.start_session_log(pane, &path);
+    }
+
+    /// 그 pane의 로그를 이 파일로 시작한다. 손으로 켜는 길과 **자동으로 켜지는 길**이
+    /// 여기서 만난다 — 시작 방법이 둘이면 한쪽만 고쳐지는 일이 생긴다.
+    pub(crate) fn start_session_log(&mut self, pane: PaneId, path: &std::path::Path) {
+        let Ok(file) = std::fs::File::create(path) else { return };
         let last = self.pane_marker(pane);
         self.session_logs.insert(pane, SessionLog { file, last });
         self.notify = Some((tr(self.lang, "log.started").to_string(), Instant::now()));

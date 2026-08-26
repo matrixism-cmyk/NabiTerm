@@ -190,4 +190,26 @@ mod edit_tests {
         b.insert_multi("Q");
         assert_eq!(b.rope.to_string().matches('Q').count(), 1);
     }
+
+    /// **상한에 걸리면 그렇다고 표시한다** — 조용히 자르면 전부 잡힌 줄 알고 편집하게 되고,
+    /// 나머지는 안 바뀐 채 남는다.
+    #[test]
+    fn hitting_the_cursor_cap_is_recorded() {
+        // 한 글자를 잔뜩 깔아 상한을 넘긴다.
+        let text = "a ".repeat(11_000);
+        let mut b = EditBuf::new_buf(&text, "UTF-8".into(), "LF");
+        b.set_cursor(0);
+        let n = b.select_all_matches();
+        assert!(n >= 10_000, "상한까지 못 갔다: {n}");
+        assert!(b.match_capped, "끊겼는데 표시가 없다");
+    }
+
+    /// 상한에 안 걸리면 표시도 없다(멀쩡한 결과에 경고를 붙이지 않는다).
+    #[test]
+    fn a_small_document_is_not_marked_as_capped() {
+        let mut b = EditBuf::new_buf("id x id", "UTF-8".into(), "LF");
+        b.set_cursor(0);
+        assert_eq!(b.select_all_matches(), 2);
+        assert!(!b.match_capped);
+    }
 }

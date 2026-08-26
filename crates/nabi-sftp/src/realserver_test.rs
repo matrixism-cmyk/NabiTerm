@@ -330,6 +330,53 @@ async fn realserver_copies_within_the_server() {
     let _ = fs.remove(dst).await;
 }
 
+/// **알던 호스트키가 바뀌면 그렇다고 알려야 한다** — 실서버에서만 볼 수 있는 갈래다.
+///
+/// 인프로세스 서버로는 흉내 낼 수 없다: `known_hosts`에 **다른 키**를 미리 적어 두고
+/// 진짜 서버에 붙어야 러시가 `KeyChanged`를 돌려준다. 지금까지 이 갈래는 조용히
+/// 거부만 했고(`Err(_) => Ok(false)`), 그래서 아무도 눈치채지 못했다.
+#[tokio::test]
+#[ignore = "실 서버 필요(NABI_RT_USER/KEY 환경변수)"]
+async fn realserver_reports_a_changed_host_key() {
+    use std::sync::{Arc, Mutex};
+    let Some(p) = params() else { return };
+    let kh = crate::sftp_boot::test_known_hosts();
+    // 이 호스트의 키라고 **거짓으로** 적어 둔다(형식은 맞지만 다른 키).
+    let fake = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGb7GQ2p7DbFPuhVpzOSVQXHDzHfF1lVMSCUmJ8UN0Rp";
+    let line = match p.port {
+        22 => format!("{} {fake}
+", p.host),
+        n => format!("[{}]:{n} {fake}
+", p.host),
+    };
+    std::fs::write(&kh, line).expect("known_hosts 쓰기");
+
+    // 확인기를 달아 무엇이 올라오는지 본다(거부한다 — 진짜로 바꾸지 않는다).
+    #[derive(Default)]
+    struct Spy(Arc<Mutex<Option<(bool, String)>>>);
+    impl nabi_ssh::HostKeyVerify for Spy {
+        fn verify(&self, info: nabi_ssh::HostKeyInfo) -> tokio::sync::oneshot::Receiver<bool> {
+            let (tx, rx) = tokio::sync::oneshot::channel();
+            let old = info.changed.as_ref().map(|c| c.old_fingerprint.clone()).unwrap_or_default();
+            *self.0.lock().unwrap() = Some((info.changed.is_some(), old));
+            let _ = tx.send(false); // 거부 — 이 시험은 알리는지만 본다.
+            rx
+        }
+    }
+    let seen = Arc::new(Mutex::new(None));
+    let spy: nabi_ssh::HostKeyVerifier = Arc::new(Spy(seen.clone()));
+    let r = connect_sftp(&p, kh.clone(), Some(spy)).await;
+
+    assert!(r.is_err(), "거부했는데 연결이 됐다");
+    let got = seen.lock().unwrap().clone();
+    let Some((changed, old)) = got else {
+        panic!("확인기가 불리지 않았다 — 바뀐 키를 조용히 거부하고 있다");
+    };
+    assert!(changed, "바뀐 키인데 '처음 보는 서버'로 올라왔다");
+    assert!(old.starts_with("SHA256:"), "옛 지문을 못 읽었다: {old:?}");
+    let _ = std::fs::remove_file(&kh);
+}
+
 /// 실 서버에서 **폴더째 서버 안 복사**(재귀) 검증.
 ///
 /// 파일 하나 복사와 다른 점은 `mkdir`과 목록 읽기가 섞인다는 것이다 — 서버가 이미 있는

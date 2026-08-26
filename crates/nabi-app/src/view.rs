@@ -155,6 +155,7 @@ impl NabiApp {
                 sftp_act: &mut sftp_act,
                 sftp_bookmarks: &self.config.terminal.sftp_bookmarks,
                 sftp_recent: &self.config.terminal.sftp_recent,
+                local_recent: &self.config.terminal.local_recent,
                 sort: (self.browser.sort, self.browser.sort_desc),
                 sftp_closed: &mut sftp_closed,
                 zoom_req: &mut zoom_req,

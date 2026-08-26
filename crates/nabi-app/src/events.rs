@@ -27,6 +27,13 @@ impl NabiApp {
                             if let Some(b) = &ps.backlog {
                                 self.inject_restore_backlog(pane, b); // 로컬 복원 스크롤백(표시 전용).
                             }
+                            // 로그 자동 시작 — 출처를 알아야 파일 이름을 지을 수 있으므로
+                            // 여기서 한다(설정이 꺼져 있으면 아무 일도 없다).
+                            let host = match &ps.origin {
+                                nabi_session::SessionKind::Ssh { host, .. } => host.clone(),
+                                _ => "local".to_string(),
+                            };
+                            self.maybe_autolog(pane, &host);
                             self.pane_origins.insert(pane, ps.origin);
                             if let Some(f) = ps.font {
                                 self.pane_font.insert(pane, f); // 앞 pane의 글꼴을 이어받는다.
@@ -150,8 +157,9 @@ impl NabiApp {
                         crate::lastfail::clear(&mut self.last_fail, &kind);
                     }
                 }
-                Event::HostKeyPrompt { id, host, port, algorithm, fingerprint } => {
-                    self.hostkey_prompt = Some((id, host, port, algorithm, fingerprint));
+                Event::HostKeyPrompt { id, host, port, algorithm, fingerprint, old_fingerprint } => {
+                    let ask = crate::hostkeyui::HostKeyAsk { id, host, port, algorithm, fingerprint, old_fingerprint };
+                    self.hostkey_prompt = Some(ask);
                     ctx.request_repaint();
                 }
                 // 원격(OSC 52)이 로컬 클립보드에 쓰려 한다 — 설정대로 처리한다.

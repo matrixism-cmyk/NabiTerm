@@ -112,12 +112,14 @@ impl NabiApp {
         let remote_map = self.remote_compare_map();
         let can_upload = self.sftp.open && self.sftp.id.is_some();
         let lang = self.lang;
+        // 사본을 먼저 뜬다 — self를 통째로 빌려 주면서 설정도 함께 빌릴 수 없다.
+        let recent = self.config.terminal.local_recent.clone();
         let mut act: Option<BrowserAct> = None;
         egui::Panel::right("file_browser")
             .default_size(300.0)
             .size_range(180.0..=560.0) // 터미널을 가리지 않도록 상한 제한.
             .show(ui, |ui| {
-                act = Some(render_browser_tab(ui, &mut self.browser, &remote_map, can_upload, lang, 0));
+                act = Some(render_browser_tab(ui, &mut self.browser, &remote_map, can_upload, lang, 0, &recent));
             });
         if let Some(a) = act {
             if let Some(r) = a.rect {
@@ -147,18 +149,15 @@ impl NabiApp {
         if let Some(pat) = a.content_search { self.content_search(pat); } // Find in Files(내용 검색).
         if a.dir_tree { self.open_dir_tree(); }
         if a.dir_stats { self.open_dir_stats(); }
-        if let Some(name) = a.props {
-            self.open_file_props(path.join(&name));
-        }
+        self.apply_zip_acts(a.zip_make.take(), a.zip_extract.take());
+        if let Some(name) = a.props { self.open_file_props(path.join(&name)); }
         if let Some(name) = a.calc_size {
             let (files, bytes) = crate::browserops::dir_stats(&path.join(&name));
             self.notify = Some((format!("{name}: {} \u{00b7} {files}", crate::browserfs::human(bytes)), std::time::Instant::now()));
         }
-        if let Some((folder, rn)) = a.dl_into {
-            self.download_remote_into(&folder, rn.name, rn.is_dir); // 폴더 행 드롭.
-        } else if let Some(rn) = a.drop_remote {
-            self.download_remote_to_browser(rn.name, rn.is_dir); // 빈 영역 드롭.
-        }
+        // 폴더 행 드롭 / 빈 영역 드롭 — 어느 쪽이든 원격을 이 폴더로 받는다.
+        if let Some((folder, rn)) = a.dl_into { self.download_remote_into(&folder, rn.name, rn.is_dir); }
+        else if let Some(rn) = a.drop_remote { self.download_remote_to_browser(rn.name, rn.is_dir); }
         self.browser.view = a.view;
         self.browser.scroll = false; // 이번 프레임 스크롤 요청 소비.
         let entries = crate::browserfs::read_entries(&path, self.browser.sort, self.browser.sort_desc, self.browser.show_hidden);
@@ -217,6 +216,9 @@ impl NabiApp {
             self.browser.selected = None;
             self.browser.multi.clear(); // 폴더 이동 시 다중 선택 해제.
             self.browser.path = p.clone();
+            // 원격과 같은 규칙으로 기억한다(로컬은 호스트가 없으므로 경로만).
+            let key = crate::recentpaths::key("", &p.to_string_lossy());
+            crate::recentpaths::push(&mut self.config.terminal.local_recent, &key);
             self.sync_after_local_nav(&p); // 동기 브라우징.
         }
         self.browser_history_nav(ctx, a.over); // 마우스 이전/다음(엄지).

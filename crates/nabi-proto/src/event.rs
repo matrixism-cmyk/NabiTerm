@@ -24,6 +24,10 @@ pub enum Event {
         port: u16,
         algorithm: String,
         fingerprint: String,
+        /// **알던 키와 다르다**면 전에 알던 지문. 처음 보는 호스트면 비어 있다.
+        ///
+        /// 이 값이 있으면 확인창은 "처음 보는 서버"가 아니라 **경고**로 바뀐다.
+        old_fingerprint: String,
     },
     /// 명령 실행 시작(OSC 133;C) — 타이밍 측정 시작.
     CommandStarted { pane: PaneId },

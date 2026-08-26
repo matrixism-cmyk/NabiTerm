@@ -88,10 +88,11 @@ impl NabiApp {
         let remote_map = self.remote_compare_map();
         let can_upload = self.sftp.open && self.sftp.id.is_some();
         let lang = self.lang;
+        let lrc = self.config.terminal.local_recent.clone();
         let mut act = None;
         egui::CentralPanel::default().show(ui, |ui| {
             if let Some(b) = self.browser_tabs.get_mut(&pane) {
-                act = Some(crate::browser::render_browser_tab(ui, b, &remote_map, can_upload, lang, pane.get()));
+                act = Some(crate::browser::render_browser_tab(ui, b, &remote_map, can_upload, lang, pane.get(), &lrc));
             }
         });
         if let Some(a) = act {

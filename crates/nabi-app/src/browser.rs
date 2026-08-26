@@ -56,6 +56,10 @@ pub(crate) struct BrowserAct {
     pub edit_hex: Option<String>,
     /// 빠른 미리보기 요청 파일(E9).
     pub preview: Option<String>,
+    /// zip으로 묶을 대상(비면 지금 고른 것들).
+    pub zip_make: Option<String>,
+    /// 풀 zip 파일 이름.
+    pub zip_extract: Option<String>,
     /// 파일 내용 검색 패턴(Find in Files).
     pub content_search: Option<String>,
     /// 빈 공간 메뉴 ▸ 전체 선택 / 선택 반전 / 폴더 트리 / 확장자 통계 / 선택 경로 복사.
@@ -73,9 +77,10 @@ pub(crate) fn render_browser_tab(
     can_upload: bool,
     lang: Lang,
     scope: u64,
+    recent: &[String],
 ) -> BrowserAct {
     ui.push_id(("browser_scope", scope), |ui| {
-        render_inner(ui, b, remote_map, can_upload, lang)
+        render_inner(ui, b, remote_map, can_upload, lang, recent)
     })
     .inner
 }
@@ -86,6 +91,7 @@ fn render_inner(
     remote_map: &HashMap<String, (bool, u64)>,
     can_upload: bool,
     lang: Lang,
+    recent: &[String],
 ) -> BrowserAct {
     let mut a = BrowserAct {
         // 시작 시점 min_rect는 비어 있어 ui_contains_pointer가 항상 false —
@@ -144,23 +150,7 @@ fn render_inner(
         if ui.button("\u{1f5a5}").on_hover_text(nabi_i18n::tr(lang, "browser.mycomputer")).clicked() {
             a.nav = Some(std::path::PathBuf::new());
         }
-        // 바로가기: 바탕화면/문서/다운로드/네트워크(특수 폴더로 즉시 이동).
-        ui.menu_button("\u{2b50}", |ui| {
-            let home = home_dir();
-            for (key, sub) in [("browser.desktop", "Desktop"), ("browser.documents", "Documents"), ("browser.downloads", "Downloads")] {
-                if ui.button(nabi_i18n::tr(lang, key)).clicked() {
-                    a.nav = Some(home.join(sub));
-                    ui.close();
-                }
-            }
-            if ui.button(nabi_i18n::tr(lang, "browser.network")).clicked() {
-                // 네트워크는 인앱 SMB 열거가 없어 OS 네트워크 폴더로 연다.
-                let _ = std::process::Command::new("explorer").arg("shell:NetworkPlacesFolder").spawn();
-                ui.close();
-            }
-        })
-        .response
-        .on_hover_text(nabi_i18n::tr(lang, "browser.places"));
+        crate::browserplaces::places_menu(ui, lang, recent, &mut a);
         // 아이콘 + 번역된 툴팁 — 옆 버튼들·SFTP 툴바와 같은 방식(한국어를 라벨에 박아 두면
         // 일본어·영어 사용자에게 그대로 보인다).
         if ui.button("\u{2b06}").on_hover_text(nabi_i18n::tr(lang, "browser.up")).clicked() {
@@ -253,6 +243,8 @@ fn render_inner(
         a.calc_size = acts.calc_size;
         a.props = acts.props;
         a.duplicate = acts.duplicate;
+        a.zip_make = acts.zip_make;
+        a.zip_extract = acts.zip_extract;
         a.set_sort = acts.set_sort;
         a.select = acts.select;
         a.copy = acts.copy;

@@ -1,7 +1,7 @@
 //! russh 클라이언트 핸들러(호스트키 검증 — known_hosts TOFU + 사용자 확인).
 
 use crate::kexinfo::{KexInfo, KexSlot};
-use crate::verify::{HostKeyInfo, HostKeyVerifier};
+use crate::verify::{ChangedKey, HostKeyInfo, HostKeyVerifier};
 use russh::client;
 use russh::keys::PublicKey;
 use std::path::PathBuf;
@@ -48,6 +48,36 @@ impl ClientHandler {
     pub fn with_kex_slot(mut self, slot: KexSlot) -> Self {
         self.kex_slot = Some(slot);
         self
+    }
+
+    /// 사용자에게 묻고, 받아들이면 배운다. 미지 호스트와 바뀐 키가 **같은 길**을 쓴다 —
+    /// 확인창을 두 벌 만들면 한쪽에만 안전장치가 붙는 일이 생긴다.
+    async fn ask(
+        &self,
+        v: &crate::verify::HostKeyVerifier,
+        key: &PublicKey,
+        changed: Option<ChangedKey>,
+    ) -> Result<bool, russh::Error> {
+        let replace_line = changed.as_ref().map(|c| c.line);
+        let info = HostKeyInfo {
+            host: self.host.clone(),
+            port: self.port,
+            algorithm: key.algorithm().to_string(),
+            fingerprint: crate::fingerprint::sha256_fingerprint(key),
+            changed,
+        };
+        let accept = v.verify(info).await.unwrap_or(false);
+        if accept {
+            // 바뀐 키를 받아들였으면 **옛 줄을 먼저 지운다**. 안 지우면 다음 접속에도
+            // 같은 경고가 뜬다(파일에 두 지문이 남아 늘 어긋난다).
+            if let Some(line) = replace_line {
+                if let Ok(c) = std::fs::read_to_string(&self.known_hosts) {
+                    let _ = std::fs::write(&self.known_hosts, crate::keychange::remove_line(&c, line));
+                }
+            }
+            self.learn(key);
+        }
+        Ok(accept)
     }
 
     fn learn(&self, key: &PublicKey) {
@@ -99,17 +129,23 @@ impl client::Handler for ClientHandler {
                     self.learn(key);
                     return Ok(true);
                 };
-                let info = HostKeyInfo {
-                    host: self.host.clone(),
-                    port: self.port,
-                    algorithm: key.algorithm().to_string(),
-                    fingerprint: crate::fingerprint::sha256_fingerprint(key),
+                self.ask(v, key, None).await
+            }
+            // **알던 키와 다르다.** 지금까지 이 갈래는 조용히 거부만 했다 — 사용자에게는
+            // 이유 없이 안 붙는 서버로 보였고, 고칠 길도 없었다.
+            //
+            // 중간자 공격과 서버 재설치는 겉으로 똑같이 생겼으므로 우리가 판단하지 않는다.
+            // 사실(어느 줄, 옛 지문, 새 지문)만 올려 보내고 사람이 정하게 한다.
+            Err(russh::keys::Error::KeyChanged { line }) => {
+                let Some(v) = &self.verifier else {
+                    return Ok(false); // 물어볼 곳이 없으면 거부가 안전한 쪽이다.
                 };
-                let accept = v.verify(info).await.unwrap_or(false);
-                if accept {
-                    self.learn(key);
-                }
-                Ok(accept)
+                let old = std::fs::read_to_string(&self.known_hosts)
+                    .map(|c| crate::keychange::old_fingerprint(&c, line))
+                    .unwrap_or_default();
+                let changed = Some(ChangedKey { line, old_fingerprint: old });
+                let v = v.clone();
+                self.ask(&v, key, changed).await
             }
             Err(_) => Ok(false),
         }

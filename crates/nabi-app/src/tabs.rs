@@ -104,6 +104,8 @@ pub struct TermTabViewer<'a> {
     pub sftp_bookmarks: &'a [String],
     /// 스스로 쌓인 최근 원격 경로(북마크와 같은 메뉴에 붙는다).
     pub sftp_recent: &'a [String],
+    /// 최근 로컬 폴더(원격과 같은 규칙 — `recentpaths`).
+    pub local_recent: &'a [String],
     /// 현재 정렬 기준·방향(원격 목록 헤더 표시용) — 로컬 브라우저와 공유하는 상태.
     pub sort: (crate::browserfs::Sort, bool),
     /// 닫힌 원격 탭의 PaneId(있으면 central에서 정리).
@@ -278,7 +280,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             self.browser_act.push((
                 pane,
                 crate::browser::render_browser_tab(
-                    ui, b, self.remote_map, self.can_upload, self.lang, pane.get(),
+                    ui, b, self.remote_map, self.can_upload, self.lang, pane.get(), self.local_recent,
                 ),
             ));
             return;

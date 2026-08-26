@@ -53,6 +53,29 @@ impl TermModel {
         out
     }
 
+    /// **그 블록의 출력만** 꺼낸다(프롬프트 줄 다음 ~ 다음 프롬프트 직전).
+    ///
+    /// `last_command_output`이 이미 있지만 그것은 **마지막 것만** 준다. 목록에서 고른
+    /// 블록을 꺼내려면 자리를 받아야 하므로 여기 따로 둔다. 자르는 규칙(프롬프트 줄은
+    /// 출력이 아니다)은 `command_blocks`의 줄 세기와 같아야 한다.
+    pub fn block_output(&self, abs: i64, max_lines: usize) -> String {
+        let marks = &self.prompts;
+        let Some(i) = marks.iter().position(|p| p.abs == abs) else {
+            return String::new();
+        };
+        let end = marks.get(i + 1).map(|n| n.abs).unwrap_or(self.total_abs_lines() as i64);
+        let start = abs + 1; // 프롬프트(=친 명령) 줄은 출력이 아니다.
+        if end <= start {
+            return String::new();
+        }
+        let end = end.min(start + max_lines as i64); // 상한 — 한 블록이 수십만 줄일 수 있다.
+        let mut s = self.lines_abs_text(start.max(0) as usize, end.max(0) as usize).join("\n");
+        while s.ends_with('\n') || s.ends_with(' ') {
+            s.pop();
+        }
+        s
+    }
+
     /// 그 블록이 **화면 맨 위**에 오게 스크롤한다. 이미 거기면 false.
     pub fn scroll_to_prompt(&mut self, abs: i64) -> bool {
         let cur = self.scrollback_offset() as i32;
@@ -146,5 +169,45 @@ mod tests {
         assert_eq!(m.command_blocks()[0].ms, None, "도는 명령에 시간이 붙었다");
         m.mark_command_done(Some(0));
         assert!(m.command_blocks()[0].ms.is_some(), "끝났는데 시간이 없다");
+    }
+
+    /// **고른 블록의 출력만** 나온다 — 명령 줄도, 옆 블록도 섞이지 않는다.
+    #[test]
+    fn one_block_yields_only_its_own_output() {
+        let mut m = TermModel::new(GridSize::new(60, 6), 800);
+        run(&mut m, "first", 0, 2);
+        run(&mut m, "second", 0, 3);
+        let blocks = m.command_blocks();
+        let older = blocks.last().expect("블록이 없다");
+        let out = m.block_output(older.abs, 1000);
+        assert!(out.contains("out 0") && out.contains("out 1"), "{out:?}");
+        assert!(!out.contains("first"), "명령 줄이 섞였다: {out:?}");
+        assert!(!out.contains("second"), "다음 블록이 섞였다: {out:?}");
+    }
+
+    /// 아무 말도 안 한 명령은 빈 글이다(없는 것을 지어내지 않는다).
+    #[test]
+    fn a_silent_command_yields_nothing() {
+        let mut m = TermModel::new(GridSize::new(60, 6), 300);
+        run(&mut m, "quiet", 0, 0);
+        let abs = m.command_blocks()[0].abs;
+        assert_eq!(m.block_output(abs, 100), "");
+    }
+
+    /// 상한을 넘기지 않는다 — 한 블록이 수십만 줄일 수 있다.
+    #[test]
+    fn the_output_is_capped() {
+        let mut m = TermModel::new(GridSize::new(60, 6), 5000);
+        run(&mut m, "loud", 0, 50);
+        let abs = m.command_blocks()[0].abs;
+        assert_eq!(m.block_output(abs, 5).lines().count(), 5);
+    }
+
+    /// 없는 자리를 물으면 빈 글이다(엉뚱한 블록을 주지 않는다).
+    #[test]
+    fn an_unknown_position_yields_nothing() {
+        let mut m = TermModel::new(GridSize::new(60, 6), 300);
+        run(&mut m, "x", 0, 1);
+        assert_eq!(m.block_output(9999, 100), "");
     }
 }

@@ -46,9 +46,7 @@ impl NabiApp {
             return;
         }
         let body = format!("--- {}\n+++ {}\n{}", sel[0], sel[1], diff_lines(&a, &b));
-        let mut doc = EditorDoc::make(format!("\u{21c4} {} / {}", sel[0], sel[1]), PathBuf::new(), None, body, true, self.font_size, "UTF-8".into(), "\n");
-        doc.dirty = true;
-        self.add_editor_tab(doc);
+        self.open_text_as_doc(&format!("\u{21c4} {} / {}", sel[0], sel[1]), body);
     }
 
     /// 열린 문서(plain)의 현재 내용을 디스크 원본과 비교한 diff를 nabiPad로 연다(저장 전 변경 검토).
@@ -65,9 +63,7 @@ impl NabiApp {
         }
         let d = diff_lines(&disk, &cur);
         let body = if d.lines().all(|l| l.starts_with("  ")) { tr(self.lang, "diff.nochange").to_string() } else { d };
-        let mut doc = EditorDoc::make(format!("\u{21c4} {name}"), PathBuf::new(), None, body, true, self.font_size, "UTF-8".into(), "\n");
-        doc.dirty = true;
-        self.add_editor_tab(doc);
+        self.open_text_as_doc(&format!("\u{21c4} {name}"), body);
     }
 }
 

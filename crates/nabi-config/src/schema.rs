@@ -233,6 +233,15 @@ pub struct TerminalCfg {
     /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
     #[serde(default)]
     pub auto_reply: bool,
+    /// 새 셸·SSH 창의 출력을 **저절로** 파일에 기록한다(설정 폴더의 `logs/`).
+    ///
+    /// 기본은 꺼짐 — 터미널에는 비밀번호도 남의 데이터도 지나간다. 묻지 않고 디스크에
+    /// 남길 일이 아니다.
+    #[serde(default)]
+    pub session_log_auto: bool,
+    /// 다녀온 **로컬** 폴더(최신이 앞). 원격과 같은 규칙(`recentpaths`)을 쓴다.
+    #[serde(default)]
+    pub local_recent: Vec<String>,
     /// 다녀온 원격 경로(`호스트:경로`, 최신이 앞). 북마크와 달리 **스스로** 쌓인다.
     #[serde(default)]
     pub sftp_recent: Vec<String>,
@@ -411,6 +420,8 @@ impl Default for TerminalCfg {
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
             auto_reply: false,
+            session_log_auto: false,
+            local_recent: Vec::new(),
             sftp_recent: Vec::new(),
             ssh_connect_timeout_secs: 0,
             ssh_keepalive_secs: default_keepalive(),

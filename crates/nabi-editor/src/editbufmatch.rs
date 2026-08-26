@@ -95,6 +95,7 @@ impl EditBuf {
             return 0;
         }
         let n = needle.chars().count();
+        self.match_capped = false;
         let mut sel = crate::editsel::Selection::single(base.start(), base.end());
         let mut from = 0usize;
         // 상한을 둔다. 한 글자를 전체 선택하면 수십만 개가 되어 화면이 멈춘다.
@@ -104,6 +105,9 @@ impl EditBuf {
             if at != base.start() {
                 sel.push(Range { anchor: at, head: at + n });
                 if sel.len() >= MAX {
+                    // **끊었다는 사실을 남긴다.** 조용히 자르면 사용자는 전부 잡힌 줄 알고
+                    // 편집한다 — 그러면 나머지는 안 바뀐 채로 남는다.
+                    self.match_capped = true;
                     break;
                 }
             }

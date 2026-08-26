@@ -23,7 +23,7 @@ mod editortab { pub use nabi_editor::editortab::*; }
 mod encodings { pub use nabi_editor::encodings::*; }
 mod humanfmt { pub use nabi_editor::humanfmt::*; }
 mod appicon; mod gpu; mod softgl; mod arrange; mod bell; mod browser; mod browserfilter; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
-mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell; mod controlui; mod controlapp; mod filetype;
+mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserplaces; mod browserrows; mod browsercell; mod controlui; mod controlapp; mod filetype;
 
 mod clicks; mod closeconfirm; mod connect; mod connhist; mod connhistui; mod connectsave; mod editsftp; mod forwardui; mod dnd; mod events; mod find; mod fonts; mod fontinstall; mod netinfo; mod drives; mod editorsave;
 mod editoropen; mod editorclose; mod editorlsp; mod editorlsp2;
@@ -65,8 +65,8 @@ mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod setti
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sftpdiff; mod sftprecent; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod blocklistui; mod
-editspotsui; mod wordcompui; mod errkey; mod panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
+mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingsprev; mod settingsui; mod settingsui2; mod shortcuts; mod blocklistui; mod
+editspotsui; mod wordcompui; mod autolog; mod opendoc; mod zipops; mod zipui; mod errkey; mod panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;

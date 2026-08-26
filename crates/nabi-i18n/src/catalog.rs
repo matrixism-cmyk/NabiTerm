@@ -199,6 +199,7 @@ pub(crate) fn all_entries() -> impl Iterator<Item = &'static (&'static str, &'st
         .chain(crate::catalog4::CATALOG4)
         .chain(crate::catalog5::CATALOG5)
         .chain(crate::catalog6::CATALOG6)
+        .chain(crate::catalog7::CATALOG7)
         .chain(crate::catalog_agent::CATALOG_AGENT)
         .chain(crate::catalog_editor::CATALOG_EDITOR)
         .chain(crate::catalog_editor2::CATALOG_EDITOR2)

@@ -74,6 +74,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.sftpcharset", 3),
     ("settings.sftpcharset.auto", 3),
     ("settings.speedlimit", 3),
+    ("settings.autolog", 3),
     ("settings.sshtimeout", 3),
     ("settings.sshkeepalive", 3),
     ("settings.statsalert", 3),
