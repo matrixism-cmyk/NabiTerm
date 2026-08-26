@@ -16,6 +16,7 @@ pub mod mouse;
 pub mod painter;
 pub mod paste;
 pub mod pastedeceive;
+pub mod pastepreview;
 pub mod urlrules;
 pub mod urls;
 mod urlspath;

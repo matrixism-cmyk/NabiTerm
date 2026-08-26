@@ -162,6 +162,9 @@ pub struct NabiApp {
     pub sync_seq: u64,
     /// 원격 파일 찾기 창(sftpfindui). None이면 닫혀 있다.
     pub sftp_find: Option<crate::sftpfindui::SftpFind>,
+    /// 접속 이력(파일로 남는다 — connhist). 창이 열려 있으면 conn_hist_open.
+    pub conn_hist: Vec<crate::connhist::Entry>,
+    pub conn_hist_open: bool,
     /// 원격 최신유지 감시(S6-54, Some=켜짐).
     pub sync_watch: Option<crate::sftpwatch::SyncWatch>,
     /// 방금 끝난 명령(pane별) — 실패 AI 인계 컨텍스트(run_cmd는 종료 시 비워짐).

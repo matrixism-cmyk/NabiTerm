@@ -167,6 +167,32 @@ mod tests {
         EditBuf::new_buf(text, "UTF-8".into(), "LF")
     }
 
+    /// **복사한 덩어리의 줄이 밀리면 안 된다.**
+    ///
+    /// 짧은 줄에서는 사각 구간이 비는데, `selected_text`가 빈 범위를 걸러 내고 있었다.
+    /// 그러면 3번 줄이 비어 있었다는 사실이 사라지고 4번 줄이 3번 자리로 올라온다 —
+    /// 들쭉날쭉한 로그에서 열을 떠 갈 때 바로 드러나는데, 붙여넣기 전에는 모른다.
+    #[test]
+    fn copying_a_ragged_box_keeps_every_row() {
+        let mut eb = buf("aaaXXbbb\ncc\ndddYYeee\n");
+        eb.box_select((0, 3), (2, 5));
+        let got = eb.selected_text();
+        let rows: Vec<&str> = got.split("\n").collect();
+        assert_eq!(rows.len(), 3, "줄이 밀렸다: {got:?}");
+        assert_eq!(rows[0], "XX");
+        assert_eq!(rows[1], "", "짧은 줄이 빈 줄로 남아야 한다");
+        assert_eq!(rows[2], "YY");
+    }
+
+    /// 멀티커서만 세워 둔 상태(전부 캐럿)에서는 복사할 것이 없다.
+    #[test]
+    fn carets_alone_copy_nothing() {
+        let mut eb = buf("abc\ndef\n");
+        eb.box_select((0, 1), (1, 1));
+        assert!(eb.sel.ranges().iter().all(|r| r.is_caret()));
+        assert_eq!(eb.selected_text(), "");
+    }
+
     #[test]
     fn box_select_makes_one_range_per_line() {
         let mut eb = buf("abcdef\nabc\nabcdef\n");

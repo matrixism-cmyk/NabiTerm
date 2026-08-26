@@ -101,14 +101,7 @@ pub fn context_menu(
         }
     } else {
         let total = eb.rope.len_lines();
-        let rng = crate::editbuffold::fold_range_at(cl, total, |i| {
-            let s = eb.line_string(i);
-            let t = s.trim_end();
-            if t.trim_start().is_empty() {
-                return None;
-            }
-            Some(t.chars().take_while(|c| *c == ' ' || *c == '\t').map(|c| if c == '\t' { eb.tab } else { 1 }).sum())
-        });
+        let rng = crate::editbuffold::fold_range_at(cl, total, |i| eb.fold_indent(i));
         if let Some((s, e)) = rng {
             if ui.button(tr(lang, "fold.close")).clicked() {
                 eb.folds.toggle(s, e);
@@ -116,8 +109,18 @@ pub fn context_menu(
             }
         }
     }
+    // 전체 접기 — 처음 보는 파일의 뼈대만 훑을 때 쓴다. 한 자리씩 접는 것으로는
+    // 그 목적을 이룰 수 없다(함수 스무 개를 하나씩 접게 된다).
+    if ui.button(tr(lang, "fold.closeall")).clicked() {
+        let total = eb.rope.len_lines();
+        // 깊이를 먼저 다 구해 둔다 — `eb`를 빌려 주면서 동시에 `eb.folds`를 고칠 수 없다.
+        // 전체 접기는 어차피 문서를 한 번 훑어야 하므로 이 한 번이 추가 비용이 아니다.
+        let ind: Vec<Option<usize>> = (0..total).map(|i| eb.fold_indent(i)).collect();
+        crate::editfoldall::fold_all(&mut eb.folds, total, |i| ind.get(i).copied().flatten());
+        ui.close();
+    }
     if !eb.folds.is_empty() && ui.button(tr(lang, "fold.openall")).clicked() {
-        eb.folds.clear();
+        crate::editfoldall::unfold_all(&mut eb.folds);
         ui.close();
     }
     // 변환(정렬·대소문자·인코딩 등)은 editbufxform 덕에 rope 문서에서도 돈다.

@@ -25,7 +25,7 @@ mod humanfmt { pub use nabi_editor::humanfmt::*; }
 mod appicon; mod gpu; mod softgl; mod arrange; mod bell; mod browser; mod browserfilter; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
 mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserrows; mod browsercell; mod controlui; mod controlapp; mod filetype;
 
-mod clicks; mod closeconfirm; mod connect; mod connectsave; mod editsftp; mod forwardui; mod dnd; mod events; mod find; mod fonts; mod fontinstall; mod netinfo; mod drives; mod editorsave;
+mod clicks; mod closeconfirm; mod connect; mod connhist; mod connhistui; mod connectsave; mod editsftp; mod forwardui; mod dnd; mod events; mod find; mod fonts; mod fontinstall; mod netinfo; mod drives; mod editorsave;
 mod editoropen; mod editorclose; mod editorlsp; mod editorlsp2;
 
 mod fileprops; mod filepropsui; mod filezilla; mod xshell; mod mobaxterm; mod putty;

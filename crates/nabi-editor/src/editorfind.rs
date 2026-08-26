@@ -10,6 +10,8 @@ pub struct FindState {
     pub open: bool,
     pub query: String,
     pub replace: String,
+    /// 바꾸기 미리보기를 펼쳐 두었는가.
+    pub preview_open: bool,
     /// 대소문자 무시.
     pub ci: bool,
     /// 전체 단어만 일치(\b로 감쌈).
@@ -173,6 +175,12 @@ pub fn find_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
         if !viewer {
             ui.separator();
             ui.add(egui::TextEdit::singleline(&mut doc.find.replace).desired_width(140.0).hint_text(tr(lang, "find.replace")));
+            // 바꾸기 전에 **무엇이 어떻게 바뀌는지** 보여 준다. 되돌리기가 있어도
+            // 먼저 보는 것과는 다른 일이다 — 300곳이 바뀐 뒤 어디가 틀렸는지 찾는 것은
+            // 바꾸기 전에 보는 것보다 훨씬 어렵다. 특히 정규식에서 그렇다.
+            if ui.button(tr(lang, "find.preview")).clicked() {
+                doc.find.preview_open = !doc.find.preview_open;
+            }
             if ui.button(tr(lang, "find.replaceall")).clicked() {
                 crate::editorreplace::replace_all(doc);
             }
@@ -198,6 +206,31 @@ pub fn find_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
             }
         }
     });
+    // 미리보기 표 — 가로 바에 끼우지 않고 아래에 펼친다(바가 길어지면 좁은 창에서 잘린다).
+    if doc.find.preview_open && !doc.find.query.is_empty() {
+        let src = doc.edit.as_ref().map(|e| e.rope.to_string()).unwrap_or_else(|| doc.text.clone());
+        let hits = crate::editorreplace::hits(&src, &doc.find);
+        let pv = crate::replacepreview::build(&src, &hits, &doc.find.replace);
+        ui.horizontal(|ui| {
+            ui.label(format!("{}: {}", tr(lang, "find.willchange"), pv.total));
+            if pv.total > pv.shown.len() {
+                ui.weak(format!("({} {})", pv.shown.len(), tr(lang, "find.shownonly")));
+            }
+        });
+        egui::ScrollArea::vertical().max_height(160.0).auto_shrink([false, true]).show(ui, |ui| {
+            for c in &pv.shown {
+                ui.horizontal(|ui| {
+                    ui.add_sized([40.0, 14.0], egui::Label::new(egui::RichText::new(format!("{}", c.line)).monospace().weak()));
+                    ui.add(egui::Label::new(egui::RichText::new(&c.before).monospace().strikethrough().weak()).truncate());
+                });
+                ui.horizontal(|ui| {
+                    ui.add_sized([40.0, 14.0], egui::Label::new(""));
+                    ui.add(egui::Label::new(egui::RichText::new(&c.after).monospace()).truncate());
+                });
+            }
+        });
+    }
+
 }
 
 /// 현재 위치 기준 다음/이전 일치 줄로 이동(캐시된 matches 사용, 끝에서 순환).

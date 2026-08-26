@@ -162,8 +162,30 @@ impl NabiApp {
                 }
                 ui.add_space(4.0);
             }
-            let preview: String = clean.lines().next().unwrap_or("").chars().take(60).collect();
-            ui.monospace(preview);
+            // 첫 줄 60자만 보여 주던 것을 실제 미리보기로 바꿨다. 이 창이 뜨는 이유는
+            // 붙여넣을 것이 위험할 수 있어서인데, 위험은 대개 **두 번째 줄부터** 온다
+            // (첫 줄은 그럴듯한 주석이고 그 아래 명령이 붙는 것이 고전적인 수법이다).
+            // 첫 줄만 보여 주는 확인창은 "확인했다"는 느낌만 주고 아무것도 확인시키지 못한다.
+            let rows = nabi_render::pastepreview::preview(&clean);
+            egui::ScrollArea::vertical().max_height(220.0).auto_shrink([false, true]).show(ui, |ui| {
+                for r in &rows {
+                    match r {
+                        nabi_render::pastepreview::Row::Line(n, t) => {
+                            ui.horizontal(|ui| {
+                                ui.add_sized(
+                                    [34.0, 14.0],
+                                    egui::Label::new(egui::RichText::new(format!("{n}")).monospace().weak()),
+                                );
+                                ui.monospace(t);
+                            });
+                        }
+                        // 접은 줄 수를 말한다 — 조용히 자르면 본 것이 전부라고 믿게 된다.
+                        nabi_render::pastepreview::Row::Elided(n) => {
+                            ui.weak(format!("\u{22ef} {} {n}", nabi_i18n::tr(lang, "paste.elided")));
+                        }
+                    }
+                }
+            });
             ui.horizontal(|ui| {
                 if ui.button(nabi_i18n::tr(lang, "paste.do")).clicked() { paste = true; }
                 if !risks.is_empty() && ui.button(nabi_i18n::tr(lang, "paste.strip")).clicked() { strip = true; }

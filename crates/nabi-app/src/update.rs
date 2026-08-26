@@ -141,6 +141,7 @@ impl eframe::App for NabiApp {
         self.show_auto_forwards(ctx); // 세션별 자동 터널 편집.
         self.show_session_env(ctx); // 세션별 환경변수 편집.
         self.show_sftp_find(ctx); // 원격 파일 찾기.
+        self.show_conn_history(ctx); // 접속 이력.
         self.show_support_bundle(ctx); // 진단 묶음.
         self.show_find_all(ctx); // 모든 창에서 찾기.
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.

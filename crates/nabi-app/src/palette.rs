@@ -35,6 +35,8 @@ pub(crate) enum PaletteAction {
     ClearMarks,
     /// 서버에서 파일 찾기(sftpfindui).
     SftpFind,
+    /// 접속 이력 창(connhistui).
+    ConnHistory,
     ResetTerm,
     QuickConnect,
     ToggleBroadcast,

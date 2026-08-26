@@ -34,6 +34,7 @@ impl NabiApp {
             PaletteAction::NextMark => self.jump_scroll_mark(true),
             PaletteAction::ClearMarks => self.clear_scroll_marks(),
             PaletteAction::SftpFind => self.open_sftp_find(),
+            PaletteAction::ConnHistory => self.open_conn_history(),
             PaletteAction::QuickConnect => self.open_quick_connect(),
             PaletteAction::ArrangeTile => self.pending_arrange = Some(ArrangeMode::Tile),
             PaletteAction::ArrangeCascade => self.pending_arrange = Some(ArrangeMode::Cascade),

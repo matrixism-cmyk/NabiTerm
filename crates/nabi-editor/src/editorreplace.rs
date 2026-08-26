@@ -41,6 +41,39 @@ pub fn replace_all(doc: &mut EditorDoc) {
     doc.dirty = true;
 }
 
+/// 바뀔 자리들의 (시작 문자 오프셋, 길이). 미리보기가 쓴다.
+///
+/// `replaced`와 **같은 규칙**(정규식/대소문자)을 써야 한다. 미리보기가 다른 규칙으로
+/// 세면 "보여 준 것과 바뀐 것이 다르다"가 되는데, 그건 미리보기가 없느니만 못하다.
+pub fn hits(text: &str, f: &FindState) -> Vec<(usize, usize)> {
+    if f.query.is_empty() {
+        return Vec::new();
+    }
+    // 바이트 자리를 문자 자리로 옮기는 표(한글에서 어긋나지 않게).
+    let mut b2c = vec![0usize; text.len() + 1];
+    for (ci, (bi, _)) in text.char_indices().enumerate() {
+        b2c[bi] = ci;
+    }
+    b2c[text.len()] = text.chars().count();
+    let mut out = Vec::new();
+    match (needs_regex(f) || f.ci).then(|| compiled(f)).flatten() {
+        Some(re) => {
+            for m in re.find_iter(text) {
+                out.push((b2c[m.start()], b2c[m.end()] - b2c[m.start()]));
+            }
+        }
+        None => {
+            let mut from = 0usize;
+            while let Some(i) = text[from..].find(&f.query) {
+                let (s0, e0) = (from + i, from + i + f.query.len());
+                out.push((b2c[s0], b2c[e0] - b2c[s0]));
+                from = e0.max(s0 + 1);
+            }
+        }
+    }
+    out
+}
+
 /// query·옵션에 일치하는 줄만 남긴 텍스트(필터/grep). 잘못된 정규식·빈 query면 원문 유지.
 pub fn filter_lines(text: &str, f: &FindState) -> String {
     if f.query.is_empty() {

@@ -65,6 +65,7 @@ const GROUPS: &[Group] = &[
         &[
             ("cmdhist.title", PaletteAction::OpenCmdHistory),
             ("sftp.history", PaletteAction::XferHistory),
+            ("connhist.title", PaletteAction::ConnHistory),
             ("bcast.results", PaletteAction::BroadcastResults),
         ],
     ),

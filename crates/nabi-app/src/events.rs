@@ -104,6 +104,7 @@ impl NabiApp {
                 }
                 Event::SshDisconnected { pane, message } => {
                     self.server_stats.remove(&pane);
+                    self.note_connection_close(pane, &message);
                     // 왜 안 붙었는지를 그 세션 옆에 남긴다 — 토스트는 스치고 사라진다.
                     if let Some(kind) = self.pane_origins.get(&pane).cloned() {
                         crate::lastfail::note(&mut self.last_fail, kind, &message);
@@ -138,7 +139,12 @@ impl NabiApp {
                         self.ssh_alert_on.insert(pane, false);
                     }
                     self.server_stats.insert(pane, *stats);
+                    // 처음 통계가 온 순간이 곧 '붙었다'는 뜻이다 — 이때 이력을 연다.
+                    let first = !self.ssh_connect_time.contains_key(&pane);
                     self.ssh_connect_time.entry(pane).or_insert_with(std::time::Instant::now);
+                    if first {
+                        self.note_connection_open(pane);
+                    }
                     // 붙었으면 옛 실패 표시를 지운다. 남겨 두면 멀쩡한 세션이 고장 난 것으로 읽힌다.
                     if let Some(kind) = self.pane_origins.get(&pane).cloned() {
                         crate::lastfail::clear(&mut self.last_fail, &kind);

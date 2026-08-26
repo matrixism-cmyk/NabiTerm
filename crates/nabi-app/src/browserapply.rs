@@ -138,7 +138,7 @@ impl NabiApp {
         };
         if let Some(name) = a.duplicate {
             for n in bulk(&name, &self.browser.multi) {
-                crate::browserops::duplicate_in_dir(&path, &n); // 복제(충돌 시 번호).
+                crate::browserops::duplicate_in_dir(&path, &n, nabi_i18n::tr(self.lang, "browser.copyword")); // 복제(충돌 시 번호).
             }
         }
         if let Some(name) = a.edit { self.edit_local_dispatch(name); } // 내장/외부 편집.

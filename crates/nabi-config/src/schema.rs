@@ -278,6 +278,9 @@ pub struct TerminalCfg {
     /// (실패 알림은 남는다). 예전에는 10초가 코드에 박혀 있었다.
     #[serde(default = "default_slow_command_secs")]
     pub slow_command_secs: u64,
+    /// 접속 이력을 파일로 남길 것인가(호스트·사용자·시각·지속시간만).
+    #[serde(default = "default_true")]
+    pub keep_conn_history: bool,
     /// 세션 이름 → 접속 시 보낼 환경변수(`KEY=VALUE` 여러 줄).
     ///
     /// `SavedSession`이 아니라 여기 두는 것은 `auto_forwards`·`last_connected`와 같은 이유다 —
@@ -354,6 +357,7 @@ impl Default for TerminalCfg {
             auto_reconnect: false,
             ssh_stats_alert_pct: 90,
             slow_command_secs: default_slow_command_secs(),
+            keep_conn_history: true,
             session_env: Default::default(),
             last_connected: std::collections::BTreeMap::new(),
             dir_visits: std::collections::BTreeMap::new(),

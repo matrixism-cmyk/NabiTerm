@@ -29,6 +29,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "mark.next").to_string(), PaletteAction::NextMark),
         (tr(lang, "mark.clear").to_string(), PaletteAction::ClearMarks),
         (tr(lang, "sftp.find.title").to_string(), PaletteAction::SftpFind),
+        (tr(lang, "connhist.title").to_string(), PaletteAction::ConnHistory),
         (tr(lang, "term.reset").to_string(), PaletteAction::ResetTerm),
         (tr(lang, "menu.quickconnect").to_string(), PaletteAction::QuickConnect),
         (tr(lang, "menu.browser").to_string(), PaletteAction::ToggleBrowser),

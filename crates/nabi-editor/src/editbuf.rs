@@ -154,12 +154,18 @@ impl EditBuf {
     /// 선택된 텍스트(없으면 빈 문자열).
     pub fn selected_text(&self) -> String {
         // 멀티범위(박스 선택)는 줄바꿈으로 이어 붙인다(컬럼 복사 관행).
+        //
+        // **빈 범위를 빼지 않는다.** 사각으로 고른 구간이 짧은 줄에서는 비는데, 그 줄을
+        // 빼면 복사한 덩어리의 줄이 밀린다 — 3번 줄이 비어 있었다는 사실이 사라지고
+        // 4번 줄이 3번 자리로 올라온다. 들쭉날쭉한 로그에서 열을 떠 갈 때 바로 드러난다.
+        // 다만 **전부 캐럿**이면(멀티커서만 세워 둔 상태) 복사할 것이 없는 것으로 본다.
         if self.sel.len() > 1 {
-            return self
-                .sel
-                .ranges()
+            let rs = self.sel.ranges();
+            if rs.iter().all(|r| r.is_caret()) {
+                return String::new();
+            }
+            return rs
                 .iter()
-                .filter(|r| !r.is_caret())
                 .map(|r| self.rope.slice(r.start()..r.end()).to_string())
                 .collect::<Vec<_>>()
                 .join("\n");
@@ -171,6 +177,24 @@ impl EditBuf {
     }
 
     /// 커서 (줄, 열) — 0-base.
+    /// 접기 판정용 들여쓰기 깊이(칸). 빈 줄은 None — 판정을 유보한다는 뜻이다.
+    ///
+    /// 한 자리 접기와 전체 접기가 **같은 규칙**을 써야 한다. 예전에는 이 계산이 메뉴
+    /// 코드 안에 인라인으로 있어서, 전체 접기를 더하려면 규칙을 한 벌 더 적어야 했다.
+    pub fn fold_indent(&self, line: usize) -> Option<usize> {
+        let s = self.line_string(line);
+        let t = s.trim_end();
+        if t.trim_start().is_empty() {
+            return None;
+        }
+        Some(
+            t.chars()
+                .take_while(|c| *c == 0x20 as char || *c == 0x09 as char)
+                .map(|c| if c == 0x09 as char { self.tab } else { 1 })
+                .sum(),
+        )
+    }
+
     pub fn cursor_line_col(&self) -> (usize, usize) {
         let line = self.rope.char_to_line(self.cursor());
         (line, self.cursor() - self.rope.line_to_char(line))

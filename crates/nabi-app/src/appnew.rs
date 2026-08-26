@@ -214,6 +214,7 @@ impl NabiApp {
             pending_paste: None,
             progress: HashMap::new(), server_stats: HashMap::new(),
             pane_status: HashMap::new(), ssh_connect_time: HashMap::new(), last_fail: Default::default(), scroll_marks: HashMap::new(), sftp_find: None,
+            conn_hist: crate::connhist::load(&nabi_config::resolve_base()), conn_hist_open: false,
             ssh_alert_on: HashMap::new(), ctx_alert_on: HashMap::new(),
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),

@@ -37,12 +37,15 @@ pub(crate) fn dir_stats(path: &Path) -> (u64, u64) {
     (files, bytes)
 }
 
-/// 확장자 앞에 " - copy"(n>1이면 " - copy (n)")를 넣은 이름. 선행 점(.bashrc)은 확장자 아님.
-pub(crate) fn copy_suffixed(name: &str, n: usize) -> String {
+/// 확장자 앞에 사본 표시를 넣은 이름. 선행 점(`.bashrc`)은 확장자가 아니다.
+///
+/// `word`는 화면 언어를 따른다. 예전에는 `" - copy"`가 영어로 박혀 있어서, 문구를
+/// 1,790개나 번역해 둔 프로그램에서 **파일 이름만 영어로** 나왔다.
+pub(crate) fn copy_suffixed(name: &str, n: usize, word: &str) -> String {
     let suffix = if n <= 1 {
-        " - copy".to_string()
+        format!(" - {word}")
     } else {
-        format!(" - copy ({n})")
+        format!(" - {word} ({n})")
     };
     match name.rfind('.').filter(|&i| i > 0) {
         Some(i) => format!("{}{suffix}{}", &name[..i], &name[i..]),
@@ -51,13 +54,13 @@ pub(crate) fn copy_suffixed(name: &str, n: usize) -> String {
 }
 
 /// dir 안의 name을 같은 폴더에 복제한다(충돌 시 번호 증가). 성공 시 새 이름을 돌려준다.
-pub(crate) fn duplicate_in_dir(dir: &Path, name: &str) -> Option<String> {
+pub(crate) fn duplicate_in_dir(dir: &Path, name: &str, word: &str) -> Option<String> {
     let src = dir.join(name);
     if !src.exists() {
         return None;
     }
     let new = (1..1000)
-        .map(|n| copy_suffixed(name, n))
+        .map(|n| copy_suffixed(name, n, word))
         .find(|c| !dir.join(c).exists())?;
     let dst = dir.join(&new);
     if src.is_dir() {
@@ -78,11 +81,20 @@ mod tests {
     #[test]
     fn copy_suffix_inserts_before_extension() {
         use super::copy_suffixed;
-        assert_eq!(copy_suffixed("file.txt", 1), "file - copy.txt");
-        assert_eq!(copy_suffixed("file.txt", 2), "file - copy (2).txt");
-        assert_eq!(copy_suffixed("Makefile", 1), "Makefile - copy");
-        assert_eq!(copy_suffixed(".bashrc", 1), ".bashrc - copy"); // 선행 점은 확장자 아님.
-        assert_eq!(copy_suffixed("a.tar.gz", 1), "a.tar - copy.gz"); // 마지막 확장자 기준.
+        assert_eq!(copy_suffixed("file.txt", 1, "copy"), "file - copy.txt");
+        assert_eq!(copy_suffixed("file.txt", 2, "copy"), "file - copy (2).txt");
+        assert_eq!(copy_suffixed("Makefile", 1, "copy"), "Makefile - copy");
+        assert_eq!(copy_suffixed(".bashrc", 1, "copy"), ".bashrc - copy"); // 선행 점은 확장자 아님.
+        assert_eq!(copy_suffixed("a.tar.gz", 1, "copy"), "a.tar - copy.gz"); // 마지막 확장자 기준.
+    }
+
+    /// **낱말이 화면 언어를 따라야 한다.** 예전에는 영어로 박혀 있어서, 한국어 화면에서
+    /// 파일 이름만 " - copy"로 나왔다.
+    #[test]
+    fn the_copy_word_follows_the_interface_language() {
+        use super::copy_suffixed;
+        assert_eq!(copy_suffixed("a.txt", 1, "사본"), "a - 사본.txt");
+        assert_eq!(copy_suffixed("a.txt", 3, "コピー"), "a - コピー (3).txt");
     }
 
     #[test]
@@ -91,12 +103,12 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("nabi-dup-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("a.txt"), b"hi").unwrap();
-        let n1 = duplicate_in_dir(&dir, "a.txt").unwrap();
+        let n1 = duplicate_in_dir(&dir, "a.txt", "copy").unwrap();
         assert_eq!(n1, "a - copy.txt");
         assert_eq!(std::fs::read(dir.join(&n1)).unwrap(), b"hi");
-        let n2 = duplicate_in_dir(&dir, "a.txt").unwrap(); // 충돌 → 번호 증가.
+        let n2 = duplicate_in_dir(&dir, "a.txt", "copy").unwrap(); // 충돌 → 번호 증가.
         assert_eq!(n2, "a - copy (2).txt");
-        assert!(duplicate_in_dir(&dir, "missing.txt").is_none());
+        assert!(duplicate_in_dir(&dir, "missing.txt", "copy").is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
