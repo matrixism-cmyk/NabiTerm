@@ -243,6 +243,14 @@ pub struct TerminalCfg {
     /// 규칙이 있다고 저절로 동작하게 두지 않는다(autoreply 문서 참고).
     #[serde(default)]
     pub auto_reply: bool,
+    /// 명령 히스토리에 남길 때 비밀로 보이는 값을 가린다. **기본 켬.**
+    ///
+    /// 끄면 명령이 있는 그대로 설정 파일에 쌓인다 — 그 파일은 밖으로 나가기 쉽다.
+    #[serde(default = "yes")]
+    pub redact_history: bool,
+    /// 세션 로그에 쓸 때도 가린다. **기본 켬.**
+    #[serde(default = "yes")]
+    pub redact_logs: bool,
     /// 새 셸·SSH 창의 출력을 **저절로** 파일에 기록한다(설정 폴더의 `logs/`).
     ///
     /// 기본은 꺼짐 — 터미널에는 비밀번호도 남의 데이터도 지나간다. 묻지 않고 디스크에
@@ -366,6 +374,7 @@ fn default_alert_pct() -> u32 { 90 }
 fn default_slow_command_secs() -> u64 { 30 }
 fn default_control_mode() -> String { "ask".into() }
 fn default_stats_secs() -> u64 { 3 }
+fn yes() -> bool { true }
 fn default_keepalive() -> u64 { 30 }
 
 impl Default for TerminalCfg {
@@ -430,6 +439,8 @@ impl Default for TerminalCfg {
             highlight_keywords: Vec::new(),
             alert_patterns: Vec::new(),
             auto_reply: false,
+            redact_history: true,
+            redact_logs: true,
             session_log_auto: false,
             local_recent: Vec::new(),
             sftp_recent: Vec::new(),

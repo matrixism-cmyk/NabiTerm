@@ -182,6 +182,14 @@ fn lang_choices() -> [(&'static str, &'static str); 4] {
 /// SSH 페이지 — 접속 유지·통계 경고처럼 "연결 자체"에 걸리는 설정만 모은다
 /// (예전에는 만물상 '터미널' 페이지에 섞여 있었다 — 사용자 요청 2026-08-19로 분리).
 pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
+    ui.label(tr(lang, "settings.redacthist"));
+    ui.checkbox(&mut cfg.terminal.redact_history, "")
+        .on_hover_text(tr(lang, "settings.redacthisthint"));
+    ui.end_row();
+    ui.label(tr(lang, "settings.redactlogs"));
+    ui.checkbox(&mut cfg.terminal.redact_logs, "")
+        .on_hover_text(tr(lang, "settings.redactlogshint"));
+    ui.end_row();
     ui.label(tr(lang, "settings.autolog"));
     ui.checkbox(&mut cfg.terminal.session_log_auto, "")
         .on_hover_text(tr(lang, "settings.autologhint"));

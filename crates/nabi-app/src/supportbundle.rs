@@ -21,37 +21,11 @@ pub(crate) struct Piece {
     pub body: String,
 }
 
-/// 비밀로 보이는 것을 지운다.
+/// 비밀로 보이는 것을 지운다 — 규칙은 `crate::redact`에 있다.
 ///
-/// 넉넉하게 지운다 — 지나치게 지워서 진단이 조금 어려워지는 쪽이, 토큰 하나가 새는 쪽보다
-/// 훨씬 낫다. 되돌릴 수 없는 것은 유출이지 불편이 아니다.
-pub(crate) fn redact(text: &str) -> String {
-    text.lines().map(redact_line).collect::<Vec<_>>().join("\n")
-}
-
-/// 이 낱말 뒤에 오는 값은 지운다.
-const SECRET_KEYS: &[&str] = &[
-    "password", "passwd", "passphrase", "secret", "token", "authorization",
-    "api_key", "apikey", "credential", "bearer",
-];
-
-fn redact_line(line: &str) -> String {
-    let low = line.to_ascii_lowercase();
-    if SECRET_KEYS.iter().any(|k| low.contains(k)) {
-        // 낱말은 남기고 값만 지운다 — 무엇이 지워졌는지는 보여야 진단에 쓸모가 있다.
-        return match line.find([':', '=']) {
-            // 구분자 앞의 공백은 떼어 낸다 — "Authorization : [redacted]"처럼 보이면 지저분하다.
-            Some(i) => format!("{}: [redacted]", line[..i].trim_end()),
-            None => "[redacted]".to_string(),
-        };
-    }
-    // 개인키 본문이 통째로 섞여 들어간 경우.
-    if low.contains("begin openssh private key") || low.contains("begin rsa private key") {
-        return "[redacted private key]".to_string();
-    }
-    line.to_string()
-}
-
+/// 원래 이 파일에 규칙이 있었는데, 명령 기록·세션 로그도 같은 보호가 필요해지면서
+/// 밖으로 꺼냈다. 규칙이 두 벌이면 한쪽만 강해지고 다른 쪽은 조용히 뒤처진다.
+pub(crate) use crate::redact::redact;
 /// 묶음 전체를 하나의 글로 엮는다.
 pub(crate) fn assemble(pieces: &[Piece]) -> String {
     let mut out = String::new();
@@ -67,38 +41,22 @@ pub(crate) fn assemble(pieces: &[Piece]) -> String {
 mod tests {
     use super::*;
 
+    /// 규칙 자체의 시험은 `crate::redact`로 옮겼다 — 그쪽이 사실의 출처다.
+    /// 여기서는 **번들이 그 규칙을 실제로 통과시키는지**만 본다.
     #[test]
-    fn a_password_line_keeps_its_label_but_loses_its_value() {
-        assert_eq!(redact_line("password: hunter2"), "password: [redacted]");
-        assert_eq!(redact_line("  Authorization = Bearer abc123"), "  Authorization: [redacted]");
-    }
-
-    /// **대소문자를 가리지 않는다** — 로그는 온갖 표기로 온다.
-    #[test]
-    fn redaction_ignores_case() {
-        assert!(redact_line("PASSWORD=x").contains("[redacted]"));
-        assert!(redact_line("Api_Key: x").contains("[redacted]"));
-    }
-
-    /// 개인키가 통째로 섞여 들어간 경우도 지운다.
-    #[test]
-    fn a_private_key_block_is_removed() {
-        assert_eq!(redact_line("-----BEGIN OPENSSH PRIVATE KEY-----"), "[redacted private key]");
+    fn the_bundle_uses_the_shared_rules() {
+        let got = redact("password: hunter2");
+        assert!(got.contains("[redacted]") && !got.contains("hunter2"), "{got}");
+        let key = redact("-----BEGIN OPENSSH PRIVATE KEY-----");
+        assert_eq!(key, "[redacted private key]");
     }
 
     /// 평범한 줄은 건드리지 않는다 — 다 지우면 진단이 안 된다.
     #[test]
     fn ordinary_lines_survive() {
         let l = "2026-08-25 INFO 연결 성공 host=example.com";
-        assert_eq!(redact_line(l), l);
+        assert_eq!(redact(l), l);
     }
-
-    /// 값에 구분자가 없어도 통째로 지운다(값이 남는 것보다 낫다).
-    #[test]
-    fn a_secret_without_a_separator_is_dropped_whole() {
-        assert_eq!(redact_line("token abc123"), "[redacted]");
-    }
-
     #[test]
     fn redaction_works_across_lines() {
         let got = redact("ok\npassword: x\nfine");

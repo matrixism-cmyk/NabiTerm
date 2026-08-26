@@ -36,6 +36,7 @@ impl NabiApp {
         let mut filter: Filter = ctx.data(|d| d.get_temp(f_id)).unwrap_or_default();
         let mut run: Option<String> = None;
         let mut copy: Option<String> = None;
+        let redacting = self.config.terminal.redact_history;
         egui::Window::new(tr(lang, "cmdhist.title"))
             .open(&mut open)
             .default_size([720.0, 480.0])
@@ -51,6 +52,11 @@ impl NabiApp {
                     ui.checkbox(&mut filter.failed_only, tr(lang, "cmdhist.failed"));
                     ui.add_enabled(!cwd.is_empty(), egui::Checkbox::new(&mut filter.this_dir_only, tr(lang, "cmdhist.thisdir")))
                         .on_disabled_hover_text(tr(lang, "cmdhist.nodir"));
+                    // 가려진 값이 보이는 까닭을 알려 준다 — 모르면 기록이 깨진 줄 안다.
+                    if redacting {
+                        ui.separator();
+                        ui.weak(tr(lang, "cmdhist.redacted")).on_hover_text(tr(lang, "settings.redacthisthint"));
+                    }
                 });
                 ui.separator();
                 let (rows, cut) = select(&self.config.terminal.cmd_history, &query, filter, &cwd, LIMIT);

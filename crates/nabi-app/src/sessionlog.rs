@@ -47,6 +47,7 @@ impl NabiApp {
         if self.session_logs.is_empty() {
             return;
         }
+        let redact_on = self.config.terminal.redact_logs;
         let Some(panes) = self.orch.panes.read().ok() else { return };
         self.session_logs.retain(|pane, log| {
             let Some(v) = panes.get(pane) else { return false };
@@ -54,7 +55,13 @@ impl NabiApp {
                 let cur = md.line_marker();
                 if cur > log.last {
                     let lines = md.lines_abs_text(log.last, cur);
-                    let _ = writeln!(log.file, "{}", lines.join("\r\n"));
+                    // 터미널 출력에는 붙여넣은 토큰·명령줄 비밀번호가 지나간다. 파일에
+                    // 닿기 전에 가린다(설정으로 끌 수 있다 — 원문이 필요한 진단도 있다).
+                    let joined = match redact_on {
+                        true => lines.iter().map(|l| crate::redact::line_full(l)).collect::<Vec<_>>().join("\r\n"),
+                        false => lines.join("\r\n"),
+                    };
+                    let _ = writeln!(log.file, "{joined}");
                     log.last = cur;
                 }
             }

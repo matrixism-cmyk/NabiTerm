@@ -13,6 +13,9 @@ impl NabiApp {
         let layout = nabi_config::StorageLayout::resolve();
         let first_run = !layout.config_file.exists(); // OOBE: 설정 파일이 없으면 첫 실행.
         let config = nabi_config::load(&layout);
+        // **어제 남은 토큰은 오늘도 토큰이다.** 가리기를 켜기 전에 쌓인 기록에는
+        // 비밀이 그대로 있다 — 불러올 때 한 번 훑어 지운다(디스크에도 다음 저장에 반영).
+        let config = crate::redact::sweep_history(config);
         // 구문 강조 자산 등록(사용자 폴더 base/nabipad/{syntaxes,themes}·테마·확장자 매핑).
         let editor_config = nabi_config::load_editor(&layout);
         let editor_config_path = layout.editor_file.clone();

@@ -34,6 +34,12 @@ impl crate::app::NabiApp {
         let Some(cmd) = self.run_cmd.get(&pane).cloned() else { return };
         let cwd = self.cwds.get(&pane).map(|c| crate::workspace::strip_uri_slash(c)).unwrap_or_default();
         let ts = chrono::Local::now().timestamp();
+        // **저장 직전에** 가린다. 화면에서만 가리면 설정 파일에는 그대로 남는다 —
+        // 그 파일은 백업·동기화·지원 문의로 밖에 나가기 쉽다.
+        let cmd = match self.config.terminal.redact_history {
+            true => crate::redact::line_full(&cmd),
+            false => cmd,
+        };
         record(&mut self.config.terminal.cmd_history, &cmd, &cwd, exit, ts, 500);
         // 얼마나 걸렸는지도 남긴다("아까 그 빌드 얼마나 걸렸지"는 매일 나오는 질문이다).
         if let Some(start) = self.cmd_started.remove(&pane) {
