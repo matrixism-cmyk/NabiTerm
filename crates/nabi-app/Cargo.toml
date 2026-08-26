@@ -49,7 +49,10 @@ ron = "0.8"     # 도크 레이아웃 직렬화(eframe persistence가 이미 사
 global-hotkey = "0.6"   # Quake 모드 OS 전역 핫키
 trash = "5"     # 로컬 파일 삭제를 휴지통으로(복구 가능)
 raw-window-handle = "0.6" # 창 HWND 추출(OS 파일 드롭 위치 판정 — ScreenToClient)
-ttf-parser = "0.25"       # 설치 폰트의 등폭 여부·패밀리명 파싱(설정 폰트 목록)
+# 설치 폰트의 등폭 여부·패밀리명 파싱(설정 폰트 목록).
+# ttf-parser 는 관리 중단(RUSTSEC-2026-0192)이라 skrifa 로 옮겼다 — egui 가 이미
+# 같은 판을 쓰고 있어 의존성이 늘지 않고 오히려 하나 줄었다.
+skrifa = "0.44"
 encoding_rs = "0.8"       # 내장 에디터 파일 인코딩 디코드(BOM/EUC-KR 등)
 chardetng = "0.1"         # 내장 에디터 자동 인코딩 감지(순수 Rust)
 memmap2 = "0.9"           # 대용량 파일 뷰어 메모리 매핑

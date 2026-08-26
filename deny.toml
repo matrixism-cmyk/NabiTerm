@@ -14,6 +14,25 @@ all-features = false
 yanked = "deny"
 unmaintained = "workspace"
 
+# 고칠 수 없는 것만, 이유를 적어 둔다. **빈 목록이 기본이고, 한 줄 늘 때마다 근거가
+# 있어야 한다** — 여기에 쌓이기 시작하면 검사가 있으나 마나가 된다.
+ignore = [
+  # RSA 타이밍 사이드채널(Marvin). `rsa` 크레이트에 **수정판이 없다** — 상수 시간
+  # 구현이 나올 때까지 열려 있다. 우리에게는 `russh`(SSH)를 통해서만 닿는다.
+  #
+  # 공격이 성립하려면 서버가 우리에게 **RSA 복호화를 여러 번 시키고 그 시간을 잰다**.
+  # SSH 클라이언트는 서버의 공개키로 검증만 하고, 우리 RSA 개인키를 쓰는 것은 사용자가
+  # RSA 키로 로그인할 때뿐이다. 그때도 붙는 서버는 사용자가 고른 곳이다.
+  #
+  # 위험을 줄이려면 사용자가 ed25519 키를 쓰면 된다 — 앱의 키 생성은 이미 ed25519가
+  # 기본이다(`nabi-ssh/keygen.rs`).
+  #
+  # russh 가 상수 시간 구현으로 옮기면 이 줄을 지운다. 그 전까지는 우리가 할 수 있는
+  # 일이 없고, 이 한 줄 때문에 CI 전체를 빨갛게 두면 **다음 진짜 취약점을 못 본다**
+  # (실제로 그렇게 아홉 날 동안 quick-xml 두 건을 못 봤다).
+  "RUSTSEC-2023-0071",
+]
+
 [licenses]
 # 배포 가능한 허용 목록. 여기 없는 라이선스가 들어오면 실패한다(사후 발견 방지).
 allow = [
@@ -31,6 +50,13 @@ allow = [
     "Unlicense",
     "OpenSSL",
     "BSL-1.0",
+    # 글꼴 라이선스 — egui가 기본 UI 글꼴을 함께 담아 온다
+    # (epaint_default_fonts: "(MIT OR Apache-2.0) AND OFL-1.1 AND Ubuntu-font-1.0").
+    # 둘 다 배포를 허용하는 글꼴 라이선스이고, 앱의 서드파티 고지와 README에 이미
+    # 적어 두었다. 여기만 뒤처져 있어 **CI가 계속 빨갛게 실패하고 있었다** —
+    # 저장소에 오는 사람이 가장 먼저 보는 것이 그 배지다(2026-08-27).
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
 ]
 confidence-threshold = 0.9
 
@@ -39,6 +65,11 @@ confidence-threshold = 0.9
 # (egui/windows 계열은 실제로 여러 버전이 공존해 deny로 두면 실용성이 없다).
 multiple-versions = "warn"
 wildcards = "deny"
+# 우리 워크스페이스 안의 크레이트는 `{ path = ... }` 로만 잇는다(게시하지 않으므로
+# 버전을 붙일 이유가 없다). cargo-deny 는 그것을 와일드카드로 세어 **자기 크레이트
+# 20여 개를 전부 오류로 올렸다** — 바깥 의존성에 대한 규율은 그대로 두고 경로 의존만
+# 예외로 둔다(2026-08-27, CI가 이 때문에도 실패하고 있었다).
+allow-wildcard-paths = true
 
 [sources]
 unknown-registry = "deny"
