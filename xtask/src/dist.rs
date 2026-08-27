@@ -106,6 +106,14 @@ fn build_setup(root: &Path) -> ExitCode {
         return ExitCode::FAILURE;
     }
     println!("생성: {}", root.join("dist").join("nabiTerm-setup.exe").display());
+    // 패키지 매니페스트도 여기서 함께 만든다.
+    //
+    // 따로 부르게 두면 언젠가 잊고, 잊으면 winget·Scoop 은 **옛 판을 계속 가리킨다**
+    // — 릴리스는 성공했으므로 아무 경고도 없다(저장소 이름을 문서에 적었다가 일곱 판을
+    // 놓친 것과 같은 결이다). 실패해도 배포를 막지는 않는다.
+    if crate::pkg::run() != ExitCode::SUCCESS {
+        eprintln!("경고: 패키지 매니페스트를 만들지 못했다 — `xtask pkg` 를 따로 확인할 것");
+    }
     ExitCode::SUCCESS
 }
 
