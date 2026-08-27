@@ -6,6 +6,8 @@
 pub mod aiprofile;
 pub mod editor;
 pub mod load;
+#[cfg(test)]
+mod roundtrip_test;
 pub mod paths;
 pub mod persist;
 pub mod schema;
