@@ -45,6 +45,8 @@ pub fn connect(
     rt.spawn(async move {
         let res = run(pane, params, size, out.clone(), in_rx, known_hosts, verifier, stats).await;
         crate::kexinfo::clear(pane); // 배지 잔상 방지.
+        // 닫힌 pane 의 연결로 새 SFTP 가 열리면 안 된다. 이미 넘겨준 Arc 는 받은 쪽이 놓을 때까지 산다.
+        crate::conns::clear(pane);
         let err = res.err().map(|e| e.to_string());
         if let Some(e) = &err {
             // 원문 한 줄만 던지면 대부분의 사용자에게 아무 도움이 안 된다 — 갈래를 짚고
@@ -70,10 +72,13 @@ async fn run(
     // 유휴 연결이 서버 타임아웃으로 끊기지 않도록 keepalive(설정값 초, 0=끄기, 3회 실패 시 종료).
     let secs = SSH_KEEPALIVE_SECS.load(std::sync::atomic::Ordering::Relaxed);
     let opts = ConnOpts { keepalive_secs: secs, ..Default::default() };
-    // 직접 연결 또는 점프 호스트(ProxyJump) 경유. _jump은 터널 유지를 위해 살려둔다.
+    // 직접 연결 또는 점프 호스트(ProxyJump) 경유. jump는 터널 유지를 위해 살려둔다.
     // kex 슬롯: 목적지 연결의 협상 결과(KEX·암호)를 받아 pane 레지스트리에 기록(PQ 배지).
     let kex_slot = crate::kexinfo::new_slot();
-    let (handle, _jump, old) = open_authed(&params, opts, known_hosts, verifier, kex_slot.clone()).await?;
+    let (handle, jump, old) = open_authed(&params, opts, known_hosts, verifier, kex_slot.clone()).await?;
+    // 점프 핸들을 Arc 로 묶는다 — 레지스트리와 이 함수가 **함께** 들고 있어야 하기 때문이다.
+    // 여기서 드롭되면 터널이 닫히고, SFTP 가 받아 간 목적지 핸들은 쓸모없어진다.
+    let jump = jump.map(Arc::new);
     if let Some(info) = kex_slot.lock().ok().and_then(|s| s.clone()) {
         crate::kexinfo::set(pane, info);
     }
@@ -106,6 +111,16 @@ async fn run(
     channel.request_shell(true).await?;
     // 통계 폴러를 별도 채널/태스크로 실행(대화형 출력과 분리). handle는 Arc로 공유.
     let handle = Arc::new(handle);
+    // 여기서부터 SFTP 가 이 연결을 그대로 쓸 수 있다(H4). 점프 핸들을 함께 넣는 이유는
+    // 그것이 드롭되면 터널이 끊기기 때문이다 — 목적지 핸들만 넘기면 잠시 뒤 죽는다.
+    crate::conns::set(
+        pane,
+        crate::conns::SshConn {
+            handle: handle.clone(),
+            jump: jump.clone(),
+            who: crate::conns::Who::of(&params),
+        },
+    );
     let poller = stats.map(|(tx, interval)| {
         tokio::spawn(crate::stats::poll_loop(pane, handle.clone(), tx, interval))
     });

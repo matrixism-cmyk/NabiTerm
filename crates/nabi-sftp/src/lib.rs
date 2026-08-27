@@ -1,8 +1,9 @@
 //! nabi-sftp — SFTP 백엔드(russh-sftp). `nabi_fs::RemoteFs` 구현.
 //!
 //! ⚠️ 구조 구현(컴파일 검증). 런타임 동작 확인에는 실제 SSH 서버가 필요하다.
-//! MobaXterm식으로 기존 SSH 연결을 재사용하려면 오케스트레이터에서 핸들을 공유하도록
-//! 확장한다(현재는 별도 연결 + 비밀번호 인증).
+//! MobaXterm식으로 **기존 SSH 연결을 재사용한다**(배치 Y H5, v0.1.483).
+//! 터미널이 같은 서버·같은 계정으로 붙어 있으면 `connect_sftp_reusing` 이 그 연결에
+//! 채널만 더 열어 인증을 다시 하지 않는다. 없으면 예전처럼 새로 연결한다.
 
 pub mod fs;
 pub mod hashcheck;
@@ -18,7 +19,7 @@ pub mod uploadmode;
 pub use fs::SftpFs;
 pub use hashcheck::SFTP_VERIFY_HASH;
 pub use recurse::DirProgress;
-pub use session::connect_sftp;
+pub use session::{connect_sftp, connect_sftp_reusing, ReusedConn};
 
 /// 업로드 권한 정규화 설정(전역, 빈 문자열=끄기). UI 설정에서 즉시 반영한다.
 ///

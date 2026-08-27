@@ -17,6 +17,12 @@ use std::sync::Arc;
 /// SFTP 연결에 쓰는 호스트키 핸들러(= SSH 터미널과 동일 구현).
 pub(crate) type Handler = ClientHandler;
 
+/// 물려받은 연결 — 목적지 핸들과(있다면) 점프 호스트 핸들.
+///
+/// 점프 핸들을 함께 받는 이유는 그것이 드롭되면 터널이 끊기기 때문이다.
+/// 목적지 핸들만 받으면 잠시 뒤 조용히 죽는다.
+pub type ReusedConn = nabi_ssh::conns::SshConn;
+
 /// SFTP 세션을 연다.
 ///
 /// `known_hosts`에 알려진 키면 수락, 미지 호스트는 `verifier`가 있으면 사용자에게 묻고
@@ -26,6 +32,26 @@ pub async fn connect_sftp(
     known_hosts: PathBuf,
     verifier: Option<HostKeyVerifier>,
 ) -> Result<SftpFs, String> {
+    connect_sftp_reusing(params, known_hosts, verifier, None).await
+}
+
+/// 같은 서버에 이미 붙어 있는 SSH 연결을 **그대로 쓴다**(배치 Y H5).
+///
+/// `reuse` 가 `Some` 이면 새 연결도 인증도 하지 않고 그 연결에 SFTP 채널만 더 연다.
+/// 사용자에게는 비밀번호를 다시 묻지 않는 것으로, 서버에는 세션이 하나로 보인다.
+///
+/// `None` 이면 지금까지처럼 새로 연결한다 — 되돌릴 수 있게 남겨 둔 길이다(H6).
+pub async fn connect_sftp_reusing(
+    params: &SshParams,
+    known_hosts: PathBuf,
+    verifier: Option<HostKeyVerifier>,
+    reuse: Option<ReusedConn>,
+) -> Result<SftpFs, String> {
+    if let Some(c) = reuse {
+        // 채널 하나를 더 여는 것은 이미 증명된 길이다 — copyid(v0.1.478)가 SFTP 세션의
+        // 연결에 exec 채널을 열고 있다. 반대 방향으로 하는 것뿐이다.
+        return open_on(c.handle, c.jump).await;
+    }
     let handler = |host: &str, port: u16| {
         ClientHandler::new(host.to_string(), port, known_hosts.clone(), verifier.clone())
     };
@@ -84,6 +110,17 @@ pub async fn connect_sftp(
         (handle, None)
     };
 
+    open_on(std::sync::Arc::new(handle), jump.map(std::sync::Arc::new)).await
+}
+
+/// 연결 위에 SFTP 서브시스템 채널을 열고 `SftpFs` 를 만든다.
+///
+/// 새로 붙은 연결과 물려받은 연결이 **같은 코드**를 지나가게 한다. 둘을 따로 적으면
+/// 언젠가 한쪽에만 고침이 들어간다.
+async fn open_on(
+    handle: std::sync::Arc<client::Handle<Handler>>,
+    jump: Option<std::sync::Arc<client::Handle<Handler>>>,
+) -> Result<SftpFs, String> {
     let channel = handle
         .channel_open_session()
         .await

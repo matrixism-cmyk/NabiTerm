@@ -55,7 +55,9 @@ pub enum Event {
     /// 설정 리로드 완료.
     ConfigReloaded,
     /// SFTP 연결 성공.
-    SftpConnected { id: SftpId },
+    /// SFTP 가 열렸다. `reused` 는 **붙어 있던 SSH 연결을 그대로 썼는지**다 —
+    /// 참이면 인증을 다시 하지 않았고 서버에 세션도 하나다.
+    SftpConnected { id: SftpId, reused: bool },
     /// 원격 디렉터리 목록 도착.
     SftpListing {
         id: SftpId,

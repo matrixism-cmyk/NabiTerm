@@ -7,7 +7,6 @@ use crate::connsftp::Conn;
 use crate::sftpev::{op_done, to_entry, transfer_done};
 use crossbeam_channel::Sender;
 use nabi_proto::{Event, SftpId, SshAuth, SshParams};
-use nabi_sftp::connect_sftp;
 use std::collections::HashMap;
 use std::path::Path;
 use tokio::runtime::Handle;
@@ -79,13 +78,20 @@ pub fn spawn_sftp(
     rt.spawn(async move {
         // 재시도·재접속용 취소 플래그 클론(set_cancel가 원본을 소비하기 전에 확보).
         let cancel_retry = cancel.clone();
+        // 연결을 물려받았는지 — 아래 SftpConnected 에 실어 UI 가 알려 준다.
+        let mut reused = false;
         let conn = if ftp {
             let pass = if let SshAuth::Password(p) = &params.auth { p.clone() } else { String::new() };
             nabi_ftp::connect_ftp(&params.host, params.port, &params.user, &pass)
                 .await
                 .map(Conn::Ftp)
         } else {
-            connect_sftp(&params, known_hosts.clone(), Some(verifier.clone()))
+            // 이미 같은 서버·같은 계정으로 붙어 있으면 **그 연결을 그대로 쓴다**(배치 Y H5).
+            // 메뉴는 이미 "SFTP 열기(같은 서버)"라고 적어 두고도 지금까지는 새로 붙어
+            // 비밀번호를 다시 물었다. 없으면 예전처럼 새로 연결한다(H6 — 되돌릴 수 있다).
+            let reuse = nabi_ssh::conns::find(&nabi_ssh::conns::Who::of(&params));
+            reused = reuse.is_some();
+            nabi_sftp::connect_sftp_reusing(&params, known_hosts.clone(), Some(verifier.clone()), reuse)
                 .await
                 .map(|mut f| {
                     f.set_limit(limit_kbps as u64 * 1024); // KB/s → bytes/s.
@@ -99,7 +105,7 @@ pub fn spawn_sftp(
         });
         let mut fs = match conn {
             Ok(c) => {
-                let _ = ev.send(Event::SftpConnected { id });
+                let _ = ev.send(Event::SftpConnected { id, reused });
                 c
             }
             Err(message) => { let _ = ev.send(Event::SftpError { id, message }); return; }

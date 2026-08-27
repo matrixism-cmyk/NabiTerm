@@ -21,6 +21,7 @@ pub mod conntimeout;
 pub mod copyid;
 pub mod legacy;
 pub mod handler;
+pub mod conns;
 pub mod kexinfo;
 pub mod keygen;
 pub mod params;

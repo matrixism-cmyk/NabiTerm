@@ -135,4 +135,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("env.desc.rustanalyzer", "Rust language server — go to definition, rename, diagnostics in nabiPad", "Rust 언어 서버 — nabiPad에서 정의로 가기·이름 바꾸기·진단", "Rust言語サーバー — nabiPadで定義へ移動・名前変更・診断"),
     ("env.desc.pyright", "Python language server (npm). Needs Node.js.", "Python 언어 서버(npm). Node.js가 필요합니다.", "Python言語サーバー（npm）。Node.jsが必要です。"),
     ("env.desc.tsserver", "TypeScript / JavaScript language server (npm). Needs Node.js.", "TypeScript · JavaScript 언어 서버(npm). Node.js가 필요합니다.", "TypeScript・JavaScript言語サーバー（npm）。Node.jsが必要です。"),
+    ("sftp.connected.reused", "Connected (reusing the SSH session)", "연결됨(SSH 연결을 그대로 쓸)", "接続済み（SSH接続を再利用）"),
 ];

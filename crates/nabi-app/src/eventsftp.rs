@@ -11,7 +11,7 @@ impl NabiApp {
     /// (호출측이 이어서 매칭 — 소유권을 잃지 않게).
     pub(crate) fn handle_sftp_event(&mut self, ev: Event, ctx: &egui::Context) -> Option<Event> {
         match ev {
-            Event::SftpConnected { id } => self.on_sftp_connected(id, ctx),
+            Event::SftpConnected { id, reused } => self.on_sftp_connected(id, reused, ctx),
             Event::SftpListing { id, path, mut entries } => {
                 // 제어평면(sftp-list) 회신이면 브라우저 UI를 건드리지 않는다(S6-55).
                 if self.sftp_ctl_take_listing(&path, &entries) {
@@ -120,8 +120,13 @@ impl NabiApp {
     }
 
     /// 연결 완료 — 상태 표시 후 홈 디렉터리 목록을 요청한다.
-    fn on_sftp_connected(&mut self, id: SftpId, ctx: &egui::Context) {
-        let connected = nabi_i18n::tr(self.lang, "sftp.connected").to_string();
+    ///
+    /// `reused` 면 붙어 있던 SSH 연결을 그대로 썼다는 뜻이다. 사용자에게 이것을 알려
+    /// 주는 이유는, 비밀번호를 안 물어본 것이 **건너뛴 것이 아니라 의도된 일**임을
+    /// 보이기 위해서다. 아무 말도 없으면 인증을 건너뛴 것처럼 보일 수 있다.
+    fn on_sftp_connected(&mut self, id: SftpId, reused: bool, ctx: &egui::Context) {
+        let key = if reused { "sftp.connected.reused" } else { "sftp.connected" };
+        let connected = nabi_i18n::tr(self.lang, key).to_string();
         // 워크스페이스 복원이면 저장된 경로로 바로 들어간다(없으면 서버 기본 ".").
         let mut listpath = ".".to_string();
         let found = self
