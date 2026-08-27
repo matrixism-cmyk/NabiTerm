@@ -195,16 +195,12 @@ pub(crate) fn show_entries(
     if matches!(mode, crate::sftpview::ViewMode::Details) {
         crate::sftptable::table(ui, &visible, cur_path, lang, compare, selected, multi, scroll_to, sort, ren)
     } else {
-        egui::ScrollArea::vertical()
-            .id_salt("sftp_entries")
-            .show(ui, |ui| {
-                crate::sftpview::render(ui, &visible, cur_path, lang, mode, now, compare, selected, multi)
-            })
-            .inner
+        // 스크롤은 **보기 모드가 직접** 만든다. 격자는 보이는 줄만 그리려고 `show_rows` 를
+        // 써야 하는데, 여기서 한 겹 더 감싸면 스크롤이 둘이 되어 안쪽이 늘 다 그린다.
+        crate::sftpview::render(ui, &visible, cur_path, lang, mode, now, compare, selected, multi)
     }
 }
 
-#[cfg(test)]
 #[cfg(test)]
 mod tests {
     use super::batch_new_name;

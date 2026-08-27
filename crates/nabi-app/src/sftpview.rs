@@ -135,12 +135,19 @@ pub(crate) fn render(
 ) -> Option<EClick> {
     let sel = |n: &str| Some(n) == selected || multi.contains(n);
     match mode {
-        ViewMode::Details => details(ui, entries, cur, lang, now, compare, false),
-        ViewMode::Content => details(ui, entries, cur, lang, now, compare, true),
-        ViewMode::List => grid(ui, entries, cur, lang, 150.0, 18.0, 13.0, false, &sel),
-        ViewMode::LargeIcons => grid(ui, entries, cur, lang, 96.0, 78.0, 22.0, true, &sel),
-        ViewMode::SmallIcons => grid(ui, entries, cur, lang, 70.0, 54.0, 15.0, true, &sel),
-        ViewMode::Tile => grid(ui, entries, cur, lang, 168.0, 22.0, 13.0, false, &sel),
+        // 이 둘은 아직 전부 그린다. 스크롤을 안쪽으로 옮기면서 동작만 그대로 지킨다 —
+        // 가상화는 행 높이를 알아야 하는데 여기서는 두 줄 항목이라 재야 한다(다음 단계).
+        ViewMode::Details | ViewMode::Content => {
+            let two = matches!(mode, ViewMode::Content);
+            egui::ScrollArea::vertical()
+                .id_salt("sftp_details")
+                .show(ui, |ui| details(ui, entries, cur, lang, now, compare, two))
+                .inner
+        }
+        ViewMode::List => crate::sftpgrid::grid(ui, entries, cur, lang, 150.0, 18.0, 13.0, false, &sel),
+        ViewMode::LargeIcons => crate::sftpgrid::grid(ui, entries, cur, lang, 96.0, 78.0, 22.0, true, &sel),
+        ViewMode::SmallIcons => crate::sftpgrid::grid(ui, entries, cur, lang, 70.0, 54.0, 15.0, true, &sel),
+        ViewMode::Tile => crate::sftpgrid::grid(ui, entries, cur, lang, 168.0, 22.0, 13.0, false, &sel),
     }
 }
 
@@ -211,61 +218,3 @@ fn details(
     click
 }
 
-/// 격자/타일/목록: 셀 크기·글자 크기로 모양을 조절(with_size면 크기도 표시).
-#[allow(clippy::too_many_arguments)]
-fn grid(
-    ui: &mut egui::Ui,
-    entries: &[&SftpEntry],
-    cur: &str,
-    lang: Lang,
-    cw: f32,
-    ch: f32,
-    txt: f32,
-    with_size: bool,
-    // 이 항목이 선택되었는가(단일 선택 + 다중 선택 합치기).
-    selected: &dyn Fn(&str) -> bool,
-) -> Option<EClick> {
-    let mut click = None;
-    let big = ch > 40.0; // 아이콘 모드: 아이콘 위 / 이름 아래(2줄).
-    ui.horizontal_wrapped(|ui| {
-        // 맨 앞 ".." 셀: 더블클릭으로 상위 디렉터리 이동.
-        if cur != "/" && cur != "." {
-            let up = egui::RichText::new("\u{2b06} ..").size(txt);
-            if ui.add_sized([cw, ch], egui::Button::new(up)).double_clicked() {
-                click = Some(EClick::Nav(crate::sftppath::parent_dir(cur)));
-            }
-        }
-        for e in entries {
-            let sz = if with_size && !e.is_dir {
-                format!("\n{}", crate::browserfs::human(e.size))
-            } else {
-                String::new()
-            };
-            let sep = if big { '\n' } else { ' ' };
-            let color = if e.is_dir {
-                crate::filetype::FOLDER_COLOR
-            } else {
-                crate::filetype::file_color(&e.name)
-            };
-            let label = egui::RichText::new(format!("{}{sep}{}{sz}", icon(e), e.name))
-                .size(txt)
-                .color(color);
-            // click_and_drag로 직접 센스(드래그 커서로 클릭 막히는 문제 방지). 로컬 격자와 동일.
-            let mut btn = egui::Button::new(label).sense(egui::Sense::click_and_drag());
-            if selected(&e.name) {
-                btn = btn.fill(ui.visuals().selection.bg_fill); // 선택 항목 강조.
-            }
-            let resp = ui.add_sized([cw, ch], btn);
-            if resp.dragged() {
-                resp.dnd_set_drag_payload(RemoteName {
-                    name: e.name.clone(),
-                    is_dir: e.is_dir,
-                });
-            }
-            if let Some(a) = actions(&resp, e, cur, lang) {
-                click = Some(a);
-            }
-        }
-    });
-    click
-}
