@@ -8,6 +8,7 @@ pub mod groups;
 pub mod model;
 #[cfg(test)]
 mod model_tests;
+pub mod salvage;
 pub mod store;
 
 pub use export::{from_json, from_toml, to_json, to_toml, SessionExport};

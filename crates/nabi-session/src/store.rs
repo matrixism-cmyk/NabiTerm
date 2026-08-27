@@ -20,7 +20,13 @@ pub fn load_tree_reporting(path: &Path) -> (SessionTree, Option<std::path::PathB
     };
     match from_toml(&text) {
         Ok(t) => (t, None),
-        Err(_) => (SessionTree::default(), backup_corrupt(path)),
+        Err(_) => {
+            // 통째로 못 읽어도 **읽히는 항목은 살린다**. 50개를 쌓아 둔 사람이 하나가
+            // 깨졌다고 49개를 잃을 이유는 없다. 원본은 그대로 백업해 둔다 — 살린 것이
+            // 전부라는 보장이 없으니 사용자가 직접 볼 수 있어야 한다.
+            let (salvaged, _dropped) = crate::salvage::salvage_toml(&text);
+            (salvaged, backup_corrupt(path))
+        }
     }
 }
 
@@ -117,5 +123,33 @@ mod tests {
         assert_eq!(back.sessions.len(), 1);
         assert_eq!(back.sessions[0].name, "prod");
         let _ = std::fs::remove_file(&p);
+    }
+
+    /// **깨진 파일에서도 읽히는 세션은 돌아온다** — 백업은 그대로 남긴다.
+    ///
+    /// 예전에는 빈 트리를 돌려줬다. 파일을 안 덮어쓴다는 점은 옳았지만, 사용자가 보기에는
+    /// 저장한 서버가 전부 사라진 것이었다.
+    #[test]
+    fn a_corrupt_file_still_gives_back_what_it_can() {
+        let path = tmp("salv");
+        let mut tree = SessionTree::default();
+        tree.add(ssh("first", "h1"));
+        tree.add(ssh("second", "h2"));
+        tree.add(ssh("third", "h3"));
+        save_tree(&path, &tree).unwrap();
+
+        // 가운데 항목의 포트를 문자열로 바꾼다(손으로 고치다 흔히 나는 꼴).
+        let text = std::fs::read_to_string(&path).unwrap();
+        let broken = text.replacen("host = \"h2\"", "host = 22", 1);
+        assert_ne!(broken, text, "시험이 실제로 무언가를 망가뜨려야 한다");
+        std::fs::write(&path, &broken).unwrap();
+
+        let (got, bak) = load_tree_reporting(&path);
+        let names: Vec<&str> = got.sessions.iter().map(|s| s.name.as_str()).collect();
+        assert_eq!(names, vec!["first", "third"], "멀쩡한 둘은 살아야 한다");
+        let bak = bak.expect("원본은 백업으로 남아야 한다");
+        assert!(bak.exists(), "백업 파일이 실제로 있어야 한다");
+        let _ = std::fs::remove_file(&bak);
+        let _ = std::fs::remove_file(&path);
     }
 }
