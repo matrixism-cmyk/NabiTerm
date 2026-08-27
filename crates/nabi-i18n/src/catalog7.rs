@@ -137,4 +137,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("env.desc.tsserver", "TypeScript / JavaScript language server (npm). Needs Node.js.", "TypeScript · JavaScript 언어 서버(npm). Node.js가 필요합니다.", "TypeScript・JavaScript言語サーバー（npm）。Node.jsが必要です。"),
     ("sftp.connected.reused", "Connected (reusing the SSH session)", "연결됨(SSH 연결을 그대로 쓸)", "接続済み（SSH接続を再利用）"),
     ("status.shared", "SFTP is riding this same connection", "이 연결을 SFTP가 함께 쓰는 중", "この接続をSFTPも使用中"),
+    ("status.recording", "This pane is being written to a log file", "이 창의 내용이 파일로 기록되는 중입니다", "このペインの内容をファイルに記録中です"),
+    ("settings.logcast", "Save session logs as a replayable recording (.cast)", "세션 로그를 되감을 수 있는 녹화(.cast)로 저장", "セッションログを再生可能な録画(.cast)で保存"),
+    ("settings.logcast.hint", "Records timing as well as text, so you can replay it at the original speed. asciinema v2 format.", "글자뿐 아니라 시간까지 남겨, 나중에 실제 속도로 되감아 볼 수 있습니다. asciinema v2 형식입니다.", "文字だけでなく時間も残すため、後で実際の速度で再生できます。asciinema v2形式。"),
 ];

@@ -120,6 +120,9 @@ impl NabiApp {
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
                 ui.colored_label(dc, format!("\u{25cf} {title}"));
                 if is_ssh { crate::statuschips::ssh_badge(ui, lang, focused); }
+                // 이 pane이 파일로 기록되는 중인지. 자동으로 켜질 수 있으므로 늘 보여 준다.
+                let rec = focused.and_then(|p| self.session_logs.get(&p));
+                crate::statuschips::rec_badge(ui, lang, rec.is_some(), rec.is_some_and(|l| l.cast));
                 // 표식(운영/스테이징/개발) — 색만이 아니라 글자로도 적는다. 지금 어디에
                 // 명령을 치고 있는지가 상태바에서 늘 보여야 한다.
                 if tag != nabi_session::SessionTag::None {

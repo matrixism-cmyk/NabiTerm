@@ -84,6 +84,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.redacthist", 3),
     ("settings.redactlogs", 3),
     ("settings.autolog", 3),
+    ("settings.logcast", 3),
     ("settings.sshtimeout", 3),
     ("settings.sshkeepalive", 3),
     ("settings.statsalert", 3),

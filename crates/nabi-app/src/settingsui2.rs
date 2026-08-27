@@ -210,6 +210,11 @@ pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.checkbox(&mut cfg.terminal.session_log_auto, "")
         .on_hover_text(tr(lang, "settings.autologhint"));
     ui.end_row();
+    // 기록을 켜는 항목 바로 아래에 둔다 — "무엇으로 남길지"는 "남길지"의 다음 물음이다.
+    ui.label(tr(lang, "settings.logcast"));
+    ui.checkbox(&mut cfg.terminal.session_log_cast, "")
+        .on_hover_text(tr(lang, "settings.logcast.hint"));
+    ui.end_row();
     ui.label(tr(lang, "settings.sshtimeout"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_connect_timeout_secs).range(0..=600).suffix(" s"))
         .on_hover_text(tr(lang, "settings.sshtimeouthint"));

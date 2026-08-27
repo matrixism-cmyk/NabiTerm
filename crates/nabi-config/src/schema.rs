@@ -273,6 +273,12 @@ pub struct TerminalCfg {
     /// 남길 일이 아니다.
     #[serde(default)]
     pub session_log_auto: bool,
+    /// 세션 로그를 **되감을 수 있는** asciinema `.cast` 형식으로 남긴다.
+    ///
+    /// 기본은 꺼짐 — 지금까지 남기던 평문 로그가 사람이 바로 읽기에는 낫다. 켜면 시각이
+    /// 함께 들어가 나중에 실제 속도로 재생할 수 있다(장애 재현·인수인계).
+    #[serde(default)]
+    pub session_log_cast: bool,
     /// 다녀온 **로컬** 폴더(최신이 앞). 원격과 같은 규칙(`recentpaths`)을 쓴다.
     #[serde(default)]
     pub local_recent: Vec<String>,
@@ -461,6 +467,7 @@ impl Default for TerminalCfg {
             redact_history: true,
             redact_logs: true,
             session_log_auto: false,
+            session_log_cast: false,
             local_recent: Vec::new(),
             sftp_recent: Vec::new(),
             ssh_connect_timeout_secs: 0,
