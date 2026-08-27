@@ -140,4 +140,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("status.recording", "This pane is being written to a log file", "이 창의 내용이 파일로 기록되는 중입니다", "このペインの内容をファイルに記録中です"),
     ("settings.logcast", "Save session logs as a replayable recording (.cast)", "세션 로그를 되감을 수 있는 녹화(.cast)로 저장", "セッションログを再生可能な録画(.cast)で保存"),
     ("settings.logcast.hint", "Records timing as well as text, so you can replay it at the original speed. asciinema v2 format.", "글자뿐 아니라 시간까지 남겨, 나중에 실제 속도로 되감아 볼 수 있습니다. asciinema v2 형식입니다.", "文字だけでなく時間も残すため、後で実際の速度で再生できます。asciinema v2形式。"),
+    ("log.cast.empty", "Recording stopped — the file has no output in it", "기록을 멈춤 — 파일에 남은 출력이 없습니다", "記録を停止 — ファイルに出力がありません"),
 ];

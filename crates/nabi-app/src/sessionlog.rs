@@ -15,14 +15,22 @@ pub(crate) struct SessionLog {
     pub began: Instant,
     /// asciinema `.cast` 로 남기는가(설정). 꺼져 있으면 지금까지처럼 줄만 적는다.
     pub cast: bool,
+    /// 기록 중인 파일 경로. 멈출 때 **되읽어 확인**하는 데 쓴다.
+    pub path: std::path::PathBuf,
 }
 
 impl NabiApp {
     /// 포커스 pane의 세션 로깅을 토글한다(켜기=파일 선택 후 이후 출력 기록, 끄기=중지).
     pub(crate) fn toggle_session_log(&mut self) {
         let Some(pane) = self.focused_pane() else { return };
-        if self.session_logs.remove(&pane).is_some() {
-            self.notify = Some((tr(self.lang, "log.stopped").to_string(), Instant::now()));
+        if let Some(log) = self.session_logs.remove(&pane) {
+            // 멈추는 김에 **방금 쓴 것을 되읽는다.** 기록이 못 읽히는 파일이었다는 사실을
+            // 나중에 재생하려는 순간에 알게 되면 그때는 이미 늦다 — 그 자리에서 확인한다.
+            let msg = match log.cast {
+                true => self.verify_cast(&log.path),
+                false => tr(self.lang, "log.stopped").to_string(),
+            };
+            self.notify = Some((msg, Instant::now()));
             return;
         }
         let Some(path) = rfd::FileDialog::new().set_file_name("session.log").save_file() else { return };
@@ -46,8 +54,31 @@ impl NabiApp {
                 .unwrap_or(0);
             let _ = writeln!(file, "{}", crate::sessioncast::header(cols, rows, secs));
         }
-        self.session_logs.insert(pane, SessionLog { file, last, began: Instant::now(), cast });
+        self.session_logs.insert(
+            pane,
+            SessionLog { file, last, began: Instant::now(), cast, path: path.to_path_buf() },
+        );
         self.notify = Some((tr(self.lang, "log.started").to_string(), Instant::now()));
+    }
+
+    /// 방금 쓴 `.cast` 를 되읽어 몇 개 사건·몇 초인지 알려 준다.
+    ///
+    /// 이것이 되읽기 코드의 첫 사용처다. 읽을 수 있음을 **그 자리에서** 보여 주는 것이
+    /// 요점이라, 못 읽으면 못 읽는다고 말한다 — 조용히 넘어가면 확인한 뜻이 없다.
+    fn verify_cast(&self, path: &std::path::Path) -> String {
+        let Ok(text) = std::fs::read_to_string(path) else {
+            return tr(self.lang, "log.stopped").to_string();
+        };
+        let ev = crate::sessioncastread::parse_cast(&text);
+        match ev.is_empty() {
+            true => tr(self.lang, "log.cast.empty").to_string(),
+            false => format!(
+                "{} ({}, {:.0}s)",
+                tr(self.lang, "log.stopped"),
+                ev.len(),
+                crate::sessioncastread::duration(&ev)
+            ),
+        }
     }
 
     /// pane 터미널의 현재 크기(열, 행). 모델이 없으면 흔한 기본값.
