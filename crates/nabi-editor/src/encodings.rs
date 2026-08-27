@@ -34,3 +34,43 @@ pub fn encoding_menu(ui: &mut egui::Ui, current: &str) -> Option<String> {
     });
     picked
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ENCODING_GROUPS;
+
+    /// **드롭다운에 있는 라벨을 전부 실제로 디코드할 수 있는가.**
+    ///
+    /// 헤더에 "라벨은 모두 encoding_rs(WHATWG)가 인식하는 값"이라고 적어 두었는데 그것을
+    /// 확인하는 것이 없었다. 틀린 라벨이 하나 섞이면 사용자는 그것을 고르고도 아무 일이
+    /// 일어나지 않는 것을 본다 — `decoder_for` 가 모르는 라벨을 **조용히 UTF-8로** 떨어뜨리기
+    /// 때문이다. 글자는 깨진 채 그대로고, 왜 안 되는지 알 방법도 없다.
+    #[test]
+    fn every_offered_label_is_a_real_encoding() {
+        for (group, labels) in ENCODING_GROUPS {
+            for label in *labels {
+                let got = encoding_rs::Encoding::for_label(label.as_bytes());
+                assert!(got.is_some(), "[{group}] 의 {label} 은 encoding_rs 가 모르는 이름이다");
+            }
+        }
+    }
+
+    /// 같은 인코딩이 두 그룹에 겹쳐 있지 않은가 — 드롭다운에 두 번 나오면 고르는 사람이 헷갈린다.
+    #[test]
+    fn no_label_appears_twice() {
+        let mut seen = std::collections::HashSet::new();
+        for (_, labels) in ENCODING_GROUPS {
+            for label in *labels {
+                assert!(seen.insert(*label), "{label} 이 두 번 나온다");
+            }
+        }
+        assert!(seen.len() > 15, "목록이 너무 짧다({}개)", seen.len());
+    }
+
+    /// UTF-8 은 반드시 있어야 한다 — 기본값인데 목록에 없으면 되돌릴 방법이 없다.
+    #[test]
+    fn utf8_is_always_offered() {
+        let has = ENCODING_GROUPS.iter().any(|(_, l)| l.contains(&"UTF-8"));
+        assert!(has, "UTF-8 이 목록에 없다");
+    }
+}
