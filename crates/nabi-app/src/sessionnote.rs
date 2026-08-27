@@ -23,7 +23,7 @@ impl NabiApp {
         if save {
             if let Some((n, buf)) = self.note_edit.take() {
                 if buf.trim().is_empty() { self.config.appearance.session_notes.remove(&n); } else { self.config.appearance.session_notes.insert(n, buf); }
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
         }
         if !open {

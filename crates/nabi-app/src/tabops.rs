@@ -184,7 +184,7 @@ impl NabiApp {
     /// 저장 세션을 연다(로컬은 즉시, SSH는 볼트로 자동연결 또는 Quick Connect 프리필).
     pub(crate) fn connect_saved(&mut self, s: SavedSession) {
         // D4: 명명된 세션의 마지막 접속 시각 기록(목록에 상대시간 표시).
-        if !s.name.is_empty() { self.config.terminal.last_connected.insert(s.name.clone(), chrono::Local::now().timestamp()); let _ = nabi_config::save(&self.config_path, &self.config); }
+        if !s.name.is_empty() { self.config.terminal.last_connected.insert(s.name.clone(), chrono::Local::now().timestamp()); self.save_config(); }
         self.start_auto_forwards(&s); // 이 세션에 걸어 둔 터널을 함께 연다(S1).
         // 아래에서 kind가 move되므로 이름을 먼저 잡는다(세션별 환경변수를 찾는 열쇠).
         let sess_name = s.name.clone();

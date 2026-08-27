@@ -24,7 +24,7 @@ impl NabiApp {
                 added += 1;
             }
         }
-        let _ = nabi_config::save(&self.config_path, &self.config);
+        self.save_config();
         self.notify = Some((format!("{} +{added}", nabi_i18n::tr(self.lang, "menu.importsnippets")), std::time::Instant::now()));
     }
 

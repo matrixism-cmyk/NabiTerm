@@ -51,11 +51,11 @@ impl NabiApp {
             PaletteAction::ToggleSessionsPanel => {
                 let show = &mut self.config.appearance.show_sessions_panel;
                 *show = !*show;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             PaletteAction::ToggleStatusBar => {
                 self.config.appearance.show_statusbar = !self.config.appearance.show_statusbar;
-                let _ = nabi_config::save(&self.config_path, &self.config); // 다른 토글과 동일하게 영속.
+                self.save_config(); // 다른 토글과 동일하게 영속.
             }
             // 스케줄·텔레그램은 한 페이지('자동화')로 합쳌다 — 키로 찾아 눈다(인덱스 하드코딩 금지).
             PaletteAction::OpenTelegram | PaletteAction::OpenSchedule => {
@@ -109,7 +109,7 @@ impl NabiApp {
                 self.always_on_top = !self.always_on_top;
                 self.pending_on_top = Some(self.always_on_top);
                 self.config.appearance.always_on_top = self.always_on_top;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             PaletteAction::ZoomIn => self.set_font_size(self.font_size + 1.0),
             PaletteAction::ZoomOut => self.set_font_size(self.font_size - 1.0),

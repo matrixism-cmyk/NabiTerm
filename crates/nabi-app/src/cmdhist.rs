@@ -46,7 +46,7 @@ impl crate::app::NabiApp {
             record_secs(&mut self.config.terminal.cmd_secs, ts, start.elapsed().as_secs() as u32, 500);
         }
         if self.dir_save_at.elapsed().as_secs() >= 20 {
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
             self.dir_save_at = std::time::Instant::now();
         }
     }

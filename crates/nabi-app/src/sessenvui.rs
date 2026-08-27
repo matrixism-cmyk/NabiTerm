@@ -74,7 +74,7 @@ impl NabiApp {
                     self.config.terminal.session_env.insert(name.clone(), text);
                 }
             }
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         if !open {
             self.env_edit = None;

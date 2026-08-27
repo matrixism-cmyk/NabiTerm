@@ -62,7 +62,7 @@ impl NabiApp {
                     self.config.terminal.auto_forwards.insert(name.clone(), list);
                 }
             }
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         if !open {
             self.fwd_edit = None;

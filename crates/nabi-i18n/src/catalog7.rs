@@ -145,4 +145,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("replay.started", "Replaying — the recording plays at its original speed", "재생 중 — 기록된 속도 그대로 흘러갑니다", "再生中 — 記録された速度で流れます"),
     ("replay.empty", "Nothing to replay — the file has no output in it", "재생할 것이 없습니다 — 파일에 남은 출력이 없습니다", "再生するものがありません — ファイルに出力がありません"),
     ("replay.unreadable", "Could not read that file", "그 파일을 읽지 못했습니다", "そのファイルを読めませんでした"),
+    ("cfg.savefailed", "Could not save settings", "설정을 저장하지 못했습니다", "設定を保存できませんでした"),
 ];

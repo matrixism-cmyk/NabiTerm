@@ -43,7 +43,7 @@ impl NabiApp {
         let noted = ap.session_notes.remove(name).is_some();
         ap.pinned_sessions.retain(|p| p != name);
         if pinned || noted {
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         self.save_sessions();
     }

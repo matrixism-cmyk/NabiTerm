@@ -130,7 +130,7 @@ impl crate::app::NabiApp {
         }
         // 확인 시각은 결과와 무관하게 먼저 적어 둔다 — 실패해도 켤 때마다 다시 시도하지 않도록.
         self.config.terminal.ai_cli_checked_at = now;
-        let _ = nabi_config::save(&self.config_path, &self.config);
+        self.save_config();
         self.ai_cli_auto = Some(crate::aicliupd::start_auto_update());
     }
 

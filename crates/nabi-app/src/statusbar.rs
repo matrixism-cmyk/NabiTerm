@@ -332,7 +332,7 @@ impl NabiApp {
     /// 선택한 인코딩을 설정에 저장하고 열린 모든 pane에 즉시 적용한다.
     fn apply_encoding(&mut self, label: String) {
         self.config.terminal.encoding = label.clone();
-        let _ = nabi_config::save(&self.config_path, &self.config);
+        self.save_config();
         let mut panes: Vec<_> = self.dock.iter_all_tabs().map(|(_, p)| *p).collect();
         panes.extend(self.floating.iter().copied());
         for pane in panes {

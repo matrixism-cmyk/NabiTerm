@@ -70,12 +70,12 @@ impl NabiApp {
             PromptAction::Later => self.update_modal = false,
             PromptAction::RemindWeek => {
                 self.config.terminal.update_remind_after = now_unix() + WEEK_SECS;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
                 self.update_modal = false;
             }
             PromptAction::StopCheck => {
                 self.config.terminal.auto_check_update = false;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
                 self.update_modal = false;
             }
         }

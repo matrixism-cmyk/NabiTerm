@@ -53,7 +53,7 @@ impl NabiApp {
         }
         if never {
             self.config.terminal.shellinteg_dismissed = true;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
             self.shellinteg_prompt = false;
         }
     }

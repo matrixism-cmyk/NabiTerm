@@ -246,7 +246,7 @@ impl NabiApp {
                 Some(i) => drop(v.remove(i)),
                 None => v.push(g),
             }
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         self.sidebar_menu_row = menu_now; // 다음 프레임에 그 행 아이콘을 유지한다.
         if connect_marked {

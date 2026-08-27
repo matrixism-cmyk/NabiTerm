@@ -31,7 +31,7 @@ impl NabiApp {    /// 가져온 세션들을 추가(이름 중복은 교체)하�
         // 어디로 갔는지 알 수 없었다(메뉴 서브메뉴로는 그 수를 감당하지 못한다).
         if n > 0 && !self.config.appearance.show_sessions_panel {
             self.config.appearance.show_sessions_panel = true;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         let label = tr(self.lang, label_key);
         let extra = if dup > 0 { format!(" -{dup}") } else { String::new() };

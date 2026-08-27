@@ -64,7 +64,7 @@ impl NabiApp {
         }
         if cfg_changed {
             self.config.terminal.ai_cli_auto_update = auto_cli;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         if open {
             self.env_mgr = Some(mgr);

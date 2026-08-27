@@ -26,7 +26,7 @@ impl NabiApp {
     fn remember_version(&mut self, current: &str) {
         if self.config.appearance.last_run_version != current {
             self.config.appearance.last_run_version = current.to_string();
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
     }
 

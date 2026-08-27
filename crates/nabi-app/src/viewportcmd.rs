@@ -7,7 +7,7 @@ impl NabiApp {
     pub(crate) fn set_font_size(&mut self, v: f32) {
         self.font_size = v.clamp(6.0, 40.0);
         self.config.appearance.font_size = self.font_size;
-        let _ = nabi_config::save(&self.config_path, &self.config);
+        self.save_config();
     }
 
     /// 페인 최대화(줌) 토글(tmux식). 분할 보기에서 포커스 터미널만 전체 영역에 렌더한다.

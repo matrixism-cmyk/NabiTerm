@@ -248,7 +248,7 @@ impl NabiApp {
                     format!("{u}@{h}:{p}")
                 };
                 crate::recent::push_recent(&mut self.config.terminal.recent_hosts, entry, 12);
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
         }
         self.quick_connect.open = open;

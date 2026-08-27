@@ -124,7 +124,7 @@ impl NabiApp {
             self.config.terminal.browser_show_hidden = h;
             self.config.terminal.sftp_view = v;
             self.config.terminal.browser_view = bv;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
     }
 

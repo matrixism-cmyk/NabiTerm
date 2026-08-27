@@ -186,7 +186,7 @@ impl NabiApp {
                 Event::CwdChanged { pane, path } => {
                     let dir = crate::workspace::strip_uri_slash(&path); // E1 zoxide 디렉터리 기록(20s 디바운스 저장)
                     crate::dirjump::record(&mut self.config.terminal.dir_visits, &dir, chrono::Local::now().timestamp(), 500);
-                    if self.dir_save_at.elapsed().as_secs() >= 20 { let _ = nabi_config::save(&self.config_path, &self.config); self.dir_save_at = std::time::Instant::now(); }
+                    if self.dir_save_at.elapsed().as_secs() >= 20 { self.save_config(); self.dir_save_at = std::time::Instant::now(); }
                     self.cwds.insert(pane, path);
                 }
                 Event::CommandLine { pane, cmd } => {

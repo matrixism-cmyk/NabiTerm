@@ -206,7 +206,7 @@ impl NabiApp {
         if let Some(i) = chosen {
             if let Some((label, act)) = cmds.into_iter().nth(i) {
                 crate::paletteorder::bump(&mut self.config.terminal.palette_recent, &label);
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
                 self.run_palette(ctx, act);
             }
             self.palette_open = false;

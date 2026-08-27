@@ -99,7 +99,7 @@ impl NabiApp {
         // 비밀번호 기억 토글이 바뀌면 저장 + 끄면 OS 자격증명에서 즉시 삭제.
         if remember != was_remember {
             self.config.terminal.vault_remember = remember;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
             if !remember {
                 nabi_secret::keyringstore::clear_master();
             }

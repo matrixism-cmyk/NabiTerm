@@ -221,7 +221,7 @@ impl NabiApp {
             } else {
                 self.config.terminal.ai_last_effort = val;
             }
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
         // 포커스 pane 리사이즈 시 크기 배지를 잠시 띄운다(현대 터미널 관례).
         if let Some(g) = resized {

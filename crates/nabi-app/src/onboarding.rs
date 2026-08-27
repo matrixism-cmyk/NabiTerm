@@ -84,7 +84,7 @@ impl NabiApp {
         });
         if start {
             self.onboarding_open = false;
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
             let shell = crate::workspace::shell_from_str(&self.config.terminal.default_shell);
             self.spawn_local(shell);
         }

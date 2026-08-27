@@ -50,7 +50,7 @@ impl crate::app::NabiApp {
             }
         }
         self.ai_prof_open = false;
-        let _ = nabi_config::save(&self.config_path, &self.config);
+        self.save_config();
         // 설정 대화상자가 열려 있으면 그 취소 스냅샷에도 반영한다 — 그러지 않으면
         // 설정을 Esc로 닫는 순간 여기서 정한 내용이 되돌려져 사라진다(리뷰 2026-08-19).
         if let Some(b) = self.settings_backup.as_mut() {

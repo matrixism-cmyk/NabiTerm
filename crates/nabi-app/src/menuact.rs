@@ -17,19 +17,19 @@ impl NabiApp {
                 if let Some(t) = self.selection_text().map(|s| s.trim().to_string()) {
                     if !t.is_empty() {
                         self.config.terminal.snippets.push(t);
-                        let _ = nabi_config::save(&self.config_path, &self.config);
+                        self.save_config();
                     }
                 }
             }
             MenuAction::RemoveSnippet(i) => {
                 if i < self.config.terminal.snippets.len() {
                     self.config.terminal.snippets.remove(i);
-                    let _ = nabi_config::save(&self.config_path, &self.config);
+                    self.save_config();
                 }
             }
             MenuAction::SortSnippets => {
                 self.config.terminal.snippets.sort_by_key(|s| s.to_lowercase());
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             MenuAction::ExportSnippets => { let d = self.config.terminal.snippets.join("\n"); self.export_sessions_to(d, "nabi-snippets.txt", "txt", "menu.exportsnippets"); } MenuAction::ImportSnippets => self.import_snippets(),
             MenuAction::CopyLastOutput => self.copy_last_output(ctx),
@@ -201,17 +201,17 @@ impl NabiApp {
             MenuAction::ToggleSessionsPanel => {
                 self.config.appearance.show_sessions_panel =
                     !self.config.appearance.show_sessions_panel;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             MenuAction::ToggleQcBar => {
                 self.config.appearance.show_quickconnect_bar =
                     !self.config.appearance.show_quickconnect_bar;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             MenuAction::ToggleAiDashboard => self.ai_dash_open = !self.ai_dash_open,
             MenuAction::ToggleAiCmdBar => {
                 self.config.terminal.ai_cmd_bar = !self.config.terminal.ai_cmd_bar;
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             MenuAction::OpenNabiPad => self.open_empty_pad(),
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
@@ -241,7 +241,7 @@ impl NabiApp {
                     Some(i) => drop(v.remove(i)),
                     None => v.push(name),
                 }
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
             MenuAction::EditNote(name) => { let cur = self.config.appearance.session_notes.get(&name).cloned().unwrap_or_default(); self.note_edit = Some((name, cur)); }
             MenuAction::ConnectFolder(f) => {
@@ -267,7 +267,7 @@ impl NabiApp {
                 self.always_on_top = !self.always_on_top;
                 self.pending_on_top = Some(self.always_on_top);
                 self.config.appearance.always_on_top = self.always_on_top; // 마지막 값 기억.
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
 
             MenuAction::ToggleFullscreen => {

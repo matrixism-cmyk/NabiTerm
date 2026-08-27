@@ -10,7 +10,7 @@ impl NabiApp {
             let p = self.sftp.path.clone();
             if !p.is_empty() && !self.config.terminal.sftp_bookmarks.contains(&p) {
                 self.config.terminal.sftp_bookmarks.push(p);
-                let _ = nabi_config::save(&self.config_path, &self.config);
+                self.save_config();
             }
         }
         if let Some(p) = go {
@@ -20,7 +20,7 @@ impl NabiApp {
         }
         if let Some(p) = del {
             self.config.terminal.sftp_bookmarks.retain(|x| x != &p);
-            let _ = nabi_config::save(&self.config_path, &self.config);
+            self.save_config();
         }
     }
 }
