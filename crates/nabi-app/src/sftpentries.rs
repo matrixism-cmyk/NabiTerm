@@ -175,12 +175,12 @@ pub(crate) fn show_entries(
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     let now = std::time::UNIX_EPOCH.elapsed().map(|d| d.as_secs()).unwrap_or(0);
+    // 필터는 **한 번만** 준비한다. 항목마다 만들면 1만 개짜리 폴더에서 프레임마다
+    // 1만 번 같은 문자열을 소문자로 바꾸게 된다(배치 Z F3).
+    let nf = crate::browserfilter::NameFilter::new(filter);
     let visible: Vec<&SftpEntry> = entries
         .iter()
-        .filter(|e| {
-            (show_hidden || !e.name.starts_with('.'))
-                && crate::browserfilter::name_matches(filter, &e.name)
-        })
+        .filter(|e| (show_hidden || !e.name.starts_with('.')) && nf.matches(&e.name))
         .collect();
     // 빈 폴더/검색 결과 없음 — '..'(상위 이동)는 그대로 제공.
     if visible.is_empty() {

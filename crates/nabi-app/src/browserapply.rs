@@ -189,9 +189,10 @@ impl NabiApp {
                 }
             } else if shift {
                 // Shift=anchor(selected)→s 범위(현재 정렬·필터 순서 기준).
+                let nf = crate::browserfilter::NameFilter::new(&b.filter);
                 let names: Vec<&str> = entries
                     .iter()
-                    .filter(|r| crate::browserfilter::name_matches(&b.filter.to_lowercase(), &r.name))
+                    .filter(|r| nf.matches(&r.name))
                     .map(|r| r.name.as_str())
                     .collect();
                 let i1 = b.selected.as_deref().and_then(|x| names.iter().position(|n| *n == x));
