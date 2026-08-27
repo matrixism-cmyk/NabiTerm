@@ -74,9 +74,8 @@ impl NabiApp {
         else {
             return out;
         };
-        let Ok(saves) = ron::from_str::<Vec<(String, u8, u8, bool, bool)>>(&s) else {
-            return out;
-        };
+        // 탭 하나가 깨졌다고 열두 개를 전부 잃을 이유는 없다 — 읽히는 것만 연다.
+        let (saves, _dropped) = crate::ronsalvage::parse_vec::<(String, u8, u8, bool, bool)>(&s);
         for (path, view, sort, sort_desc, show_hidden) in saves {
             let panel = crate::browserpanel::BrowserPanel {
                 path: PathBuf::from(path),

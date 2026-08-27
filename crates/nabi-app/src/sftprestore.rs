@@ -69,9 +69,8 @@ impl NabiApp {
         else {
             return out;
         };
-        let Ok(saves) = ron::from_str::<Vec<SftpSave>>(&txt) else {
-            return out;
-        };
+        // 원격 탭도 같다. 하나가 깨져도 나머지는 다시 붙는다(브라우저 탭과 같은 길).
+        let (saves, _dropped) = crate::ronsalvage::parse_vec::<SftpSave>(&txt);
         for s in saves {
             let before = self.sftp_pane;
             let want_path = s.path.clone();
