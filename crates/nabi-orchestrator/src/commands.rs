@@ -26,6 +26,23 @@ pub fn handle_command(
     match cmd {
         // SpawnLocalPane은 액터 루프가 가로채 병렬 스폰한다(actor.rs).
         Command::SpawnLocalPane { .. } => {}
+        // 보기 전용 pane — 셸도 SSH도 없다. 모델만 만들어 올린다(배치 Z T2).
+        Command::SpawnViewerPane { title, size, scrollback, reply_seq } => {
+            let pane = nabi_types::next_pane_id();
+            let model = std::sync::Arc::new(std::sync::Mutex::new(
+                nabi_vt::TermModel::new(size, scrollback),
+            ));
+            crate::pane_registry::panes_write(panes)
+                .insert(pane, crate::pane_registry::PaneView::new(model, title, "viewer"));
+            let _ = event_tx.send(Event::PaneSpawned { pane, seq: reply_seq });
+        }
+        // 화면 모델에만 넣는다. 전송이 없으므로 밖으로 나가는 것도 없다.
+        Command::FeedPane { pane, data } => {
+            if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {
+                crate::pane_registry::model_lock(&view.model).process(&data);
+                let _ = event_tx.send(Event::PaneOutput { pane });
+            }
+        }
         Command::HostKeyDecision { id, accept } => verifier.resolve(id, accept),
         // trzsz 결정·취소: 세션이 낸 회신 바이트를 그 pane으로 그대로 흘려보낸다.
         Command::TrzszDecide(d) => {

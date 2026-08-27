@@ -229,7 +229,7 @@ impl NabiApp {
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),
             quick_select_open: false, editor_close_ask: None, session_delete_ask: None, file_preview: None,
-            clip_history: Vec::new(), find_count_cache: None, session_logs: HashMap::new(),
+            clip_history: Vec::new(), find_count_cache: None, session_logs: HashMap::new(), replays: Default::default(), pending_replay: None,
             editor_mtimes: HashMap::new(), editor_extcheck: std::time::Instant::now(),
             autosave_at: std::time::Instant::now(), note_edit: None,
             alert_marks: HashMap::new(), alert_check: std::time::Instant::now(),

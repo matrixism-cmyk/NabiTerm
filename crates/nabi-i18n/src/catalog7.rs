@@ -141,4 +141,8 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("settings.logcast", "Save session logs as a replayable recording (.cast)", "세션 로그를 되감을 수 있는 녹화(.cast)로 저장", "セッションログを再生可能な録画(.cast)で保存"),
     ("settings.logcast.hint", "Records timing as well as text, so you can replay it at the original speed. asciinema v2 format.", "글자뿐 아니라 시간까지 남겨, 나중에 실제 속도로 되감아 볼 수 있습니다. asciinema v2 형식입니다.", "文字だけでなく時間も残すため、後で実際の速度で再生できます。asciinema v2形式。"),
     ("log.cast.empty", "Recording stopped — the file has no output in it", "기록을 멈춤 — 파일에 남은 출력이 없습니다", "記録を停止 — ファイルに出力がありません"),
+    ("replay.title", "Replay a recording (.cast)", "기록 재생(.cast)", "記録を再生(.cast)"),
+    ("replay.started", "Replaying — the recording plays at its original speed", "재생 중 — 기록된 속도 그대로 흘러갑니다", "再生中 — 記録された速度で流れます"),
+    ("replay.empty", "Nothing to replay — the file has no output in it", "재생할 것이 없습니다 — 파일에 남은 출력이 없습니다", "再生するものがありません — ファイルに出力がありません"),
+    ("replay.unreadable", "Could not read that file", "그 파일을 읽지 못했습니다", "そのファイルを読めませんでした"),
 ];

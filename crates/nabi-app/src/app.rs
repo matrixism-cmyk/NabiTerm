@@ -328,6 +328,10 @@ pub struct NabiApp {
     pub file_preview: Option<(String, String)>, pub clip_history: Vec<String>,
     pub find_count_cache: Option<(String, bool, usize)>,
     pub session_logs: HashMap<PaneId, crate::sessionlog::SessionLog>,
+    /// 재생 중인 기록(pane별). 비어 있으면 아무 일도 하지 않는다.
+    pub replays: crate::replay::Replays,
+    /// 방금 연 기록 — pane이 생기면 그 pane에 건다(PaneSpawned 를 기다린다).
+    pub pending_replay: Option<Vec<(f64, String)>>,
     pub editor_mtimes: HashMap<PaneId, std::time::SystemTime>,
     pub editor_extcheck: std::time::Instant, pub autosave_at: std::time::Instant,
     pub note_edit: Option<(String, String)>, pub alert_marks: HashMap<PaneId, usize>,

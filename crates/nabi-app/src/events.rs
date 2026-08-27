@@ -13,6 +13,8 @@ impl NabiApp {
             let Some(ev) = self.handle_sftp_event(ev, ctx) else { continue };
             match ev {
                 Event::PaneSpawned { pane, seq } => {
+                    // 기록 재생용 pane이면 여기서 기록을 건다(보기 전용이라 분할·도킹은 그대로).
+                    self.attach_pending_replay(pane);
                     if self.control_float {
                         self.control_float = false; // 제어 dock=new-window → 별도 OS 창.
                         self.floating.push(pane);

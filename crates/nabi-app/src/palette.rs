@@ -71,6 +71,8 @@ pub(crate) enum PaletteAction {
     SendSnippet(String),
     AiDashboard, ToggleFloatOnTop, CopyLastOutput, JumpDir(String), QuickSelect,
     RunHistory(String), PasteClip(String), FocusPane(nabi_types::PaneId),
+    /// 기록(.cast) 재생 — 지나간 세션을 원래 속도로 되감아 본다(배치 Z T2).
+    OpenReplay,
     DuplicateConnection, ToggleSessionLog, NewTabHere, ClearBuffer,
     SyncUpload, SyncDownload, CopyOutputMd, CompareFiles, FindDuplicates, FindLargeFiles,
     CopySshCmd, GenSshKey, InstallPubkey, SelToPad, CopyTabsMd, SaveAllDocs,

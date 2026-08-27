@@ -68,6 +68,7 @@ const GROUPS: &[Group] = &[
             ("sftp.history", PaletteAction::XferHistory),
             ("connhist.title", PaletteAction::ConnHistory),
             ("bcast.results", PaletteAction::BroadcastResults),
+            ("replay.title", PaletteAction::OpenReplay),
         ],
     ),
     // 지금 화면·작업 공간을 다루는 일(스냅샷은 이 화면을 담는 것이라 여기에 있다).

@@ -21,6 +21,20 @@ pub enum Command {
         /// 정확한 pane ID를 식별한다(폴링 레이스 제거, CP-5 G1).
         reply_seq: Option<u64>,
     },
+    /// **프로세스 없는 pane**을 연다 — 기록 재생 같은 "보기 전용" 화면(배치 Z T2).
+    ///
+    /// 셸도 SSH도 붙지 않는다. VT 모델만 만들어 레지스트리에 올리고, 내용은 `FeedPane`으로
+    /// 들어온다. 라우터는 전송이 없어도 견딘다(`state.get_mut`이 전부 `if let Some`이고,
+    /// 디코드가 없으면 원본 바이트로 떨어진다) — 그래서 이 pane이 특별한 경로를 타지 않는다.
+    SpawnViewerPane {
+        title: String,
+        size: GridSize,
+        scrollback: usize,
+        reply_seq: Option<u64>,
+    },
+    /// 보기 전용 pane에 내용을 밀어 넣는다. **입력이 아니라 출력**이다 — 전송으로 나가지
+    /// 않고 화면 모델에만 들어간다.
+    FeedPane { pane: PaneId, data: Vec<u8> },
     /// SSH 원격 pane 연결.
     ConnectSsh {
         params: SshParams,

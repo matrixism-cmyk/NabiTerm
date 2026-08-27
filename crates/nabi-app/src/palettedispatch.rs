@@ -125,6 +125,7 @@ impl NabiApp {
                     let _ = self.dock.set_active_tab(loc);
                 }
             }
+            PaletteAction::OpenReplay => self.open_replay(),
             PaletteAction::DuplicateConnection => self.duplicate_connection(),
             PaletteAction::ToggleSessionLog => self.toggle_session_log(),
             PaletteAction::NewTabHere => self.spawn_here(),
