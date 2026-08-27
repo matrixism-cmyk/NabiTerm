@@ -117,9 +117,16 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         head("installer"),
         "InstallerType: inno".into(),
         "Scope: user".into(),
+        // **winget 이 inno 에 기본으로 주는 스위치를 다 적는다.**
+        // `InstallerSwitches.Silent` 는 기본값에 더해지는 것이 아니라 **통째로 대신한다** —
+        // 처음에 `/VERYSILENT /NOLAUNCH` 만 적었더니 `/SUPPRESSMSGBOXES` 가 빠져
+        // 검증이 `Validation-Unattended-Failed`("조용히 끝나지 않았다")로 떨어졌다.
+        // 조용한 설치에서 메시지 상자가 하나라도 뜨면 아무도 누를 수 없어 영원히 멈춘다.
+        // `/CURRENTUSER` 는 관리자로 실행돼도 설치 방식이 흔들리지 않게 못 박는다
+        // (`Scope: user` 와 같은 뜻 — 인스톨러가 `commandline` 재정의를 허용한다).
         "InstallerSwitches:".into(),
-        "  Silent: /VERYSILENT /NOLAUNCH".into(),
-        "  SilentWithProgress: /SILENT /NOLAUNCH".into(),
+        "  Silent: /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER /NOLAUNCH".into(),
+        "  SilentWithProgress: /SILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CURRENTUSER /NOLAUNCH".into(),
         "Installers:".into(),
         "- Architecture: x64".into(),
         format!("  InstallerUrl: {url}"),
@@ -396,7 +403,11 @@ mod tests {
         assert!(all.contains(&url));
         assert!(all.contains("ABC123"), "winget 해시는 대문자다");
         assert!(all.contains("InstallerType: inno"));
-        assert!(all.contains("/VERYSILENT /NOLAUNCH"), "무인 스위치가 빠졌다");
+        // winget 은 Silent 를 **통째로 대신한다** — 표준 inno 스위치가 하나라도 빠지면
+        // 조용한 설치가 메시지 상자에서 멈춘다(실제로 검증이 그렇게 떨어졌다).
+        for sw in ["/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-", "/NOLAUNCH"] {
+            assert!(all.contains(sw), "{sw} 가 빠졌다");
+        }
         // 세 파일 모두 자기 종류를 밝혀야 한다.
         for kind in ["ManifestType: version", "ManifestType: installer", "ManifestType: defaultLocale"] {
             assert!(all.contains(kind), "{kind} 가 없다");
