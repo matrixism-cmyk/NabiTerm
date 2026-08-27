@@ -6,6 +6,7 @@
 pub mod aiprofile;
 pub mod editor;
 pub mod load;
+mod tolerant;
 #[cfg(test)]
 mod roundtrip_test;
 pub mod paths;

@@ -119,7 +119,7 @@ mod tests {
     }
 
 
-    /// **한 구역이 깨져도 나머지는 살아남는가.**
+    /// **한 값이 깨져도 그 값만 잃는가** — 구역 전체도, 다른 구역도 아니다.
     ///
     /// 구역 목록을 손으로 적지 않는다 — 기본 설정을 펼쳐 나온 최상위 키가 곧 구역이다.
     /// 그래서 구역을 새로 더하면서 `load` 의 폴백에 넣는 것을 잊으면 여기서 걸린다.
@@ -159,6 +159,17 @@ mod tests {
                 toml::from_str(&toml::to_string_pretty(&crate::load::load(&l)).unwrap()).unwrap();
             let _ = std::fs::remove_dir_all(&dir);
 
+            // 깨뜨린 구역 안에서도 **멀쩡한 값은 살아야 한다.** 예전에는 구역 전체를
+            // 잃었고(더 예전에는 설정 전체를 잃었다), 이제는 걸린 키 하나만 잃는다.
+            if let (Some(w), Some(g)) = (tree.get(broken), got.get(broken)) {
+                if let (toml::Value::Table(wt), toml::Value::Table(gt)) = (w, g) {
+                    let kept = wt
+                        .iter()
+                        .filter(|(k, v)| gt.get(*k) == Some(*v))
+                        .count();
+                    assert!(kept > 1, "[{broken}] 에서 멀쩡한 값까지 잃었다(남은 값 {kept}개)");
+                }
+            }
             // 깨뜨리지 않은 구역들은 바꾼 값을 그대로 들고 있어야 한다.
             for other in sections.iter().filter(|s| *s != broken) {
                 let want = base_tree.get(other).cloned().unwrap();
