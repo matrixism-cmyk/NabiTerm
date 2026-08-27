@@ -6,7 +6,8 @@
 
 pub mod editbig;
 pub mod editbuf;
-pub mod editbufboxsel;
+pub mod editbufboxpaste;
+mod editbufboxsel;
 pub mod editbufmatch;
 pub mod editbufvcursor;
 pub mod eolmix;

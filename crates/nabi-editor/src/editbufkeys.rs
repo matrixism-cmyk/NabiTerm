@@ -19,7 +19,9 @@ pub fn apply_keys(ui: &egui::Ui, eb: &mut EditBuf, page: i64, readonly: bool) {
             }
             Event::Paste(s) => {
                 if !readonly {
-                    eb.insert_multi(&s);
+                    // 박스 선택에 줄 수가 맞는 묶음을 넣으면 캐럿마다 한 줄씩 나눈다.
+                    // 타자(위 Event::Text)는 여전히 모든 줄에 같은 것이 들어간다 — 그쪽은 그게 맞다.
+                    eb.paste_multi(&s);
                 }
             }
             Event::Copy => copy = Some(eb.selected_text()),

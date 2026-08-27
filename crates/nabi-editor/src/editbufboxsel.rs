@@ -118,14 +118,14 @@ impl EditBuf {
     }
 
     /// 스냅샷을 undo에 쌓는다(멀티 편집은 항상 새 묶음 — 예측 가능한 한 번의 취소).
-    fn push_snapshot(&mut self) {
+    pub(crate) fn push_snapshot(&mut self) {
         self.undo.push((self.rope.clone(), self.cursor()));
         self.redo.clear();
         self.undo_open = false;
         self.dirty = true;
     }
 
-    fn replace_selection(&mut self, carets: Vec<Range>) {
+    pub(crate) fn replace_selection(&mut self, carets: Vec<Range>) {
         let mut sel = Selection::caret(carets.first().map(|r| r.head).unwrap_or(0));
         for r in carets.into_iter().skip(1) {
             sel.push(r);
