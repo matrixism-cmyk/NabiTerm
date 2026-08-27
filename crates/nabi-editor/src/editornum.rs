@@ -246,7 +246,11 @@ fn parse_human(s: &str) -> Option<u64> {
         "MB" | "M" => 1024f64.powi(2),
         "GB" | "G" => 1024f64.powi(3),
         "TB" | "T" => 1024f64.powi(4),
-        "PB" => 1024f64.powi(5),
+        "PB" | "P" => 1024f64.powi(5),
+        // EB 를 빠뜨리면 `human` 이 만든 것을 `parse_human` 이 못 읽는다. 그런데 못 읽었다고
+        // 알려 주지도 않는다 — `per_line` 이 실패한 줄을 원문 그대로 두기 때문이다.
+        // 즉 사용자는 "되돌리기"를 눌렀는데 아무 일도 안 일어난 것처럼 보게 된다.
+        "EB" | "E" => 1024f64.powi(6),
         _ => return None,
     };
     Some((num * mult) as u64)

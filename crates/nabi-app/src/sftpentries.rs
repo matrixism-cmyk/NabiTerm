@@ -28,28 +28,14 @@ pub(crate) fn batch_new_name(name: &str, find: &str, replace: &str, idx: usize) 
 
 /// 원격 항목을 폴더 우선 + 기준(이름/크기/날짜)으로 정렬.
 pub(crate) fn sort_sftp(entries: &mut [SftpEntry], sort: crate::browserfs::Sort, desc: bool) {
-    use crate::browserfs::Sort;
-    let ext = |n: &str| {
-        std::path::Path::new(n)
-            .extension()
-            .map(|e| e.to_string_lossy().to_lowercase())
-            .unwrap_or_default()
-    };
-    entries.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| {
-            let ord = match sort {
-                Sort::Size => a.size.cmp(&b.size),
-                Sort::Date => a.mtime.cmp(&b.mtime),
-                Sort::Type => ext(&a.name).cmp(&ext(&b.name)).then_with(|| crate::browserfs::natural_cmp(&a.name, &b.name)),
-                Sort::Name => crate::browserfs::natural_cmp(&a.name, &b.name),
-            };
-            if desc {
-                ord.reverse()
-            } else {
-                ord
-            }
-        })
-    });
+    // 규칙은 `browserfs::entry_cmp` 한 곳에만 있다 — 로컬 창과 원격 창이 같은 폴더를
+    // 다른 순서로 보여 주면 사용자는 어느 쪽을 믿어야 할지 모른다.
+    entries.sort_by(|a, b| crate::browsersort::entry_cmp(key_of(a), key_of(b), sort, desc));
+}
+
+/// 원격 항목에서 정렬 열쇠를 뽑는다.
+fn key_of(e: &SftpEntry) -> crate::browsersort::SortKey<'_> {
+    crate::browsersort::SortKey { name: &e.name, is_dir: e.is_dir, size: e.size, mtime: e.mtime }
 }
 
 /// 이름변경/새폴더/삭제확인 입력 행에서 발생한 동작.

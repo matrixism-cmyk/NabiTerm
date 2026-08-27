@@ -6,6 +6,7 @@ use std::path::Path;
 pub(crate) use crate::humanfmt::{human, human_age, human_datetime, local_crumbs, summarize};
 
 /// 디렉터리 한 항목.
+#[derive(Clone)]
 pub(crate) struct Row {
     pub name: String,
     pub is_dir: bool,
@@ -109,35 +110,18 @@ pub(crate) fn natural_cmp(a: &str, b: &str) -> std::cmp::Ordering {
     }
 }
 
-/// 확장자(소문자) → 이름 순 비교(유형 정렬용).
-fn type_cmp(a: &Row, b: &Row) -> std::cmp::Ordering {
-    let ext = |r: &Row| {
-        Path::new(&r.name)
-            .extension()
-            .map(|e| e.to_string_lossy().to_lowercase())
-            .unwrap_or_default()
-    };
-    ext(a).cmp(&ext(b)).then_with(|| natural_cmp(&a.name, &b.name))
-}
-
 /// 폴더 우선 + 지정 기준으로 정렬한다(desc면 기준 방향을 뒤집되 폴더 우선은 유지).
 pub(crate) fn sort_rows(rows: &mut [Row], sort: Sort, desc: bool) {
     rows.sort_by(|a, b| {
-        b.is_dir.cmp(&a.is_dir).then_with(|| {
-            let ord = match sort {
-                Sort::Name => natural_cmp(&a.name, &b.name),
-                Sort::Type => type_cmp(a, b),
-                Sort::Size => a.size.cmp(&b.size),
-                Sort::Date => a.mtime.cmp(&b.mtime),
-            };
-            if desc {
-                ord.reverse()
-            } else {
-                ord
-            }
-        })
+        crate::browsersort::entry_cmp(
+            crate::browsersort::key_of_row(a),
+            crate::browsersort::key_of_row(b),
+            sort,
+            desc,
+        )
     });
 }
+
 
 /// 숨김 항목인가: `.` 접두(유닉스식) 또는 Windows HIDDEN 속성(desktop.ini 등).
 fn is_hidden(name: &str, md: Option<&std::fs::Metadata>) -> bool {
@@ -253,5 +237,6 @@ mod tests {
         sort_rows(&mut v, Sort::Date, false); // 오래된 것 먼저(100 < 200).
         assert_eq!(v.iter().map(|r| r.name.as_str()).collect::<Vec<_>>(), ["dir", "b.txt", "a.txt"]);
     }
+
 
 }

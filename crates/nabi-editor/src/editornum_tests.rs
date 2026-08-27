@@ -50,3 +50,23 @@ fn float_hex_roundtrip() {
     assert_eq!(hex_to_float("0x3fc00000"), "1.5");
     assert_eq!(float_to_hex("nope"), "nope"); // 실패 줄 보존.
 }
+
+/// **만든 것을 되읽을 수 있는가** — `bytes_human` 이 낸 것을 `human_bytes` 가 받아야 한다.
+///
+/// 예전에는 `human` 이 EB 를 만드는데 `parse_human` 이 EB 를 몰랐다. 그런데 못 읽었다고
+/// 알려 주지도 않는다 — `per_line` 이 실패한 줄을 원문 그대로 두기 때문에, 사용자는
+/// "되돌리기"를 눌렀는데 아무 일도 안 일어난 것처럼 보게 된다. 조용한 실패가 가장 나쁘다.
+#[test]
+fn every_unit_we_emit_can_be_read_back() {
+    for n in [0u64, 1, 1023, 1024, 1536, 1_048_576, 1_073_741_824,
+              1_099_511_627_776, 1_125_899_906_842_624,
+              1_152_921_504_606_846_976, u64::MAX] {
+        let h = bytes_human(&n.to_string());
+        let back = human_bytes(&h);
+        assert_ne!(back, h, "{n} → {h} 를 되읽지 못했다(원문이 그대로 남았다)");
+        let got: u64 = back.parse().unwrap_or_else(|_| panic!("{n} → {h} → {back} 가 숫자가 아니다"));
+        // 사람 단위는 반올림하므로 값이 정확히 같을 수는 없다. 1% 안이면 같은 크기로 본다.
+        let diff = got.abs_diff(n) as f64;
+        assert!(diff <= (n as f64 * 0.01).max(1.0), "{n} → {h} → {got} 는 너무 멀다");
+    }
+}
