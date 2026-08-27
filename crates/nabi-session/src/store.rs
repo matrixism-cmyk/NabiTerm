@@ -1,8 +1,7 @@
 //! 세션 트리 파일 저장/로드(원자적).
 
-use crate::export::{from_toml, to_toml};
+use crate::export::from_toml;
 use crate::model::SessionTree;
-use std::io::Write;
 use std::path::Path;
 
 /// sessions.toml에서 트리를 로드한다(없으면 빈 트리).
@@ -41,24 +40,18 @@ fn backup_corrupt(path: &Path) -> Option<std::path::PathBuf> {
     })
 }
 
-/// 트리를 원자적으로 저장한다(임시파일 → fsync → rename).
+/// 트리를 원자적으로 저장한다.
+///
+/// 쓰기 자체는 `nabi_config::persist::save`에 맡긴다. 예전에는 여기에 같은 코드가 한 벌 더
+/// 있었는데, 그쪽 주석에는 "단일 진실원"이라고 적혀 있으면서 실제로는 둘이었다.
+///
+/// 그리고 둘이 **이미 어긋나 있었다.** 설정 쪽은 임시 파일 이름에 프로세스 번호를 붙이는데
+/// 여기는 안 붙여서, nabiTerm을 두 개 띄우면 같은 임시 파일을 놓고 다퉜다 — 한쪽이 반쯤 쓴
+/// 파일을 다른 쪽이 제자리로 옮기면 저장된 세션이 깨진다.
 pub fn save_tree(path: &Path, tree: &SessionTree) -> std::io::Result<()> {
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)?;
-    }
-    let body = to_toml(tree).map_err(to_io)?;
-    let tmp = path.with_extension("toml.tmp");
-    {
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(body.as_bytes())?;
-        f.sync_all()?;
-    }
-    std::fs::rename(&tmp, path)
+    nabi_config::persist::save(path, &crate::export::SessionExport::new(tree.clone()))
 }
 
-fn to_io(e: impl std::fmt::Display) -> std::io::Error {
-    std::io::Error::other(e.to_string())
-}
 
 #[cfg(test)]
 mod tests {

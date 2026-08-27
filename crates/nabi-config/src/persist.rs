@@ -70,3 +70,50 @@ fn replace_file(tmp: &Path, path: &Path) -> std::io::Result<()> {
 fn to_io(e: impl std::fmt::Display) -> std::io::Error {
     std::io::Error::other(e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::save;
+
+    // TOML 은 최상위가 표여야 한다 — 벡터를 그냥 넘기면 "unsupported rust type" 이 난다.
+    // (처음에 그렇게 적었다가 시험이 잡았다.)
+    fn doc(v: i64) -> std::collections::BTreeMap<String, i64> {
+        std::collections::BTreeMap::from([("n".to_string(), v)])
+    }
+
+    /// **임시 파일 이름에 프로세스 번호가 들어가는가.**
+    ///
+    /// 안 들어가면 nabiTerm 을 두 개 띄웠을 때 같은 임시 파일을 놓고 다툰다 — 한쪽이 반쯤
+    /// 쓴 파일을 다른 쪽이 제자리로 옮기면 저장된 것이 깨진다. 세션 저장이 실제로 그랬고,
+    /// 이 함수로 모으면서 고쳤다. 다시 갈라지지 않게 여기서 지킨다.
+    #[test]
+    fn the_temp_name_is_unique_per_process() {
+        let dir = std::env::temp_dir().join(format!("nabi-persist-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("x.toml");
+        save(&f, &doc(3)).unwrap();
+        assert!(f.exists(), "저장된 파일이 있어야 한다");
+        // 임시 파일은 남지 않는다(rename 으로 옮겨졌다).
+        let leftovers: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|n| n.contains("tmp"))
+            .collect();
+        assert!(leftovers.is_empty(), "임시 파일이 남았다: {leftovers:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn saving_twice_replaces_rather_than_appends() {
+        // 윈도우 rename 은 기존 대상 교체를 보장하지 않는다 — 실제로 교체되는지 본다.
+        let dir = std::env::temp_dir().join(format!("nabi-persist2-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("y.toml");
+        save(&f, &doc(1)).unwrap();
+        save(&f, &doc(22)).unwrap();
+        let body = std::fs::read_to_string(&f).unwrap();
+        assert!(body.contains("22"), "두 번째 저장이 반영돼야 한다: {body:?}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
