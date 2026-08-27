@@ -136,4 +136,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("env.desc.pyright", "Python language server (npm). Needs Node.js.", "Python 언어 서버(npm). Node.js가 필요합니다.", "Python言語サーバー（npm）。Node.jsが必要です。"),
     ("env.desc.tsserver", "TypeScript / JavaScript language server (npm). Needs Node.js.", "TypeScript · JavaScript 언어 서버(npm). Node.js가 필요합니다.", "TypeScript・JavaScript言語サーバー（npm）。Node.jsが必要です。"),
     ("sftp.connected.reused", "Connected (reusing the SSH session)", "연결됨(SSH 연결을 그대로 쓸)", "接続済み（SSH接続を再利用）"),
+    ("status.shared", "SFTP is riding this same connection", "이 연결을 SFTP가 함께 쓰는 중", "この接続をSFTPも使用中"),
 ];

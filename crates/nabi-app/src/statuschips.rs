@@ -18,6 +18,17 @@ pub(crate) fn ssh_badge(ui: &mut egui::Ui, lang: Lang, focused: Option<PaneId>) 
                         }
                         None => ("SSH".to_string(), String::new()),
                     };
+                    // 이 연결을 SFTP가 함께 타고 있으면 배지에 고리를 붙인다. 칩을 새로 만들지
+                    // 않는 이유: 같은 사실을 두 자리에서 말하면 언젠가 한쪽만 고쳐진다.
+                    let riders = focused.map(nabi_ssh::conns::riders).unwrap_or(0);
+                    let label = if riders > 0 { format!("{label} \u{1f517}") } else { label };
+                    let tip = match riders {
+                        0 => tip,
+                        n => {
+                            let line = format!("{} ({n})", tr(lang, "status.shared"));
+                            if tip.is_empty() { line } else { format!("{tip}\n{line}") }
+                        }
+                    };
                     let color = if kex.as_ref().is_some_and(|k| k.is_pq()) { crate::theme_ui::OK } else { crate::theme_ui::ACCENT };
                     let r = ui.colored_label(color, label);
                     if !tip.is_empty() { r.on_hover_text(tip); }

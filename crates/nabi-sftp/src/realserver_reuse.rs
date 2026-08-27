@@ -40,11 +40,11 @@ async fn realserver_second_sftp_rides_the_first_connection() {
     first.mkdir(&marker).await.expect("첫 연결로 표식 만들기");
 
     // 첫 연결의 핸들을 물려 두 번째를 연다. 여기서 인증은 일어나지 않는다.
-    let reuse = crate::ReusedConn {
-        handle: first.handle_for_reuse(),
-        jump: None,
-        who: nabi_ssh::conns::Who::of(&p),
-    };
+    let reuse = crate::ReusedConn::new(
+        first.handle_for_reuse(),
+        None,
+        nabi_ssh::conns::Who::of(&p),
+    );
     let mut second = crate::connect_sftp_reusing(&p, kh, None, Some(reuse))
         .await
         .expect("물려받은 연결 위에 두 번째 SFTP");

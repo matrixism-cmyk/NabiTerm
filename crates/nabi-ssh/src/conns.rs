@@ -37,6 +37,12 @@ pub struct SshConn {
     pub jump: Option<Arc<Handle<ClientHandler>>>,
     /// 이 연결이 **누구로 어디에** 붙어 있는지. 재사용 대상을 고를 때 대조한다.
     pub who: Who,
+    /// 등록 직후의 `Arc` 참조 수 — 이 위로 늘어난 만큼이 **물려 쓰는 곳**이다.
+    ///
+    /// 세는 대신 참조 수를 보는 이유: 세면 반드시 어긋난다. SFTP가 닫힐 때 줄이는 것을
+    /// 한 경로에서라도 빠뜨리면 상태 표시줄이 영영 거짓말을 한다. 참조 수는 아무도
+    /// 관리하지 않아도 맞다 — 놓으면 그 순간 줄어든다.
+    base: usize,
 }
 
 /// 연결의 신원 — 재사용해도 되는지 판정하는 유일한 기준.
@@ -66,6 +72,15 @@ impl Who {
 }
 
 impl SshConn {
+    /// 등록할 연결을 만든다. `base` 는 `set` 이 등록 직후에 잡으므로 여기서는 0이다.
+    pub fn new(
+        handle: Arc<Handle<ClientHandler>>,
+        jump: Option<Arc<Handle<ClientHandler>>>,
+        who: Who,
+    ) -> Self {
+        Self { handle, jump, who, base: 0 }
+    }
+
     /// 연결이 아직 살아 있는가. 죽은 핸들을 건네주면 SFTP가 그것으로 파일을 쓰려 든다.
     pub fn alive(&self) -> bool {
         !self.handle.is_closed()
@@ -78,10 +93,27 @@ fn registry() -> &'static Mutex<HashMap<PaneId, SshConn>> {
 }
 
 /// pane의 연결을 등록한다(재연결 시 덮어씀).
+///
+/// 등록 **후에** 기준선을 잡는다 — 레지스트리 자신이 든 참조까지 포함해야 그 위로 늘어난
+/// 것만 "물려 쓰는 곳"으로 세어진다.
 pub fn set(pane: PaneId, conn: SshConn) {
     if let Ok(mut m) = registry().lock() {
         m.insert(pane, conn);
+        if let Some(c) = m.get_mut(&pane) {
+            c.base = Arc::strong_count(&c.handle);
+        }
     }
+}
+
+/// 이 pane의 연결을 **함께 쓰고 있는 곳의 수**(SFTP 세션 등). 0이면 터미널만 쓴다.
+pub fn riders(pane: PaneId) -> usize {
+    let m = match registry().lock() {
+        Ok(m) => m,
+        Err(_) => return 0,
+    };
+    m.get(&pane)
+        .map(|c| Arc::strong_count(&c.handle).saturating_sub(c.base))
+        .unwrap_or(0)
 }
 
 /// pane의 살아 있는 연결(없거나 이미 끊겼으면 `None`).

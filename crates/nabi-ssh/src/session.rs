@@ -113,17 +113,15 @@ async fn run(
     let handle = Arc::new(handle);
     // 여기서부터 SFTP 가 이 연결을 그대로 쓸 수 있다(H4). 점프 핸들을 함께 넣는 이유는
     // 그것이 드롭되면 터널이 끊기기 때문이다 — 목적지 핸들만 넘기면 잠시 뒤 죽는다.
-    crate::conns::set(
-        pane,
-        crate::conns::SshConn {
-            handle: handle.clone(),
-            jump: jump.clone(),
-            who: crate::conns::Who::of(&params),
-        },
-    );
     let poller = stats.map(|(tx, interval)| {
         tokio::spawn(crate::stats::poll_loop(pane, handle.clone(), tx, interval))
     });
+    // 폴러가 뜬 **뒤에** 등록한다 — 기준선에 폴러의 참조까지 넣어야, 그 위로 늘어난 것만
+    // "SFTP가 물려 쓰는 중"으로 세어진다.
+    crate::conns::set(
+        pane,
+        crate::conns::SshConn::new(handle.clone(), jump.clone(), crate::conns::Who::of(&params)),
+    );
     let result = pump(pane, channel, out_tx, &mut in_rx).await;
     if let Some(p) = poller {
         p.abort(); // 대화형 세션 종료 시 폴러도 정리(연결 누수 방지).
