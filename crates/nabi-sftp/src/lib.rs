@@ -77,3 +77,5 @@ mod pipeline_test;
 mod realserver_test;
 #[cfg(test)]
 mod realserver_pipe;
+#[cfg(test)]
+mod realserver_reuse;

@@ -46,6 +46,13 @@ fn kind_of(a: &FileAttributes) -> FileKind {
 }
 
 impl SftpFs {
+    /// 이 세션이 타고 있는 SSH 연결 — **다른 SFTP가 물려받을 수 있게** 내준다(배치 Y H5).
+    ///
+    /// `Arc` 사본이라 이 세션을 닫아도 받은 쪽은 계속 쓴다. 반대도 마찬가지다.
+    pub fn handle_for_reuse(&self) -> std::sync::Arc<Handle<Handler>> {
+        self.handle.clone()
+    }
+
     pub(crate) fn new(
         raw: RawFs,
         handle: std::sync::Arc<Handle<Handler>>,
