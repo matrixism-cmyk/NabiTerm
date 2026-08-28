@@ -154,4 +154,6 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("trail.nocontent", "What was done is recorded — never the content. Passwords and tokens are not stored here.", "무엇을 했는지만 남깁니다 — 내용은 남기지 않습니다. 비밀번호·토큰은 여기 저장되지 않습니다.", "何をしたかだけを記録します — 内容は残しません。"),
     ("trail.denied.first", "An agent request was blocked — agent control is off or awaiting approval (Tools ▸ Automation)", "에이전트 요청이 막혔습니다 — 제어가 꺼져 있거나 승인 대기 중입니다(도구 ▸ 자동화)", "エージェントの要求がブロックされました"),
     ("editor.csvcol.hint", "Which field the caret is in — read from this line and the first line only", "커서가 몇 번째 칸에 있는지 — 이 줄과 첫 줄만 읽어 알아냅니다", "キャレットが何番目の列にあるか"),
+    ("editor.goto.huge", "Jump to a line — costs the same in a 5GB file", "줄 번호로 이동 — 5GB 파일에서도 값이 같습니다", "行番号で移動 — 5GB のファイルでも同じ速さ"),
+    ("editor.eol.head64", "Detected from the first 64KB only — a huge file is not scanned end to end", "처음 64KB만 보고 정했습니다 — 초대용량 파일은 끝까지 훑지 않습니다", "先頭64KBのみで判定"),
 ];

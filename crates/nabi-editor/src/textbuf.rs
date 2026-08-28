@@ -155,6 +155,26 @@ impl TextBuf {
         self.go(to, extend);
         self.goal_col = None;
     }
+    /// 그 줄로 커서를 옮기고 화면도 그리로 보낸다 — **줄 번호로 이동**(배치 AC).
+    ///
+    /// 수 GB 파일에서 8백만째 줄을 마우스로 찾아가는 것은 사실상 불가능하다. 그런데 인덱스가
+    /// 줄 위치를 이미 알고 있어서 이 이동은 파일 크기와 무관하게 값이 같다 — 안 할 이유가 없었다.
+    ///
+    /// 범위를 넘어서면 **마지막 줄로** 간다. 아무 일도 안 하면 사용자는 자기가 잘못 눌렀는지
+    /// 프로그램이 무시했는지 알 수 없다. 끝으로 보내면 적어도 "여기가 끝"이라는 답이 된다.
+    ///
+    /// 화면은 두 줄 위에서 시작한다. 찾던 줄이 맨 위 첫 줄에 딱 붙으면 앞뒤 맥락이 안 보인다.
+    pub fn go_to_line(&mut self, line0: usize, col: Option<usize>) {
+        let line = line0.min(self.data.lines().saturating_sub(1));
+        let to = match col {
+            Some(c) => self.data.offset_of_col(line, c),
+            None => self.data.line_start(line),
+        };
+        self.go(to, false);
+        self.goal_col = None;
+        self.scroll_to = Some(line.saturating_sub(2));
+    }
+
     /// 편집 묶음을 강제로 끊는다(저장·붙여넣기 등 경계가 분명한 동작 뒤에).
     pub fn break_group(&mut self) {
         self.group = false;
@@ -278,6 +298,65 @@ mod tests {
         b.go(3, false);
         b.go(9, true);
         assert_eq!(b.selected_text(), "나다");
+    }
+
+    #[test]
+    fn going_to_a_line_moves_the_caret_and_scrolls() {
+        let mut b = buf("첫째
+둘째
+셋째
+넷째");
+        b.go_to_line(2, None);
+        assert_eq!(b.caret_line(), 2, "셋째 줄");
+        assert_eq!(b.caret_col(), 0);
+        assert!(b.scroll_to.is_some(), "화면도 따라가야 한다 — 커서만 옮기면 안 보인다");
+    }
+
+    #[test]
+    fn a_line_past_the_end_lands_on_the_last_line() {
+        // 아무 일도 안 하면 사용자는 자기가 잘못 눌렀는지 무시당했는지 알 수 없다.
+        let mut b = buf("하나
+둘
+셋");
+        b.go_to_line(999, None);
+        assert_eq!(b.caret_line(), 2, "마지막 줄");
+        // 커서만 보면 이 시험은 방어를 빼도 통과한다 — `go()` 가 이미 총 길이로 자르기
+        // 때문이다(일부러 깨서 확인했다). 정작 잘라야 하는 것은 **스크롤**이다. 안 자르면
+        // 화면이 문서 끝을 한참 지나쳐 빈 곳을 보여 준다.
+        assert_eq!(b.scroll_to, Some(0), "화면도 문서 안에 머물러야 한다");
+    }
+
+    #[test]
+    fn a_column_is_counted_in_characters() {
+        // 바이트로 세면 한글 줄에서 커서가 글자 가운데에 떨어진다.
+        let mut b = buf("가나다라
+다음");
+        b.go_to_line(0, Some(2));
+        assert_eq!(b.caret_col(), 2);
+        assert_eq!(b.caret, 6, "두 글자 = 6바이트");
+    }
+
+    #[test]
+    fn the_view_starts_two_lines_above_so_context_is_visible() {
+        let mut b = buf("1
+2
+3
+4
+5
+6
+7
+8");
+        b.go_to_line(5, None);
+        assert_eq!(b.scroll_to, Some(3), "찾던 줄이 맨 위에 딱 붙으면 앞 맥락이 안 보인다");
+    }
+
+    #[test]
+    fn near_the_top_the_view_does_not_go_negative() {
+        let mut b = buf("1
+2
+3");
+        b.go_to_line(1, None);
+        assert_eq!(b.scroll_to, Some(0));
     }
 
 }

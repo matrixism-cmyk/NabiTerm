@@ -32,6 +32,11 @@ pub(crate) fn toolbar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &
                 tb.redo();
             }
         }
+        // 줄 번호로 이동(배치 AC) — 수 GB 파일에서 마우스로는 못 가는 곳에 간다.
+        //
+        // 칸은 일반 편집기의 찾기바와 **같은 `doc.find.goto`** 를 쓴다. 뜻이 같은 입력을
+        // 둘로 나누면 한쪽만 고치는 날이 오고, 그날 둘이 다르게 움직인다.
+        goto_box(ui, doc, lang);
         ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
         if doc.huge.as_ref().is_some_and(|t| t.dirty) {
             ui.colored_label(WARN, "\u{25cf}");
@@ -64,7 +69,10 @@ pub(crate) fn status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), se
         ui.separator();
         ui.label(tb.data.encoding());
         ui.separator();
-        ui.label(tb.data.eol);
+        // 줄바꿈은 **첫 64KB만 보고** 정했다(textdata::detect_eol). 전체를 훑으면 이 편집기가
+        // 존재하는 이유를 어기게 되니 훑지 않되, 아는 만큼만 안다고 말한다 — 뒷부분이 다른
+        // 줄바꿈이면 Enter 로 넣는 줄바꿈이 그 부분과 어긋난다.
+        ui.label(tb.data.eol).on_hover_text(tr(lang, "editor.eol.head64"));
         ui.separator();
         ui.label(format!("{}px", doc.font_size as i32));
         ui.separator();
@@ -80,4 +88,25 @@ fn csv_hint(tb: &crate::textbuf::TextBuf, cur: (usize, usize)) -> Option<String>
     let line = tb.data.line(cur.0);
     let header = (cur.0 > 0 && tb.data.lines() > 1).then(|| tb.data.line(0));
     crate::csvcol::hint(&line, header.as_deref(), cur.1)
+}
+
+/// "줄:열" 칸 — Enter 로 이동. 초대용량 뷰어에는 찾기바가 없어 여기 둔다.
+///
+/// 찾기바를 통째로 들여오지 않는 이유: 그 바는 문서 전체를 훑는 기능(미리보기·전체 바꾸기)을
+/// 달고 있고, 이 편집기는 그것을 하지 않기로 한 곳이다. 이동만 떼어 온다.
+fn goto_box(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
+    let g = ui.add(
+        egui::TextEdit::singleline(&mut doc.find.goto)
+            .desired_width(56.0)
+            .hint_text(tr(lang, "find.goto")),
+    );
+    let g = g.on_hover_text(tr(lang, "editor.goto.huge"));
+    let entered = ui.input(|i| i.key_pressed(egui::Key::Enter));
+    if !(g.lost_focus() && entered) {
+        return;
+    }
+    let Some((line0, col)) = crate::editorloc::parse_goto(&doc.find.goto) else { return };
+    if let Some(tb) = doc.huge.as_mut() {
+        tb.go_to_line(line0, col.map(|c| c as usize));
+    }
 }
