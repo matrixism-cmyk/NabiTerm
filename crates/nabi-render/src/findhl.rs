@@ -53,7 +53,7 @@ impl RowScan {
         if query.is_empty() {
             return;
         }
-        let cs = query.chars().any(char::is_uppercase);
+        let cs = crate::smartcase::sensitive(query);
         let hay: &[char] = if cs { &self.chars } else { &self.lower };
         let q: Vec<char> = if cs {
             query.chars().collect()

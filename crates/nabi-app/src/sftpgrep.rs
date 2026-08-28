@@ -76,7 +76,7 @@ fn drop_last_line(s: &str) -> String {
 
 /// 대소문자를 무시할 것인가 — 스마트케이스(로컬 내용 찾기와 같은 규칙).
 pub(crate) fn smart_case(pat: &str) -> bool {
-    !pat.chars().any(|c| c.is_uppercase())
+    nabi_render::smartcase::insensitive(pat)
 }
 
 /// 결과를 사람이 읽는 한 덩어리로. 로컬 내용 찾기와 같은 `경로:줄: 내용` 모양이다.

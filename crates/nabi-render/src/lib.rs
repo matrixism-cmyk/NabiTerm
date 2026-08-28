@@ -5,6 +5,7 @@
 //! 한 함수로 모았다.
 
 mod findhl;
+pub mod smartcase;
 mod glyphcache;
 mod highlight;
 mod underline;

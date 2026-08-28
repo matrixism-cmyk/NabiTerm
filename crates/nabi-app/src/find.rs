@@ -32,7 +32,7 @@ pub(crate) fn build_matcher(query: &str, regex: bool, whole: bool) -> Option<Mat
     if query.is_empty() {
         return None;
     }
-    let cs = query.chars().any(|c| c.is_uppercase());
+    let cs = nabi_render::smartcase::sensitive(query);
     if whole {
         let inner = if regex { query.to_string() } else { regex::escape(query) };
         return regex::RegexBuilder::new(&format!(r"\b(?:{inner})\b"))
@@ -112,8 +112,9 @@ impl NabiApp {
                     // 단어 단위 — 에디터 찾기에는 있고 터미널에만 없던 옵션(표면 통일).
                     ui.toggle_value(&mut self.find_whole, "ab").on_hover_text(tr(lang, "find.whole"));
                     // 스마트케이스 표시: 대문자 있으면 구분(Aa), 없으면 무시(aa).
-                    let cs = self.find_query.chars().any(|c| c.is_uppercase());
-                    ui.label(if cs { "Aa" } else { "aa" }).on_hover_text(tr(lang, "find.smartcase"));
+                    // 딱지도 규칙과 같은 곳에서 온다 — 판정과 표시가 갈라지면 화면이 거짓말을 한다.
+                    ui.label(nabi_render::smartcase::label(&self.find_query))
+                        .on_hover_text(tr(lang, "find.smartcase"));
                 });
             });
         if !open {

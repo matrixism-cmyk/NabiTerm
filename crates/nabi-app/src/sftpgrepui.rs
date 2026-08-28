@@ -56,7 +56,9 @@ impl NabiApp {
             self.grep_finish();
             return;
         };
-        let path = if root.ends_with('/') { format!("{root}{rel}") } else { format!("{root}/{rel}") };
+        // 경로 결합은  하나만 쓴다. 처음엔 여기서 손으로 이었는데,
+        // 그것이 바로 이 배치가 고친 결함(같은 일을 두 곳에서 각각 하기)과 같은 잘못이었다.
+        let path = crate::sftppath::join_path(&root, &rel);
         g.waiting = Some(path.clone());
         self.orch.send(Command::SftpPreview { id, path, max: sftpgrep::READ_CAP });
     }

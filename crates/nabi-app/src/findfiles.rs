@@ -15,7 +15,7 @@ impl NabiApp {
         if pat.is_empty() {
             return;
         }
-        let ci = !pat.chars().any(|c| c.is_uppercase()); // 스마트케이스.
+        let ci = nabi_render::smartcase::insensitive(&pat);
         let (results, hits) = search_dir(&self.browser.path, &pat, ci, 3000, 500);
         let body = if results.is_empty() { tr(self.lang, "search.nomatch").to_string() } else { results };
         let mut doc = EditorDoc::make(format!("\u{1f50d} {pat}"), PathBuf::new(), None, body, true, self.font_size, "UTF-8".into(), "\n");
