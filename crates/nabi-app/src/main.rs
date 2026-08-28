@@ -76,7 +76,7 @@ panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;
-mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
+mod webopen; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
 

@@ -235,6 +235,11 @@ impl NabiApp {
             MenuAction::DisbandGroup(f) => self.rename_folder(&f, ""),
             MenuAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             MenuAction::OpenEnvMgr => self.open_env_mgr(),
+            MenuAction::OpenWeb => {
+                if let Some(msg) = crate::webopen::open(self.lang, None) {
+                    self.notify = Some((msg, std::time::Instant::now()));
+                }
+            }
             MenuAction::EditAutoForwards(n) => self.open_auto_forwards(n),
             MenuAction::EditSessionEnv(n) => self.open_session_env(n),
             MenuAction::BlockList => self.toggle_block_list(),

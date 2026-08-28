@@ -65,6 +65,7 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
         Some("open-here") => Ok(ControlRequest::OpenHere {
             path: flag(args, "--path").ok_or("open-here: --path 가 필요합니다")?,
         }),
+        Some("web") => Ok(ControlRequest::OpenWeb { url: flag(args, "--url") }),
         Some("open-file") => Ok(ControlRequest::OpenEditor {
             path: flag(args, "--path").ok_or("open-file: --path 가 필요합니다")?,
         }),

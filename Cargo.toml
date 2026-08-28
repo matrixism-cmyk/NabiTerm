@@ -29,6 +29,7 @@ members = [
     "crates/nabi-editor",
     "crates/nabi-ftp",
     "crates/nabi-render",
+    "crates/nabi-web",
     "crates/nabi-app",
     "xtask",
 ]
@@ -60,6 +61,7 @@ nabi-control = { path = "crates/nabi-control" }
 nabi-release = { path = "crates/nabi-release" }
 nabi-telegram = { path = "crates/nabi-telegram" }
 nabi-render = { path = "crates/nabi-render" }
+nabi-web = { path = "crates/nabi-web" }
 
 # --- error / log / async ---
 thiserror = "2"

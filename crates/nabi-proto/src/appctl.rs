@@ -11,6 +11,10 @@ pub enum AppCtl {
     OpenEditor { path: String },
     /// 그 폴더에서 새 터미널을 열고 창을 앞으로 가져온다(탐색기 우클릭).
     OpenHere { path: String },
+    /// 내장 **웹** 브라우저 창을 연다(없으면 우리 소개 문서).
+    ///
+    /// 위의 `OpenBrowser` 는 **파일** 탐색기다. 이름이 비슷해 헷갈리기 쉬워 나눠 적는다.
+    OpenWeb { url: Option<String> },
     /// 저장된 SFTP 세션 이름으로 원격 탭 열기.
     OpenSftp { session: String },
     /// 다음 PaneSpawned의 도킹 위치(split-right|split-down|new-window — CP-7).

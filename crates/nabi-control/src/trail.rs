@@ -192,6 +192,8 @@ pub fn describe(req: &crate::protocol::ControlRequest) -> (&'static str, String,
         R::SpawnTerminal { shell, .. } => ("spawn", format!("{shell:?}"), 0),
         R::OpenBrowser { path } => ("open-browser", path.clone().unwrap_or_default(), 0),
         R::OpenHere { path } => ("open-here", path.clone(), 0),
+        // 주소는 남긴다 — 에이전트가 어디를 열었는지가 이 기록의 요점이다.
+        R::OpenWeb { url } => ("web", url.clone().unwrap_or_default(), 0),
         R::OpenEditor { path } => ("open-editor", path.clone(), 0),
         R::OpenSftp { session } => ("open-sftp", session.clone(), 0),
         R::SftpList { path } => ("sftp-list", path.clone(), 0),

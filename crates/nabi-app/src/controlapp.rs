@@ -14,6 +14,11 @@ impl crate::app::NabiApp {
                         b.path = std::path::PathBuf::from(p);
                     }
                 }
+                AppCtl::OpenWeb { url } => {
+                    if let Some(msg) = crate::webopen::open(self.lang, url.as_deref()) {
+                        self.notify = Some((msg, std::time::Instant::now()));
+                    }
+                }
                 AppCtl::OpenHere { path } => {
                     self.spawn_local_at(path);
                     self.raise_window = true; // 탐색기에서 부른 것이니 창이 앞으로 와야 한다.

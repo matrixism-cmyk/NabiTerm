@@ -88,6 +88,9 @@ const GROUPS: &[Group] = &[
         &[
             ("sync.title", PaletteAction::OpenSync),
             ("menu.localforward", PaletteAction::OpenForward),
+            // 포워딩 바로 아래다. 원격 웹 화면을 끌어온 다음 여는 것이 가장 잦은 쓰임이라,
+            // 두 항목이 붙어 있으면 무엇에 쓰는지 설명하지 않아도 보인다.
+            ("web.title", PaletteAction::OpenWeb),
         ],
     ),
     // 사람 없이 도는 것.

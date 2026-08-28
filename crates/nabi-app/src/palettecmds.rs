@@ -96,6 +96,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "keygen.title").to_string(), PaletteAction::OpenKeygen),
         (tr(lang, "copyid.title").to_string(), PaletteAction::CopyId),
         (tr(lang, "env.title").to_string(), PaletteAction::OpenEnvMgr),
+        (tr(lang, "web.title").to_string(), PaletteAction::OpenWeb),
         (tr(lang, "cmdhist.title").to_string(), PaletteAction::OpenCmdHistory),
         (tr(lang, "bundle.title").to_string(), PaletteAction::OpenSupportBundle),
         (tr(lang, "block.copy").to_string(), PaletteAction::CopyCommandBlock),

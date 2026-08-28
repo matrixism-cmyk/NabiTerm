@@ -51,6 +51,10 @@ pub enum ControlRequest {
     PaneModes { pane: u64 },
     /// 그 폴더에서 새 터미널을 열고 **창을 앞으로** 가져온다(탐색기 우클릭).
     OpenHere { path: String },
+    /// 내장 **웹** 브라우저 창을 연다 — 에이전트가 "이 화면 좀 띄워 줘"를 할 수 있게.
+    ///
+    /// 포트 포워딩으로 끌어온 원격 웹 화면을 여는 것이 가장 잦은 쓰임이다.
+    OpenWeb { url: Option<String> },
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.

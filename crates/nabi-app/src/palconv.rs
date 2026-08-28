@@ -29,6 +29,7 @@ pub(crate) fn to_menu(a: &PaletteAction) -> Option<MenuAction> {
         PaletteAction::ToggleFloatOnTop => MenuAction::ToggleFloatOnTop,
         PaletteAction::OpenKeygen => MenuAction::OpenKeygen,
         PaletteAction::OpenEnvMgr => MenuAction::OpenEnvMgr,
+        PaletteAction::OpenWeb => MenuAction::OpenWeb,
         PaletteAction::OpenCmdHistory => MenuAction::OpenCmdHistory,
         PaletteAction::OpenSupportBundle => MenuAction::OpenSupportBundle,
         PaletteAction::CopyCommandBlock => MenuAction::CopyCommandBlock,

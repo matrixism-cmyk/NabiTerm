@@ -91,6 +91,7 @@ pub(crate) enum PaletteAction {
     OpenKeygen,
     CopyId,
     OpenEnvMgr,
+    OpenWeb,
     OpenCmdHistory,
     OpenSupportBundle,
     CopyCommandBlock,
