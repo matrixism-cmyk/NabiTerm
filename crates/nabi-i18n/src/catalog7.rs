@@ -159,4 +159,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sftp.grep.toggle", "Search file contents", "파일 내용으로 찾기", "ファイル内容で検索"),
     ("sftp.grep.hint", "Reads the first 256KB of each file — matches further in are not found, and the result says so", "파일마다 앞 256KB만 읽습니다 — 그보다 뒤의 일치는 못 찾으며, 결과에 그 사실을 적습니다", "各ファイルの先頭256KBのみ読みます"),
     ("sftp.grep.done", "Matches found:", "찾은 줄:", "見つかった行:"),
+    ("sync.unwritable", "Skipped — Windows cannot create these names:", "건너뜀 — 윈도우가 만들 수 없는 이름:", "スキップ — Windows で作成できない名前:"),
 ];

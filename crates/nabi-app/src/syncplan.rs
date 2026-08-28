@@ -78,14 +78,49 @@ pub fn plan(
     out
 }
 
-/// 동기화에 안전한 상대경로인가 — `..`/절대경로/드라이브 문자를 거부한다.
-/// 원격 서버가 준 이름을 로컬 경로에 join하기 전 반드시 통과시킬 것(경로 탈출 차단).
+/// **경로를 빠져나가지 않는가** — `..`·절대경로·드라이브 접두사를 거부한다.
+///
+/// 원격 서버가 준 이름을 로컬 경로에 join 하기 전 반드시 통과시킬 것(경로 탈출 차단).
+///
+/// ## 이 판단은 "쓸 수 있는가"와 다르다(배치 AE)
+///
+/// 예전에는 여기서 **콜론이 있으면 어디에 있든** 거절했다. 드라이브 문자를 막으려던 것인데,
+/// 리눅스에서 콜론은 **적법한 파일명 문자**다. 그래서 `2026-08-28T10:00:00.log` 같은 흔한
+/// 로그 파일이 원격 찾기·내용 찾기·동기화 목록에서 **통째로 보이지 않았다.** 없다고 나오는
+/// 것과 못 쓴다고 나오는 것은 사용자에게 전혀 다른 말이다.
+///
+/// 이제 콜론은 **드라이브 접두사 자리**에서만 거절한다. 윈도우가 그 이름으로 파일을 못 만드는
+/// 문제는 [`writable_on_windows`] 가 따로 판단한다 — 보는 일(찾기)과 쓰는 일(내려받기)은
+/// 다른 질문이기 때문이다.
 pub fn safe_rel(rel: &str) -> bool {
+    let mut parts = rel.split(['/', '\\']);
+    // 드라이브 접두사는 **첫 조각에서만** 위험하다. 시험(`what_actually_escapes_when_you_join_it`)
+    // 으로 러스트에 직접 물어 확인했다: `join("C:evil")` 은 뿌리를 통째로 갈아치우지만
+    // `join("logs/a:b.log")` 는 뿌리 안에 머문다. 접두사는 맨 앞에서만 인정되기 때문이다.
+    let first_ok = parts.next().is_some_and(|c| !c.is_empty() && c != ".." && !is_drive(c));
     !rel.is_empty()
         && !rel.starts_with('/')
         && !rel.starts_with('\\')
-        && !rel.contains(':')
-        && rel.split(['/', '\\']).all(|c| !c.is_empty() && c != "..")
+        && first_ok
+        && parts.all(|c| !c.is_empty() && c != "..")
+}
+
+/// 이 조각이 드라이브 접두사인가(`C:` · `c:evil`).
+fn is_drive(comp: &str) -> bool {
+    let b = comp.as_bytes();
+    b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
+}
+
+/// **윈도우가 이 이름으로 파일을 만들 수 있는가** — 내려받기 전에만 묻는다.
+///
+/// 리눅스 서버에는 윈도우가 못 쓰는 이름이 흔하다: 콜론(NTFS 는 대체 데이터 스트림 문법으로
+/// 읽는다)·물음표·별표·따옴표·부등호·파이프, 그리고 공백이나 점으로 끝나는 이름. 찾기에서는
+/// 보여 줘야 하지만 내려받을 때는 **왜 못 받는지 말해 줘야** 한다. 조용히 건너뛰면 사용자는
+/// 그 파일이 서버에 없다고 믿는다.
+pub fn writable_on_windows(rel: &str) -> bool {
+    !rel.split(['/', '\\']).any(|c| {
+        c.contains([':', '*', '?', '\"', '<', '>', '|']) || c.ends_with(' ') || c.ends_with('.')
+    })
 }
 
 /// 로컬 디렉터리 트리를 (상대경로, 크기, mtime)로 수집(원격 list_tree와 짝).
@@ -188,4 +223,55 @@ mod tests {
         assert_eq!(got[1].1, 2);
         let _ = std::fs::remove_dir_all(&d);
     }
+    #[test]
+    fn a_linux_log_name_with_colons_is_visible() {
+        // 이 시험이 이 변경의 이유다. 리눅스에서 콜론은 적법한 파일명 문자라
+        // `2026-08-28T10:00:00.log` 같은 흔한 로그가 원격 찾기·내용 찾기·동기화 목록에서
+        // 통째로 보이지 않았다. 없다고 나오는 것과 못 쓴다고 나오는 것은 다른 말이다.
+        assert!(safe_rel("logs/2026-08-28T10:00:00.log"));
+        assert!(safe_rel("backup:2026.tar"));
+    }
+
+    #[test]
+    fn a_drive_prefix_is_still_rejected() {
+        // 콜론을 풀어 주면서 드라이브 탈출까지 열면 안 된다.
+        assert!(!safe_rel("C:evil"));
+        // 가운데 조각은 탈출하지 않는다(러스트에 물어 확인) — 다만 윈도우에 못 쓸 뿐이다.
+        assert!(safe_rel("a/C:evil"));
+        assert!(!writable_on_windows("a/C:evil"));
+        assert!(!safe_rel("c:/windows/system32"));
+    }
+
+    #[test]
+    fn windows_cannot_write_some_names_that_linux_allows() {
+        // 보는 일과 쓰는 일은 다른 질문이다.
+        assert!(!writable_on_windows("logs/2026-08-28T10:00:00.log"), "콜론은 NTFS 가 스트림으로 읽는다");
+        assert!(!writable_on_windows("a/what?.txt"));
+        assert!(!writable_on_windows("a/trailing "), "공백으로 끝나는 이름");
+        assert!(!writable_on_windows("a/trailing."), "점으로 끝나는 이름");
+        assert!(writable_on_windows("logs/normal.log"));
+        assert!(writable_on_windows("한글/파일.rs"));
+    }
+
+    #[test]
+    fn the_two_questions_are_independent() {
+        // 빠져나가지 않지만 못 쓰는 이름이 있고, 그 반대는 없어야 한다.
+        let colon = "logs/a:b.log";
+        assert!(safe_rel(colon), "빠져나가지 않는다");
+        assert!(!writable_on_windows(colon), "그래도 윈도우에는 못 쓴다");
+    }
+
+    #[test]
+    fn what_actually_escapes_when_you_join_it() {
+        // 짐작하지 말고 러스트에 직접 묻는다 — 어떤 모양이 실제로 뿌리를 벗어나는가.
+        use std::path::Path;
+        let base = Path::new(r"C:\base");
+        // 첫 조각이 드라이브 모양이면 join 이 **뿌리를 통째로 갈아치운다**. 이것이 진짜 위험이다.
+        assert!(!base.join("C:evil").starts_with(base), "첫 조각 드라이브는 탈출한다");
+        assert!(!base.join("a:b.log").starts_with(base), "한 글자+콜론도 드라이브로 읽힌다");
+        // 반면 가운데 조각은 갈아치우지 않는다 — 접두사는 맨 앞에서만 인정된다.
+        assert!(base.join("logs/a:b.log").starts_with(base), "가운데 콜론은 벗어나지 않는다");
+        assert!(base.join("a/C:evil").starts_with(base), "가운데면 드라이브 모양이어도 안 벗어난다");
+    }
+
 }

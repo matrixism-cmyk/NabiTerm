@@ -162,7 +162,7 @@ impl NabiApp {
     fn run_sync(&mut self, dlg: &mut SyncDlg) {
         let Some(id) = self.sftp.id else { return };
         let (lroot, rroot) = (dlg.local.clone(), dlg.remote.trim_end_matches('/').to_string());
-        let items: Vec<_> = dlg
+        let checked: Vec<_> = dlg
             .items
             .take()
             .into_iter()
@@ -170,6 +170,24 @@ impl NabiApp {
             .filter(|(a, c)| *c && crate::syncplan::safe_rel(a.path()))
             .map(|(a, _)| a)
             .collect();
+        // 내려받을 때만, **윈도우가 만들 수 없는 이름**을 따로 걸러 낸다(배치 AE).
+        //
+        // 리눅스 서버에는 2026-08-28T10:00:00.log 처럼 콜론이 든 이름이 흔한데 윈도우는 그
+        // 이름으로 파일을 못 만든다. 예전에는 이런 파일이 목록에서부터 아예 안 보였다 —
+        // 사용자에게는 "서버에 없다"로 읽혔다. 이제 보여 주되, **왜 못 받는지 말한다.**
+        let (items, unwritable): (Vec<_>, Vec<_>) = match dlg.dir {
+            SyncDir::Down => checked
+                .into_iter()
+                .partition(|a| crate::syncplan::writable_on_windows(a.path())),
+            SyncDir::Up => (checked, Vec::new()),
+        };
+        if !unwritable.is_empty() {
+            let names: Vec<&str> = unwritable.iter().take(3).map(|a| a.path()).collect();
+            self.notify = Some((
+                format!("{} {} \u{00b7} {}", tr(self.lang, "sync.unwritable"), unwritable.len(), names.join(", ")),
+                std::time::Instant::now(),
+            ));
+        }
         // 업로드 전 원격 부모 폴더를 얕은→깊은 순으로 만들어 둔다(리뷰 #6 — 없으면 개별 실패).
         if dlg.dir == SyncDir::Up {
             let mut dirs: Vec<String> = Vec::new();
