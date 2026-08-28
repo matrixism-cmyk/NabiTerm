@@ -43,13 +43,13 @@ mod fileprops; mod filepropsui; mod filezilla; mod xshell; mod mobaxterm; mod pu
        
 
 mod floatpanels; mod floatterm; mod linkmenu; mod settingsfont; mod worklayout; mod updatemodal; mod shellintegprompt; mod agentguide; mod aicli; mod aiclipage;
-mod envcat; mod envpath; mod shelldetect; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter;
+mod envcat; mod envpath; mod shelldetect; mod shellfallback; mod settingsearch; mod settingsearchui; mod paletteorder; mod cmdhistfilter;
 mod cmdhistui; mod sftppreview; mod sftppreviewui; mod autoreply; mod autoreplyrun; mod diffopen; mod diffopenui;
 mod autofwd; mod autofwdui; mod backoff; mod supportbundle; mod supportbundleui; mod freespace; mod reachall; mod danger;
 mod editorconflict; mod guard; mod guardui; mod inputline; mod lastfail; mod logprune; mod agentkeys; mod reopenclosed;
 #[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan;
-#[cfg(test)] mod i18nlint; mod envwsl; mod envstate; mod envrun; mod envmgr; mod envmgrui;
+#[cfg(test)] mod i18nlint; mod envwsl; mod envprobe; mod envstate; mod envrun; mod envmgr; mod envmgrui;
 mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
 
@@ -70,7 +70,7 @@ mod notices; mod renamerule; mod browserrename; mod sftpfind; mod sftpgrep; mod 
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcuts; mod blocklistui; mod
+mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcuts; mod blocklistui; mod
 editspotsui; mod wordcompui; mod autolog; mod copyidui; mod cues; mod egress; mod redact; mod secretscan; mod secretui; mod diffrestore; mod opendoc; mod zipops; mod zipui; mod errkey; mod
 panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;

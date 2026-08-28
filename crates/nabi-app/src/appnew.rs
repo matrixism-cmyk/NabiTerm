@@ -16,6 +16,15 @@ impl NabiApp {
         // **어제 남은 토큰은 오늘도 토큰이다.** 가리기를 켜기 전에 쌓인 기록에는
         // 비밀이 그대로 있다 — 불러올 때 한 번 훑어 지운다(디스크에도 다음 저장에 반영).
         let config = crate::redact::sweep_history(config);
+        // 기본 셸이 이 PC 에서 실행되지 않으면 **열리는 셸로 바꾼다**(배치 AK).
+        //
+        // 스토어판 PowerShell 7 처럼 설치는 되어 있는데 실행되지 않는 셸이 기본으로 잡혀
+        // 있으면, 탐색기 우클릭도 새 탭도 전부 안 열린다. 그런데 무엇이 잘못됐는지는
+        // 화면 어디에도 나오지 않는다.
+        //
+        // 바꿨다는 사실은 아래에서 알린다. 사용자가 고른 값을 우리가 바꾸는 일이라,
+        // 말하지 않으면 "내가 설정한 게 왜 다른 걸로 되어 있지?" 하고 헤매게 된다.
+        let (config, shell_swap) = crate::appnew::fix_default_shell(config, &layout);
         // 나가도 되는지·공인 IP를 볼지는 **여기서 한 번** 읽는다(아래 초기화에서 config가
         // 옮겨진 뒤에는 못 읽는다).
         let ip_lookup = config.terminal.public_ip_lookup && !config.terminal.offline_mode;
@@ -207,10 +216,9 @@ impl NabiApp {
             pending_layout: None, pending_restore: None,
             quake,
             // 세션 파일이 손상돼 백업했다면 첫 화면에서 경로를 알린다(조용한 소멸 방지).
-            notify: session_backup.map(|b| {
-                let msg = nabi_i18n::tr(lang, "sessions.corrupt");
-                (format!("\u{26a0} {msg} \u{2192} {}", b.display()), std::time::Instant::now())
-            }),
+            // 시작할 때 알릴 것을 모은다. 둘 다 생겼으면 둘 다 말한다 — 하나가 다른
+            // 하나를 덮으면 그 사실은 사용자가 영영 모른다(배치 AK).
+            notify: crate::appnew::startup_notice(lang, session_backup, shell_swap),
             agent_watch: crate::agentwatch::AgentWatch::new(Some(&layout.base)),
             pane_status_ttl: HashMap::new(),
             ai_cli_auto: None,
@@ -241,4 +249,42 @@ impl NabiApp {
             pane_zoom: false,
         }
     }
+}
+
+/// 기본 셸이 실행되지 않으면 바꾼다. `(고친 설정, 바꿨으면 (이전, 새것))`.
+///
+/// 설정 파일에도 바로 적는다 — 다음에 켤 때 또 같은 일을 겪지 않도록.
+pub(crate) fn fix_default_shell(
+    mut config: nabi_config::AppConfig,
+    layout: &nabi_config::StorageLayout,
+) -> (nabi_config::AppConfig, Option<(String, String)>) {
+    let usable: Vec<nabi_proto::ShellKind> =
+        crate::menu::installed_shells().into_iter().map(|(_, k)| k).collect();
+    let Some(next) = crate::shellfallback::pick(&config.terminal.default_shell, &usable) else {
+        return (config, None);
+    };
+    let prev = std::mem::replace(&mut config.terminal.default_shell, next.clone());
+    // 설정 파일에도 바로 적는다 — 다음에 켤 때 또 같은 일을 겪지 않도록.
+    // 여기서 실패해도 프로그램은 그대로 뜬다. 이번에 켠 동안은 바뀐 값으로 동작한다.
+    let _ = nabi_config::save(&layout.config_file, &config);
+    (config, Some((prev, next)))
+}
+
+/// 시작할 때 한 번 띄울 알림을 모은다.
+///
+/// 둘 다 생겼으면 **둘 다** 말한다. 알림 자리는 하나뿐이라 예전 같으면 하나가 다른 하나를
+/// 덮었을 텐데, 덮인 쪽은 사용자가 영영 모른다. 짧게 이어 붙여 함께 보여 준다.
+pub(crate) fn startup_notice(
+    lang: nabi_i18n::Lang,
+    session_backup: Option<std::path::PathBuf>,
+    shell_swap: Option<(String, String)>,
+) -> Option<(String, std::time::Instant)> {
+    let mut parts: Vec<String> = Vec::new();
+    if let Some(b) = session_backup {
+        parts.push(format!("\u{26a0} {} \u{2192} {}", nabi_i18n::tr(lang, "sessions.corrupt"), b.display()));
+    }
+    if let Some((prev, next)) = shell_swap {
+        parts.push(format!("{} {prev} \u{2192} {next}", nabi_i18n::tr(lang, "shell.swapped")));
+    }
+    (!parts.is_empty()).then(|| (parts.join(" \u{00b7} "), std::time::Instant::now()))
 }

@@ -70,6 +70,7 @@ impl NabiApp {
         let mut do_handoff: Option<nabi_types::PaneId> = None;
         let mut do_copy_prompt = false;
         let mut stop_watch = false;
+        let mut stop_rec = false; // REC 배지를 눌렀는가(배치 AK).
         let sel_info = self.selection.filter(|s| !s.is_empty()).map(|s| {
             let (sr, sc, er, ec) = s.span();
             if s.rect {
@@ -122,7 +123,9 @@ impl NabiApp {
                 if is_ssh { crate::statuschips::ssh_badge(ui, lang, focused); }
                 // 이 pane이 파일로 기록되는 중인지. 자동으로 켜질 수 있으므로 늘 보여 준다.
                 let rec = focused.and_then(|p| self.session_logs.get(&p));
-                crate::statuschips::rec_badge(ui, lang, rec.is_some(), rec.is_some_and(|l| l.cast));
+                if crate::statuschips::rec_badge(ui, lang, rec.is_some(), rec.is_some_and(|l| l.cast)) {
+                    stop_rec = true; // 배지를 누르면 기록을 멈춘다(실제 처리는 아래에서).
+                }
                 // 표식(운영/스테이징/개발) — 색만이 아니라 글자로도 적는다. 지금 어디에
                 // 명령을 치고 있는지가 상태바에서 늘 보여야 한다.
                 if tag != nabi_session::SessionTag::None {
@@ -322,6 +325,11 @@ impl NabiApp {
         }
         if stop_watch {
             self.sync_watch = None; // 상태바 칩 클릭 = 최신유지 중지.
+        }
+        // REC 배지를 눌렀으면 기록을 멈춘다. 켜는 길과 같은 함수를 쓴다 — 같은 일을 하는
+        // 코드를 두 벌 두면 언젠가 한쪽만 고쳐진다(배치 AK).
+        if stop_rec {
+            self.toggle_session_log();
         }
         if focus_sftp {
             if let Some(p) = self.sftp_pane {

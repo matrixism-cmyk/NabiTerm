@@ -157,7 +157,18 @@ fn tool_row(
                         pick = Some((t.name.to_string(), s, tr(lang, "env.starting").to_string()));
                     }
                 }
-                ui.weak(tr(lang, "env.installed"));
+                // 버전을 읽었으면 "설치됨" 대신 버전을 보여 준다(배치 AK).
+                //
+                // "설치됨"은 이미 왼쪽 점이 말하고 있다. 같은 사실을 두 번 적는 대신,
+                // 사용자가 정말 알고 싶어 하는 것(어느 판인가)을 그 자리에 놓는다.
+                match st.versions.get(t.id) {
+                    Some(v) => {
+                        ui.weak(v).on_hover_text(tr(lang, "env.installed"));
+                    }
+                    None => {
+                        ui.weak(tr(lang, "env.installed"));
+                    }
+                }
                 return;
             }
             match crate::envrun::install_script(t, st.has_winget) {

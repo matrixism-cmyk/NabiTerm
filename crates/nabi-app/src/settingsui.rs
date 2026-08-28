@@ -233,13 +233,7 @@ fn color_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
 }
 
 fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
-    ui.label(tr(lang, "settings.shell"));
-    egui::ComboBox::from_id_salt("set_shell")
-        .selected_text(cfg.terminal.default_shell.clone())
-        .show_ui(ui, |ui| {
-            for s in ["powershell", "pwsh", "cmd", "wsl", "gitbash"] { ui.selectable_value(&mut cfg.terminal.default_shell, s.to_owned(), s); }
-        });
-    ui.end_row();
+    crate::settingsshell::shell_row(ui, cfg, lang);
 
     // 새 터미널 기본 시작 디렉터리(비우면 포커스 셸 cwd 상속). 찾아보기 버튼 포함.
     ui.label(tr(lang, "settings.defaultcwd"));
@@ -318,4 +312,3 @@ fn color_field(ui: &mut egui::Ui, label: &str, value: &mut String, lang: Lang) {
     });
     ui.end_row();
 }
-

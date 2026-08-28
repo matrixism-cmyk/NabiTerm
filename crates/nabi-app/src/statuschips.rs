@@ -3,20 +3,22 @@
 use nabi_i18n::{tr, Lang};
 use nabi_types::PaneId;
 
-/// **기록 중** 배지 — 이 pane의 출력이 파일로 남고 있음을 늘 보여 준다(배치 Y S3).
+/// **누르면 기록을 멈춘다**(배치 AK). 켜는 길은 메뉴에 있는데 끄는 길은 거기까지 찾아
+/// 들어가야 했다. 기록을 멈추고 싶은 순간은 대개 급하다 — 비밀번호를 치기 직전이다.
+/// 그래서 지금 눈에 보이는 그 자리에서 바로 끌 수 있게 한다.
 ///
-/// 알림은 시작할 때 한 번 뜨고 사라진다. 그런데 `autolog.rs`가 새 창의 로깅을 **저절로**
-/// 켜므로, 사용자가 알림을 놓치면 기록되는 줄 모른 채 비밀번호를 칠 수 있다.
-/// 몰래 기록되는 것으로 보이면 안 된다 — 그래서 켜져 있는 동안 계속 보인다.
-pub(crate) fn rec_badge(ui: &mut egui::Ui, lang: Lang, on: bool, cast: bool) {
+/// 눌렀는지 돌려준다. 실제로 멈추는 일은 부르는 쪽이 한다(여기는 화면만 그린다).
+pub(crate) fn rec_badge(ui: &mut egui::Ui, lang: Lang, on: bool, cast: bool) -> bool {
     if !on {
-        return;
+        return false;
     }
     ui.separator();
     // 붉은 점은 어디서나 "지금 기록 중"으로 읽힌다.
     let label = if cast { "\u{25cf} REC \u{23fa}" } else { "\u{25cf} REC" };
-    ui.colored_label(crate::theme_ui::ERR, label)
-        .on_hover_text(tr(lang, "status.recording"));
+    let tip = format!("{}\n{}", tr(lang, "status.recording"), tr(lang, "status.recstop"));
+    ui.add(egui::Label::new(egui::RichText::new(label).color(crate::theme_ui::ERR)).sense(egui::Sense::click()))
+        .on_hover_text(tip)
+        .clicked()
 }
 
 /// SSH 배지: 협상 KEX가 PQ(ML-KEM 하이브리드)면 방패 + 상세 툴팁.

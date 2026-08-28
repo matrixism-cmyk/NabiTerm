@@ -15,6 +15,8 @@ const FN_PAGE: &[(&str, usize)] = &[
     ("cursor_rows", 1),
     ("import_section", 1),
     ("terminal_rows", 2),
+    // 터미널 페이지의 기본 셸 고르기 — 줄 한도로 settingsshell.rs 에 갈라 뒀다(배치 AK).
+    ("shell_row", 2),
     ("tip_rows", 2),
     ("ssh_rows", 3),
     ("transfer_rows", 3),
@@ -31,6 +33,7 @@ const FN_PAGE: &[(&str, usize)] = &[
 const FILES: &[&str] = &[
     "settingsui.rs",
     "settingsui2.rs",
+    "settingsshell.rs",
     "settingslists.rs",
     "themeimport.rs",
     "settingsfont.rs",

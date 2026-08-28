@@ -171,4 +171,6 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("browser.batchrename", "Batch rename…", "일괄 이름 변경…", "一括名前変更…"),
     ("browser.batchrename.none", "Select the files to rename first", "이름을 바꿀 파일을 먼저 고르세요", "名前を変更するファイルを先に選んでください"),
     ("browser.batchrename.nomatch", "No file matches — nothing will change", "걸리는 파일이 없습니다 — 아무것도 바뀌지 않습니다", "該当するファイルがありません"),
+    ("status.recstop", "Click to stop recording", "누르면 기록을 멈춥니다", "クリックで記録を停止"),
+    ("shell.swapped", "The default shell could not run, so it was changed:", "기본 셸이 실행되지 않아 바꿨습니다:", "既定シェルが起動できないため変更しました:"),
 ];

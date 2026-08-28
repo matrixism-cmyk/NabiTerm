@@ -13,6 +13,11 @@ pub(crate) struct EnvState {
     pub done: bool,
     /// PATH에서 찾은 도구 id들.
     pub installed: Vec<String>,
+    /// 도구 id → 버전 문자열(배치 AK). 읽지 못했으면 없다.
+    ///
+    /// 설치되어 있다는 사실만으로는 부족하다는 사용자 요청으로 넣었다. 어차피 "정말
+    /// 실행되는가"를 확인하려고 한 번 실행하므로, 그때 받은 값을 그대로 쓴다.
+    pub versions: std::collections::HashMap<String, String>,
     /// winget이 이 PC에 있는가(설치 통로 선택이 여기 달렸다).
     pub has_winget: bool,
     /// 설치할 수 있는 WSL 배포판.
@@ -30,16 +35,28 @@ pub(crate) fn scan() -> EnvScan {
     let out: EnvScan = Arc::new(Mutex::new(EnvState::default()));
     let worker = out.clone();
     std::thread::spawn(move || {
-        let installed: Vec<String> = crate::envcat::TOOLS
-            .iter()
-            .filter(|t| on_path(t.probe))
-            .map(|t| t.id.to_string())
-            .collect();
+        // 도구마다 **정말 실행되는지** 확인하고, 되면 버전을 함께 받는다(배치 AK).
+        //
+        // 예전에는 파일이 스토어 별칭이면 무조건 "없음"으로 봤다. 그런데 winget 은 별칭인데도
+        // 잘 실행된다. 파일 모양으로는 winget 과 pwsh 를 구분할 수 없으므로 실행해서 묻는다.
+        let mut installed: Vec<String> = Vec::new();
+        let mut versions = std::collections::HashMap::new();
+        for t in crate::envcat::TOOLS.iter() {
+            match probe(t.probe) {
+                None => continue,
+                Some(v) => {
+                    installed.push(t.id.to_string());
+                    if let Some(v) = v {
+                        versions.insert(t.id.to_string(), v);
+                    }
+                }
+            }
+        }
         let has_winget = installed.iter().any(|i| i == "winget");
         let has_wsl = on_path("wsl");
         let (distros, wsl_installed) = if has_wsl { wsl_lists() } else { (Vec::new(), Vec::new()) };
         if let Ok(mut s) = worker.lock() {
-            *s = EnvState { done: true, installed, has_winget, distros, wsl_installed, has_wsl };
+            *s = EnvState { done: true, installed, versions, has_winget, distros, wsl_installed, has_wsl };
         }
     });
     out
@@ -92,6 +109,31 @@ pub(crate) fn distro_script(name: &str, has_wsl: bool) -> String {
     s.push_str(&format!("wsl --install -d {name}; "));
     s.push_str("if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; Write-Output '@@STEP 3/3 done'");
     s
+}
+
+/// 이 도구가 **쓸 수 있게** 설치되어 있는가. 있으면 `Some(버전)`(버전은 못 읽을 수도 있다).
+///
+/// 먼저 `where` 로 찾는다. 스토어 별칭이 아니면 그것으로 충분하다 — 실행해 보는 값이
+/// 아깝다(도구가 열 개가 넘고, 매번 훑는다).
+///
+/// **별칭일 때만 실행해 본다.** 그때는 파일이 있어도 실행되지 않을 수 있어서, 물어보는
+/// 수밖에 없다. winget 은 되고 스토어판 pwsh 는 안 된다.
+fn probe(name: &str) -> Option<Option<String>> {
+    let Ok(o) = crate::aicli::hidden("where.exe").arg(name).output() else { return None };
+    if !o.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&o.stdout);
+    let paths: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    if paths.is_empty() {
+        return None;
+    }
+    let real = paths.iter().any(|l| !nabi_pty::is_store_alias(std::path::Path::new(l)));
+    if real {
+        return Some(crate::envprobe::probe_version(name, "--version"));
+    }
+    // 별칭뿐이다 — 실행되면 설치된 것이고, 안 되면 없는 것으로 본다.
+    crate::envprobe::probe_version(name, "--version").map(Some)
 }
 
 #[cfg(test)]
