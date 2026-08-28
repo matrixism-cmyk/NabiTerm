@@ -58,7 +58,7 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorC
         // 원격 연결(3): SSH(접속 유지·통계) → 전송·SFTP(속도·병렬·무결성·다운로드 폴더).
         3 => {
             group(ui, lang, "settings.sec.ssh"); grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang));
-            group(ui, lang, "settings.sec.transfer"); grid(ui, "sec_transfer", |ui| crate::settingsui2::transfer_rows(ui, cfg, lang));
+            group(ui, lang, "settings.sec.transfer"); grid(ui, "sec_transfer", |ui| crate::settingsxfer::transfer_rows(ui, cfg, lang));
         }
         // 사용자 규칙(4): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
         // 사용자 규칙(4): 한 장에 네 가지가 쌓여 있어 무엇이 무엇인지 읽기 어려웠다.
@@ -234,6 +234,8 @@ fn color_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
 
 fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     crate::settingsshell::shell_row(ui, cfg, lang);
+    // 세션 기록 — 원격 연결 페이지에 있던 것을 여기로 옮겼다(배치 AM). 로컬 셸도 남는다.
+    crate::settingslog::log_rows(ui, cfg, lang);
 
     // 새 터미널 기본 시작 디렉터리(비우면 포커스 셸 cwd 상속). 찾아보기 버튼 포함.
     ui.label(tr(lang, "settings.defaultcwd"));

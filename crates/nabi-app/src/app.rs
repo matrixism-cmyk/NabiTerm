@@ -292,6 +292,10 @@ pub struct NabiApp {
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).
     pub progress: HashMap<PaneId, u8>,
+    /// 화면에서 읽은 진행률을 마지막으로 본 때. 오래 조용하면 지운다(배치 AM).
+    pub progress_seen: HashMap<PaneId, std::time::Instant>,
+    /// 프로그램이 `OSC 9;4` 로 직접 말한 pane. 그쪽이 권위라 화면을 읽지 않는다.
+    pub progress_osc: std::collections::HashSet<PaneId>,
     pub server_stats: HashMap<PaneId, nabi_proto::stats::ServerStats>,
     pub pane_status: HashMap<PaneId, std::collections::BTreeMap<String, String>>,
     pub ssh_connect_time: HashMap<PaneId, std::time::Instant>,

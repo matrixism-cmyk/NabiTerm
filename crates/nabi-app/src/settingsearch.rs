@@ -82,9 +82,10 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.offline", 3),
     ("settings.publicip", 3),
     ("settings.redacthist", 3),
-    ("settings.redactlogs", 3),
-    ("settings.autolog", 3),
-    ("settings.logcast", 3),
+    // 세 항목 다 터미널(2). 원격 연결(3)에 있었는데 로컬 셸도 똑같이 기록된다(배치 AM).
+    ("settings.redactlogs", 2),
+    ("settings.autolog", 2),
+    ("settings.logcast", 2),
     ("settings.sshtimeout", 3),
     ("settings.sshkeepalive", 3),
     ("settings.statsalert", 3),

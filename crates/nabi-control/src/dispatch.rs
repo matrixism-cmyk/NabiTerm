@@ -194,6 +194,12 @@ pub(crate) fn dispatch_write(
             app_tx.send(AppCtl::OpenHere { path }).ok();
             ControlResponse::Ok
         }
+        ControlRequest::Progress { pane, percent } => {
+            tracing::info!(target: "control", from = ?from, pane, ?percent, "progress");
+            // 진행률은 pane 에 붙는 값이라 오케스트레이터가 아니라 앱 상태로 간다.
+            app_tx.send(AppCtl::Progress { pane, percent }).ok();
+            ControlResponse::Ok
+        }
         ControlRequest::OpenWeb { url } => {
             tracing::info!(target: "control", from = ?from, ?url, "web");
             app_tx.send(AppCtl::OpenWeb { url }).ok();

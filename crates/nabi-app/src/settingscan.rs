@@ -17,8 +17,11 @@ const FN_PAGE: &[(&str, usize)] = &[
     ("terminal_rows", 2),
     // 터미널 페이지의 기본 셸 고르기 — 줄 한도로 settingsshell.rs 에 갈라 뒀다(배치 AK).
     ("shell_row", 2),
+    // 세션 기록 — 원격 연결에 있던 것을 터미널로 옮기며 갈라 뒀다(배치 AM).
+    ("log_rows", 2),
     ("tip_rows", 2),
     ("ssh_rows", 3),
+    // 전송 페이지는 settingsxfer.rs 로 갈라 뒀다(배치 AM).
     ("transfer_rows", 3),
     ("sftp_rows", 3),
     ("highlight_rows", 4),
@@ -34,6 +37,8 @@ const FILES: &[&str] = &[
     "settingsui.rs",
     "settingsui2.rs",
     "settingsshell.rs",
+    "settingslog.rs",
+    "settingsxfer.rs",
     "settingslists.rs",
     "themeimport.rs",
     "settingsfont.rs",

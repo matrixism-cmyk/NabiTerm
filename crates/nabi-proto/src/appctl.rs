@@ -11,6 +11,10 @@ pub enum AppCtl {
     OpenEditor { path: String },
     /// 그 폴더에서 새 터미널을 열고 창을 앞으로 가져온다(탐색기 우클릭).
     OpenHere { path: String },
+    /// 진행률을 직접 알려 준다. `percent=None` 이면 지운다.
+    ///
+    /// 알려 준 pane 은 그때부터 화면을 읽지 않는다 — 말한 쪽이 우리 짐작보다 정확하다.
+    Progress { pane: u64, percent: Option<u8> },
     /// 내장 **웹** 브라우저 창을 연다(없으면 우리 소개 문서).
     ///
     /// 위의 `OpenBrowser` 는 **파일** 탐색기다. 이름이 비슷해 헷갈리기 쉬워 나눠 적는다.

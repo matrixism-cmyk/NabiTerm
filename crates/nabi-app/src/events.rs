@@ -99,7 +99,8 @@ impl NabiApp {
                     self.last_exit.remove(&pane);
                     self.cmd_start.remove(&pane);
                     self.last_duration.remove(&pane);
-                    self.progress.remove(&pane);
+                    // 진행률은 딸린 상태가 셋이라 한곳에 모아 지운다(배치 AM).
+                    self.forget_progress(pane);
                     self.pane_font.remove(&pane);
                     self.server_stats.remove(&pane);
                     self.pane_status.remove(&pane);
@@ -216,7 +217,7 @@ impl NabiApp {
                     self.record_cmd_history(pane, block.exit_code.unwrap_or(0)); // E5 히스토리.
                     self.fulfill_telegram(pane); // 텔레그램 보류 요청에 명령 출력 회신.
                     // 명령이 끝나면 진행률 표시도 정리(미해제 시퀀스 대비).
-                    self.progress.remove(&pane);
+                    self.forget_progress(pane);
                     if let Some(c) = self.run_cmd.remove(&pane) { self.last_run_cmd.insert(pane, c); } // 종료 후에도 AI 인계용 보존.
                 }
                 Event::Notify { pane, text } => {
@@ -235,10 +236,13 @@ impl NabiApp {
                 }
                 Event::Progress { pane, percent } => match percent {
                     Some(p) => {
+                        // 프로그램이 직접 말했다. 이제 이 pane 은 화면을 읽지 않는다(배치 AM).
+                        self.progress_osc.insert(pane);
                         self.progress.insert(pane, p);
                     }
                     None => {
                         self.progress.remove(&pane);
+                        self.progress_seen.remove(&pane);
                     }
                 },
                 Event::ControlOsc { pane, verb, json } => {

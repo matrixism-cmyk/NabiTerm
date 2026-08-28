@@ -14,6 +14,17 @@ impl crate::app::NabiApp {
                         b.path = std::path::PathBuf::from(p);
                     }
                 }
+                AppCtl::Progress { pane, percent } => {
+                    let id = nabi_types::PaneId::new(pane);
+                    match percent {
+                        Some(p) => {
+                            // 말한 쪽이 권위다. 이제 이 pane 은 화면을 읽지 않는다.
+                            self.progress_osc.insert(id);
+                            self.progress.insert(id, p.min(100));
+                        }
+                        None => self.forget_progress(id),
+                    }
+                }
                 AppCtl::OpenWeb { url } => {
                     if let Some(msg) = crate::webopen::open(self.lang, url.as_deref()) {
                         self.notify = Some((msg, std::time::Instant::now()));

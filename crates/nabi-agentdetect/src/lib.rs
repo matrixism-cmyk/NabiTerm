@@ -9,6 +9,7 @@
 //! 네트워크는 절대 만지지 않는다 — 규칙은 릴리스에 동봉하고 사용자 폴더로 덮어쓴다.
 
 mod engine;
+pub mod progress;
 mod manifests;
 mod rules;
 
