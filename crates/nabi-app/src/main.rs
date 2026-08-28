@@ -65,7 +65,8 @@ mod osc52policy; mod openhere; mod padrecover; mod padrecoverui; mod paste; mod 
 mod renameui; mod scrollbar; mod selection; mod sessionsmenu; mod sessiondel;
 mod snippetvars; mod recent; mod sftpact; mod sftpentries; mod sftpentryfmt; mod sftpnav; mod sftppanel; mod sftprestore; mod sftptab; mod shellinteg; mod sidebar; mod sidebarsel; mod tabbar;
 mod tiling; mod toolsmenu; mod update; mod updateui; mod viewmenu; mod sftptable; mod sftplist; mod viewmode; mod sftpview; mod syncbrowse;
-mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer; mod sftpfind; mod sftpfindui; mod sftphistory; mod controlsftp; mod splash;
+mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer;
+mod sftpfind; mod sftpgrep; mod sftpgrepui; mod sftpfindui; mod sftphistory; mod controlsftp; mod splash;
 mod sshkeygenui; mod syncplan; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 

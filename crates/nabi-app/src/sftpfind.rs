@@ -28,46 +28,11 @@ pub(crate) const MAX: usize = 2000;
 
 /// 이름이 질의에 맞는가. `*`·`?`가 있으면 글로브, 없으면 부분 일치. 대소문자 무시.
 pub(crate) fn matches(name: &str, query: &str) -> bool {
-    let (n, q) = (name.to_lowercase(), query.to_lowercase());
-    if q.is_empty() {
-        return false;
-    }
-    if q.contains('*') || q.contains('?') {
-        glob(&n, &q)
-    } else {
-        n.contains(&q)
-    }
+    // 규칙은 `nabi_sftp::namematch` 한 곳에 있다. 도구막대의 재귀 찾기도 같은 것을 부르므로
+    // 두 화면이 같은 질의에 같은 답을 낸다(배치 AD 전에는 달랐다).
+    nabi_sftp::namematch::matches(name, query)
 }
 
-/// 아주 작은 글로브 — `*`(0자 이상)와 `?`(정확히 1자)만. 되돌아가며 맞춘다.
-fn glob(name: &str, pat: &str) -> bool {
-    let (n, p): (Vec<char>, Vec<char>) = (name.chars().collect(), pat.chars().collect());
-    // (이름 위치, 패턴 위치)를 되짚기 위한 표식 — `*`를 만나면 여기로 돌아온다.
-    let (mut i, mut j) = (0usize, 0usize);
-    let (mut star, mut mark) = (usize::MAX, 0usize);
-    while i < n.len() {
-        if j < p.len() && (p[j] == '?' || p[j] == n[i]) {
-            i += 1;
-            j += 1;
-        } else if j < p.len() && p[j] == '*' {
-            star = j;
-            mark = i;
-            j += 1;
-        } else if star != usize::MAX {
-            j = star + 1;
-            mark += 1;
-            i = mark;
-        } else {
-            return false;
-        }
-    }
-    while j < p.len() && p[j] == '*' {
-        j += 1;
-    }
-    j == p.len()
-}
-
-/// 트리 결과를 걸러 낸다. `(찾은 것, 상한에 걸려 못 담은 수)`.
 pub(crate) fn filter(files: &[(String, u64, u64)], query: &str) -> (Vec<Hit>, usize) {
     let mut out = Vec::new();
     let mut cut = 0usize;

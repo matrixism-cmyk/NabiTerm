@@ -223,7 +223,7 @@ impl NabiApp {
             progress: HashMap::new(), server_stats: HashMap::new(),
             pane_status: HashMap::new(), ssh_connect_time: HashMap::new(), last_fail: Default::default(), scroll_marks: HashMap::new(), pinned_tabs: Default::default(), sync_scroll: false,
             pending_diff: None, word_cycle: None, copy_id: None, block_list_open: false,
-            block_list_failed_only: false, block_list_filter: String::new(), sftp_find: None, rcmd_pending: None, rcmd_result: None,
+            block_list_failed_only: false, block_list_filter: String::new(), sftp_find: None, sftp_grep: None, rcmd_pending: None, rcmd_result: None,
             conn_hist: crate::connhist::load(&nabi_config::resolve_base()), conn_hist_open: false,
             ssh_alert_on: HashMap::new(), ctx_alert_on: HashMap::new(),
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,

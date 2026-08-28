@@ -156,4 +156,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("editor.csvcol.hint", "Which field the caret is in — read from this line and the first line only", "커서가 몇 번째 칸에 있는지 — 이 줄과 첫 줄만 읽어 알아냅니다", "キャレットが何番目の列にあるか"),
     ("editor.goto.huge", "Jump to a line — costs the same in a 5GB file", "줄 번호로 이동 — 5GB 파일에서도 값이 같습니다", "行番号で移動 — 5GB のファイルでも同じ速さ"),
     ("editor.eol.head64", "Detected from the first 64KB only — a huge file is not scanned end to end", "처음 64KB만 보고 정했습니다 — 초대용량 파일은 끝까지 훑지 않습니다", "先頭64KBのみで判定"),
+    ("sftp.grep.toggle", "Search file contents", "파일 내용으로 찾기", "ファイル内容で検索"),
+    ("sftp.grep.hint", "Reads the first 256KB of each file — matches further in are not found, and the result says so", "파일마다 앞 256KB만 읽습니다 — 그보다 뒤의 일치는 못 찾으며, 결과에 그 사실을 적습니다", "各ファイルの先頭256KBのみ読みます"),
+    ("sftp.grep.done", "Matches found:", "찾은 줄:", "見つかった行:"),
 ];

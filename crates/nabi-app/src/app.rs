@@ -166,6 +166,8 @@ pub struct NabiApp {
     pub sync_seq: u64,
     /// 원격 파일 찾기 창(sftpfindui). None이면 닫혀 있다.
     pub sftp_find: Option<crate::sftpfindui::SftpFind>,
+    /// 원격 내용 찾기의 진행 상태(배치 AD) — 창을 닫으면 버린다.
+    pub sftp_grep: Option<crate::sftpgrepui::GrepRun>,
     /// 확인 대기 중인 원격 명령(remotecmdui). 실행 전에 전문을 보여 준다.
     pub rcmd_pending: Option<crate::remotecmdui::PendingCmd>,
     /// 원격 명령 결과 창.

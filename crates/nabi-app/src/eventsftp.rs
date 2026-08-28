@@ -69,7 +69,11 @@ impl NabiApp {
             }
             Event::SftpPreview { id, path, data, more, err } => {
                 if self.sftp.id == Some(id) {
-                    self.preview_arrived(path, data, more, err);
+                    // 내용 찾기와 미리보기 창이 **같은 명령**을 쓴다. 내용 찾기가 기다리던
+                    // 경로면 그쪽이 가져가고, 아니면 원래 주인(미리보기)이 처리한다.
+                    if !self.grep_on_preview(&path, &data, more) {
+                        self.preview_arrived(path, data, more, err);
+                    }
                 }
             }
             Event::SftpDirSize { id, path, files, dirs, bytes } => {

@@ -190,7 +190,10 @@ impl SftpFs {
         nabi_fs::walk_tree(self, root, prefix, out).await
     }
 
-    /// root 아래를 재귀 검색해 이름에 needle(소문자)을 포함하는 경로들을 모은다(최대 max).
+    /// root 아래를 재귀 검색해 이름이 `needle` 에 맞는 경로들을 모은다(최대 max).
+    ///
+    /// 맞추기는 [`crate::namematch::matches`] 를 쓴다 — 글로브(`*.conf`)도 통한다. 예전에는
+    /// 여기서만 `contains` 를 써서 찾기 창과 답이 달랐다(배치 AD).
     pub fn search<'a>(
         &'a mut self,
         root: &'a str,
@@ -210,7 +213,8 @@ impl SftpFs {
                     continue;
                 }
                 let path = format!("{}/{}", root.trim_end_matches('/'), e.name);
-                if e.name.to_lowercase().contains(needle) {
+                // 규칙은 `namematch` 한 곳에만 둔다 — 찾기 창과 같은 답을 내야 한다.
+                if crate::namematch::matches(&e.name, needle) {
                     out.push(path.clone());
                 }
                 if matches!(e.kind, FileKind::Dir) {

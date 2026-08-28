@@ -304,3 +304,26 @@ async fn an_empty_file_copies_too() {
     assert_eq!(n, 0);
     assert_eq!(fs.read_file("/empty2.txt").await.expect("read"), Vec::<u8>::new());
 }
+
+/// 재귀 찾기가 **글로브를 안다** — 찾기 창과 같은 규칙을 쓰는지 확인한다(배치 AD).
+///
+/// 예전에는 이 경로만 `name.contains(needle)` 이었다. 그래서 `*.txt` 를 치면 찾기 창은
+/// `.txt` 파일들을 찾아 주는데 도구막대는 **언제나 아무것도 못 찾았다** — 이름에 별표가
+/// 든 파일은 없으니까. 사용자에게는 둘 다 "서버에서 이름으로 찾기"였다.
+#[tokio::test]
+async fn recursive_search_understands_globs_like_the_find_window() {
+    let mut fs = connect_fs().await;
+    let hits = fs.search("/", "*.txt", 50).await;
+    assert!(
+        hits.iter().any(|p| p.ends_with("foo.txt")),
+        "글로브가 통해야 한다 — 옛 규칙이면 여기서 빈 목록이 온다: {hits:?}"
+    );
+}
+
+/// 평범한 낱말 찾기는 그대로 동작한다(글로브를 넣으면서 깨뜨리지 않았는지).
+#[tokio::test]
+async fn recursive_search_still_matches_a_plain_word() {
+    let mut fs = connect_fs().await;
+    let hits = fs.search("/", "foo", 50).await;
+    assert!(hits.iter().any(|p| p.contains("foo")), "got {hits:?}");
+}

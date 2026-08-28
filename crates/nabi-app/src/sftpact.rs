@@ -173,7 +173,9 @@ impl NabiApp {
                 self.orch.send(Command::SftpSearch {
                     id,
                     root: self.sftp.path.clone(),
-                    needle: self.sftp.filter.to_lowercase(),
+                    // 소문자로 미리 바꾸지 않는다 — 규칙(namematch)이 안에서 처리한다.
+                    // 미리 바꾸면 글로브 대소문자 처리가 두 곳으로 갈라진다.
+                    needle: self.sftp.filter.clone(),
                 });
                 self.sftp.status = tr(self.lang, "sftp.searching").to_string();
             }

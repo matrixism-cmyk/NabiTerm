@@ -20,6 +20,11 @@ pub(crate) struct SftpFind {
     pub cut: usize,
     /// 한 번이라도 찾아 봤는가 — "결과 없음"과 "아직 안 찾음"을 구분한다.
     pub searched: bool,
+    /// 이름이 아니라 **내용**으로 찾는가(배치 AD).
+    ///
+    /// 창을 둘로 나누지 않은 이유: 찾기가 두 군데면 사용자는 매번 "어느 찾기였더라"를
+    /// 먼저 떠올려야 한다. 질의와 뿌리는 어차피 같으니 토글 하나면 된다.
+    pub in_contents: bool,
 }
 
 impl NabiApp {
@@ -38,6 +43,12 @@ impl NabiApp {
         f.pending = None;
         // 원격이 준 상대경로는 믿지 않는다 — `..` 탈출을 걷어낸다(동기화와 같은 규칙).
         let safe: Vec<_> = files.into_iter().filter(|(r, _, _)| crate::syncplan::safe_rel(r)).collect();
+        if f.in_contents {
+            // 내용 찾기는 목록을 거르는 것이 아니라 **후보를 받아 훑는** 일이다.
+            f.searched = true;
+            self.grep_start_from_tree(safe);
+            return true;
+        }
         let (hits, cut) = crate::sftpfind::filter(&safe, &f.query);
         f.hits = hits;
         f.cut = cut;
@@ -71,6 +82,10 @@ impl NabiApp {
                     if ui.button(tr(lang, "find.search")).clicked() {
                         search = true;
                     }
+                });
+                ui.horizontal(|ui| {
+                    ui.checkbox(&mut next.in_contents, tr(lang, "sftp.grep.toggle"))
+                        .on_hover_text(tr(lang, "sftp.grep.hint"));
                 });
                 ui.weak(format!("{}: {}", tr(lang, "sftp.find.under"), st.root));
                 ui.separator();
