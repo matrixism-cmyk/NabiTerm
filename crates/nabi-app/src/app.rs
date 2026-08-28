@@ -338,6 +338,10 @@ pub struct NabiApp {
     pub denial_noticed: bool,
     /// 해시 검증을 못 했다고 이미 알렸는가(배치 AF) — 한 번만 말한다.
     pub verify_skip_noticed: bool,
+    /// 세션 로그 폴더를 못 만들었다고 이미 알렸는가(배치 AF) — 한 번만 말한다.
+    pub autolog_fail_noticed: bool,
+    /// 깨진 감지 규칙을 이미 알렸는가(배치 AF) — 한 번만 말한다.
+    pub rules_drop_noticed: bool,
     /// 방금 연 기록 — pane이 생기면 그 pane에 건다(PaneSpawned 를 기다린다).
     pub pending_replay: Option<Vec<(f64, String)>>,
     pub editor_mtimes: HashMap<PaneId, std::time::SystemTime>,

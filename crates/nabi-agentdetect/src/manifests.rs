@@ -14,16 +14,28 @@ struct RawManifest {
 pub struct Manifest {
     pub id: String,
     pub(crate) rules: Vec<Compiled>,
+    /// 정규식이 깨져 버린 규칙 수(배치 AF).
+    ///
+    /// 전체를 실패시키지 않는 것은 맞다 — 규칙 하나가 깨졌다고 나머지를 못 쓰면 손해다.
+    /// 하지만 **몇 개를 버렸는지는 말해야** 한다. 사용자가 쓴 규칙이 조용히 사라지면
+    /// 그 사람은 자기 규칙이 왜 안 걸리는지 알 방법이 없다.
+    pub dropped: usize,
 }
 
 impl Manifest {
-    /// TOML 텍스트를 파싱·컴파일한다. 깨진 정규식 규칙은 조용히 버린다(전체 실패 방지).
+    /// TOML 텍스트를 파싱·컴파일한다.
+    ///
+    /// 깨진 정규식 규칙은 버리되 **몇 개를 버렸는지 `dropped` 에 남긴다**(전체 실패 방지 +
+    /// 조용한 손실 방지). 규칙 하나가 깨졌다고 나머지를 못 쓰면 손해지만, 사라진 것을
+    /// 말하지 않으면 사용자는 자기 규칙이 왜 안 걸리는지 알 수 없다.
     pub fn parse(text: &str) -> Result<Self, String> {
         let raw: RawManifest = toml::from_str(text).map_err(|e| e.to_string())?;
+        let total = raw.rules.len();
         let mut rules: Vec<Compiled> = raw.rules.into_iter().filter_map(Compiled::new).collect();
         // 우선순위 내림차순 — classify는 첫 매치를 취한다.
         rules.sort_by_key(|c| -c.rule.priority);
-        Ok(Self { id: raw.id, rules })
+        let dropped = total - rules.len();
+        Ok(Self { id: raw.id, rules, dropped })
     }
 
     pub fn rule_count(&self) -> usize {
@@ -126,4 +138,40 @@ mod tests {
         assert_eq!(ms[0].id, "x");
         let _ = std::fs::remove_dir_all(&dir);
     }
+    #[test]
+    fn a_broken_rule_is_dropped_but_counted() {
+        // 규칙 하나가 깨졌다고 나머지를 못 쓰면 손해다. 하지만 사라진 것을 말하지 않으면
+        // 사용자는 자기 규칙이 왜 안 걸리는지 알 방법이 없다.
+        let text = r#"
+id = "test"
+[[rules]]
+id = "good"
+state = "working"
+priority = 100
+regex = ["esc to .*"]
+[[rules]]
+id = "broken"
+state = "blocked"
+priority = 200
+regex = ["((("]
+"#;
+        let m = Manifest::parse(text).expect("깨진 규칙 하나로 전체가 실패하면 안 된다");
+        assert_eq!(m.rule_count(), 1, "성한 규칙은 남는다");
+        assert_eq!(m.dropped, 1, "버린 개수를 말해야 한다");
+    }
+
+    #[test]
+    fn a_clean_manifest_drops_nothing() {
+        let text = r#"
+id = "test"
+[[rules]]
+id = "good"
+state = "idle"
+priority = 10
+contains = ["ready"]
+"#;
+        let m = Manifest::parse(text).unwrap();
+        assert_eq!((m.rule_count(), m.dropped), (1, 0));
+    }
+
 }

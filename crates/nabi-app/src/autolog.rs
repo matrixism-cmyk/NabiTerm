@@ -52,8 +52,22 @@ impl NabiApp {
             return;
         }
         let dir = self.cfg_dir().join("logs");
-        if std::fs::create_dir_all(&dir).is_err() {
-            return; // 못 만들면 조용히 넘어간다 — 로그 때문에 접속을 막지 않는다.
+        if let Err(e) = std::fs::create_dir_all(&dir) {
+            // 접속은 막지 않는다 — 로그가 안 된다고 일을 못 하게 할 이유는 없다.
+            //
+            // **다만 말은 한다**(배치 AF). 세션 로그는 대개 감사·기록 때문에 켠다. 그런데
+            // 켜 놓고 안 남으면 사용자는 남고 있다고 믿고, 나중에 필요할 때 없다는 것을
+            // 알게 된다. 그때는 그 세션이 이미 지나갔다.
+            //
+            // 한 번만 알린다. pane 을 열 때마다 뜨면 곧 읽지 않게 되고, 그러면 없느니만 못하다.
+            if !self.autolog_fail_noticed {
+                self.autolog_fail_noticed = true;
+                self.notify = Some((
+                    format!("{} {e}", nabi_i18n::tr(self.lang, "log.dirfailed")),
+                    std::time::Instant::now(),
+                ));
+            }
+            return;
         }
         let stamp = chrono::Local::now().format("%Y%m%d-%H%M%S").to_string();
         let path: PathBuf = dir.join(log_name(host, &stamp));

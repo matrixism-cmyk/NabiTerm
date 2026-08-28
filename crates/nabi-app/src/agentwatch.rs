@@ -15,6 +15,8 @@ const CONFIRM: u8 = 2;
 
 pub(crate) struct AgentWatch {
     manifests: Vec<Manifest>,
+    /// 정규식이 깨져 버려진 규칙 수(배치 AF) — 조용히 사라지지 않게 화면이 알린다.
+    pub dropped: usize,
     last: Instant,
     /// 확정 상태(디바운스 통과).
     pub state: HashMap<PaneId, AgentState>,
@@ -32,7 +34,12 @@ impl AgentWatch {
                 manifests.push(user);
             }
         }
-        Self { manifests, last: Instant::now(), state: HashMap::new(), cand: HashMap::new() }
+        // 사용자가 쓴 규칙 중 정규식이 깨져 버려진 것을 센다(배치 AF).
+        //
+        // 내장 규칙은 우리가 시험으로 지키니 여기서 셀 이유가 없다. 문제는 **사용자가 쓴
+        // 규칙**이다 — 조용히 사라지면 그 사람은 자기 규칙이 왜 안 걸리는지 알 수 없다.
+        let dropped = manifests.iter().map(|m| m.dropped).sum();
+        Self { manifests, dropped, last: Instant::now(), state: HashMap::new(), cand: HashMap::new() }
     }
 
     pub fn manifest(&self, kind: &str) -> Option<&Manifest> {

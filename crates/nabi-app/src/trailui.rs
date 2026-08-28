@@ -109,6 +109,20 @@ impl NabiApp {
         self.notify = Some((tr(self.lang, "sftp.verify.skipped").to_string(), Instant::now()));
     }
 
+    /// 사용자가 쓴 감지 규칙이 깨져 버려졌으면 한 번만 알린다(배치 AF).
+    ///
+    /// 규칙 하나가 깨졌다고 나머지를 못 쓰게 하지는 않는다 — 그건 손해다. 하지만 **몇 개가
+    /// 사라졌는지 말하지 않으면** 그 사람은 자기 규칙이 왜 안 걸리는지 알 방법이 없다.
+    /// 내장 규칙은 시험이 지키므로 여기 세어지는 것은 사실상 사용자가 쓴 것뿐이다.
+    pub(crate) fn notice_dropped_rules(&mut self) {
+        if self.rules_drop_noticed || self.agent_watch.dropped == 0 {
+            return;
+        }
+        self.rules_drop_noticed = true;
+        let msg = format!("{} {}", tr(self.lang, "rules.dropped"), self.agent_watch.dropped);
+        self.notify = Some((msg, Instant::now()));
+    }
+
 }
 
 /// 결과별 표시 — 거부는 눈에 띄어야 한다. 무엇이 막혔는지가 이 화면을 여는 첫 이유다.

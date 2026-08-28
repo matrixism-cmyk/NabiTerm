@@ -163,4 +163,6 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sftp.unsafename", "Refused — the server sent a name that points outside the folder:", "거부 — 서버가 폴더 밖을 가리키는 이름을 보냈습니다:", "拒否 — サーバーがフォルダ外を指す名前を返しました:"),
     ("sftp.verify.skipped", "This server has no hash command — transfers were not verified (size was still checked)", "이 서버에는 해시 명령이 없어 전송을 검증하지 못했습니다(크기 비교는 했습니다)", "このサーバーにはハッシュコマンドがなく検証できませんでした"),
     ("backup.unreadable", "Not included — could not be read:", "백업에 담기지 못했습니다 — 읽을 수 없음:", "バックアップに含められませんでした — 読み取り不可:"),
+    ("log.dirfailed", "Session logging is on but the log folder could not be created — nothing is being logged:", "세션 로그가 켜져 있지만 로그 폴더를 만들지 못했습니다 — 기록되지 않습니다:", "セッションログは有効ですがログフォルダを作成できませんでした:"),
+    ("rules.dropped", "Agent detection rules dropped (bad regex) — check agent-rules:", "감지 규칙이 정규식 오류로 버려졌습니다 — agent-rules 확인:", "検出ルールが正規表現エラーで破棄されました:"),
 ];
