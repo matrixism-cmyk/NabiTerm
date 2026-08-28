@@ -73,9 +73,9 @@ impl SftpFs {
             }
         }
         // 무결성(옵션): 원격 sha256sum과 받은 파일의 SHA-256 대조 — 실패 시 대상 파일을
-        // 건드리지 않고 임시(.filepart)만 남긴다. 해시 명령이 없는 서버는 조용히 건너뛴다.
+        // 건드리지 않고 임시(.filepart)만 남긴다. 해시 명령이 없는 서버는 건너뛰되, 건너뛴 사실을 세어 화면이 알린다(배치 AF).
         if crate::hashcheck::enabled() {
-            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, remote).await {
+            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, remote, &self.hash_probe).await {
                 let lh = crate::hashcheck::local_sha256(&part)?;
                 if lh != rh {
                     return Err(nabi_i18n::trc("net.xfer.dlhash").replace("{l}", &lh).replace("{r}", &rh));
@@ -175,7 +175,7 @@ impl SftpFs {
         }
         // 무결성(옵션): 올린 임시 파일의 원격 해시와 로컬 원본 대조 — 교체 전에 잡는다.
         if crate::hashcheck::enabled() {
-            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, &part).await {
+            if let Some(rh) = crate::hashcheck::remote_sha256(&self.handle, &part, &self.hash_probe).await {
                 let lh = crate::hashcheck::local_sha256(local)?;
                 if lh != rh {
                     return Err(nabi_i18n::trc("net.xfer.uphash").replace("{l}", &lh).replace("{r}", &rh));

@@ -336,6 +336,8 @@ pub struct NabiApp {
     pub agent_trail_open: bool,
     /// 거부를 이미 한 번 알렸는가 — 자율 에이전트는 막혀도 계속 시도하므로 한 번만 알린다.
     pub denial_noticed: bool,
+    /// 해시 검증을 못 했다고 이미 알렸는가(배치 AF) — 한 번만 말한다.
+    pub verify_skip_noticed: bool,
     /// 방금 연 기록 — pane이 생기면 그 pane에 건다(PaneSpawned 를 기다린다).
     pub pending_replay: Option<Vec<(f64, String)>>,
     pub editor_mtimes: HashMap<PaneId, std::time::SystemTime>,

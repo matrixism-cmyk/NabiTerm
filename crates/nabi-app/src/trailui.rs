@@ -93,6 +93,22 @@ impl NabiApp {
         self.denial_noticed = true;
         self.notify = Some((tr(self.lang, "trail.denied.first").to_string(), Instant::now()));
     }
+    /// 해시 검증을 **못 하고 넘어간** 전송이 처음 생겼을 때 한 번만 알린다(배치 AF).
+    ///
+    /// 검증을 켜 둔 사용자는 전송이 검증됐다고 믿는다. 그런데 서버에 해시 명령이 없으면
+    /// (윈도우 OpenSSH 등) 우리는 조용히 건너뛰었다 — 화면은 검증된 전송과 똑같아 보였다.
+    /// **신뢰가 전부인 기능에서 그것이 가장 나쁜 실패다.**
+    ///
+    /// 매번 알리지 않는 이유는 거부 알림과 같다: 같은 서버로 500개를 보내면 500번 뜬다.
+    /// 한 번이면 "이 서버는 검증이 안 되는구나"를 알기에 충분하다.
+    pub(crate) fn notice_verify_skipped(&mut self) {
+        if self.verify_skip_noticed || nabi_sftp::hashcheck::tally().1 == 0 {
+            return;
+        }
+        self.verify_skip_noticed = true;
+        self.notify = Some((tr(self.lang, "sftp.verify.skipped").to_string(), Instant::now()));
+    }
+
 }
 
 /// 결과별 표시 — 거부는 눈에 띄어야 한다. 무엇이 막혔는지가 이 화면을 여는 첫 이유다.

@@ -115,6 +115,7 @@ impl eframe::App for NabiApp {
         self.flush_session_logs(); // 세션 로깅(활성 pane 출력→파일).
         self.step_replays(ctx); // 기록 재생(시각이 된 덩어리를 pane에 밀어 넣는다).
         self.notice_first_denial(); // 에이전트 요청이 처음 막혔을 때 한 번만 알린다.
+        self.notice_verify_skipped(); // 해시 검증을 못 하고 넘어갔을 때 한 번만 알린다.
         self.check_output_alerts(ctx); // 출력 트리거 패턴 알림.
         self.check_auto_reply(); // 자동 응답(-> reply: 규칙, 기본 꺼짐).
         if self.tick_auto_reconnect() { ctx.request_repaint(); } // 물러서며 재접속(S1).

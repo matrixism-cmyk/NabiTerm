@@ -21,6 +21,8 @@ pub struct SftpFs {
     pub(crate) limit_bps: u64,
     /// true가 되면 진행 중인 전송을 중단(외부에서 set). swap으로 1회성 소비.
     pub(crate) cancel: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    /// 이 연결에서 원격 해시 명령을 쓸 수 있는지 — **한 번만 물어본다**(배치 AF).
+    pub(crate) hash_probe: crate::hashcheck::HashProbe,
 }
 
 /// limit_bps로 보면 지금까지 bytes를 보내는 데 필요한 최소 시간 대비 더 자야 할 시간.
@@ -71,6 +73,7 @@ impl SftpFs {
         jump: Option<std::sync::Arc<Handle<Handler>>>,
     ) -> Self {
         Self {
+            hash_probe: Default::default(),
             raw,
             handle,
             _jump: jump,

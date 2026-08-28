@@ -50,15 +50,27 @@ fn slots() -> [Slot; 4] {
     ]
 }
 
-/// 지금 설정을 모아 백업 한 덩어리를 만든다. 읽을 수 없는 파일은 조용히 건너뛴다.
-pub(crate) fn collect(layout: &nabi_config::StorageLayout) -> Backup {
+/// 지금 설정을 모아 백업 한 덩어리를 만든다.
+///
+/// **못 읽은 파일의 이름을 함께 돌려준다**(배치 AF). 예전에는 조용히 건너뛰었다 — 그러면
+/// 빠진 채로 "백업 완료"가 뜨고, 사용자는 되돌릴 때가 되어서야 없다는 것을 안다.
+/// 그때는 원본도 이미 사라졌을 수 있다.
+///
+/// **"없는 파일"은 알리지 않는다.** 세션을 한 번도 만들지 않았으면 `sessions.toml` 은
+/// 원래 없다. 그것까지 경고하면 알림이 소음이 되고, 소음이 되면 진짜 경고도 안 읽는다.
+pub(crate) fn collect(layout: &nabi_config::StorageLayout) -> (Backup, Vec<String>) {
     let mut b = Backup { version: env!("CARGO_PKG_VERSION").to_string(), ..Default::default() };
+    let mut failed = Vec::new();
     for (_, set, path) in slots() {
-        if let Ok(text) = std::fs::read_to_string(path(layout)) {
-            set(&mut b, text);
+        let p = path(layout);
+        match std::fs::read_to_string(&p) {
+            Ok(text) => set(&mut b, text),
+            // 아직 만들지 않은 설정은 빠진 것이 아니다.
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+            Err(e) => failed.push(format!("{}: {e}", p.file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default())),
         }
     }
-    b
+    (b, failed)
 }
 
 /// 백업을 설정 폴더에 되돌린다. 되돌린 항목 수를 셈해 돌려준다.
@@ -119,7 +131,7 @@ mod tests {
     fn a_backup_round_trips_through_a_file() {
         let a = layout("rt-a");
         seed(&a);
-        let text = to_text(&collect(&a));
+        let text = to_text(&collect(&a).0);
         let b = layout("rt-b");
         let got = from_text(&text).expect("다시 읽혀야 한다");
         assert_eq!(restore(&got, &b).unwrap(), 4);
@@ -136,7 +148,7 @@ mod tests {
         let l = layout("vault");
         seed(&l);
         std::fs::write(&l.vault, "SECRET-VAULT-BYTES").unwrap();
-        let text = to_text(&collect(&l));
+        let text = to_text(&collect(&l).0);
         assert!(!text.contains("SECRET-VAULT-BYTES"), "볼트 내용이 백업에 섞였다");
         assert!(!text.contains("vault"), "볼트 항목 자체가 없어야 한다");
         let _ = std::fs::remove_dir_all(&l.base);
@@ -172,4 +184,24 @@ mod tests {
         assert!(from_text("이건 백업이 아니다").is_none());
         assert!(from_text("").is_none());
     }
+    #[test]
+    fn a_config_that_was_never_created_is_not_reported_as_missing() {
+        // 세션을 한 번도 만들지 않았으면 sessions.toml 은 원래 없다. 그것까지 경고하면
+        // 알림이 소음이 되고, 소음이 되면 진짜 경고도 안 읽는다.
+        let l = layout("none"); // 아무것도 만들지 않은 빈 폴더.
+        let (_, failed) = collect(&l);
+        assert!(failed.is_empty(), "없는 파일은 실패가 아니다: {failed:?}");
+    }
+
+    #[test]
+    fn a_directory_where_a_file_should_be_is_reported() {
+        // 읽기가 실패하는 경우를 만든다 — 파일 자리에 폴더가 있으면 read_to_string 이 실패한다.
+        // 조용히 건너뛰면 빠진 채로 "백업 완료"가 뜨고, 되돌릴 때가 되어서야 알게 된다.
+        let l = layout("unreadable");
+        std::fs::create_dir_all(&l.config_file).unwrap(); // 파일 자리에 폴더.
+        let (_, failed) = collect(&l);
+        assert_eq!(failed.len(), 1, "못 읽은 것을 알려야 한다: {failed:?}");
+        assert!(failed[0].contains("config"), "어느 파일인지 말해야 한다: {failed:?}");
+    }
+
 }

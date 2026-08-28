@@ -91,8 +91,15 @@ impl NabiApp {
             }
             MenuAction::BackupAll => {
                 let layout = nabi_config::StorageLayout::resolve();
-                let text = crate::backup::to_text(&crate::backup::collect(&layout));
-                self.export_sessions_to(text, "nabiterm-backup.json", "json", "menu.backupall");
+                let (b, failed) = crate::backup::collect(&layout);
+                // 빠진 것이 있으면 **저장하기 전에** 말한다. 나중에 알면 원본이 이미 없을 수 있다.
+                if !failed.is_empty() {
+                    self.notify = Some((
+                        format!("{} {}", nabi_i18n::tr(self.lang, "backup.unreadable"), failed.join(", ")),
+                        std::time::Instant::now(),
+                    ));
+                }
+                self.export_sessions_to(crate::backup::to_text(&b), "nabiterm-backup.json", "json", "menu.backupall");
             }
             MenuAction::RestoreAll => {
                 // 되돌리기는 되돌릴 수 없다 — 파일을 고르는 것 자체가 확인 절차다.

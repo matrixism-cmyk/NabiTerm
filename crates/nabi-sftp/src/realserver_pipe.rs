@@ -106,7 +106,7 @@ async fn realserver_roundtrip_with_hash_verify() {
     fs.download(remote, dst.to_str().unwrap(), 0, |_| {}).await.expect("해시 검증 다운로드");
     assert_eq!(std::fs::read(&dst).unwrap(), data);
     // 원격 해시 명령 가용 여부를 기록해 둔다(관측 — 서버마다 다르다).
-    let rh = crate::hashcheck::remote_sha256(&fs.handle, remote).await;
+    let rh = crate::hashcheck::remote_sha256(&fs.handle, remote, &fs.hash_probe).await;
     println!("원격 sha256 명령: {}", if rh.is_some() { "가용(대조 수행됨)" } else { "없음(크기 비교 폴백)" });
     crate::hashcheck::SFTP_VERIFY_HASH.store(false, std::sync::atomic::Ordering::Relaxed);
     let _ = fs.remove(remote).await;
