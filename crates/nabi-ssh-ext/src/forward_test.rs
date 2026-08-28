@@ -73,7 +73,7 @@ async fn local_forward_echo_roundtrip() {
 
     tokio::time::sleep(Duration::from_millis(250)).await;
     let params = SshParams::password(addr.ip().to_string(), addr.port(), "u", "p");
-    let local_port = start_local_forward(params, "target.invalid".to_string(), 80)
+    let (local_port, _watch) = start_local_forward(params, "target.invalid".to_string(), 80)
         .await
         .expect("start forward");
     tokio::time::sleep(Duration::from_millis(200)).await;

@@ -60,12 +60,17 @@ pub(crate) async fn connect_authed(params: &SshParams) -> Result<client::Handle<
 }
 
 /// 로컬 포트 포워딩(-L): 임시 로컬 포트의 각 연결을 (remote_host:remote_port)로 포워딩.
+///
+/// **핸들도 함께 돌려준다**(배치 AH). 포트만 주면 부르는 쪽이 "이 터널이 아직 살아 있나"를
+/// 물어볼 방법이 없어, 연결이 끊겨도 화면은 계속 "활성"이라고 말한다. 핸들은 어차피
+/// `Arc` 라 복제가 싸다.
 pub async fn start_local_forward(
     params: SshParams,
     remote_host: String,
     remote_port: u16,
-) -> Result<u16, String> {
+) -> Result<(u16, Arc<client::Handle<Fwd>>), String> {
     let handle = Arc::new(connect_authed(&params).await?);
+    let watch = handle.clone();
     let listener = TcpListener::bind(("127.0.0.1", 0u16))
         .await
         .map_err(|e| e.to_string())?;
@@ -86,5 +91,5 @@ pub async fn start_local_forward(
             });
         }
     });
-    Ok(port)
+    Ok((port, watch))
 }

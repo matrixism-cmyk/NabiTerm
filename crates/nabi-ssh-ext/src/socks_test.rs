@@ -72,7 +72,7 @@ async fn dynamic_socks_forward_roundtrip() {
 
     tokio::time::sleep(Duration::from_millis(250)).await;
     let params = SshParams::password(addr.ip().to_string(), addr.port(), "u", "p");
-    let socks_port = start_dynamic_forward(params).await.expect("start socks");
+    let (socks_port, _watch) = start_dynamic_forward(params).await.expect("start socks");
     tokio::time::sleep(Duration::from_millis(200)).await;
 
     let mut c = TcpStream::connect(("127.0.0.1", socks_port)).await.unwrap();

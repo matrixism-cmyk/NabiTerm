@@ -172,13 +172,13 @@ pub fn handle_command(
             let target = format!("{remote_host}:{remote_port}");
             let h = rt.spawn(async move {
                 match nabi_ssh_ext::start_local_forward(params, remote_host, remote_port).await {
-                    Ok(p) => {
+                    Ok((p, watch)) => {
                         let message = format!("127.0.0.1:{p} \u{2192} {target}");
-                        let _ = ev.send(Event::ForwardStarted { id, message });
-                        // -L 은 포트만 돌려받아 **연결이 살아 있는지 물어볼 핸들이 없다**
-                        // (배치 AH). -R·X11 처럼 지켜보려면 start_local_forward 가 핸들도
-                        // 함께 돌려주도록 고쳐야 한다 — 지금은 못 한다고 적어 둔다.
-                        std::future::pending::<()>().await; // 중지(abort)될 때까지 유지.
+                        let _ = ev.send(Event::ForwardStarted { id, message: message.clone() });
+                        // 핸들을 받아 **살아 있는지 지켜본다**(배치 AH). 처음에는 -L 이 포트만
+                        // 돌려줘서 못 한다고 적어 뒀는데, 그 함수가 핸들도 돌려주게 고쳐 빚을 갚았다.
+                        nabi_ssh_ext::watchlive::until_closed(|| watch.is_closed()).await;
+                        let _ = ev.send(Event::ForwardStopped { id, message });
                     }
                     Err(message) => {
                         let _ = ev.send(Event::Error { message });
@@ -191,11 +191,11 @@ pub fn handle_command(
             let ev = event_tx.clone();
             let h = rt.spawn(async move {
                 match nabi_ssh_ext::start_dynamic_forward(params).await {
-                    Ok(p) => {
+                    Ok((p, watch)) => {
                         let message = format!("127.0.0.1:{p} (SOCKS5 -D)");
-                        let _ = ev.send(Event::ForwardStarted { id, message });
-                        // -D(SOCKS5) 도 같은 이유로 지켜보지 못한다(위 -L 설명 참고).
-                        std::future::pending::<()>().await;
+                        let _ = ev.send(Event::ForwardStarted { id, message: message.clone() });
+                        nabi_ssh_ext::watchlive::until_closed(|| watch.is_closed()).await;
+                        let _ = ev.send(Event::ForwardStopped { id, message });
                     }
                     Err(message) => {
                         let _ = ev.send(Event::Error { message });

@@ -11,8 +11,12 @@ use tokio::net::{TcpListener, TcpStream};
 
 /// 로컬 SOCKS5 프록시를 띄우고 바인드된 포트를 반환한다. 각 연결의 목적지를
 /// SSH direct-tcpip로 포워딩한다.
-pub async fn start_dynamic_forward(params: SshParams) -> Result<u16, String> {
+/// **핸들도 함께 돌려준다**(배치 AH) — 부르는 쪽이 살아 있는지 물어볼 수 있게.
+pub async fn start_dynamic_forward(
+    params: SshParams,
+) -> Result<(u16, Arc<russh::client::Handle<crate::forward::Fwd>>), String> {
     let handle = Arc::new(connect_authed(&params).await?);
+    let watch = handle.clone();
     let listener = TcpListener::bind(("127.0.0.1", 0u16))
         .await
         .map_err(|e| e.to_string())?;
@@ -26,7 +30,7 @@ pub async fn start_dynamic_forward(params: SshParams) -> Result<u16, String> {
             });
         }
     });
-    Ok(port)
+    Ok((port, watch))
 }
 
 async fn serve(mut socket: TcpStream, handle: Arc<Handle<Fwd>>) -> Result<(), String> {
