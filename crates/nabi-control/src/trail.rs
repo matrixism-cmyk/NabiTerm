@@ -117,8 +117,23 @@ fn global() -> &'static Mutex<Trail> {
     R.get_or_init(|| Mutex::new(Trail::new(CAP)))
 }
 
+/// 지금까지 **거부된 건수**(줄지 않는다). 화면이 매 프레임 물어도 싸도록 세어만 둔다.
+///
+/// 고리 전체를 훑어 세면 프레임마다 수천 건을 돌게 된다. 기록을 보려고 만든 것이
+/// 프로그램을 느리게 만들면 안 된다.
+static DENIED: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+/// 거부 누적 건수.
+pub fn denied_total() -> usize {
+    DENIED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+
 /// 자취를 남긴다. 잠금이 오염돼도 계속 쓴다 — 기록 때문에 제어가 멈추면 안 된다.
 pub fn record(e: Entry) {
+    if e.outcome == Outcome::Denied {
+        DENIED.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
     global().lock().unwrap_or_else(|p| p.into_inner()).push(e);
 }
 
@@ -214,134 +229,4 @@ pub fn note(from: Option<u64>, verb: &'static str, target: String, bytes: usize,
         outcome,
         bytes,
     });
-}
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn e(verb: &'static str, target: &str, outcome: Outcome) -> Entry {
-        Entry {
-            at_secs: 1,
-            from: "pane 3".into(),
-            verb,
-            target: target.into(),
-            outcome,
-            bytes: 0,
-        }
-    }
-
-    #[test]
-    fn entries_come_back_newest_last() {
-        let mut t = Trail::new(10);
-        t.push(e("spawn", "a", Outcome::Allowed));
-        t.push(e("close", "b", Outcome::Denied));
-        let all = t.entries();
-        let got: Vec<&str> = all.iter().map(|x| x.target.as_str()).collect();
-        assert_eq!(got, vec!["a", "b"], "최신이 뒤에 와야 한다");
-    }
-
-    #[test]
-    fn export_is_pasteable() {
-        let list = vec![e("send-input", "pane 3", Outcome::Denied)];
-        let text = export(&list);
-        assert!(text.starts_with("time(s)\tfrom\t"), "머리글이 있어야 한다");
-        assert!(text.contains("send-input\tpane 3\tdenied"), "{text}");
-        assert!(text.ends_with('\n'));
-    }
-
-    #[test]
-    fn a_denied_request_is_recorded_too() {
-        // 무엇을 시도했는지가 감사의 절반이다. 거부를 안 남기면 절반이 사라진다.
-        let list = vec![e("send-input", "pane 1", Outcome::Denied)];
-        assert!(export(&list).contains("denied"));
-    }
-
-    #[test]
-    fn the_ring_drops_the_oldest_not_the_newest() {
-        // 넘치면 오래된 것이 밀려나야 한다. 최신이 사라지면 사고 직후를 못 본다.
-        let mut t = Trail::new(3);
-        for i in 0..5 {
-            t.push(e("spawn", &format!("x{i}"), Outcome::Allowed));
-        }
-        let all = t.entries();
-        let got: Vec<&str> = all.iter().map(|x| x.target.as_str()).collect();
-        assert_eq!(got, vec!["x2", "x3", "x4"], "가장 최근 셋만 남아야 한다");
-    }
-
-    #[test]
-    fn a_zero_cap_still_keeps_one() {
-        // 0으로 만들면 아무것도 안 남아 기록이 무의미해진다 — 최소 하나는 지킨다.
-        let mut t = Trail::new(0);
-        t.push(e("spawn", "only", Outcome::Allowed));
-        assert_eq!(t.len(), 1);
-        assert!(!t.is_empty());
-    }
-
-    #[test]
-    fn the_global_ring_accepts_records() {
-        // 전역 경로도 한 번은 지나가 봐야 한다 — 순수 구조만 시험하면 배선이 빠져도 모른다.
-        let before = super::len();
-        record(e("spawn", "global-check", Outcome::Allowed));
-        assert!(super::len() > before || super::len() == CAP);
-        assert!(entries().iter().any(|x| x.target == "global-check"));
-    }
-
-    /// **감사 기록이 새 유출 경로가 되면 안 된다.**
-    ///
-    /// `SendInput` 의 본문에는 비밀번호가 지나간다. 기록에 그것이 들어가면, 사용자를
-    /// 지키려고 만든 것이 오히려 비밀을 한곳에 모아 두는 자리가 된다. 가리기(redact)로
-    /// 막지 않고 **아예 담지 않는** 쪽을 골랐으므로, 그것을 시험이 지킨다.
-    #[test]
-    fn the_body_of_an_input_never_reaches_the_trail() {
-        use crate::protocol::ControlRequest as R;
-        let secret = "sudo -S mypassword123";
-        let req = R::SendInput { pane: 3, data: secret.into(), raw: false };
-        let (verb, target, bytes) = describe(&req);
-        assert_eq!(verb, "send-input");
-        assert_eq!(target, "pane 3");
-        assert_eq!(bytes, secret.len(), "길이는 남는다 — 크기는 되짚을 때 쓴다");
-        // 어느 칸에도 본문이 없어야 한다.
-        for field in [verb, target.as_str()] {
-            assert!(!field.contains("mypassword"), "본문이 샜다: {field}");
-            assert!(!field.contains("sudo"), "본문이 샜다: {field}");
-        }
-        let text = export(&[Entry {
-            at_secs: 0, from: "pane 3".into(), verb, target, outcome: Outcome::Allowed, bytes,
-        }]);
-        assert!(!text.contains("mypassword"), "내보내기에 본문이 샜다");
-    }
-
-    #[test]
-    fn a_pane_status_value_is_not_recorded() {
-        // 에이전트가 아무 글이나 넣을 수 있는 자리다 — 열쇠만 남긴다.
-        use crate::protocol::ControlRequest as R;
-        let req = R::PaneStatusSet {
-            key: "phase".into(),
-            value: Some("고객 이름 홍길동".into()),
-            ttl_ms: None,
-        };
-        let (_, target, _) = describe(&req);
-        assert_eq!(target, "phase");
-        assert!(!target.contains("홍길동"));
-    }
-
-    #[test]
-    fn a_notify_body_is_not_recorded() {
-        use crate::protocol::ControlRequest as R;
-        let req = R::Notify { title: "빌드 실패".into(), body: "토큰 ghp_abc123".into() };
-        let (verb, target, _) = describe(&req);
-        assert_eq!(verb, "notify");
-        assert!(target.is_empty(), "제목·본문 모두 담지 않는다");
-    }
-
-    #[test]
-    fn paths_are_recorded_because_that_is_the_point() {
-        // 어떤 파일을 가져갔는지는 감사의 핵심이다 — 경로는 남긴다.
-        use crate::protocol::ControlRequest as R;
-        let req = R::SftpGet { remote: "/etc/shadow".into(), local: "C:/tmp/x".into() };
-        let (verb, target, _) = describe(&req);
-        assert_eq!((verb, target.as_str()), ("sftp-get", "/etc/shadow"));
-    }
 }

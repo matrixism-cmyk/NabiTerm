@@ -77,6 +77,22 @@ impl NabiApp {
             self.agent_trail_open = false;
         }
     }
+
+    /// 에이전트 요청이 **처음 막혔을 때 한 번만** 알린다(배치 AB T1).
+    ///
+    /// "ask" 모드에는 승인 대화상자가 있어 사용자가 안다. 문제는 **"off"** 다 — 그때는
+    /// 대화상자도 없이 조용히 막히고, 사용자는 에이전트가 왜 아무것도 못 하는지 모른다.
+    ///
+    /// 매번 알리지 않는 이유: 자율 에이전트는 막혀도 계속 시도한다. 매번 띄우면 곧
+    /// 읽지 않게 되고, 그러면 없느니만 못하다. **처음 한 번**이면 "아, 꺼 뒀지"를 떠올리기에
+    /// 충분하다. 자세한 것은 행동 기록 창에서 본다.
+    pub(crate) fn notice_first_denial(&mut self) {
+        if self.denial_noticed || nabi_control::trail::denied_total() == 0 {
+            return;
+        }
+        self.denial_noticed = true;
+        self.notify = Some((tr(self.lang, "trail.denied.first").to_string(), Instant::now()));
+    }
 }
 
 /// 결과별 표시 — 거부는 눈에 띄어야 한다. 무엇이 막혔는지가 이 화면을 여는 첫 이유다.

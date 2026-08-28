@@ -19,6 +19,8 @@ pub mod pipe_acl;
 pub mod policy;
 mod gate;
 pub mod trail;
+#[cfg(test)]
+mod trail_tests;
 pub mod protocol;
 pub mod server;
 pub mod subscribe;
