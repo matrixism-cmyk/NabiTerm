@@ -165,4 +165,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("backup.unreadable", "Not included — could not be read:", "백업에 담기지 못했습니다 — 읽을 수 없음:", "バックアップに含められませんでした — 読み取り不可:"),
     ("log.dirfailed", "Session logging is on but the log folder could not be created — nothing is being logged:", "세션 로그가 켜져 있지만 로그 폴더를 만들지 못했습니다 — 기록되지 않습니다:", "セッションログは有効ですがログフォルダを作成できませんでした:"),
     ("rules.dropped", "Agent detection rules dropped (bad regex) — check agent-rules:", "감지 규칙이 정규식 오류로 버려졌습니다 — agent-rules 확인:", "検出ルールが正規表現エラーで破棄されました:"),
+    ("replace.unwritable", "Some files could not be written — not counted:", "일부 파일을 쓰지 못했습니다(세지 않음):", "一部のファイルを書き込めませんでした:"),
 ];

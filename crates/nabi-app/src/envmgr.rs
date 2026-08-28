@@ -41,6 +41,11 @@ impl EnvMgr {
     }
 
     /// 작업을 시작한다. 이미 도는 게 있으면 무시한다.
+    ///
+    /// **말없이 무시해도 되는 이유**: 화면 쪽에서 도는 동안 단추를 이미 비활성으로 둔다
+    /// (`envmgrui` 의 `add_enabled(!busy, ..)` 세 곳). 그래서 여기까지 오는 길이 없고,
+    /// 이 검사는 도달 불가능한 안전망이다 — 사용자가 누르고도 아무 일이 없는 상황은
+    /// 생기지 않는다. (배치 AF 에서 "조용히 무시"를 훑다가 확인했다.)
     pub fn start(&mut self, label: impl Into<String>, script: String, first: String) {
         if self.busy() {
             return;

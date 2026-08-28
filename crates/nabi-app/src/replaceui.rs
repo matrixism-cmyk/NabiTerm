@@ -32,11 +32,24 @@ impl NabiApp {
             ui.horizontal(|ui| {
                 let has = !self.replace_find.is_empty();
                 if ui.add_enabled(has, egui::Button::new(tr(lang, "replace.preview"))).clicked() {
-                    self.replace_count = Some(crate::findfiles::replace_in_dir(&self.browser.path, &self.replace_find, &self.replace_to, false, 3000));
+                    // 미리보기는 쓰지 않으므로 실패 목록이 비어 있다.
+                    let (f, m, _) = crate::findfiles::replace_in_dir(&self.browser.path, &self.replace_find, &self.replace_to, false, 3000);
+                    self.replace_count = Some((f, m));
                 }
                 if ui.add_enabled(has, egui::Button::new(tr(lang, "replace.apply"))).clicked() {
-                    let (f, m) = crate::findfiles::replace_in_dir(&self.browser.path, &self.replace_find, &self.replace_to, true, 3000);
-                    self.notify = Some((format!("{} {m}\u{00d7}/{f}", tr(lang, "replace.title")), Instant::now()));
+                    let (f, m, failed) = crate::findfiles::replace_in_dir(&self.browser.path, &self.replace_find, &self.replace_to, true, 3000);
+                    // 못 쓴 파일이 있으면 **그것부터** 말한다. 숫자만 보여 주면 사용자는 전부
+                    // 바뀐 줄 알고, 그것은 자기 소스 코드에 대해 거짓말을 듣는 것이다(배치 AF).
+                    let done = format!("{} {m}\u{00d7}/{f}", tr(lang, "replace.title"));
+                    let msg = match failed.is_empty() {
+                        true => done,
+                        false => format!(
+                            "{} {} \u{00b7} {done}",
+                            tr(lang, "replace.unwritable"),
+                            failed.iter().take(3).cloned().collect::<Vec<_>>().join(", ")
+                        ),
+                    };
+                    self.notify = Some((msg, Instant::now()));
                     close = true;
                 }
                 if ui.button(tr(lang, "qc.cancel")).clicked() {

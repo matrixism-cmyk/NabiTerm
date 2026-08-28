@@ -50,6 +50,7 @@ impl NabiApp {
     /// WorkspaceEdit 적용: 열린 문서는 메모리에서(수정 표시), 닫힌 파일은 디스크에서. 총 편집 수 반환.
     pub(crate) fn apply_rename_edits(&mut self, files: Vec<nabi_editor::lspread::FileEdits>) -> usize {
         let mut n = 0;
+        let mut failed: Vec<String> = Vec::new();
         for fe in files {
             n += fe.edits.len();
             if let Some(doc) = self.editors.values_mut().find(|d| d.path == fe.path && d.edit.is_none() && d.hex.is_none()) {
@@ -57,10 +58,25 @@ impl NabiApp {
                 doc.dirty = true;
             } else if let Ok(text) = std::fs::read_to_string(&fe.path) {
                 // LF 정규화 없이 그대로 적용 — LSP 좌표는 서버가 준 원문 기준.
-                let _ = std::fs::write(&fe.path, nabi_editor::lspread::apply_edits(&text, &fe.edits));
+                //
+                // **못 쓰면 세지 않는다**(배치 AF). 예전에는 쓰기 실패를 삼키고도 바꾼 것으로
+                // 셌다. 읽기 전용 파일이 섞여 있으면 "N곳 이름을 바꿨습니다"가 뜨는데 그 파일은
+                // 그대로다 — 사용자의 소스 코드에 대해 거짓말을 하는 것이고, 이름 바꾸기가
+                // 절반만 된 코드는 **컴파일도 안 된다.**
+                if let Err(e) = std::fs::write(&fe.path, nabi_editor::lspread::apply_edits(&text, &fe.edits)) {
+                    n -= fe.edits.len();
+                    failed.push(format!("{}: {e}", fe.path.display()));
+                }
             } else {
                 n -= fe.edits.len(); // 읽기 실패 파일은 계수 제외.
             }
+        }
+        if !failed.is_empty() {
+            // 숫자만 보여 주면 전부 바뀐 줄 안다. 못 쓴 것을 먼저 말한다.
+            self.notify = Some((
+                format!("{} {}", nabi_i18n::tr(self.lang, "replace.unwritable"), failed.join(", ")),
+                std::time::Instant::now(),
+            ));
         }
         n
     }
