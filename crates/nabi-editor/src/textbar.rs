@@ -37,6 +37,7 @@ pub(crate) fn toolbar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &
         // 칸은 일반 편집기의 찾기바와 **같은 `doc.find.goto`** 를 쓴다. 뜻이 같은 입력을
         // 둘로 나누면 한쪽만 고치는 날이 오고, 그날 둘이 다르게 움직인다.
         goto_box(ui, doc, lang);
+        find_box(ui, doc, lang);
         ui.toggle_value(&mut doc.readonly, "\u{1f512}").on_hover_text(tr(lang, "editor.readonly"));
         if doc.huge.as_ref().is_some_and(|t| t.dirty) {
             ui.colored_label(WARN, "\u{25cf}");
@@ -108,5 +109,40 @@ fn goto_box(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
     let Some((line0, col)) = crate::editorloc::parse_goto(&doc.find.goto) else { return };
     if let Some(tb) = doc.huge.as_mut() {
         tb.go_to_line(line0, col.map(|c| c as usize));
+    }
+}
+
+/// 찾기 칸 — Enter 로 다음, Shift+Enter 로 이전(배치 AG).
+///
+/// **일치 개수를 보여 주지 않는다.** 그 숫자를 내려면 문서 전체를 세어야 하고, 그것은 이
+/// 편집기가 하지 않기로 한 일이다. 셀 수 없는 것을 센 척하지 않는다.
+///
+/// 질의 칸은 일반 편집기 찾기바와 **같은 `doc.find.query`** 를 쓴다 — 같은 뜻의 입력을
+/// 둘로 나누면 한쪽만 고치는 날이 온다.
+fn find_box(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
+    let r = ui.add(
+        egui::TextEdit::singleline(&mut doc.find.query)
+            .desired_width(120.0)
+            .hint_text(tr(lang, "find.hint")),
+    );
+    let r = r.on_hover_text(tr(lang, "editor.find.huge"));
+    let (enter, shift) = ui.input(|i| (i.key_pressed(egui::Key::Enter), i.modifiers.shift));
+    if !(r.has_focus() && enter) {
+        return;
+    }
+    let dir = if shift { crate::textfind::Dir::Prev } else { crate::textfind::Dir::Next };
+    let q = doc.find.query.clone();
+    let Some(tb) = doc.huge.as_mut() else { return };
+    let Some(needle) = crate::textfind::needle_for(&tb.data, &q) else {
+        // 문서 인코딩으로 적을 수 없는 말이면 "못 찾음"이 아니라 "있을 수 없음"이다.
+        tb.refused_at = Some(std::time::Instant::now());
+        return;
+    };
+    let from = match dir {
+        crate::textfind::Dir::Next => tb.caret.saturating_add(1),
+        crate::textfind::Dir::Prev => tb.caret,
+    };
+    if let Some((at, len)) = crate::textfind::find_from(&tb.data, &needle, from, dir) {
+        tb.select_range(at, at + len as u64);
     }
 }

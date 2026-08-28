@@ -44,6 +44,8 @@ pub mod textbar;
 pub mod textbuf;
 pub mod textbufedit;
 pub mod textdata;
+pub mod textfind;
+pub mod textmove;
 pub mod textkeys;
 pub mod textindex;
 pub mod textview;
