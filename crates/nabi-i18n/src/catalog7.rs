@@ -153,4 +153,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("trail.copied", "\u{2713} Copied", "\u{2713} 복사됨 — 설명할 곳에 그대로 붙여넣으세요", "\u{2713} コピーしました"),
     ("trail.nocontent", "What was done is recorded — never the content. Passwords and tokens are not stored here.", "무엇을 했는지만 남깁니다 — 내용은 남기지 않습니다. 비밀번호·토큰은 여기 저장되지 않습니다.", "何をしたかだけを記録します — 内容は残しません。"),
     ("trail.denied.first", "An agent request was blocked — agent control is off or awaiting approval (Tools ▸ Automation)", "에이전트 요청이 막혔습니다 — 제어가 꺼져 있거나 승인 대기 중입니다(도구 ▸ 자동화)", "エージェントの要求がブロックされました"),
+    ("editor.csvcol.hint", "Which field the caret is in — read from this line and the first line only", "커서가 몇 번째 칸에 있는지 — 이 줄과 첫 줄만 읽어 알아냅니다", "キャレットが何番目の列にあるか"),
 ];

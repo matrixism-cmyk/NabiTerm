@@ -6,7 +6,8 @@
 
 pub mod editbig;
 pub mod editbuf;
-pub mod editbufboxpaste;
+pub mod csvcol;
+mod editbufboxpaste;
 mod editbufboxsel;
 pub mod editbufmatch;
 pub mod editbufvcursor;
