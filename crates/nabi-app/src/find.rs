@@ -24,6 +24,25 @@ impl Matcher {
     }
 }
 
+
+/// 일치 개수 캐시의 열쇠 — **개수를 바꾸는 값 전부**.
+///
+/// 예전 열쇠는 `(질의, 정규식)` 이었는데 개수는 단어 단위(`whole`)에도 의존했다. 그래서
+/// `ab` 단추를 누르면 **화면이 옛 개수를 그대로 보여 줬다.** 아무 말도 안 하는 것보다
+/// 틀린 말을 하는 쪽이 나쁘다 — 사용자는 그 숫자를 믿고 "다 찾았구나" 한다.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub(crate) struct FindKey {
+    query: String,
+    regex: bool,
+    whole: bool,
+}
+
+impl FindKey {
+    pub(crate) fn new(query: &str, regex: bool, whole: bool) -> Self {
+        Self { query: query.to_string(), regex, whole }
+    }
+}
+
 /// 쿼리 옵션으로 매처를 만든다. 빈 쿼리/잘못된 정규식이면 None. 스마트케이스(소문자=무시).
 ///
 /// 단어 단위(whole)는 리터럴이든 정규식이든 `\b…\b`로 감싼 정규식이 된다 — 리터럴은
@@ -215,12 +234,24 @@ impl NabiApp {
     /// 스크롤백 전체(검색 상한)의 일치 총수 — 쿼리별 캐시(매 프레임 재스캔 방지, F5).
     /// 라이브 출력 중에는 약간 지연될 수 있으나(쿼리 변경 시 갱신) 검색 보조엔 충분.
     fn find_total_cached(&mut self) -> usize {
-        if let Some((q, r, n)) = &self.find_count_cache {
-            if *q == self.find_query && *r == self.find_regex { return *n; }
+        let key = self.find_key();
+        if let Some((k, n)) = &self.find_count_cache {
+            if *k == key {
+                return *n;
+            }
         }
         let n = self.find_total_count();
-        self.find_count_cache = Some((self.find_query.clone(), self.find_regex, n));
+        self.find_count_cache = Some((key, n));
         n
+    }
+
+    /// 개수를 정하는 **모든** 값을 모은다.
+    ///
+    /// 이 함수가 있는 이유는 열쇠를 손으로 적다가 하나를 빠뜨렸기 때문이다. `build_matcher`
+    /// 가 받는 인자와 **같은 셋**을 여기서도 받게 두면, 넷째가 생길 때 컴파일러가 두 곳을
+    /// 함께 짚는다.
+    fn find_key(&self) -> FindKey {
+        FindKey::new(&self.find_query, self.find_regex, self.find_whole)
     }
 
     fn find_total_count(&mut self) -> usize {
@@ -252,32 +283,5 @@ impl NabiApp {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::build_matcher;
-
-    #[test]
-    fn matcher_literal_and_regex() {
-        let m = build_matcher("err", false, false).unwrap();
-        assert!(m.is_match("an error here"));
-        assert_eq!(m.count("err err"), 2);
-        assert!(build_matcher("err", false, false).unwrap().is_match("ERR")); // 소문자→무시
-        assert!(!build_matcher("ERR", false, false).unwrap().is_match("err")); // 대문자→구분
-        let re = build_matcher("e.*r", true, false).unwrap();
-        assert!(re.is_match("eXXr"));
-        assert_eq!(re.count("eXr eYr"), 1); // 탐욕적 → 한 번
-        assert!(build_matcher("(", true, false).is_none()); // 잘못된 정규식
-        assert!(build_matcher("", false, false).is_none());
-    }
-
-    #[test]
-    fn whole_word_matches_only_full_words() {
-        let m = build_matcher("err", false, true).unwrap();
-        assert!(m.is_match("an err here"));
-        assert!(!m.is_match("error here")); // 단어 일부는 제외.
-        // 리터럴은 escape되므로 정규식 메타문자가 그대로 글자로 취급된다.
-        let dot = build_matcher("a.b", false, true).unwrap();
-        assert!(dot.is_match("x a.b y"));
-        assert!(!dot.is_match("x axb y"));
-    }
-
-}
+#[path = "find_tests.rs"]
+mod tests;

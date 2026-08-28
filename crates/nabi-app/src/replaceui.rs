@@ -19,11 +19,19 @@ impl NabiApp {
             ui.add_space(4.0);
             egui::Grid::new("replace_grid").num_columns(2).spacing([8.0, 6.0]).show(ui, |ui| {
                 ui.label(tr(lang, "replace.find"));
-                ui.add(egui::TextEdit::singleline(&mut self.replace_find).desired_width(260.0));
+                let a = ui.add(egui::TextEdit::singleline(&mut self.replace_find).desired_width(260.0));
                 ui.end_row();
                 ui.label(tr(lang, "replace.to"));
-                ui.add(egui::TextEdit::singleline(&mut self.replace_to).desired_width(260.0));
+                let b = ui.add(egui::TextEdit::singleline(&mut self.replace_to).desired_width(260.0));
                 ui.end_row();
+                // 찾을 말이나 바꿀 말을 고치면 **미리보기 숫자를 지운다**(배치 AI).
+                //
+                // 안 지우면 옛 질의로 센 숫자가 새 질의 아래에 그대로 남는다. 사용자는 그
+                // 숫자를 보고 "바꾸기"를 누르고, 실제로 바뀌는 것은 다른 개수다.
+                // 아무것도 안 보여 주는 편이 틀린 숫자를 보여 주는 것보다 낫다.
+                if a.changed() || b.changed() {
+                    self.replace_count = None;
+                }
             });
             if let Some((f, m)) = self.replace_count {
                 ui.colored_label(crate::theme_ui::ACCENT, format!("{m} \u{00d7} · {f} {}", tr(lang, "find.files.unit")));

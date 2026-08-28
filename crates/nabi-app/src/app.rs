@@ -328,7 +328,11 @@ pub struct NabiApp {
     /// 삭제 확인 대기 중인 저장 세션 이름(sessiondel).
     pub session_delete_ask: Option<String>,
     pub file_preview: Option<(String, String)>, pub clip_history: Vec<String>,
-    pub find_count_cache: Option<(String, bool, usize)>,
+    /// 스크롤백 일치 개수 캐시 — **열쇠는 `FindKey`**(배치 AI).
+    ///
+    /// 예전에는 `(질의, 정규식, 개수)` 였는데 개수는 **단어 단위(`whole`)에도 의존**한다.
+    /// 그래서 그 단추를 누르면 화면이 옛 개수를 그대로 보여 줬다 — 화면이 틀린 말을 하는 것이다.
+    pub find_count_cache: Option<(crate::find::FindKey, usize)>,
     pub session_logs: HashMap<PaneId, crate::sessionlog::SessionLog>,
     /// 재생 중인 기록(pane별). 비어 있으면 아무 일도 하지 않는다.
     pub replays: crate::replay::Replays,
