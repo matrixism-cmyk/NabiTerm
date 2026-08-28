@@ -47,7 +47,14 @@ pub(crate) fn schedule_rows(
         changed = true;
     }
     if changed {
-        crate::scheduler::save(path, &list);
+        // 저장이 실패하면 **그 자리에 붉게 남긴다**(배치 AF). 여기는 설정 화면이라 알림보다
+        // 화면이 낫다 — 사용자가 방금 만진 목록 바로 아래에 뜬다.
+        //
+        // 예전에는 조용히 삼켰다. 디스크가 차거나 설정 폴더가 읽기 전용이면 사용자가 만든
+        // 예약이 다시 켰을 때 사라져 있고, 그때는 무엇이 언제 실패했는지 알 방법이 없다.
+        if let Err(e) = crate::scheduler::save(path, &list) {
+            ui.colored_label(crate::theme_ui::ERR, e);
+        }
     }
     ui.separator();
 

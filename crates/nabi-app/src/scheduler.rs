@@ -43,10 +43,13 @@ pub(crate) fn load(path: &std::path::Path) -> Vec<Job> {
         .unwrap_or_default()
 }
 
-pub(crate) fn save(path: &std::path::Path, jobs: &[Job]) {
-    if let Ok(text) = toml::to_string_pretty(&SchedFile { jobs: jobs.to_vec() }) {
-        let _ = std::fs::write(path, text);
-    }
+/// 예약 목록을 저장한다. **실패하면 그 사연을 돌려준다**(배치 AF).
+///
+/// 예전에는 조용히 삼켰다. 디스크가 차거나 설정 폴더가 읽기 전용이면 사용자가 만든 예약이
+/// 다시 켰을 때 사라져 있고, 그때는 무엇이 언제 실패했는지 알 방법이 없다.
+pub(crate) fn save(path: &std::path::Path, jobs: &[Job]) -> Result<(), String> {
+    let text = toml::to_string_pretty(&SchedFile { jobs: jobs.to_vec() }).map_err(|e| e.to_string())?;
+    std::fs::write(path, text).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 impl crate::app::NabiApp {
@@ -83,7 +86,10 @@ impl crate::app::NabiApp {
             changed = true;
         }
         if changed {
-            save(&self.schedules_path, &self.schedules);
+            // 자동으로 끈 예약을 저장하지 못하면, 다시 켰을 때 그 예약이 되살아나 또 실패한다.
+            if let Err(e) = save(&self.schedules_path, &self.schedules) {
+                self.notify = Some((e, std::time::Instant::now()));
+            }
         }
     }
 
@@ -147,6 +153,7 @@ pub(crate) fn add(
     crate::schedspec::parse(&spec)?;
     let id = jobs.iter().map(|j| j.id).max().unwrap_or(0) + 1;
     jobs.push(Job { id, name, spec, kind, payload, pane_title, enabled: true, last_fire_min: None, fails: 0 });
-    save(path, jobs);
-    Ok(())
+    // 이 함수는 이미 Result 를 돌려준다 — 저장 실패도 그대로 올린다. 만들었다고 해 놓고
+    // 다시 켰을 때 없으면, 사용자는 자기가 뭘 잘못했는지 찾게 된다.
+    save(path, jobs)
 }

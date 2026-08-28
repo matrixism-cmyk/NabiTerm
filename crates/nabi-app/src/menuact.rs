@@ -183,8 +183,16 @@ impl NabiApp {
                     (nabi_session::export::to_json(&self.sessions), self.config_path.parent())
                 {
                     let path = dir.join("sessions_export.json");
-                    let _ = std::fs::write(&path, json);
-                    let _ = std::process::Command::new("explorer").arg(dir).spawn();
+                    // 내보내기는 대개 **백업 삼아** 한다. 실패했는데 탐색기만 열리면 사용자는
+                    // 파일이 생긴 줄 알고, 필요할 때가 되어서야 없다는 것을 안다(배치 AF).
+                    match std::fs::write(&path, json) {
+                        Ok(()) => {
+                            let _ = std::process::Command::new("explorer").arg(dir).spawn();
+                        }
+                        Err(e) => {
+                            self.notify = Some((format!("{}: {e}", path.display()), std::time::Instant::now()));
+                        }
+                    }
                 }
             }
             MenuAction::ImportSessions => {
