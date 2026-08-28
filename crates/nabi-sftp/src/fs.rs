@@ -53,6 +53,14 @@ impl SftpFs {
         self.handle.clone()
     }
 
+    /// 점프 호스트 핸들 — **목적지 핸들과 반드시 함께** 물려줘야 한다.
+    ///
+    /// 이것을 빠뜨리면 넘겨받은 쪽이 목적지 핸들만 들게 되고, 원래 세션이 사라지는 순간
+    /// 터널이 끊겨 **잠시 뒤 조용히 죽는다.** 바로 그때 실패하지 않아서 더 찾기 어렵다.
+    pub fn jump_for_reuse(&self) -> Option<std::sync::Arc<Handle<Handler>>> {
+        self._jump.clone()
+    }
+
     pub(crate) fn new(
         raw: RawFs,
         handle: std::sync::Arc<Handle<Handler>>,

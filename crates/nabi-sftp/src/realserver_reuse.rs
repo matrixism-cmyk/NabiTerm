@@ -75,3 +75,65 @@ async fn realserver_fresh_connection_still_works() {
         .expect("물려줄 연결이 없으면 새로 연결한다");
     fs.list_dir(".").await.expect("새 연결로 목록");
 }
+
+/// **점프 호스트를 거쳐도 연결을 물려받는가**(배치 Y V2 — 그때 못 하고 남겨 둔 것).
+///
+/// 배치 Y 에서는 "서버가 둘 필요한데 이 PC 에는 OpenSSH 가 하나뿐"이라 못 했다고 적었다.
+/// 두 번째 sshd 를 다른 포트로 띄우면 **진짜 두 홉**이 된다 — 경유지와 목적지가 서로 다른
+/// 프로세스다. 이 시험이 확인하는 것은 **점프 호스트를 거쳐도 연결을 물려받아 두 번째 SFTP 를
+/// 열 수 있는가**다. "터널이 한 벌인가"까지는 확인하지 못했다(아래 주석 참조).
+///
+/// 실행(경유 22 → 목적지 2222):
+/// ```text
+/// NABI_RT_USER=... NABI_RT_KEY=<개인키> NABI_JUMP_PORT=2222 ///   cargo test -p nabi-sftp jump -- --ignored --nocapture
+/// ```
+/// `NABI_JUMP_PORT` 가 없으면 조용히 통과한다(두 번째 서버가 없는 환경 안전).
+#[tokio::test]
+#[ignore = "두 번째 sshd 필요(NABI_JUMP_PORT)"]
+async fn realserver_jump_host_reuses_one_tunnel() {
+    let Some(base) = params() else { return };
+    let Ok(port) = std::env::var("NABI_JUMP_PORT") else { return };
+    let Ok(port) = port.parse::<u16>() else { return };
+
+    // 목적지는 2222, 경유지는 원래 params(22).
+    let mut target = base.clone();
+    target.port = port;
+    target.jump = Some(Box::new(base.clone()));
+
+    let kh = crate::sftp_boot::test_known_hosts();
+    let mut first = crate::connect_sftp(&target, kh.clone(), None)
+        .await
+        .expect("점프 호스트를 거친 첫 SFTP");
+    let marker = format!("nabi-jump-{}", std::process::id());
+    let _ = first.remove(&marker).await;
+    first.mkdir(&marker).await.expect("첫 연결로 표식 만들기");
+
+    // 목적지 핸들과 점프 핸들을 함께 물려준다.
+    //
+    // ⚠️ **이 시험은 점프 핸들이 꼭 필요한지는 증명하지 못한다.** 일부러 `None` 을 넣어
+    // 봤는데도 통과했다 — russh 의 배경 태스크가 세션을 붙들고 있어서 `Handle` 을 놓아도
+    // 터널이 곧바로 끊기지 않는 것으로 보인다. 그러니 "빠뜨리면 끊긴다"고 단정하지 않는다.
+    //
+    // 그래도 함께 물려준다. 수명이 구현 세부에 기대고 있을 뿐이고, 그 세부는 바뀔 수 있다.
+    let reuse = crate::ReusedConn::new(
+        first.handle_for_reuse(),
+        first.jump_for_reuse(),
+        nabi_ssh::conns::Who::of(&target),
+    );
+    let mut second = crate::connect_sftp_reusing(&target, kh, None, Some(reuse))
+        .await
+        .expect("물려받은 연결 위에 두 번째 SFTP");
+
+    let after = second.list_dir(".").await.expect("두 번째 연결로 목록");
+    assert!(
+        after.iter().any(|e| e.name == marker),
+        "물려받은 연결이 같은 목적지를 봐야 한다(터널이 살아 있어야 한다)"
+    );
+
+    // 첫 세션을 놓아도 물려받은 쪽은 계속 쓴다(직접 연결 때와 같다).
+    drop(first);
+    let still = second.list_dir(".").await.expect("첫 것을 놓아도 터널은 산다");
+    assert!(still.iter().any(|e| e.name == marker));
+
+    second.remove(&marker).await.expect("표식 치우기");
+}
