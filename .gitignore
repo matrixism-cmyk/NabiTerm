@@ -12,3 +12,6 @@ nabiterm-*-plan*.md
 nabiterm-sftp-upgrade.md
 UPGRADE_PLAN.md
 nabiTerm-*.md
+
+# 배치 작업 기록은 내부 문서다(2026-08-29 지시). 파일은 남기고 공개만 하지 않는다.
+docs/batches/
