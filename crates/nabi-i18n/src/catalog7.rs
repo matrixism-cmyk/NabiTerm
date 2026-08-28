@@ -160,4 +160,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sftp.grep.hint", "Reads the first 256KB of each file — matches further in are not found, and the result says so", "파일마다 앞 256KB만 읽습니다 — 그보다 뒤의 일치는 못 찾으며, 결과에 그 사실을 적습니다", "各ファイルの先頭256KBのみ読みます"),
     ("sftp.grep.done", "Matches found:", "찾은 줄:", "見つかった行:"),
     ("sync.unwritable", "Skipped — Windows cannot create these names:", "건너뜀 — 윈도우가 만들 수 없는 이름:", "スキップ — Windows で作成できない名前:"),
+    ("sftp.unsafename", "Refused — the server sent a name that points outside the folder:", "거부 — 서버가 폴더 밖을 가리키는 이름을 보냈습니다:", "拒否 — サーバーがフォルダ外を指す名前を返しました:"),
 ];

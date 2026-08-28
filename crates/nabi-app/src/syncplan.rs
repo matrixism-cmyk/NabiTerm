@@ -111,6 +111,29 @@ fn is_drive(comp: &str) -> bool {
     b.len() >= 2 && b[0].is_ascii_alphabetic() && b[1] == b':'
 }
 
+/// **파일 이름 하나로 안전한가** — 폴더를 벗어나는 이름을 거부한다(배치 AE).
+///
+/// 원격 서버가 준 이름을 대상 폴더에 join 하기 전에 통과시킬 것. `safe_rel` 과 달리
+/// **구분자를 아예 허용하지 않는다** — 목록의 한 항목은 경로가 아니라 이름이어야 한다.
+///
+/// ## 왜 필요한가
+///
+/// 내려받기는 `dir.join(원격이_준_이름)` 을 그대로 했다. 서버가 이름을 `C:evil` 로 주면
+/// 러스트의 join 이 **뿌리를 통째로 갈아치워** 사용자가 고른 폴더가 아니라 `C:\evil` 에
+/// 쓴다(시험 `what_actually_escapes_when_you_join_it` 에서 확인한 그 동작이다).
+/// `..` 이나 `a/b` 도 마찬가지로 폴더 밖을 가리킬 수 있다.
+///
+/// 서버 목록의 이름은 **우리가 정하지 않은 값**이다. 그 값을 그대로 경로에 붙이면
+/// 서버가 우리 디스크의 어디에 쓸지 고르게 된다.
+pub fn safe_name(name: &str) -> bool {
+    !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains('/')
+        && !name.contains('\\')
+        && !is_drive(name)
+}
+
 /// **윈도우가 이 이름으로 파일을 만들 수 있는가** — 내려받기 전에만 묻는다.
 ///
 /// 리눅스 서버에는 윈도우가 못 쓰는 이름이 흔하다: 콜론(NTFS 는 대체 데이터 스트림 문법으로
@@ -272,6 +295,31 @@ mod tests {
         // 반면 가운데 조각은 갈아치우지 않는다 — 접두사는 맨 앞에서만 인정된다.
         assert!(base.join("logs/a:b.log").starts_with(base), "가운데 콜론은 벗어나지 않는다");
         assert!(base.join("a/C:evil").starts_with(base), "가운데면 드라이브 모양이어도 안 벗어난다");
+    }
+
+    #[test]
+    fn a_server_supplied_name_cannot_choose_where_we_write() {
+        // 목록의 한 항목은 경로가 아니라 이름이어야 한다. 서버가 준 값을 그대로
+        // `dir.join` 하면 서버가 우리 디스크의 어디에 쓸지 고르게 된다.
+        for evil in ["C:evil", "..", ".", "../x", "a/b", "a" ] {
+            let ok = safe_name(evil);
+            assert_eq!(ok, evil == "a", "{evil} -> {ok}");
+        }
+    }
+
+    #[test]
+    fn an_ordinary_remote_name_still_downloads() {
+        // 막느라 정상 파일까지 막으면 기능이 죽는다.
+        assert!(safe_name("2026-08-28T10:00:00.log"), "콜론이 가운데면 이름으로 정상이다");
+        assert!(safe_name("한글 파일.txt"));
+        assert!(safe_name("a.tar.gz"));
+    }
+
+    #[test]
+    fn a_backslash_in_a_name_is_refused() {
+        // 윈도우에서는 역빗금도 구분자다 — 서버가 그것을 이름에 넣으면 폴더를 벗어난다.
+        assert!(!safe_name(r"a\b"));
+        assert!(!safe_name(r"..\..\x"));
     }
 
 }

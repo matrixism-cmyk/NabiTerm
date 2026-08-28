@@ -74,6 +74,22 @@ impl NabiApp {
 
     /// 파일 목록을 대상 폴더로 다운로드한다(겹치면 덮어쓰기 확인). 취소 시 아무 것도 하지 않는다.
     fn download_files_into(&mut self, id: nabi_proto::SftpId, dir: &std::path::Path, targets: Vec<(String, u64)>) {
+        // 서버가 준 이름을 그대로 `dir.join` 하면 **서버가 우리 디스크의 어디에 쓸지 고른다**
+        // (배치 AE). `C:evil` 같은 이름은 러스트의 join 이 뿌리를 통째로 갈아치우고, `..` 이나
+        // `a/b` 도 폴더 밖을 가리킨다. 목록의 한 항목은 경로가 아니라 **이름**이어야 한다.
+        let (targets, unsafe_names): (Vec<_>, Vec<_>) =
+            targets.into_iter().partition(|(n, _)| crate::syncplan::safe_name(n));
+        if !unsafe_names.is_empty() {
+            // 조용히 버리지 않는다 — 서버가 이상한 이름을 준 것은 사용자가 알아야 할 일이다.
+            let shown: Vec<&str> = unsafe_names.iter().take(3).map(|(n, _)| n.as_str()).collect();
+            self.notify = Some((
+                format!("{} {}", tr(self.lang, "sftp.unsafename"), shown.join(", ")),
+                std::time::Instant::now(),
+            ));
+        }
+        if targets.is_empty() {
+            return;
+        }
         let names: Vec<String> = targets.iter().map(|(n, _)| n.clone()).collect();
         let skip_existing = match self.ask_overwrite(dir, &names) {
             Overwrite::Cancel => {
