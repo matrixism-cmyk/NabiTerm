@@ -47,10 +47,18 @@ pub(crate) struct FileHits {
 /// 이진 파일을 글자로 훑으면 쓰레기 줄이 결과에 섞인다. 판정은 미리보기와 같은 근거를
 /// 쓴다 — NUL 바이트가 있으면 글이 아니다.
 pub(crate) fn scan_file(rel: &str, bytes: &[u8], pat: &str, ci: bool, capped: bool) -> Option<FileHits> {
-    if bytes.contains(&0) {
+    // 이진 판정과 인코딩 판정 **둘 다** 이미 있는 것을 쓴다. 처음엔 여기서 `contains(&0)` 과
+    // `from_utf8_lossy` 를 직접 썼는데, 그러면 미리보기와 판정이 갈라진다 — 같은 파일을
+    // 한쪽은 글로 보고 다른 쪽은 이진으로 본다.
+    //
+    // `from_utf8_lossy` 는 특히 나빴다. **한국 서버에는 CP949 파일이 흔한데** 그것을
+    // 대체 문자로 뭉개면 한글 질의는 **영원히 아무것도 못 찾는다.** 못 찾은 이유가 화면에
+    // 드러나지도 않는다.
+    if nabi_editor::edithex::is_binary(bytes) {
         return None;
     }
-    let text = String::from_utf8_lossy(bytes);
+    let enc = nabi_editor::editload::detect_encoding(bytes);
+    let (text, _, _) = enc.decode(bytes);
     // 마지막 줄은 상한에서 잘렸을 수 있다. 잘린 줄을 결과에 넣으면 없는 내용을 보여 주게 된다.
     let body = if capped { drop_last_line(&text) } else { text.to_string() };
     let lines = crate::findfiles::grep_lines(&body, pat, ci);
@@ -172,4 +180,33 @@ mod tests {
         let (text, _) = report(&hits, "port", false, 1);
         assert!(text.starts_with("etc/x.conf:7: Port 22"), "경로:줄: 내용 — 로컬과 같은 모양: {text}");
     }
+    #[test]
+    fn a_korean_cp949_file_is_searchable() {
+        // 이 시험이 이 배치에서 가장 중요하다. 한국 서버에는 CP949 파일이 흔한데,
+        // `from_utf8_lossy` 로 읽으면 한글이 대체 문자로 뭉개져 **한글 질의는 영원히
+        // 아무것도 못 찾는다.** 못 찾은 이유가 화면에 드러나지도 않는다.
+        let (bytes, _, _) = encoding_rs::EUC_KR.encode("첫 줄
+포트 설정은 2222 입니다
+끝");
+        let f = scan_file("etc/설정.conf", &bytes, "포트", true, false)
+            .expect("CP949 한글 파일에서 한글을 찾아야 한다");
+        assert_eq!(f.lines.len(), 1);
+        assert!(f.lines[0].1.contains("포트"), "{:?}", f.lines);
+    }
+
+    #[test]
+    fn a_utf8_korean_file_is_searchable_too() {
+        let f = scan_file("x", "설정
+포트 2222".as_bytes(), "포트", true, false).unwrap();
+        assert_eq!(f.lines.len(), 1);
+    }
+
+    #[test]
+    fn binary_detection_matches_the_preview_window() {
+        // 판정이 갈라지면 같은 파일을 한쪽은 글로, 다른 쪽은 이진으로 본다.
+        let b = b" binary";
+        assert!(nabi_editor::edithex::is_binary(b));
+        assert_eq!(scan_file("a.bin", b, "binary", true, false), None);
+    }
+
 }

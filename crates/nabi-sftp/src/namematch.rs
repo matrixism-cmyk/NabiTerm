@@ -47,8 +47,6 @@ fn glob(name: &str, pat: &str) -> bool {
     j == p.len()
 }
 
-/// 트리 결과를 걸러 낸다. `(찾은 것, 상한에 걸려 못 담은 수)`.
-
 #[cfg(test)]
 mod tests {
     use super::*;
