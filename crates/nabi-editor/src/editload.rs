@@ -53,15 +53,17 @@ pub fn encode(text: &str, label: &str) -> Vec<u8> {
     enc.encode(text).0.into_owned()
 }
 
-/// 줄 끝 추정(CRLF/LF/CR).
+/// 줄 끝 추정 — **규칙은 [`crate::eolmix`] 한 곳에만 있다**(배치 AE).
+///
+/// 예전에는 여기서 "어디든 CRLF 가 하나라도 있으면 CRLF" 라고 봤고, 초대용량 경로
+/// (`textdata`)는 "첫 개행이 정한다" 였다. 같은 파일에 대해 **답이 달랐다**:
+/// LF 로 시작해 중간에 CRLF 가 한 번 섞인 파일을 이쪽은 CRLF, 저쪽은 LF 로 읽는다.
+/// 그러면 같은 파일을 어느 편집기로 여느냐에 따라 Enter 가 **다른 줄바꿈을 넣는다** —
+/// 파일 내용이 달라지는 차이다.
+///
+/// 이제 셋 다 `count_eols` + `dominant()` 를 쓴다. 동률 규칙(CRLF → LF → CR)도 거기 있다.
 pub fn detect_eol(text: &str) -> &'static str {
-    if text.contains("\r\n") {
-        "CRLF"
-    } else if text.contains('\r') {
-        "CR"
-    } else {
-        "LF"
-    }
+    crate::eolmix::count_eols(text).dominant()
 }
 
 /// 줄 끝을 LF 하나로 맞춘다 — **한 번만 훑고, 필요 없으면 사본을 만들지 않는다.**

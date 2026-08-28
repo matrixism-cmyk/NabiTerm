@@ -155,4 +155,25 @@ mod tests {
         let c = count_eols("a\r");
         assert_eq!(c.cr, 1);
     }
+    #[test]
+    fn both_editors_read_the_same_file_the_same_way() {
+        // 이 시험이 이 통합의 이유다. 예전에는 일반 경로가 "어디든 CRLF 가 하나라도 있으면
+        // CRLF", 초대용량 경로가 "첫 개행이 정한다" 였다. LF 로 시작해 중간에 CRLF 가 한 번
+        // 섞인 파일을 한쪽은 CRLF, 다른 쪽은 LF 로 읽었다 — 그러면 같은 파일에서 Enter 가
+        // 다른 줄바꿈을 넣는다. 파일 내용이 달라지는 차이다.
+        let mixed = "a\nb\r\nc\nd";
+        assert_eq!(crate::editload::detect_eol(mixed), "LF", "LF 가 둘, CRLF 가 하나 → 다수는 LF");
+        // 초대용량 경로도 같은 규칙을 쓴다(같은 계수기 → 같은 dominant).
+        let d = crate::textdata::TextData::from_vec(mixed.as_bytes().to_vec());
+        assert_eq!(d.eol, crate::editload::detect_eol(mixed), "두 편집기가 같은 답을 내야 한다");
+    }
+
+    #[test]
+    fn a_crlf_file_stays_crlf_in_both() {
+        let crlf = "a\r\nb\r\nc";
+        assert_eq!(crate::editload::detect_eol(crlf), "CRLF");
+        let d = crate::textdata::TextData::from_vec(crlf.as_bytes().to_vec());
+        assert_eq!(d.eol, "CRLF");
+    }
+
 }

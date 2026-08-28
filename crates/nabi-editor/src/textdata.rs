@@ -25,15 +25,18 @@ pub struct TextData {
     pub eol: &'static str,
 }
 
-/// 문서 앞부분을 보고 줄 끝 종류를 정한다(첫 개행 기준 — 섞여 있으면 다수가 아니라 첫 줄을 따른다).
+/// 문서 앞부분을 보고 줄 끝 종류를 정한다 — **규칙은 `eolmix` 한 곳에만 있다**(배치 AE).
+///
+/// 예전에는 여기서 "첫 개행이 정한다"였고 일반 경로(`editload`)는 "어디든 CRLF 가 하나라도
+/// 있으면 CRLF"였다. 같은 파일에 대해 **답이 달랐다** — LF 로 시작해 중간에 CRLF 가 섞인
+/// 파일을 여기서는 LF, 저기서는 CRLF 로 읽었다. 그러면 같은 파일을 어느 편집기로 여느냐에
+/// 따라 Enter 가 **다른 줄바꿈을 넣는다.** 파일 내용이 달라지는 차이다.
+///
+/// 여기서는 **받은 앞부분 안에서만** 센다. 전체를 훑는 것은 이 편집기가 하지 않기로 한
+/// 일이고, 그 사실은 상태바가 밝힌다.
 fn detect_eol(head: &[u8]) -> &'static str {
-    match memchr::memchr(b'\n', head) {
-        Some(0) => "LF",
-        Some(i) if head[i - 1] == b'\r' => "CRLF",
-        Some(_) => "LF",
-        None if head.contains(&b'\r') => "CR",
-        None => "LF",
-    }
+    // 앞부분이 글자 가운데서 잘렸을 수 있다. 줄 끝만 세므로 깨진 조각은 그냥 건너뛴다.
+    crate::eolmix::count_eols(&String::from_utf8_lossy(head)).dominant()
 }
 
 impl TextData {
