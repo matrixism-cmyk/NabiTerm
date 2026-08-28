@@ -198,9 +198,12 @@ impl NabiApp {
                 }
                 if let Some(c) = &cwd {
                     ui.separator();
-                    // 클릭 시 탭/창/사이드바 중 선택해서 열기(기본 탭).
+                    // 클릭하면 탭이나 새 창으로 연다(기본은 탭).
+                    //
+                    // 사이드바로 여는 항목은 뺐다. 사이드바는 더 이상 어디서도 쓰지 않는데
+                    // 메뉴에만 남아 있어서, 눌러 보고 나서야 아무 데도 안 뜬다는 것을 알게 됐다.
                     ui.menu_button(short_path(c), |ui| {
-                        for (key, m) in [("status.opentab", 0u8), ("status.openwin", 1), ("status.openside", 2)] {
+                        for (key, m) in [("status.opentab", 0u8), ("status.openwin", 1)] {
                             if ui.button(tr(lang, key)).clicked() { open_browser = Some(m); ui.close(); }
                         }
                         ui.separator();

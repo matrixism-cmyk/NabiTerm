@@ -112,6 +112,19 @@ impl NabiApp {
     /// 매 프레임: 승인 요청을 받아 대기 표시하고, 승인/거부 다이얼로그를 그린다.
     /// verb 그룹(act/inject)별 별도 승인(CP-7) — 요청 그룹을 명시한다.
     pub(crate) fn show_control_approval(&mut self, ctx: &egui::Context) {
+        // "켬"이면 아무것도 묻지 않는다.
+        //
+        // 정책은 이미 "켬"에서 전부 허용하므로 새 요청은 오지 않는다. 문제는 **묻는 모드일
+        // 때 들어와 줄 서 있던 옛 요청**이다. 설정을 "켬"으로 바꿔도 그 요청이 채널에 남아
+        // 있다가 뒤늦게 창을 띄웠다. 사용자가 보기에는 "켜 놨는데 한 번은 묻는" 것이 된다.
+        //
+        // 그래서 켬으로 바뀌면 줄 서 있던 것까지 비운다. 켬 상태에서는 허락을 받을 이유가
+        // 없으니 버려도 잃는 것이 없다.
+        if self.control_policy.mode() == nabi_control::policy::Mode::On {
+            while self.control_ask_rx.try_recv().is_ok() {}
+            self.control_pending = None;
+            return;
+        }
         // 새 승인 요청 수신(중복은 무시 — 첫 요청만 대기).
         if self.control_pending.is_none() {
             if let Ok(req) = self.control_ask_rx.try_recv() {

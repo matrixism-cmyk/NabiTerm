@@ -198,7 +198,6 @@ pub(crate) const CATALOG3: &[(&str, &str, &str, &str)] = &[
     ("browser.free", "free", "여유", "空き"),
     ("status.opentab", "Open in tab", "탭 열기", "タブで開く"),
     ("status.openwin", "Open in window", "창 열기", "ウィンドウで開く"),
-    ("status.openside", "Open in sidebar", "사이드바 열기", "サイドバーで開く"),
     ("link.copy", "Copy link", "링크 복사", "リンクをコピー"),
     ("link.browser", "Open in file browser", "파일 브라우저로 열기", "ファイルブラウザで開く"),
     ("link.editor", "Open in editor", "에디터로 열기", "エディタで開く"),

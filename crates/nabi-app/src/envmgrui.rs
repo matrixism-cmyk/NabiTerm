@@ -26,6 +26,16 @@ impl NabiApp {
             mgr.rescan();
         }
         let st = mgr.scan.lock().map(|s| s.clone()).unwrap_or_default();
+        // 다시 훑는 일은 **다른 실에서** 돈다. 끝나도 아무도 화면을 다시 그려 달라고 하지
+        // 않으면, 훑기 전 상태가 그대로 남는다.
+        //
+        // 그래서 winget 을 깔고 "완료"가 떠도 그 옆의 "설치" 단추가 계속 눌리는 채로 있었다.
+        // 사용자가 마우스를 움직이거나 창을 건드려야 그제야 바뀌었다.
+        //
+        // 훑기가 끝날 때까지 조금씩 다시 그려 달라고 한다.
+        if !st.done {
+            ctx.request_repaint_after(std::time::Duration::from_millis(150));
+        }
         let mut auto_cli = self.config.terminal.ai_cli_auto_update;
         let mut cfg_changed = false;
         let mut pick: Option<(String, String, String)> = None; // (라벨, 스크립트, 첫 메시지)

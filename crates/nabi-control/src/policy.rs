@@ -190,4 +190,18 @@ mod tests {
         p.revoke(7, Group::Inject);
         assert!(!p.allow(Group::Inject, Some(7))); // revoke 후 거부.
     }
+    #[test]
+    fn a_request_queued_while_asking_is_still_in_the_channel_after_turning_on() {
+        // 이 시험은 **버그가 어디 있는지** 못 박는다. 정책은 켬에서 묻지 않는다(아래 확인).
+        // 그런데 묻는 모드일 때 줄 서 있던 요청은 채널에 그대로 남는다. 화면 쪽이 그것을
+        // 비우지 않으면, 사용자가 켬으로 바꿔도 창이 한 번 더 뜬다.
+        let (p, rx) = ControlPolicy::new(Mode::Ask);
+        assert!(!p.allow(Group::Act, Some(1)), "묻는 모드라 막힌다");
+        p.set_mode(Mode::On);
+        assert!(p.allow(Group::Act, Some(1)), "켬이면 바로 허용한다");
+        // 새 요청은 안 보내지만, 아까 보낸 것은 남아 있다.
+        assert!(rx.try_recv().is_ok(), "줄 서 있던 요청이 그대로 남는다");
+        assert!(rx.try_recv().is_err(), "켬으로 바뀐 뒤로는 더 안 보낸다");
+    }
+
 }

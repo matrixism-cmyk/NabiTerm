@@ -29,11 +29,11 @@ impl NabiApp {
     }
 
     /// 지정 경로에서 파일 브라우저를 연다 — mode 0=탭, 1=새 창(분리), 2=사이드바.
+    /// 이 경로를 파일 브라우저로 연다. `mode` 는 0이면 새 탭, 1이면 새 창이다.
+    ///
+    /// 예전에는 2가 사이드바였는데 그 갈래를 뺐다. 사이드바로 여는 길이 더 이상 없어서
+    /// 값만 남아 있었다.
     pub(crate) fn open_browser_path(&mut self, path: PathBuf, mode: u8) {
-        if mode == 2 {
-            (self.browser.path, self.browser.open) = (path, true); // 사이드바.
-            return;
-        }
         let p = nabi_types::next_pane_id();
         self.browser_tabs.insert(p, crate::browserpanel::BrowserPanel { path, ..Default::default() });
         self.add_pane(p);
