@@ -101,6 +101,11 @@ pub enum Event {
     },
     /// 포트 포워딩 시작됨(id + 사람이 읽는 설명 메시지).
     ForwardStarted { id: u64, message: String },
+    /// 터널이 **스스로 끊겼다**(배치 AH) — 사용자가 멈춘 것이 아니다.
+    ///
+    /// 예전에는 성공 뒤 영원히 잠들어(`pending()`) 연결이 끊겨도 아무도 몰랐다. 화면의
+    /// "활성" 목록에는 죽은 터널이 그대로 남고, 사용자는 되는 줄 알고 그 포트를 쓴다.
+    ForwardStopped { id: u64, message: String },
     /// 원격이 파일 전송(trzsz)을 요청했다 — 사용자에게 물어야 한다.
     TrzszAsk { pane: PaneId, mode: crate::trzsz::XferMode },
     /// 전송 진행.

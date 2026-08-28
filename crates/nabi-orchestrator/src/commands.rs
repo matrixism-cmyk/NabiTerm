@@ -175,6 +175,9 @@ pub fn handle_command(
                     Ok(p) => {
                         let message = format!("127.0.0.1:{p} \u{2192} {target}");
                         let _ = ev.send(Event::ForwardStarted { id, message });
+                        // -L 은 포트만 돌려받아 **연결이 살아 있는지 물어볼 핸들이 없다**
+                        // (배치 AH). -R·X11 처럼 지켜보려면 start_local_forward 가 핸들도
+                        // 함께 돌려주도록 고쳐야 한다 — 지금은 못 한다고 적어 둔다.
                         std::future::pending::<()>().await; // 중지(abort)될 때까지 유지.
                     }
                     Err(message) => {
@@ -191,6 +194,7 @@ pub fn handle_command(
                     Ok(p) => {
                         let message = format!("127.0.0.1:{p} (SOCKS5 -D)");
                         let _ = ev.send(Event::ForwardStarted { id, message });
+                        // -D(SOCKS5) 도 같은 이유로 지켜보지 못한다(위 -L 설명 참고).
                         std::future::pending::<()>().await;
                     }
                     Err(message) => {
@@ -205,9 +209,12 @@ pub fn handle_command(
             let h = rt.spawn(async move {
                 // 로컬 X 서버는 DISPLAY :0 = 127.0.0.1:6000 관례(VcXsrv/Xming 등).
                 match nabi_ssh_ext::x11::request_x11_forward(params, "127.0.0.1".into(), 6000).await {
-                    Ok(_handle) => {
-                        let _ = ev.send(Event::ForwardStarted { id, message: "X11 → 127.0.0.1:6000 (-X)".into() });
-                        std::future::pending::<()>().await; // 핸들 유지(드롭되면 포워딩 종료).
+                    Ok(handle) => {
+                        let message = String::from("X11 → 127.0.0.1:6000 (-X)");
+                        let _ = ev.send(Event::ForwardStarted { id, message: message.clone() });
+                        // 핸들을 붙들되 **살아 있는지 지켜본다**(배치 AH).
+                        nabi_ssh_ext::watchlive::until_closed(|| handle.is_closed()).await;
+                        let _ = ev.send(Event::ForwardStopped { id, message });
                     }
                     Err(message) => {
                         let _ = ev.send(Event::Error { message });
@@ -226,10 +233,13 @@ pub fn handle_command(
                 match nabi_ssh_ext::start_remote_forward(params, remote_port, "127.0.0.1".into(), remote_port)
                     .await
                 {
-                    Ok(_handle) => {
+                    Ok(handle) => {
                         let message = format!("server:{remote_port} \u{2192} 127.0.0.1:{remote_port} (-R)");
-                        let _ = ev.send(Event::ForwardStarted { id, message });
-                        std::future::pending::<()>().await; // 핸들 유지(드롭되면 포워딩 종료).
+                        let _ = ev.send(Event::ForwardStarted { id, message: message.clone() });
+                        // 핸들을 붙들되 **살아 있는지 지켜본다**(배치 AH). 예전에는 여기서 영원히
+                        // 잠들어, 연결이 끊겨도 화면은 계속 "활성"이라고 말했다.
+                        nabi_ssh_ext::watchlive::until_closed(|| handle.is_closed()).await;
+                        let _ = ev.send(Event::ForwardStopped { id, message });
                     }
                     Err(message) => {
                         let _ = ev.send(Event::Error { message });

@@ -12,6 +12,7 @@ pub mod x11;
 
 pub use forward::start_local_forward;
 pub use proxy_jump::{connect_via_jump, JumpedSession};
+pub mod watchlive;
 pub use remote::start_remote_forward;
 pub use socks5::start_dynamic_forward;
 pub use x11::request_x11_forward;

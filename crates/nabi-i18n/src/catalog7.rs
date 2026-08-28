@@ -167,4 +167,5 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("rules.dropped", "Agent detection rules dropped (bad regex) — check agent-rules:", "감지 규칙이 정규식 오류로 버려졌습니다 — agent-rules 확인:", "検出ルールが正規表現エラーで破棄されました:"),
     ("replace.unwritable", "Some files could not be written — not counted:", "일부 파일을 쓰지 못했습니다(세지 않음):", "一部のファイルを書き込めませんでした:"),
     ("editor.find.huge", "Enter = next, Shift+Enter = previous. No match count — counting would mean reading the whole file", "Enter=다음, Shift+Enter=이전. 개수는 보여 주지 않습니다 — 세려면 파일 전체를 읽어야 합니다", "Enter=次、Shift+Enter=前。件数は表示しません"),
+    ("fwd.dropped", "Tunnel dropped — the connection closed:", "터널이 끊겼습니다 — 연결이 닫혔습니다:", "トンネルが切断されました:"),
 ];

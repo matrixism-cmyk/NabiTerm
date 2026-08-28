@@ -250,6 +250,19 @@ impl NabiApp {
                     self.forward.active.push((id, message));
                     ctx.request_repaint();
                 }
+                // 터널이 **스스로 끊겼다**(배치 AH). 사용자가 멈춘 것이 아니므로 목록에서
+                // 지우는 것만으로는 부족하다 — 왜 갑자기 사라졌는지 말해 줘야 한다.
+                //
+                // 예전에는 이 사건 자체가 없었다. 연결이 끊겨도 화면은 계속 "활성"이라고
+                // 말했고, 사용자는 되는 줄 알고 그 포트를 썼다.
+                Event::ForwardStopped { id, message } => {
+                    self.forward.active.retain(|(i, _)| *i != id);
+                    self.notify = Some((
+                        format!("{} {message}", nabi_i18n::tr(self.lang, "fwd.dropped")),
+                        std::time::Instant::now(),
+                    ));
+                    ctx.request_repaint();
+                }
                 Event::Error { message } | Event::SpawnFailed { message, .. } => {
                     self.notify = Some((message, std::time::Instant::now()));
                     ctx.request_repaint();
