@@ -46,23 +46,12 @@ pub fn dispatch(
         // 읽기 전용(capture 동급): 화면을 규칙으로 평가한 근거를 돌려준다(A4).
         ControlRequest::AgentExplain { pane } => crate::explain::agent_explain(panes, pane),
         // ── 쓰기 동작: verb 그룹별 정책 게이트(CP-7 — act/inject 별도 승인) ──
-        write_verb => {
-            let g = group_of(&write_verb);
-            if !policy.allow(g, from) {
-                tracing::warn!(target: "control", from = ?from, group = ?g, "거부(정책)");
-                let msg = match policy.mode() {
-                    crate::policy::Mode::Off => "제어가 꺼져 있음(설정 control.mode)",
-                    _ => "승인 대기 — nabiTerm에서 승인 후 다시 시도하세요",
-                };
-                return err(msg);
-            }
-            dispatch_write(write_verb, panes, cmd_tx, app_tx, cfg, events, from)
-        }
+        write_verb => crate::gate::gated_write(write_verb, panes, cmd_tx, app_tx, policy, cfg, events, from),
     }
 }
 
 /// verb → 권한 그룹(read는 dispatch 전에 분기돼 여기 안 옴).
-fn group_of(req: &ControlRequest) -> crate::policy::Group {
+pub(crate) fn group_of(req: &ControlRequest) -> crate::policy::Group {
     use crate::policy::Group;
     match req {
         ControlRequest::SendInput { .. }
@@ -104,7 +93,7 @@ fn sftp_roundtrip(
 }
 
 /// 승인된 쓰기 동작 실행(spawn/send/close/resize/open-browser/open-sftp).
-fn dispatch_write(
+pub(crate) fn dispatch_write(
     req: ControlRequest,
     panes: &SharedPanes,
     cmd_tx: &Sender<Command>,

@@ -17,6 +17,8 @@ pub mod matcher;
 pub mod mcp;
 pub mod pipe_acl;
 pub mod policy;
+mod gate;
+pub mod trail;
 pub mod protocol;
 pub mod server;
 pub mod subscribe;
