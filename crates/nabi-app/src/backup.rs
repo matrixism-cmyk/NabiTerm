@@ -84,7 +84,13 @@ pub(crate) fn restore(b: &Backup, layout: &nabi_config::StorageLayout) -> std::i
         let Some(text) = get(b) else { continue };
         let p = path(layout);
         if p.exists() {
-            let _ = std::fs::rename(&p, backup_name(&p));
+            // **밀어 두기가 실패하면 덮어쓰지 않는다**(배치 AG). 위 주석이 약속한 "원래대로
+            // 갈 길"이 바로 이 `.bak` 이고, 그것을 못 만든 채 덮어쓰면 그 길이 사라진다.
+            //
+            // 예전에는 `let _ =` 로 삼키고 그대로 덮어썼다. 되돌릴 수 없는 동작에서
+            // 안전망을 잃은 것을 말하지 않는 것이 가장 나쁘다 — 사용자는 안전망이 있다고
+            // 믿고 복원을 누른다.
+            std::fs::rename(&p, backup_name(&p))?;
         }
         std::fs::write(&p, text)?;
         n += 1;
@@ -202,6 +208,20 @@ mod tests {
         let (_, failed) = collect(&l);
         assert_eq!(failed.len(), 1, "못 읽은 것을 알려야 한다: {failed:?}");
         assert!(failed[0].contains("config"), "어느 파일인지 말해야 한다: {failed:?}");
+    }
+
+    #[test]
+    fn a_restore_stops_when_the_original_cannot_be_set_aside() {
+        // 주석이 약속한 "원래대로 갈 길"이 .bak 이다. 그것을 못 만든 채 덮어쓰면 그 길이
+        // 사라지는데, 예전에는 실패를 삼키고 그대로 덮어썼다.
+        let l = layout("nobak");
+        seed(&l);
+        // .bak 자리에 폴더를 두면 rename 이 실패한다.
+        std::fs::create_dir_all(super::backup_name(&l.config_file)).unwrap();
+        let (b, _) = collect(&l);
+        let before = std::fs::read_to_string(&l.config_file).unwrap();
+        assert!(restore(&b, &l).is_err(), "밀어 두기가 실패하면 복원도 실패해야 한다");
+        assert_eq!(std::fs::read_to_string(&l.config_file).unwrap(), before, "원본이 그대로 남아야 한다");
     }
 
 }
