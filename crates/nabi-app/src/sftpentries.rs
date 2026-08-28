@@ -4,26 +4,10 @@ use crate::sftppanel::SftpPanel;
 use nabi_i18n::{tr, Lang};
 use nabi_proto::SftpEntry;
 
-/// 일괄 이름변경: name에서 find→replace 치환한 새 이름(바뀌지 않으면 None).
-/// replace 토큰: `{n}`=순번, `{nn}`/`{nnn}`=0채움 순번, `{name}`=확장자 뺀 원본명, `{ext}`=확장자.
-pub(crate) fn batch_new_name(name: &str, find: &str, replace: &str, idx: usize) -> Option<String> {
-    if find.is_empty() || !name.contains(find) {
-        return None;
-    }
-    // 확장자 분리(숨김파일 .bashrc는 통째로 name 취급).
-    let (base, ext) = match name.rsplit_once('.') {
-        Some((b, e)) if !b.is_empty() => (b, e),
-        _ => (name, ""),
-    };
-    let replace = replace
-        .replace("{nnn}", &format!("{idx:03}"))
-        .replace("{nn}", &format!("{idx:02}"))
-        .replace("{n}", &idx.to_string())
-        .replace("{name}", base)
-        .replace("{ext}", ext);
-    let new = name.replace(find, &replace);
-    (new != name && !new.is_empty()).then_some(new)
-}
+/// 일괄 이름변경 규칙은 [`crate::renamerule`] 한 곳에만 있다 — 로컬 창과 원격 창이 같은
+/// 규칙으로 이름을 만들어야 사용자가 두 화면을 같은 것으로 믿을 수 있다(배치 AJ).
+pub(crate) use crate::renamerule::batch_new_name;
+
 
 
 /// 원격 항목을 폴더 우선 + 기준(이름/크기/날짜)으로 정렬.
@@ -189,20 +173,5 @@ pub(crate) fn show_entries(
 
 #[cfg(test)]
 mod tests {
-    use super::batch_new_name;
 
-    #[test]
-    fn batch_rename_replaces() {
-        assert_eq!(batch_new_name("a.txt", ".txt", ".bak", 1).as_deref(), Some("a.bak"));
-        assert_eq!(batch_new_name("b.log", ".txt", ".bak", 1), None);
-        assert_eq!(batch_new_name("x", "", "y", 1), None);
-        assert_eq!(batch_new_name("img1", "img", "photo", 1).as_deref(), Some("photo1"));
-        // {n} 순번 치환.
-        assert_eq!(batch_new_name("draft", "draft", "v{n}", 3).as_deref(), Some("v3"));
-        assert_eq!(batch_new_name("a_x", "x", "{n}", 7).as_deref(), Some("a_7"));
-        // 0채움 순번 {nn}/{nnn} + {name}/{ext} 토큰(find는 한 번만 나오는 부분 사용).
-        assert_eq!(batch_new_name("photo.png", "photo", "{nnn}", 5).as_deref(), Some("005.png"));
-        assert_eq!(batch_new_name("photo.png", "photo", "{name}_{nn}", 5).as_deref(), Some("photo_05.png"));
-        assert_eq!(batch_new_name("photo.png", "photo", "{name}-{ext}", 1).as_deref(), Some("photo-png.png"));
-    }
 }

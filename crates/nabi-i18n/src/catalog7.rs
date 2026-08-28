@@ -168,4 +168,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("replace.unwritable", "Some files could not be written — not counted:", "일부 파일을 쓰지 못했습니다(세지 않음):", "一部のファイルを書き込めませんでした:"),
     ("editor.find.huge", "Enter = next, Shift+Enter = previous. No match count — counting would mean reading the whole file", "Enter=다음, Shift+Enter=이전. 개수는 보여 주지 않습니다 — 세려면 파일 전체를 읽어야 합니다", "Enter=次、Shift+Enter=前。件数は表示しません"),
     ("fwd.dropped", "Tunnel dropped — the connection closed:", "터널이 끊겼습니다 — 연결이 닫혔습니다:", "トンネルが切断されました:"),
+    ("browser.batchrename", "Batch rename…", "일괄 이름 변경…", "一括名前変更…"),
+    ("browser.batchrename.none", "Select the files to rename first", "이름을 바꿀 파일을 먼저 고르세요", "名前を変更するファイルを先に選んでください"),
+    ("browser.batchrename.nomatch", "No file matches — nothing will change", "걸리는 파일이 없습니다 — 아무것도 바뀌지 않습니다", "該当するファイルがありません"),
 ];

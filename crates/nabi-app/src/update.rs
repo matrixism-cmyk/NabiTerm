@@ -231,6 +231,7 @@ impl eframe::App for NabiApp {
         self.show_command_palette(ctx);
         self.show_find_bar(ctx);
         self.show_replace_in_files(ctx);
+        self.show_batch_rename(ctx); // 로컬 탐색기 일괄 이름변경(배치 AJ).
         if let Some(msg) = self.reach.lock().ok().and_then(|mut g| g.take()) { self.notify = Some((msg, std::time::Instant::now())); } // SSH 연결 테스트 결과.
         self.dispatch_dropped_files(ctx); // OS 파일 드롭을 커서 위치의 패널로 라우팅.
         self.update_window_title(ctx);

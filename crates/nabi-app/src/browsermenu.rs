@@ -21,6 +21,8 @@ pub(crate) fn empty_space_menu(ui: &mut egui::Ui, a: &mut BrowserAct, lang: Lang
         if ui.button(format!("\u{2611} {}", tr("menu.selectall"))).clicked() { a.select_all = true; ui.close(); }
         if ui.button(format!("\u{21c4} {}", tr("menu.invertsel"))).clicked() { a.invert_sel = true; ui.close(); }
         if ui.button(format!("\u{1f4cb} {}", tr("menu.copypaths"))).clicked() { a.copy_paths = true; ui.close(); }
+        // 선택한 파일들을 한꺼번에 — 새 메뉴를 만들지 않고 이미 있는 도구 묶음에 넣는다.
+        if ui.button(format!("\u{270e} {}", tr("browser.batchrename"))).clicked() { a.batch_rename = true; ui.close(); }
         ui.separator();
         if ui.button(format!("\u{1f333} {}", tr("dir.tree"))).clicked() { a.dir_tree = true; ui.close(); }
         if ui.button(format!("\u{1f4ca} {}", tr("dir.stats"))).clicked() { a.dir_stats = true; ui.close(); }

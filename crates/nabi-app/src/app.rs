@@ -346,6 +346,8 @@ pub struct NabiApp {
     pub autolog_fail_noticed: bool,
     /// 깨진 감지 규칙을 이미 알렸는가(배치 AF) — 한 번만 말한다.
     pub rules_drop_noticed: bool,
+    /// 로컬 탐색기 일괄 이름변경 창(배치 AJ) — 닫으면 통째로 버린다.
+    pub batch_rename: Option<crate::browserrename::BatchRename>,
     /// 방금 연 기록 — pane이 생기면 그 pane에 건다(PaneSpawned 를 기다린다).
     pub pending_replay: Option<Vec<(f64, String)>>,
     pub editor_mtimes: HashMap<PaneId, std::time::SystemTime>,

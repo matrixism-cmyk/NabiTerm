@@ -137,6 +137,10 @@ impl NabiApp {
         let bulk = |name: &str, multi: &std::collections::HashSet<String>| -> Vec<String> {
             if multi.len() > 1 && multi.contains(name) { multi.iter().cloned().collect() } else { vec![name.to_string()] }
         };
+        // 일괄 이름변경 창 열기(배치 AJ) — 실제 변경은 창에서 미리 보고 확인한 뒤에 한다.
+        if a.batch_rename {
+            self.open_batch_rename();
+        }
         if let Some(name) = a.duplicate {
             for n in bulk(&name, &self.browser.multi) {
                 crate::browserops::duplicate_in_dir(&path, &n, nabi_i18n::tr(self.lang, "browser.copyword")); // 복제(충돌 시 번호).
