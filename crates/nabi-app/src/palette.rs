@@ -73,6 +73,8 @@ pub(crate) enum PaletteAction {
     RunHistory(String), PasteClip(String), FocusPane(nabi_types::PaneId),
     /// 기록(.cast) 재생 — 지나간 세션을 원래 속도로 되감아 본다(배치 Z T2).
     OpenReplay,
+    /// 에이전트 행동 기록 — 제어 평면이 무엇을 했는지 본다(배치 AB).
+    OpenAgentTrail,
     DuplicateConnection, ToggleSessionLog, NewTabHere, ClearBuffer,
     SyncUpload, SyncDownload, CopyOutputMd, CompareFiles, FindDuplicates, FindLargeFiles,
     CopySshCmd, GenSshKey, InstallPubkey, SelToPad, CopyTabsMd, SaveAllDocs,

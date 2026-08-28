@@ -126,6 +126,7 @@ impl NabiApp {
                 }
             }
             PaletteAction::OpenReplay => self.open_replay(),
+            PaletteAction::OpenAgentTrail => self.agent_trail_open = true,
             PaletteAction::DuplicateConnection => self.duplicate_connection(),
             PaletteAction::ToggleSessionLog => self.toggle_session_log(),
             PaletteAction::NewTabHere => self.spawn_here(),

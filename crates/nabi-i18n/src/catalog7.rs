@@ -146,4 +146,10 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("replay.empty", "Nothing to replay — the file has no output in it", "재생할 것이 없습니다 — 파일에 남은 출력이 없습니다", "再生するものがありません — ファイルに出力がありません"),
     ("replay.unreadable", "Could not read that file", "그 파일을 읽지 못했습니다", "そのファイルを読めませんでした"),
     ("cfg.savefailed", "Could not save settings", "설정을 저장하지 못했습니다", "設定を保存できませんでした"),
+    ("trail.title", "Agent activity", "에이전트 행동 기록", "エージェントの行動記録"),
+    ("trail.empty", "Nothing yet — no agent has asked this window to do anything", "아직 없습니다 — 에이전트가 요청한 일이 없습니다", "まだありません"),
+    ("trail.count", "Records", "기록", "件数"),
+    ("trail.copy", "Copy all", "전부 복사", "すべてコピー"),
+    ("trail.copied", "\u{2713} Copied", "\u{2713} 복사됨 — 설명할 곳에 그대로 붙여넣으세요", "\u{2713} コピーしました"),
+    ("trail.nocontent", "What was done is recorded — never the content. Passwords and tokens are not stored here.", "무엇을 했는지만 남깁니다 — 내용은 남기지 않습니다. 비밀번호·토큰은 여기 저장되지 않습니다.", "何をしたかだけを記録します — 内容は残しません。"),
 ];

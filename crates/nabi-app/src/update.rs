@@ -219,6 +219,7 @@ impl eframe::App for NabiApp {
         self.show_broadcast_results(ctx); // 일괄 명령 결과 집계(T7-3).
         self.lsp_tick(); // nabiPad LSP 동기화·진단·정의 응답(T6-4).
         self.show_xfer_history(ctx); // SFTP 전송 히스토리(S6-60).
+        self.show_agent_trail(ctx); // 에이전트 행동 기록(배치 AB).
         self.show_keygen_modal(ctx); // SSH 키 생성(ed25519).
         self.show_sync_dialog(ctx); // 폴더 동기화(S6-51).
         self.sync_watch_tick(ctx); // 원격 최신유지(S6-54).

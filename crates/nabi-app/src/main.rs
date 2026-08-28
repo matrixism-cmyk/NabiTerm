@@ -53,7 +53,8 @@ mod editorconflict; mod guard; mod guardui; mod inputline; mod lastfail; mod log
 mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
 
-mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sftpgrid; mod browsersort; mod keyscan; mod ronsalvage; mod savecfg;
+mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sftpgrid; mod browsersort; mod keyscan;
+mod ronsalvage; mod savecfg; mod trailui;
 mod replay; mod replayapp; mod sessioncast; mod sessioncastread;
 mod sessionlog; mod sessionnote; mod sessenvui; mod sessionctx;
 mod extwatch; mod triggers; mod findall; mod findallui; mod findfiles; mod difflines; mod dupfiles; mod largefiles;

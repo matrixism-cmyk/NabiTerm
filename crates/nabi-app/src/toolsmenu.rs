@@ -96,6 +96,10 @@ const GROUPS: &[Group] = &[
         &[
             ("settings.sec.schedule", PaletteAction::OpenSchedule),
             ("settings.sec.telegram", PaletteAction::OpenTelegram),
+            // 에이전트 행동 기록은 **이력이 아니라 자동화가 무엇을 했는지**다.
+            // 기록·이력에 넣었더니 그 묶음이 여섯이 되어 드리프트 시험이 잡았고,
+            // 그 김에 제자리를 다시 생각하니 여기가 맞았다.
+            ("trail.title", PaletteAction::OpenAgentTrail),
         ],
     ),
 ];

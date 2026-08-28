@@ -330,6 +330,8 @@ pub struct NabiApp {
     pub session_logs: HashMap<PaneId, crate::sessionlog::SessionLog>,
     /// 재생 중인 기록(pane별). 비어 있으면 아무 일도 하지 않는다.
     pub replays: crate::replay::Replays,
+    /// 에이전트 행동 기록 창이 열려 있는가.
+    pub agent_trail_open: bool,
     /// 방금 연 기록 — pane이 생기면 그 pane에 건다(PaneSpawned 를 기다린다).
     pub pending_replay: Option<Vec<(f64, String)>>,
     pub editor_mtimes: HashMap<PaneId, std::time::SystemTime>,
