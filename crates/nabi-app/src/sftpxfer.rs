@@ -204,13 +204,7 @@ pub(crate) fn xfer_totals(items: &[(u64, u64, u64)]) -> (u64, u64, u64) {
 
 /// 초를 사람이 읽는 짧은 표기로(예: 45s, 1m23s, 2h05m).
 pub(crate) fn human_secs(s: u64) -> String {
-    if s >= 3600 {
-        format!("{}h{:02}m", s / 3600, (s % 3600) / 60)
-    } else if s >= 60 {
-        format!("{}m{:02}s", s / 60, s % 60)
-    } else {
-        format!("{s}s")
-    }
+    crate::statusfmt::human_secs(s)
 }
 
 /// 큐가 **지금은 더 움직이지 않는가** — 진행 중도 대기도 없다(일시정지는 있어도 된다).
@@ -284,9 +278,11 @@ mod tests {
     #[test]
     fn eta_and_format() {
         // 남은 시간 계산은 xferbar(앱 공통 진행률 위젯)로 옮겼다 — 여기서는 표기만 지킨다.
+        // 모양은 이제 `statusfmt::human_secs` 하나가 정한다 — 여기만 사이를 안 띄워서
+        // ("1m23s") 다른 화면과 달라 보였다(배치 AD).
         assert_eq!(human_secs(45), "45s");
-        assert_eq!(human_secs(83), "1m23s");
-        assert_eq!(human_secs(7505), "2h05m");
+        assert_eq!(human_secs(83), "1m 23s");
+        assert_eq!(human_secs(7505), "2h 05m");
     }
 
     /// 목록 갱신은 큐가 빈 순간 한 번만 — 항목마다 받으면 동시 전송 중 목록이 요동친다.

@@ -58,11 +58,8 @@ pub(crate) fn note_close(list: &mut [Entry], host: &str, user: &str, now: i64, w
 
 /// 화면에 낼 한 줄: "web-01 · 14:02 · 3시간 12분".
 pub(crate) fn human_secs(secs: u64) -> String {
-    match secs {
-        0..=59 => format!("{secs}s"),
-        60..=3599 => format!("{}m {}s", secs / 60, secs % 60),
-        _ => format!("{}h {}m", secs / 3600, (secs % 3600) / 60),
-    }
+    // 여기만 자리를 안 채워서(1h 1m) 목록에서 숫자가 들쭉날쭉했다. 이제 공용 규칙을 쓴다.
+    crate::statusfmt::human_secs(secs)
 }
 
 /// 이력 파일 경로. 설정과 같은 폴더에 **따로** 둔다 — 설정이 한 필드 때문에 통째로
@@ -158,9 +155,11 @@ mod tests {
 
     #[test]
     fn durations_read_in_the_largest_useful_unit() {
+        // 모양은 이제 `statusfmt::human_secs` 하나가 정한다 — 여기만 자리를 안 채워서
+        // ("2m 5s"·"2h 2m") 목록의 숫자가 들쭉날쭉했다(배치 AD).
         assert_eq!(human_secs(45), "45s");
-        assert_eq!(human_secs(125), "2m 5s");
-        assert_eq!(human_secs(7_320), "2h 2m");
+        assert_eq!(human_secs(125), "2m 05s");
+        assert_eq!(human_secs(7_320), "2h 02m");
     }
 
     /// 저장했다 읽으면 그대로여야 한다 — 이력의 쓸모는 **다음에 열었을 때** 나온다.

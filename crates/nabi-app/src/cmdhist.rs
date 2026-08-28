@@ -117,11 +117,9 @@ pub(crate) fn secs_for(v: &[(i64, u32)], ts: i64) -> Option<u32> {
 
 /// 사람이 읽는 소요 시간. 초 단위는 `12s`, 분이 넘으면 `3m 07s`, 시간이 넘으면 `1h 04m`.
 pub(crate) fn human_secs(s: u32) -> String {
-    match s {
-        0..=59 => format!("{s}s"),
-        60..=3599 => format!("{}m {:02}s", s / 60, s % 60),
-        _ => format!("{}h {:02}m", s / 3600, (s % 3600) / 60),
-    }
+    // 모양은 `statusfmt::human_secs` 한 곳에만 있다. 예전에는 같은 일을 하는 함수가 다섯
+    // 개였고 답이 서로 달랐다 — 3661초가 화면마다 1h01m · 1h 01m · 1h 1m 로 보였다.
+    crate::statusfmt::human_secs(s as u64)
 }
 
 #[cfg(test)]

@@ -137,14 +137,7 @@ fn parse_count(s: &str) -> Option<f32> {
 
 /// 경과 시간(초) → "3m12s" / "45s" / "1h02m".
 fn human_elapsed(secs: u64) -> String {
-    let (h, m, s) = (secs / 3600, (secs % 3600) / 60, secs % 60);
-    if h > 0 {
-        format!("{h}h{m:02}m")
-    } else if m > 0 {
-        format!("{m}m{s:02}s")
-    } else {
-        format!("{s}s")
-    }
+    crate::statusfmt::human_secs(secs)
 }
 
 /// AI 표시를 만든다. pane_status(발행값)가 있으면 우선, 없으면 run_cmd 자동 감지.
@@ -203,15 +196,16 @@ mod tests {
 
     #[test]
     fn elapsed_fmt() {
+        // 모양은 이제 `statusfmt::human_secs` 하나가 정한다(배치 AD).
         assert_eq!(human_elapsed(45), "45s");
-        assert_eq!(human_elapsed(3 * 60 + 12), "3m12s");
-        assert_eq!(human_elapsed(3600 + 2 * 60), "1h02m");
+        assert_eq!(human_elapsed(3 * 60 + 12), "3m 12s");
+        assert_eq!(human_elapsed(3600 + 2 * 60), "1h 02m");
     }
 
     #[test]
     fn display_from_run_cmd() {
         let d = ai_display(None, Some("claude --resume"), Some(Duration::from_secs(72))).unwrap();
-        assert!(d.label.contains("claude") && d.label.contains("1m12s"));
+        assert!(d.label.contains("claude") && d.label.contains("1m 12s"));
         assert!(ai_display(None, Some("ls -la"), None).is_none());
     }
 
