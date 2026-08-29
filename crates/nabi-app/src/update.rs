@@ -94,6 +94,8 @@ impl eframe::App for NabiApp {
             self.start_ai_cli_auto_update(); // AI CLI 자동 업데이트(설정에서 켠 경우, 하루 1회).
             self.maybe_prompt_shellinteg(); // 셸 통합 미설치면 설치 권장 모달.
         }
+        // 탐색기에서 파일을 nabiPad 로 열라고 하며 뜬 경우(배치 AP) — 첫 프레임에 한 번.
+        self.open_startup_file();
         self.poll_ai_cli_auto_update();
         // 팁 AI 번역이 끝났으면 캐시에 넣고 한 번 다시 그린다(오버레이 갱신).
         if self.tip_ai.poll() {

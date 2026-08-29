@@ -51,6 +51,11 @@ Name: "shellmenu"; Description: "탐색기 우클릭 메뉴에 'nabiTerm에서 �
 Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm"; ValueType: string; ValueData: "nabiTerm에서 열기"; Flags: uninsdeletekey; Tasks: shellmenu
 Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
 Root: HKA; Subkey: "Software\Classes\Directory\shell\nabiTerm\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --open-here ""%V"""; Tasks: shellmenu
+; 파일 우클릭 "nabiPad로 편집"(사용자 요청 2026-08-29). `*` 는 모든 파일에 붙는다.
+; %1 은 그 파일 경로다(폴더용 %V 와 다르다 — 폴더는 위 Directory 규칙이 맡는다).
+Root: HKA; Subkey: "Software\Classes\*\shell\nabiPad"; ValueType: string; ValueData: "nabiPad로 편집"; Flags: uninsdeletekey; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\*\shell\nabiPad"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
+Root: HKA; Subkey: "Software\Classes\*\shell\nabiPad\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --edit ""%1"""; Tasks: shellmenu
 Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm"; ValueType: string; ValueData: "nabiTerm에서 열기"; Flags: uninsdeletekey; Tasks: shellmenu
 Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm"; ValueType: string; ValueName: "Icon"; ValueData: "{app}\nabiTerm.exe"; Tasks: shellmenu
 Root: HKA; Subkey: "Software\Classes\Directory\Background\shell\nabiTerm\command"; ValueType: string; ValueData: """{app}\nabiTerm.exe"" --open-here ""%V"""; Tasks: shellmenu

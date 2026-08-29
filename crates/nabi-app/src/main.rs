@@ -76,7 +76,7 @@ panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;
-mod webopen; mod progresswatch; mod screenshot; mod shotapply; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
+mod webopen; mod handoff; mod padopen; mod progresswatch; mod screenshot; mod shotapply; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
 
 use app::NabiApp;
 
@@ -144,6 +144,13 @@ fn main() -> eframe::Result<()> {
     match openhere::handle(&args) {
         Some(openhere::Outcome::Delegated) => std::process::exit(0),
         Some(openhere::Outcome::StartHere(p)) => start_cwd = Some(p),
+        None => {}
+    }
+    // 탐색기 우클릭 "nabiPad로 편집". 떠 있으면 그쪽에 넘기고 조용히 끝낸다.
+    match padopen::handle(&args) {
+        Some(padopen::Outcome::Delegated) => std::process::exit(0),
+        // 넘길 곳이 없으면 평소대로 뜨되, 시작할 때 그 파일을 편집기로 연다.
+        Some(padopen::Outcome::PadOnly(p)) => std::env::set_var("NABI_OPEN_FILE", p),
         None => {}
     }
     // `nabi mcp`: stdio MCP 서버(제어 파이프 프록시) — Claude Code 등록:

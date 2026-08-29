@@ -25,13 +25,12 @@ pub(crate) fn handle(args: &[String]) -> Option<Outcome> {
     let i = args.iter().position(|a| a == "--open-here")?;
     let path = args.get(i + 1).cloned().unwrap_or_default();
     let path = normalize(&path);
-    let dir = nabi_config::StorageLayout::resolve().base;
-    match nabi_control::discovery::read(&dir) {
-        Some((pipe, token)) if send(&pipe, &token, &path) => Some(Outcome::Delegated),
-        // 떠 있지만 말이 안 통하면(막 죽는 중 등) 새로 띄우는 편이 낫다 — 아무 일도
-        // 일어나지 않는 것보다 창이 하나 더 뜨는 쪽이 사용자에게 덜 나쁘다.
-        _ => Some(Outcome::StartHere(path)),
+    if crate::handoff::delegate("open-here", "path", &path) {
+        return Some(Outcome::Delegated);
     }
+    // 떠 있지만 말이 안 통하면(막 죽는 중 등) 새로 띄우는 편이 낫다 — 아무 일도
+    // 일어나지 않는 것보다 창이 하나 더 뜨는 쪽이 사용자에게 덜 나쁘다.
+    Some(Outcome::StartHere(path))
 }
 
 /// 탐색기가 주는 경로를 다듬는다.
@@ -53,26 +52,6 @@ pub(crate) fn normalize(raw: &str) -> String {
         return format!("{trimmed}\\");
     }
     if trimmed.is_empty() { t.to_string() } else { trimmed.to_string() }
-}
-
-/// 떠 있는 인스턴스에 요청을 보낸다. 성공하면 true.
-fn send(pipe: &str, token: &str, path: &str) -> bool {
-    use std::io::{BufRead, BufReader, Write};
-    let Ok(mut f) = std::fs::OpenOptions::new().read(true).write(true).open(pipe) else {
-        return false;
-    };
-    let Ok(clone) = f.try_clone() else { return false };
-    let mut rd = BufReader::new(clone);
-    let mut line = String::new();
-    let hello = format!(r#"{{"op":"hello","token":"{token}","from":null}}"#);
-    if writeln!(f, "{hello}").is_err() || rd.read_line(&mut line).is_err() || !line.contains(r#""res":"ok""#) {
-        return false;
-    }
-    // JSON 문자열이라 역슬래시와 따옴표를 escape 한다(경로에 둘 다 들어올 수 있다).
-    let esc = path.replace('\\', "\\\\").replace('"', "\\\"");
-    let req = format!(r#"{{"op":"open-here","path":"{esc}"}}"#);
-    line.clear();
-    writeln!(f, "{req}").is_ok() && rd.read_line(&mut line).is_ok() && line.contains(r#""res":"ok""#)
 }
 
 #[cfg(test)]

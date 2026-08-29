@@ -428,3 +428,36 @@ mod tests {
         assert_eq!(m.scrollback_offset(), 0, "미래로는 갈 수 없다");
     }
 }
+
+#[cfg(test)]
+mod cleartests {
+    use super::*;
+    use nabi_types::GridSize;
+
+    fn model() -> TermModel {
+        TermModel::new(GridSize::new(20, 5), 1000)
+    }
+
+    /// `ESC[2J` 는 화면을 지우는데, **윈도우 콘솔은 지우기 전에 스크롤백으로 밀어 올린다.**
+    /// xterm 계열은 그 자리에서 지운다. 지금 우리가 어느 쪽인지 먼저 확인한다.
+    #[test]
+    fn what_does_clear_screen_do_to_history_now() {
+        let mut m = model();
+        m.process(b"one\r\ntwo\r\nthree\r\n");
+        let before = m.history_size();
+        m.process(b"\x1b[2J");
+        println!("2J 전 히스토리 {before} · 후 {}", m.history_size());
+    }
+
+    /// 밀어 올리기(SU)가 실제로 히스토리를 늘리는가 — 고칠 방법이 있는지 확인한다.
+    #[test]
+    fn scrolling_up_moves_lines_into_history() {
+        let mut m = model();
+        m.process(b"one\r\ntwo\r\nthree\r\n");
+        let before = m.history_size();
+        m.process(b"\x1b[5S");
+        let after = m.history_size();
+        println!("SU 전 {before} · 후 {after}");
+        assert!(after > before, "SU 가 히스토리를 늘려야 고칠 수 있다");
+    }
+}

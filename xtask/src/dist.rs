@@ -61,6 +61,8 @@ fn stage_release(root: &Path, portable: bool) -> Result<(), ()> {
     // 넣지 않아 **프로그램이 아예 뜨지 않았다**(v0.1.491, 사용자 보고). 개발 중에는 cargo 가
     // 빌드 폴더에 그 DLL 을 놓아 줘서 아무 문제가 없었다 — 그래서 아무도 몰랐다.
     copy_runtime_dlls(root, &stage)?;
+    // 넣었으니 됐다고 믿지 않는다. 실제로 띄워 본다.
+    smoke_test(&stage)?;
 
     let marker = stage.join("portable.toml");
     if portable {
@@ -125,6 +127,45 @@ fn build_setup(root: &Path) -> ExitCode {
 }
 
 
+/// 스테이징한 exe 를 **실제로 띄워 본다.**
+///
+/// ## 왜 이게 필요한가
+///
+/// v0.1.491 이 실행 자체가 안 되는 채로 나갔다. DLL 이 빠지면 우리 `main` 이 시작되기도
+/// 전에 윈도우 로더가 실패시킨다. 그래서 **어떤 시험으로도 잡을 수 없다** — 시험은
+/// 프로그램이 떠야 돌기 때문이다.
+///
+/// 반대로 말하면, **한 번 띄워 보기만 하면 반드시 잡힌다.**
+///
+/// ## GUI 를 띄우지 않는다
+///
+/// `cli` 를 주면 창 없이 사용법만 찍고 끝난다. 우리가 알고 싶은 것은 "프로그램이 시작
+/// 지점까지 왔는가"이고, 그건 글자가 나오는 것으로 증명된다.
+///
+/// ```text
+/// DLL 있음   사용법을 찍는다        → 떴다
+/// DLL 없음   로더가 실패시킨다      → 아무 글도 없다
+/// ```
+fn smoke_test(stage: &Path) -> Result<(), ()> {
+    let exe = stage.join("nabiTerm.exe");
+    let out = Command::new(&exe).arg("cli").output().map_err(|e| {
+        eprintln!("스테이징 exe 를 실행하지 못했다: {e}");
+    })?;
+    let said = String::from_utf8_lossy(&out.stdout).into_owned()
+        + &String::from_utf8_lossy(&out.stderr);
+    // 우리 프로그램이 낸 글이 보이면 시작 지점까지 온 것이다. 로더가 막았으면 아무 글도 없다.
+    if said.contains("nabi cli") {
+        println!("실행 확인: 스테이징 exe 가 뜬다");
+        return Ok(());
+    }
+    eprintln!("스테이징 exe 가 뜨지 않는다 — 이대로 내보내면 아무도 실행할 수 없다.");
+    eprintln!("  종료 코드: {:?}", out.status.code());
+    if !said.trim().is_empty() {
+        eprintln!("  프로그램이 낸 글: {}", said.trim());
+    }
+    Err(())
+}
+
 /// exe 옆에 있어야 하는 DLL 들을 스테이징에 넣고, **하나라도 빠지면 빌드를 멈춘다.**
 ///
 /// 조용히 넘어가면 뜨지 않는 설치본이 그대로 나가고, 릴리스는 성공했으므로 아무 경고도
@@ -188,7 +229,11 @@ fn find_build_dll(root: &Path, name: &str) -> Option<std::path::PathBuf> {
             if p.is_dir() {
                 stack.push(p);
             } else if p.file_name().and_then(|f| f.to_str()).is_some_and(|f| f.eq_ignore_ascii_case(name)) {
-                // x64 판을 고른다 — 같은 이름이 arm64/x86 에도 있다.
+                // **x64 만 쓴다.** 같은 이름이 arm64·x86 폴더에도 있는데, 그것을 넣으면
+                // 파일은 있는데 exe 가 뜨지 않는다. 처음에 "없으면 아무거나" 로 뒀다가
+                // x64 를 감춰 시험했을 때 arm64 가 들어가 실제로 그렇게 됐다(배치 AP).
+                //
+                // 없으면 없다고 말하는 편이 낫다 — 있는 척하면 실행해 봐야 드러난다.
                 if p.parent().is_some_and(|d| d.file_name().is_some_and(|f| f == "x64")) {
                     return Some(p);
                 }
@@ -196,7 +241,10 @@ fn find_build_dll(root: &Path, name: &str) -> Option<std::path::PathBuf> {
             }
         }
     }
-    found
+    if let Some(p) = &found {
+        eprintln!("{name}: x64 판이 없다(찾은 것: {}) — 아키텍처가 다르면 exe 가 뜨지 않는다.", p.display());
+    }
+    None
 }
 
 /// vendor/mesa의 Mesa llvmpipe(소프트웨어 OpenGL) DLL을 별도 옵션 자산 zip으로 묶는다.
