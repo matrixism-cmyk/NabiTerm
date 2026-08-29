@@ -5,9 +5,20 @@ use nabi_proto::AppCtl;
 
 impl crate::app::NabiApp {
     /// 제어 평면 앱 동작(브라우저/SFTP 탭)을 매 프레임 적용.
-    pub(crate) fn drain_control_app(&mut self) {
+    ///
+    /// `ctx` 는 화면 캡처가 배율을 알아야 해서 받는다(배치 AN).
+    pub(crate) fn drain_control_app(&mut self, ctx: &egui::Context) {
         while let Ok(act) = self.control_app_rx.try_recv() {
             match act {
+                AppCtl::Screenshot { pane, out } => {
+                    // 성공하면 어디에 남겼는지, 실패하면 왜인지 알린다. 조용히 끝나면
+                    // 부른 쪽이 파일을 어디서 찾아야 할지 알 수 없다.
+                    let msg = match self.take_screenshot(ctx, pane, out) {
+                        Ok(p) => format!("\u{1f4f7} {}", p.display()),
+                        Err(e) => format!("\u{1f4f7} {e}"),
+                    };
+                    self.notify = Some((msg, std::time::Instant::now()));
+                }
                 AppCtl::OpenBrowser { path } => {
                     let pane = self.open_browser_tab();
                     if let (Some(p), Some(b)) = (path, self.browser_tabs.get_mut(&pane)) {

@@ -27,6 +27,7 @@ nabi-secret = { workspace = true }
 nabi-telegram = { workspace = true }
 nabi-i18n = { workspace = true }
 nabi-web = { workspace = true }
+nabi-image = { workspace = true }  # 화면 캡처 PNG 저장(배치 AN).
 nabi-log = { workspace = true }
 nabi-control = { workspace = true }
 nabi-release = { workspace = true }

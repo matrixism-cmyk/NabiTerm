@@ -11,6 +11,8 @@ pub enum AppCtl {
     OpenEditor { path: String },
     /// 그 폴더에서 새 터미널을 열고 창을 앞으로 가져온다(탐색기 우클릭).
     OpenHere { path: String },
+    /// 화면을 PNG 로 뜬다. pane 을 주면 그 자리만, 안 주면 창 전체.
+    Screenshot { pane: Option<u64>, out: Option<String> },
     /// 진행률을 직접 알려 준다. `percent=None` 이면 지운다.
     ///
     /// 알려 준 pane 은 그때부터 화면을 읽지 않는다 — 말한 쪽이 우리 짐작보다 정확하다.

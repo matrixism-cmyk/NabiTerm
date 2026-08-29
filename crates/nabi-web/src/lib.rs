@@ -49,7 +49,17 @@ pub fn open(url: &str, title: &str) -> Result<(), String> {
 }
 
 /// 창 하나의 한살이. 창을 만들고, 소식을 다 받고, 닫히면 정리한다.
+///
+/// **실패하면 반드시 말한다.** 이 실은 부르는 쪽과 떨어져 있어서 여기서 조용히 돌아가면
+/// 아무 일도 일어나지 않은 것처럼 보인다. 창이 안 뜨는데 오류도 없으면 어디를 봐야 할지
+/// 알 수 없다 — 실제로 그렇게 한 번 헤맸다.
 fn run(url: &str, title: &str) {
+    if let Err(why) = try_run(url, title) {
+        eprintln!("[nabi-web] {why}");
+    }
+}
+
+fn try_run(url: &str, title: &str) -> Result<(), String> {
     use windows::Win32::System::Com::{CoInitializeEx, CoUninitialize, COINIT_APARTMENTTHREADED};
     use windows::Win32::UI::WindowsAndMessaging::*;
 
@@ -57,21 +67,30 @@ fn run(url: &str, title: &str) {
     unsafe {
         // WebView2 는 이 방식(한 실만 쓰는 아파트)을 요구한다.
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-        let Ok(hwnd) = win::create(title) else {
-            CoUninitialize();
-            return;
-        };
-        if bar::create(hwnd).is_err() {
+        eprintln!("[dbg] 실 시작");
+        let hwnd = win::create(title).map_err(|e| format!("창을 만들지 못했다: {e}"))?;
+        eprintln!("[dbg] 창 만듦 {hwnd:?}");
+        if let Err(e) = bar::create(hwnd) {
             let _ = DestroyWindow(hwnd);
             CoUninitialize();
-            return;
+            return Err(format!("도구 줄을 만들지 못했다: {e}"));
         }
+        eprintln!("[dbg] 도구 줄 만듦");
         let _ = ShowWindow(hwnd, SW_SHOW);
+        eprintln!("[dbg] 보이기 요청함");
         if let Err(why) = view::attach(hwnd, url) {
-            eprintln!("[nabi-web] {why}");
             let _ = DestroyWindow(hwnd);
             CoUninitialize();
-            return;
+            return Err(why);
+        }
+        {
+            use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsWindowVisible};
+            let mut r = windows::Win32::Foundation::RECT::default();
+            let _ = GetWindowRect(hwnd, &mut r);
+            eprintln!(
+                "[dbg] 보임={} 위치=({},{}) 크기={}x{}",
+                IsWindowVisible(hwnd).as_bool(), r.left, r.top, r.right - r.left, r.bottom - r.top
+            );
         }
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).into() {
@@ -81,4 +100,5 @@ fn run(url: &str, title: &str) {
         view::drop_view();
         CoUninitialize();
     }
+    Ok(())
 }

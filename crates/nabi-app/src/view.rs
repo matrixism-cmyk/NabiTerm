@@ -113,6 +113,7 @@ impl NabiApp {
                 window_panes.iter().copied().filter(|p| self.pane_tag(*p).is_risky()).collect();
             let guard_on = self.config.terminal.guard_dangerous;
             let mut viewer = crate::tabs::TermTabViewer {
+                pane_rects: &mut self.pane_rects,
                 orch: &self.orch,
                 risky_panes: &risky,
                 guard_dangerous: guard_on,

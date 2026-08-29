@@ -65,6 +65,10 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
         Some("open-here") => Ok(ControlRequest::OpenHere {
             path: flag(args, "--path").ok_or("open-here: --path 가 필요합니다")?,
         }),
+        Some("screenshot") => Ok(ControlRequest::Screenshot {
+            pane: flag(args, "--pane").and_then(|v| v.parse().ok()),
+            out: flag(args, "--out"),
+        }),
         Some("progress") => Ok(ControlRequest::Progress {
             pane: flag(args, "--pane").and_then(|v| v.parse().ok()).ok_or("progress: --pane 이 필요합니다")?,
             // --pct 를 빼면 "이제 없음"이라는 뜻이다. 끝났을 때 지우라고 말할 길이 있어야 한다.

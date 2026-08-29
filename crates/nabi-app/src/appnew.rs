@@ -228,6 +228,7 @@ impl NabiApp {
             telegram_heartbeat: (None, String::new()), worktree_prompt: None, worktree_list: None,
             schedules, schedules_path, sched_last_tick: std::time::Instant::now(),
             pending_paste: None,
+            pane_rects: HashMap::new(),
             progress: HashMap::new(),
             progress_seen: HashMap::new(),
             progress_osc: Default::default(), server_stats: HashMap::new(),

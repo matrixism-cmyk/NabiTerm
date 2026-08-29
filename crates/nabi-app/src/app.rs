@@ -291,6 +291,8 @@ pub struct NabiApp {
     /// 여러 줄 붙여넣기 확인 대기((대상 pane, 보낼 바이트)).
     pub pending_paste: Option<(PaneId, Vec<u8>)>,
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).
+    /// 각 탭이 마지막 프레임에 차지한 자리(논리 픽셀). 캡처·웹 브라우저가 함께 쓴다.
+    pub pane_rects: HashMap<PaneId, egui::Rect>,
     pub progress: HashMap<PaneId, u8>,
     /// 화면에서 읽은 진행률을 마지막으로 본 때. 오래 조용하면 지운다(배치 AM).
     pub progress_seen: HashMap<PaneId, std::time::Instant>,

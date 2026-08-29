@@ -55,7 +55,11 @@ fn register_once() -> PCWSTR {
                 ),
                 ..Default::default()
             };
-            RegisterClassW(&cls);
+            if RegisterClassW(&cls) == 0 {
+                // 두 번째 호출은 "이미 있다"로 실패하는데 그건 괜찮다. Once 로 한 번만 부르므로
+                // 여기서 0 이 나오면 진짜 실패다 — 그러면 창도 못 만든다.
+                eprintln!("[nabi-web] 창 종류 등록 실패: {}", windows::core::Error::from_win32());
+            }
         }
     });
     name

@@ -125,6 +125,11 @@ pub struct TermTabViewer<'a> {
     pub tear_off: &'a mut Option<PaneId>,
     /// 탭 우클릭 ▸ 탭 복제 요청(central에서 duplicate_pane 호출).
     pub dup_tab: &'a mut Option<PaneId>,
+    /// 이 프레임에 각 탭이 차지한 자리(화면 좌표, 논리 픽셀).
+    ///
+    /// 화면 캡처와 내장 웹 브라우저가 **똑같이** 이것을 필요로 한다. 두 곳이 따로
+    /// 재려고 하면 언젠가 서로 다른 값을 갖게 되므로 그릴 때 한 번만 적어 둔다.
+    pub pane_rects: &'a mut HashMap<PaneId, egui::Rect>,
     /// "창 안에 띄우기" 신호 — 메인 창 안 오버레이(docked_float)로 이동할 pane(P3).
     pub dock_float: &'a mut Option<PaneId>,
     /// 탭으로 열린 브라우저들(독립 상태) + 수집 액션/닫힘 신호 + 비교맵/업로드 가능 여부.
@@ -282,6 +287,8 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut PaneId) {
         let pane = *tab;
+        // 무엇을 그리든 자리는 같으니 맨 앞에서 적는다 — 아래 갈래마다 적으면 하나를 빠뜨린다.
+        self.pane_rects.insert(pane, ui.max_rect());
         if let Some(b) = self.browser_tabs.get_mut(&pane) {
             // 로컬 파일 브라우저 탭 — 액션은 central이 적용.
             self.browser_act.push((

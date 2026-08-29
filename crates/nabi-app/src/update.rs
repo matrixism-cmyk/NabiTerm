@@ -110,7 +110,7 @@ impl eframe::App for NabiApp {
         self.reset_blink_on_input(ctx);
         // 제어 AppCtl을 이벤트보다 먼저 적용 — DockNext가 같은 프레임의
         // PaneSpawned에 반영되도록(분할/새 창 도킹 순서 보장, CP-7).
-        self.drain_control_app();
+        self.drain_control_app(ctx);
         self.handle_events(ctx);
         self.poll_edits(); // 편집 임시파일 저장 감지 → 원격 재업로드.
         self.flush_session_logs(); // 세션 로깅(활성 pane 출력→파일).

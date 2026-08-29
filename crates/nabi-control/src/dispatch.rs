@@ -194,6 +194,12 @@ pub(crate) fn dispatch_write(
             app_tx.send(AppCtl::OpenHere { path }).ok();
             ControlResponse::Ok
         }
+        ControlRequest::Screenshot { pane, out } => {
+            tracing::info!(target: "control", from = ?from, ?pane, "screenshot");
+            // 화면은 UI 실만 만질 수 있다. 앱에 시키고 결과 경로는 그쪽이 알린다.
+            app_tx.send(AppCtl::Screenshot { pane, out }).ok();
+            ControlResponse::Ok
+        }
         ControlRequest::Progress { pane, percent } => {
             tracing::info!(target: "control", from = ?from, pane, ?percent, "progress");
             // 진행률은 pane 에 붙는 값이라 오케스트레이터가 아니라 앱 상태로 간다.

@@ -2,6 +2,7 @@
 //!
 //! Sixel(DCS) 페이로드를 RGBA 비트맵으로 디코드한다. Kitty/iTerm은 후속.
 
+pub mod shot;
 mod base64;
 mod raster;
 mod sixel;
