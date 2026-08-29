@@ -163,15 +163,30 @@ impl NabiApp {
         }
     }
 
-    fn persist_vault(&self) {
-        if let (Some(v), Some(pw)) = (&self.vault, &self.vault_password) {
-            if let Ok(bytes) = nabi_secret::seal_vault(v, pw) {
-                if let Some(parent) = self.vault_path.parent() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                let _ = std::fs::write(&self.vault_path, bytes);
-            }
+    /// 볼트를 디스크에 쓴다.
+    ///
+    /// ## 실패를 삼키지 않는다
+    ///
+    /// 예전에는 봉인도 쓰기도 `let _ =` 였다. 그래서 디스크가 차거나 권한이 막히면
+    /// **비밀번호를 저장했다고 믿는데 실제로는 안 저장된다.** 다음에 켜면 없다.
+    /// 자격증명은 없어진 것을 나중에 알수록 손해가 큰 종류다(2026-08-30 메뉴 전수 점검).
+    fn persist_vault(&mut self) {
+        let Some(msg) = self.persist_vault_result().err() else { return };
+        self.vault_status = msg;
+    }
+
+    /// 실제로 쓰는 부분 — 실패하면 이유를 돌려준다.
+    fn persist_vault_result(&self) -> Result<(), String> {
+        let (Some(v), Some(pw)) = (&self.vault, &self.vault_password) else {
+            return Ok(()); // 잠겨 있으면 쓸 것이 없다.
+        };
+        let bytes = nabi_secret::seal_vault(v, pw).map_err(|e| format!("\u{2715} {e}"))?;
+        if let Some(parent) = self.vault_path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("\u{2715} {}: {e}", parent.display()))?;
         }
+        std::fs::write(&self.vault_path, bytes)
+            .map_err(|e| format!("\u{2715} {}: {e}", self.vault_path.display()))
     }
 
     /// 비밀을 볼트에 저장한다(잠금 해제 상태에서만). 저장되면 true.

@@ -95,28 +95,67 @@ const TAB_COLORS: [egui::Color32; 5] = [
     egui::Color32::from_rgb(0xb0, 0x6a, 0xd0),
 ];
 
-#[allow(clippy::too_many_arguments)]
+/// 탭 메뉴에서 **나오는 것들**.
+///
+/// 예전에는 이 자루의 내용이 전부 따로따로 인자였다. 열여섯 개까지 늘어나서, 하나를 더
+/// 붙일 때마다 부르는 자리와 받는 자리를 함께 고쳐야 했다 — 그러다 한쪽을 빠뜨리면
+/// 컴파일은 되는데 엉뚱한 값이 들어간다.
+///
+/// 묶어 두면 새 항목을 더할 때 **기본값이 저절로 따라온다**(`Default`).
+#[derive(Default)]
+pub(crate) struct TabMenuOut {
+    /// 이 탭을 분리 창으로 뗀다.
+    pub tear_off: Option<PaneId>,
+    /// 이 탭의 원격(SFTP) 브라우저를 연다.
+    pub sftp_open: Option<PaneId>,
+    /// AI 로 넘긴다(pane, 클립보드만).
+    pub ai_handoff: Option<(PaneId, bool)>,
+    /// 이 pane 의 전체 기록을 그 자리에서 연다.
+    pub open_history: Option<PaneId>,
+    /// 같은 출처로 탭을 하나 더 연다.
+    pub duplicate: bool,
+    /// 사용자에게 보일 한 줄(저장 성공·실패 등). 있으면 중앙이 알림으로 띄운다.
+    pub notice: Option<String>,
+}
+
+/// 탭 메뉴가 **읽고 고치는 것들**.
+///
+/// pane 마다 딸린 표들(이름·색·브로드캐스트 묶음·휠 설정)과 이 탭에 대한 사실 두 가지다.
+/// 인자로 늘어놓으면 열셋이 되어 clippy 가 막고, 막는 것을 `#[allow]` 로 가리면 다음에
+/// 하나 더 붙일 때 또 늘어난다 — 가리지 않고 묶었다.
+pub(crate) struct TabMenuState<'a> {
+    pub tab_names: &'a mut HashMap<PaneId, String>,
+    pub broadcast_group: &'a mut HashSet<PaneId>,
+    pub wheel_keys: &'a mut HashSet<PaneId>,
+    pub wheel_keys_off: &'a mut HashSet<PaneId>,
+    pub tab_colors: &'a mut HashMap<PaneId, egui::Color32>,
+    /// 이 pane 에서 도는 프로그램이 휠을 직접 받는가(자동 감지).
+    pub wheel_auto: bool,
+    pub is_ssh: bool,
+}
+
 pub(crate) fn tab_context_menu(
     ui: &mut egui::Ui,
     tab: &PaneId,
     orch: &OrchestratorHandle,
     lang: Lang,
-    tab_names: &mut HashMap<PaneId, String>,
-    broadcast_group: &mut HashSet<PaneId>,
-    wheel_keys: &mut HashSet<PaneId>,
-    wheel_keys_off: &mut HashSet<PaneId>,
-    wheel_auto: bool,
-    tab_colors: &mut HashMap<PaneId, egui::Color32>,
-    is_ssh: bool,
-    tear_off: &mut Option<PaneId>,
-    sftp_open: &mut Option<PaneId>,
-    ai_handoff: &mut Option<(PaneId, bool)>,
-    // 이 pane 의 전체 기록을 편집기로 열어 달라는 요청(중앙이 처리).
-    open_history: &mut Option<PaneId>,
+    st: &mut TabMenuState<'_>,
+    out: &mut TabMenuOut,
     dock_float: Option<&mut Option<PaneId>>,
-    // 같은 출처로 탭을 하나 더 여는 요청(명령 팔레트에만 있던 기능을 메뉴에도 노출).
-    duplicate: &mut bool,
 ) {
+    // 자루 안의 것들을 옛 이름으로 받아 둔다 — 아래 본문을 그대로 두려는 것이다.
+    let TabMenuOut { tear_off, sftp_open, ai_handoff, open_history, duplicate, notice } = out;
+    let save_msg = notice;
+    let TabMenuState {
+        tab_names,
+        broadcast_group,
+        wheel_keys,
+        wheel_keys_off,
+        tab_colors,
+        wheel_auto,
+        is_ssh,
+    } = st;
+    let (wheel_auto, is_ssh) = (*wheel_auto, *is_ssh);
     ui.label(tr(lang, "tab.rename"));
     let name = tab_names.entry(*tab).or_default();
     // 포커스를 확실히 잡아 키 입력이 터미널로 새지 않게 한다.
@@ -158,9 +197,14 @@ pub(crate) fn tab_context_menu(
     // 출력(히스토리+화면)을 파일로 저장(세션 로그).
     let dump = || orch.panes.read().ok().and_then(|m| m.get(tab).cloned()).and_then(|v| v.model.lock().ok().map(|md| md.dump_text(1_000_000)));
     if ui.button(tr(lang, "menu.saveoutput")).clicked() {
+        // 저장은 대개 **남겨 두려고** 한다. 실패했는데 아무 말이 없으면 파일이 생긴 줄 알고,
+        // 필요할 때가 되어서야 없다는 것을 안다(내보내기에서 겪은 것과 같은 결함).
         if let Some(text) = dump() {
             if let Some(path) = rfd::FileDialog::new().set_file_name("terminal-output.txt").save_file() {
-                let _ = std::fs::write(path, text);
+                *save_msg = Some(match std::fs::write(&path, text) {
+                    Ok(()) => format!("\u{2713} {}", path.display()),
+                    Err(e) => format!("\u{2715} {}: {e}", path.display()),
+                });
             }
         }
         ui.close();

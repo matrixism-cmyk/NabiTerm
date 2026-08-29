@@ -44,50 +44,50 @@ impl NabiApp {
             MenuAction::ConnectSaved(s) => self.connect_saved(s),
             MenuAction::OpenSftp(s) => self.open_sftp_saved(s, false),
             MenuAction::ImportSshConfig => {
+                // `~/.ssh/config` 는 윈도우에서 **없는 편이 흔하다.** 예전에는 그때 아무 일도
+                // 일어나지 않아서, 사용자가 보는 것은 반응 없는 메뉴였다. 이제 없다고 말한다.
                 let path = crate::browser::home_dir().join(".ssh").join("config");
-                if let Ok(content) = std::fs::read_to_string(&path) {
+                let base = path.parent().unwrap_or(&path).to_path_buf();
+                let got = crate::menuimport::from_file(Some(path), || None, |c| {
                     // 요즘 설정은 여러 파일로 쪼개져 있다 — 읽기 전에 Include를 펼친다.
-                    let base = path.parent().unwrap_or(&path).to_path_buf();
-                    let content = crate::sshinclude::expand(&content, &base);
-                    let imported = crate::sshconfig::parse_ssh_config(&content);
-                    self.import_sessions(imported, "menu.importsshconfig", "ssh-config");
-                }
+                    crate::sshconfig::parse_ssh_config(&crate::sshinclude::expand(c, &base))
+                });
+                self.finish_import(got, "menu.importsshconfig", "ssh-config");
             }
             MenuAction::ImportFileZilla => {
                 // 설치본을 자동 탐지(%APPDATA%\FileZilla\sitemanager.xml). 없으면 파일 선택 폴백.
-                let auto = crate::filezilla::default_path();
-                let path = auto.or_else(|| {
-                    let mut dlg = rfd::FileDialog::new().add_filter("FileZilla sitemanager", &["xml"]);
-                    if let Some(d) = std::env::var_os("APPDATA") {
-                        dlg = dlg.set_directory(std::path::Path::new(&d).join("FileZilla"));
-                    }
-                    dlg.pick_file()
-                });
-                if let Some(p) = path {
-                    if let Ok(b) = std::fs::read(&p) {
-                        // 인코딩 자동 감지(BOM/UTF-16/ANSI) — 한글 등 깨짐 방지.
-                        let text = crate::editload::decode(&b).0;
-                        self.import_sessions(crate::filezilla::parse_filezilla(&text), "menu.importfilezilla", "filezilla");
-                    }
-                }
+                let got = crate::menuimport::from_file(
+                    crate::filezilla::default_path(),
+                    || {
+                        let mut dlg = rfd::FileDialog::new().add_filter("FileZilla sitemanager", &["xml"]);
+                        if let Some(d) = std::env::var_os("APPDATA") {
+                            dlg = dlg.set_directory(std::path::Path::new(&d).join("FileZilla"));
+                        }
+                        dlg.pick_file()
+                    },
+                    crate::filezilla::parse_filezilla,
+                );
+                self.finish_import(got, "menu.importfilezilla", "filezilla");
             }
             MenuAction::ImportMobaXterm => {
-                let path = crate::mobaxterm::default_path()
-                    .or_else(|| rfd::FileDialog::new().add_filter("MobaXterm.ini", &["ini"]).pick_file());
-                if let Some(p) = path {
-                    if let Ok(b) = std::fs::read(&p) {
-                        let text = crate::editload::decode(&b).0; // 인코딩 자동 감지(MobaXterm.ini는 UTF-16/ANSI 흔함).
-                        self.import_sessions(crate::mobaxterm::parse_mobaxterm(&text), "menu.importmobaxterm", "mobaxterm");
-                    }
-                }
+                let got = crate::menuimport::from_file(
+                    crate::mobaxterm::default_path(),
+                    || rfd::FileDialog::new().add_filter("MobaXterm.ini", &["ini"]).pick_file(),
+                    crate::mobaxterm::parse_mobaxterm,
+                );
+                self.finish_import(got, "menu.importmobaxterm", "mobaxterm");
             }
             MenuAction::ImportXshell => {
                 // Xshell 기본 세션 폴더 자동 탐색, 없으면 폴더 선택(한국 1급 — Xshell 이탈 흡수).
+                // 이것만 파일이 아니라 폴더다 — 읽기 실패라는 것이 없으므로 훑은 결과를 그대로 넘긴다.
+                // 폴더에 세션이 하나도 없으면 `finish_import` 가 "가져올 것이 없다"고 말한다.
                 let dir = crate::xshell::default_sessions_dir()
                     .or_else(|| rfd::FileDialog::new().pick_folder());
-                if let Some(d) = dir {
-                    self.import_sessions(crate::xshell::scan_dir(&d), "menu.importxshell", "xshell");
-                }
+                let got = match dir {
+                    Some(d) => crate::menuimport::Got::Sessions(crate::xshell::scan_dir(&d)),
+                    None => crate::menuimport::Got::Cancelled,
+                };
+                self.finish_import(got, "menu.importxshell", "xshell");
             }
             MenuAction::BackupAll => {
                 let layout = nabi_config::StorageLayout::resolve();
@@ -117,29 +117,25 @@ impl NabiApp {
             MenuAction::OpenImportScreen => self.open_import_screen(),
             MenuAction::ImportWinScp => {
                 // WinSCP는 설치 방식에 따라 레지스트리 또는 WinSCP.ini에 둔다 — 둘 다 찾아본다.
-                let text = crate::winscp::find_config().or_else(|| {
-                    rfd::FileDialog::new()
-                        .add_filter("WinSCP.ini / .reg", &["ini", "reg"])
-                        .pick_file()
-                        .and_then(|p| std::fs::read(p).ok())
-                        .map(|b| crate::editload::decode(&b).0)
-                });
-                if let Some(t) = text {
-                    self.import_sessions(crate::winscp::parse(&t), "menu.importwinscp", "winscp");
-                }
+                let got = crate::menuimport::from_text_or_file(
+                    crate::winscp::find_config(),
+                    || {
+                        rfd::FileDialog::new()
+                            .add_filter("WinSCP.ini / .reg", &["ini", "reg"])
+                            .pick_file()
+                    },
+                    crate::winscp::parse,
+                );
+                self.finish_import(got, "menu.importwinscp", "winscp");
             }
             MenuAction::ImportPuTTY => {
                 // PuTTY는 세션을 레지스트리에 둔다 — reg.exe로 export해 파싱. 실패 시 .reg 파일 선택.
-                let text = crate::putty::export_registry_text().or_else(|| {
-                    rfd::FileDialog::new()
-                        .add_filter("PuTTY .reg", &["reg"])
-                        .pick_file()
-                        .and_then(|p| std::fs::read(p).ok())
-                        .map(|b| crate::editload::decode(&b).0)
-                });
-                if let Some(t) = text {
-                    self.import_sessions(crate::putty::parse_putty_reg(&t), "menu.importputty", "putty");
-                }
+                let got = crate::menuimport::from_text_or_file(
+                    crate::putty::export_registry_text(),
+                    || rfd::FileDialog::new().add_filter("PuTTY .reg", &["reg"]).pick_file(),
+                    crate::putty::parse_putty_reg,
+                );
+                self.finish_import(got, "menu.importputty", "putty");
             }
             MenuAction::ExportFileZilla => {
                 let data = crate::filezilla::to_sitemanager(&self.sessions.sessions);

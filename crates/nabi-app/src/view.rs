@@ -23,6 +23,7 @@ impl NabiApp {
         let mut dup_tab: Option<nabi_types::PaneId> = None;
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
         let mut open_history: Option<nabi_types::PaneId> = None;
+        let mut tab_notice: Option<String> = None;
         let mut wheel_history: Option<nabi_types::PaneId> = None; // 탭 메뉴 AI 동선(표면 정합).
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
@@ -192,6 +193,7 @@ impl NabiApp {
                 dup_tab: &mut dup_tab,
                 ai_handoff: &mut ai_handoff,
                 open_history: &mut open_history,
+                tab_notice: &mut tab_notice,
                 wheel_history: &mut wheel_history,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,
@@ -248,6 +250,9 @@ impl NabiApp {
             self.open_history_view(p);
         }
         self.render_history_view(ctx);
+        if let Some(m) = tab_notice {
+            self.notify = Some((m, std::time::Instant::now()));
+        }
         if let Some(p) = open_history {
             // 그 자리에서 겹 화면으로 연다 — 휠을 올렸을 때와 같은 것을 본다.
             // 편집기로 넘기는 길은 그 겹 화면 안에 있다(검색·저장은 그쪽이 낫다).

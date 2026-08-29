@@ -22,6 +22,7 @@ mod prerelease;
 mod soak; mod postverify;
 mod pkg; mod releasetarget; mod unsafeaudit;
 mod unusedpub;
+mod i18nkeys;
 
 use std::process::ExitCode;
 
@@ -32,6 +33,8 @@ fn main() -> ExitCode {
         "unsafe-audit" => unsafeaudit::run(),
         // 크레이트 밖에서 아무도 안 쓰는 pub fn — clippy 가 못 잡는 자리다(unusedpub.rs).
         "unused" => unusedpub::run(),
+        // 화면에 ? 로 나올 i18n 키 — 오타 하나가 못 쓰는 단추를 만든다(i18nkeys.rs).
+        "i18n-keys" => i18nkeys::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

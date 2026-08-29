@@ -167,6 +167,8 @@ pub struct TermTabViewer<'a> {
     pub ai_handoff: &'a mut Option<(PaneId, bool)>,
     /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 편집기로 연다.
     pub open_history: &'a mut Option<PaneId>,
+    /// 탭 메뉴가 낸 한 줄(저장 성공·실패 등) — 중앙이 알림으로 띄운다.
+    pub tab_notice: &'a mut Option<String>,
     /// 휠로 연 전체 기록 겹 화면 요청(중앙이 처리).
     pub wheel_history: &'a mut Option<PaneId>,
 }
@@ -282,18 +284,47 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             && !self.browser_tabs.contains_key(tab)
             && !self.editors.contains_key(tab)
             && self.remote_host(*tab).is_none();
-        let mut dup = false;
+        // 메뉴에서 나오는 것들은 자루 하나에 담아 받는다 — 인자로 늘어놓으면 열여섯 개가 된다.
+        let mut out = crate::tabmenu::TabMenuOut::default();
+        let mut st = crate::tabmenu::TabMenuState {
+            tab_names: self.tab_names,
+            broadcast_group: self.broadcast_group,
+            wheel_keys: self.wheel_keys,
+            wheel_keys_off: self.wheel_keys_off,
+            tab_colors: self.tab_colors,
+            wheel_auto: self
+                .run_cmd
+                .get(tab)
+                .is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
+            is_ssh,
+        };
         crate::tabmenu::tab_context_menu(
-            ui, tab, self.orch, self.lang,
-            self.tab_names, self.broadcast_group, self.wheel_keys, self.wheel_keys_off,
-            self.run_cmd.get(tab).is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
-            self.tab_colors,
-            is_ssh, self.tear_off, self.sftp_open, self.ai_handoff, self.open_history,
+            ui,
+            tab,
+            self.orch,
+            self.lang,
+            &mut st,
+            &mut out,
             if is_term { Some(&mut *self.dock_float) } else { None },
-            &mut dup,
         );
-        if dup {
+        if out.duplicate {
             *self.dup_tab = Some(*tab);
+        }
+        // 값이 생긴 것만 옮긴다 — 매번 덮어쓰면 다른 탭이 방금 낸 요청이 지워진다.
+        if out.tear_off.is_some() {
+            *self.tear_off = out.tear_off;
+        }
+        if out.sftp_open.is_some() {
+            *self.sftp_open = out.sftp_open;
+        }
+        if out.ai_handoff.is_some() {
+            *self.ai_handoff = out.ai_handoff;
+        }
+        if out.open_history.is_some() {
+            *self.open_history = out.open_history;
+        }
+        if out.notice.is_some() {
+            *self.tab_notice = out.notice;
         }
     }
 
