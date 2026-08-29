@@ -295,3 +295,41 @@ mod tests {
         assert!(alt_scroll_bytes(0.0, false).is_empty());
     }
 }
+
+/// 이 pane 에서 휠을 굴렸을 때 **왜 그렇게 되는지** 한 번 알려 줄 필요가 있는가.
+///
+/// ## 왜 필요한가
+///
+/// 마우스를 직접 받는 프로그램(Claude Code 등)이 도는 pane 에서는 휠이 평소와 다르게
+/// 움직인다. 우리는 주 화면에서 스크롤백을 우선하지만, 그 프로그램은 자기 기록을 따로
+/// 갖고 있어서 사용자가 보려던 것은 그쪽일 수 있다.
+///
+/// 어느 쪽이든 **말해 주지 않으면 "사라졌다"로 보인다.** 실제로 그런 보고를 두 번 받았고,
+/// 두 번 다 스크롤백은 멀쩡히 쌓여 있었다.
+///
+/// 한 번만 알린다 — 굴릴 때마다 뜨면 곧 읽지 않게 되고, 그러면 없느니만 못하다.
+pub(crate) fn needs_wheel_hint(mouse_on: bool, alt_screen: bool, wheel: f32) -> bool {
+    mouse_on && !alt_screen && wheel != 0.0
+}
+
+#[cfg(test)]
+mod hinttests {
+    use super::needs_wheel_hint;
+
+    #[test]
+    fn only_when_the_app_took_the_mouse() {
+        assert!(needs_wheel_hint(true, false, 1.0), "마우스를 가져간 주 화면");
+        assert!(!needs_wheel_hint(false, false, 1.0), "보통 셸은 설명이 필요 없다");
+    }
+
+    #[test]
+    fn the_alternate_screen_needs_no_hint() {
+        // 대체 화면에는 스크롤백이 아예 없다. 없는 것을 보라고 안내하면 더 헷갈린다.
+        assert!(!needs_wheel_hint(true, true, 1.0));
+    }
+
+    #[test]
+    fn no_wheel_no_hint() {
+        assert!(!needs_wheel_hint(true, false, 0.0));
+    }
+}

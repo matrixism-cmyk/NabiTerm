@@ -173,6 +173,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("browser.batchrename.nomatch", "No file matches — nothing will change", "걸리는 파일이 없습니다 — 아무것도 바뀌지 않습니다", "該当するファイルがありません"),
     ("status.recstop", "Click to stop recording", "누르면 기록을 멈춥니다", "クリックで記録を停止"),
     ("env.desc.webview2", "Lets the built-in web browser render pages. Windows 11 usually has it already.", "내장 웹 브라우저가 화면을 그리는 데 씁니다. 윈도우 11에는 대개 이미 들어 있습니다.", "内蔵 Web ブラウザーの描画に使います。Windows 11 には通常同梱されています。"),
+    ("wheel.apptook", "This program draws each line in place, so the terminal keeps only fragments of it. To keep everything, turn on 설정 ▸ 터미널 ▸ 모든 세션 기록 — it writes the full stream to a file.", "이 프로그램은 각 줄을 제자리에 덮어 그리기 때문에 터미널에는 조각만 남습니다. 전부 남기려면 설정 ▸ 터미널 ▸ 모든 세션 기록을 켜세요 — 파일로 통째로 적습니다.", "このプログラムは各行を上書きするため、端末には断片しか残りません。すべて残すには 設定 ▸ ターミナル ▸ すべてのセッションを記録 を有効にしてください。"),
     ("web.title", "Web browser", "웹 브라우저", "Web ブラウザー"),
     ("web.noruntime", "The web browser needs the Edge WebView2 runtime, which is not installed on this PC. Install it with this command:", "웹 브라우저는 엣지 WebView2 런타임이 있어야 하는데 이 PC에는 설치되어 있지 않습니다. 이 명령으로 설치합니다:", "Web ブラウザーには Edge WebView2 ランタイムが必要ですが、この PC には未インストールです。次のコマンドで導入できます:"),
     ("shell.swapped", "The default shell could not run, so it was changed:", "기본 셸이 실행되지 않아 바꿨습니다:", "既定シェルが起動できないため変更しました:"),

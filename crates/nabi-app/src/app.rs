@@ -293,6 +293,8 @@ pub struct NabiApp {
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).
     /// 각 탭이 마지막 프레임에 차지한 자리(논리 픽셀). 캡처·웹 브라우저가 함께 쓴다.
     pub pane_rects: HashMap<PaneId, egui::Rect>,
+    /// 마우스를 가져가는 프로그램에서 휠 안내를 이미 했는가(pane 마다 한 번).
+    pub wheel_hinted: std::collections::HashSet<PaneId>,
     pub progress: HashMap<PaneId, u8>,
     /// 화면에서 읽은 진행률을 마지막으로 본 때. 오래 조용하면 지운다(배치 AM).
     pub progress_seen: HashMap<PaneId, std::time::Instant>,

@@ -36,6 +36,8 @@ pub struct TermModel {
     detect_sample: Vec<u8>,
     /// DEC 1007(alternate scroll) 추적 — 코어가 모르는 모드라 따로 관찰한다(altscroll.rs).
     alt_scroll: crate::altscroll::AltScroll,
+    /// 오간 바이트를 그대로 보낼 곳(세션 기록). 없으면 아무 일도 하지 않는다.
+    raw_tap: Option<std::sync::mpsc::Sender<Vec<u8>>>,
 }
 
 impl TermModel {
@@ -63,6 +65,7 @@ impl TermModel {
             ul_cache: std::cell::RefCell::default(),
             detect_sample: Vec::new(),
             alt_scroll: crate::altscroll::AltScroll::default(),
+            raw_tap: None,
         }
     }
 
@@ -86,10 +89,37 @@ impl TermModel {
         &self.detect_sample
     }
 
+    /// 오간 바이트를 **그대로 흘려보낼 곳**을 건다(세션 기록용).
+    ///
+    /// ## 왜 필요한가
+    ///
+    /// 세션 기록은 지금까지 "화면 밖으로 밀려난 줄"만 적었다. 그래서 제자리에 덮어 그리는
+    /// 프로그램(Claude Code 등)에서는 밀려나는 줄이 거의 없어 **기록이 멈췄다**
+    /// (사용자 보고 2026-08-29 — "페이지가 이어지지 않는다").
+    ///
+    /// 줄이 아니라 바이트를 적어야 전부 남는다. `.cast` 형식이 원래 그것을 위한 것이다.
+    ///
+    /// 파일에 쓰는 일은 여기서 하지 않는다 — 이 함수는 출력 실에서 도는데, 거기서 디스크를
+    /// 만지면 느린 디스크가 터미널을 멈춘다. 보내기만 하고 쓰는 것은 UI 실이 한다.
+    pub fn set_raw_tap(&mut self, tx: std::sync::mpsc::Sender<Vec<u8>>) {
+        self.raw_tap = Some(tx);
+    }
+
+    /// 기록을 멈춘다.
+    pub fn clear_raw_tap(&mut self) {
+        self.raw_tap = None;
+    }
+
     /// PTY/SSH 바이트 청크를 파서에 먹인다(스트림 가능).
     pub fn process(&mut self, bytes: &[u8]) {
         if bytes.is_empty() {
             return;
+        }
+        if let Some(tx) = &self.raw_tap {
+            // 받는 쪽이 사라졌으면 조용히 끈다 — 실패해도 터미널은 계속 돌아야 한다.
+            if tx.send(bytes.to_vec()).is_err() {
+                self.raw_tap = None;
+            }
         }
         for &b in bytes {
             self.parser.advance(&mut self.term, b);

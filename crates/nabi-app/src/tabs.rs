@@ -130,6 +130,10 @@ pub struct TermTabViewer<'a> {
     /// 화면 캡처와 내장 웹 브라우저가 **똑같이** 이것을 필요로 한다. 두 곳이 따로
     /// 재려고 하면 언젠가 서로 다른 값을 갖게 되므로 그릴 때 한 번만 적어 둔다.
     pub pane_rects: &'a mut HashMap<PaneId, egui::Rect>,
+    /// 휠 안내를 아직 안 한 pane 들. 안내하면 여기서 뺀다(pane 마다 한 번).
+    pub wheel_hinted: &'a mut std::collections::HashSet<PaneId>,
+    /// 안내 문구를 띄워 달라는 요청(중앙이 토스트로 띄운다).
+    pub wheel_hint: &'a mut Option<String>,
     /// "창 안에 띄우기" 신호 — 메인 창 안 오버레이(docked_float)로 이동할 pane(P3).
     pub dock_float: &'a mut Option<PaneId>,
     /// 탭으로 열린 브라우저들(독립 상태) + 수집 액션/닫힘 신호 + 비교맵/업로드 가능 여부.

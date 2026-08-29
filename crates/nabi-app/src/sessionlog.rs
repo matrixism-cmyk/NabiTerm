@@ -17,6 +17,9 @@ pub(crate) struct SessionLog {
     pub cast: bool,
     /// 기록 중인 파일 경로. 멈출 때 **되읽어 확인**하는 데 쓴다.
     pub path: std::path::PathBuf,
+    /// 오간 바이트를 받는 쪽. `.cast` 기록은 이걸 쓴다(줄이 아니라 바이트를 적어야
+    /// 제자리에 덮어 그리는 프로그램도 전부 남는다).
+    pub raw: Option<std::sync::mpsc::Receiver<Vec<u8>>>,
 }
 
 impl NabiApp {
@@ -24,6 +27,16 @@ impl NabiApp {
     pub(crate) fn toggle_session_log(&mut self) {
         let Some(pane) = self.focused_pane() else { return };
         if let Some(log) = self.session_logs.remove(&pane) {
+            // 바이트 통로를 끊는다. 안 끊으면 기록을 멈춘 뒤에도 계속 복사본을 만든다.
+            if log.raw.is_some() {
+                if let Ok(m) = self.orch.panes.read() {
+                    if let Some(v) = m.get(&pane) {
+                        if let Ok(mut md) = v.model.lock() {
+                            md.clear_raw_tap();
+                        }
+                    }
+                }
+            }
             // 멈추는 김에 **방금 쓴 것을 되읽는다.** 기록이 못 읽히는 파일이었다는 사실을
             // 나중에 재생하려는 순간에 알게 되면 그때는 이미 늦다 — 그 자리에서 확인한다.
             let msg = match log.cast {
@@ -54,9 +67,22 @@ impl NabiApp {
                 .unwrap_or(0);
             let _ = writeln!(file, "{}", crate::sessioncast::header(cols, rows, secs));
         }
+        // `.cast` 는 바이트를 그대로 적는다 — 그래야 제자리에 덮어 그리는 프로그램도 전부
+        // 남는다. 줄만 적던 옛 방식은 그런 프로그램에서 기록이 멈췄다.
+        let raw = cast.then(|| {
+            let (tx, rx) = std::sync::mpsc::channel();
+            if let Ok(m) = self.orch.panes.read() {
+                if let Some(v) = m.get(&pane) {
+                    if let Ok(mut md) = v.model.lock() {
+                        md.set_raw_tap(tx);
+                    }
+                }
+            }
+            rx
+        });
         self.session_logs.insert(
             pane,
-            SessionLog { file, last, began: Instant::now(), cast, path: path.to_path_buf() },
+            SessionLog { file, last, began: Instant::now(), cast, path: path.to_path_buf(), raw },
         );
         self.notify = Some((tr(self.lang, "log.started").to_string(), Instant::now()));
     }
@@ -108,6 +134,24 @@ impl NabiApp {
         let Some(panes) = self.orch.panes.read().ok() else { return };
         self.session_logs.retain(|pane, log| {
             let Some(v) = panes.get(pane) else { return false };
+            // 바이트 통로가 있으면 그것을 쓴다 — 줄만 적으면 제자리에 덮어 그리는
+            // 프로그램의 내용이 통째로 빠진다(사용자 보고 2026-08-29).
+            if let Some(rx) = &log.raw {
+                let mut chunk = Vec::new();
+                while let Ok(b) = rx.try_recv() {
+                    chunk.extend_from_slice(&b);
+                }
+                if !chunk.is_empty() {
+                    let text = String::from_utf8_lossy(&chunk).into_owned();
+                    let text = match redact_on {
+                        true => crate::redact::line_full(&text),
+                        false => text,
+                    };
+                    let el = log.began.elapsed().as_secs_f64();
+                    let _ = writeln!(log.file, "{}", crate::sessioncast::event(el, &text));
+                }
+                return true;
+            }
             if let Ok(md) = v.model.lock() {
                 let cur = md.line_marker();
                 if cur > log.last {

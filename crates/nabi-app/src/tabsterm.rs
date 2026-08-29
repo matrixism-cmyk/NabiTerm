@@ -133,6 +133,13 @@ impl TermTabViewer<'_> {
             );
             if !rep.is_empty() { self.orch.send(Command::WriteInput { pane, data: Bytes::from(rep) }); }
         }
+        // 마우스를 가져가는 프로그램에서 처음 휠을 굴리면 **왜 이렇게 되는지** 한 번 알린다.
+        // 말해 주지 않으면 "기록이 사라졌다"로 보인다 — 실제로 두 번 그런 보고를 받았다.
+        if over && crate::panewheel::needs_wheel_hint(mouse_on, alt_screen, wheel)
+            && self.wheel_hinted.insert(pane)
+        {
+            *self.wheel_hint = Some(nabi_i18n::tr(self.lang, "wheel.apptook").to_string());
+        }
         if over && wheel != 0.0 && !ctrl_wheel {
             match crate::panewheel::wheel_bytes(target, wheel, app_cursor) {
                 // 오버레이를 여는 휠이었다면 다음 휠부터 페이지 키가 그 안을 스크롤한다.

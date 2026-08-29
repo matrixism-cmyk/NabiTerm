@@ -229,6 +229,7 @@ impl NabiApp {
             schedules, schedules_path, sched_last_tick: std::time::Instant::now(),
             pending_paste: None,
             pane_rects: HashMap::new(),
+            wheel_hinted: Default::default(),
             progress: HashMap::new(),
             progress_seen: HashMap::new(),
             progress_osc: Default::default(), server_stats: HashMap::new(),

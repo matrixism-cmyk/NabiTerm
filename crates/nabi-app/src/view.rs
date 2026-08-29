@@ -112,8 +112,11 @@ impl NabiApp {
             let risky: std::collections::HashSet<nabi_types::PaneId> =
                 window_panes.iter().copied().filter(|p| self.pane_tag(*p).is_risky()).collect();
             let guard_on = self.config.terminal.guard_dangerous;
+            let mut wheel_hint: Option<String> = None;
             let mut viewer = crate::tabs::TermTabViewer {
                 pane_rects: &mut self.pane_rects,
+                wheel_hinted: &mut self.wheel_hinted,
+                wheel_hint: &mut wheel_hint,
                 orch: &self.orch,
                 risky_panes: &risky,
                 guard_dangerous: guard_on,
