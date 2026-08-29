@@ -13,13 +13,55 @@
 
 use windows::core::{w, PCWSTR};
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+use windows::Win32::Graphics::Gdi::{CreateFontIndirectW, GetStockObject, HFONT, DEFAULT_GUI_FONT};
 use windows::Win32::UI::WindowsAndMessaging::*;
 
-use crate::win::{BAR_H, BTN_W, ID_ADDR, ID_BACK, ID_FWD, ID_RELOAD};
+use crate::win::{BAR_H, BTN_W, ID_ADDR, ID_BACK, ID_FWD, ID_RELOAD, PAD};
 
 // 끼우기 전에 원래 있던 함수를 여기 적어 둔다. 창 하나가 실 하나를 쓰므로 실마다 하나면 된다.
 thread_local! {
     static OLD_EDIT_PROC: std::cell::Cell<isize> = const { std::cell::Cell::new(0) };
+}
+
+/// 이 PC 가 쓰는 **화면 글꼴**을 얻는다.
+///
+/// ## 왜 필요한가
+///
+/// 윈도우 기본 컨트롤은 글꼴을 지정하지 않으면 아주 오래된 글꼴로 그린다. 그래서 단추와
+/// 주소 칸이 투박해 보였다("UI 가 좀 엉성하다", 사용자 2026-08-29).
+///
+/// 글꼴 이름을 우리가 박아 두지 않는다 — 윈도우 판·언어·사용자 설정에 따라 다르고,
+/// 박아 두면 한글이 안 나오는 PC 가 생긴다. **윈도우에게 물어서** 그 PC 가 쓰는 것을 쓴다.
+fn ui_font() -> HFONT {
+    use windows::Win32::UI::WindowsAndMessaging::{SystemParametersInfoW, NONCLIENTMETRICSW, SPI_GETNONCLIENTMETRICS, SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS};
+    let mut m = NONCLIENTMETRICSW { cbSize: std::mem::size_of::<NONCLIENTMETRICSW>() as u32, ..Default::default() };
+    // 안전: 크기를 먼저 채워 넘긴다. 실패하면 아래에서 기본 글꼴로 물러난다.
+    let ok = unsafe {
+        SystemParametersInfoW(
+            SPI_GETNONCLIENTMETRICS,
+            m.cbSize,
+            Some(&mut m as *mut _ as *mut core::ffi::c_void),
+            SYSTEM_PARAMETERS_INFO_UPDATE_FLAGS(0),
+        )
+    }
+    .is_ok();
+    if ok {
+        // 안전: 방금 윈도우가 채워 준 글꼴 정보다.
+        let f = unsafe { CreateFontIndirectW(&m.lfMessageFont) };
+        if !f.is_invalid() {
+            return f;
+        }
+    }
+    // 안전: 실패해도 그릴 수는 있어야 한다 — 기본 글꼴로 물러난다.
+    HFONT(unsafe { GetStockObject(DEFAULT_GUI_FONT) }.0)
+}
+
+/// 자식 창에 글꼴을 입힌다.
+fn set_font(h: HWND, f: HFONT) {
+    // 안전: 손잡이는 방금 만든 자식이고, 글꼴은 우리가 만든 것이다.
+    unsafe {
+        SendMessageW(h, WM_SETFONT, Some(WPARAM(f.0 as usize)), Some(LPARAM(1)));
+    }
 }
 
 /// 도구 줄의 자식들을 만든다.
@@ -35,7 +77,7 @@ pub(crate) fn create(parent: HWND) -> windows::core::Result<HWND> {
                 0,
                 0,
                 BTN_W,
-                BAR_H - 8,
+                BAR_H - PAD * 2,
                 Some(parent),
                 Some(HMENU(id as *mut core::ffi::c_void)),
                 None,
@@ -43,8 +85,11 @@ pub(crate) fn create(parent: HWND) -> windows::core::Result<HWND> {
             )?;
             Ok(())
         };
-        btn(ID_BACK, w!("\u{2190}"))?;
-        btn(ID_FWD, w!("\u{2192}"))?;
+        // 화살표는 **어느 PC 에서나 그려지는 모양**을 쓴다. 처음에 ← → 를 썼더니 앞으로
+        // 단추만 빈 칸으로 나왔다 — 그 글자가 없는 글꼴이었다(화면으로 확인, 2026-08-29).
+        // 삼각형은 오래된 글꼴에도 들어 있다.
+        btn(ID_BACK, w!("\u{25c0}"))?;
+        btn(ID_FWD, w!("\u{25b6}"))?;
         btn(ID_RELOAD, w!("\u{21bb}"))?;
         let addr = CreateWindowExW(
             WS_EX_CLIENTEDGE,
@@ -54,13 +99,20 @@ pub(crate) fn create(parent: HWND) -> windows::core::Result<HWND> {
             0,
             0,
             10,
-            BAR_H - 8,
+            BAR_H - PAD * 2,
             Some(parent),
             Some(HMENU(ID_ADDR as *mut core::ffi::c_void)),
             None,
             None,
         )?;
         let f: unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT = edit_proc;
+        // 만든 것들에 이 PC 의 화면 글꼴을 입힌다 — 안 입히면 옛 글꼴로 그려진다.
+        let font = ui_font();
+        for id in [ID_BACK, ID_FWD, ID_RELOAD, ID_ADDR] {
+            if let Ok(h) = GetDlgItem(Some(parent), id as i32) {
+                set_font(h, font);
+            }
+        }
         let old = SetWindowLongPtrW(addr, GWLP_WNDPROC, f as usize as isize);
         OLD_EDIT_PROC.with(|c| c.set(old));
         Ok(addr)
@@ -71,14 +123,17 @@ pub(crate) fn create(parent: HWND) -> windows::core::Result<HWND> {
 pub(crate) fn layout(parent: HWND, width: i32) {
     // 안전: 손잡이는 이 창의 자식들이고, 없으면 아무 일도 하지 않는다.
     unsafe {
+        // 단추 셋을 나란히, 그다음 주소 칸이 남은 자리를 다 쓴다.
+        let h_ctl = BAR_H - PAD * 2;
         for (i, id) in [ID_BACK, ID_FWD, ID_RELOAD].into_iter().enumerate() {
             if let Ok(h) = GetDlgItem(Some(parent), id as i32) {
-                let _ = MoveWindow(h, 4 + i as i32 * (BTN_W + 2), 4, BTN_W, BAR_H - 8, true);
+                let _ = MoveWindow(h, PAD + i as i32 * (BTN_W + 4), PAD, BTN_W, h_ctl, true);
             }
         }
         if let Ok(h) = GetDlgItem(Some(parent), ID_ADDR as i32) {
-            let x = 4 + 3 * (BTN_W + 2) + 6;
-            let _ = MoveWindow(h, x, 4, (width - x - 4).max(40), BAR_H - 8, true);
+            // 단추 묶음 뒤로 한 칸 더 띄운다 — 붙어 있으면 어디까지가 단추인지 헷갈린다.
+            let x = PAD + 3 * (BTN_W + 4) + PAD;
+            let _ = MoveWindow(h, x, PAD, (width - x - PAD).max(40), h_ctl, true);
         }
     }
 }

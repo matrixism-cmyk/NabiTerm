@@ -26,9 +26,14 @@ use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::UI::WindowsAndMessaging::*;
 
 /// 위쪽 도구 줄의 높이(픽셀).
-pub(crate) const BAR_H: i32 = 40;
-/// 단추 하나의 너비.
-pub(crate) const BTN_W: i32 = 34;
+///
+/// 단추가 손가락으로 누를 만큼은 되어야 한다. 40 은 빡빡했다 — 글꼴을 제대로 입히니
+/// 글자가 단추 안에서 눌린 것처럼 보였다.
+pub(crate) const BAR_H: i32 = 46;
+/// 단추 하나의 너비. 화살표 하나가 여유 있게 들어가는 크기.
+pub(crate) const BTN_W: i32 = 38;
+/// 가장자리 여백. 창 테두리에 딱 붙으면 답답해 보인다.
+pub(crate) const PAD: i32 = 8;
 
 /// 자식 창을 알아보는 번호.
 pub(crate) const ID_BACK: isize = 1;
