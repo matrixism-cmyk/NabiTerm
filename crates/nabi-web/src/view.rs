@@ -140,13 +140,27 @@ fn watch_navigation(webview: &ICoreWebView2) {
         if SHOWING_ERROR.with(|f| f.replace(true)) {
             return Ok(());
         }
-        eprintln!("[nabi-web] 페이지를 불러오지 못했다 (사유 {})", why.0);
+        eprintln!("[nabi-web] {} 를 불러오지 못했다 (사유 {})", current_url(), why.0);
         show_error(why.0);
         Ok(())
     }));
     let mut token = windows::Win32::Foundation::HANDLE::default();
     // 안전: 토큰은 우리가 들고 있고, 화면이 사라지면 함께 사라진다.
     let _ = unsafe { webview.add_NavigationCompleted(&handler, &mut token as *mut _ as *mut i64) };
+}
+
+/// 지금 화면이 가리키는 주소(진단용).
+fn current_url() -> String {
+    VIEW.with(|v| {
+        let b = v.borrow();
+        let Some(view) = b.as_ref() else { return "(아직 없음)".to_string() };
+        let mut p = windows_core::PWSTR::null();
+        // 안전: 받는 곳은 지역 변수다.
+        if unsafe { view.webview.Source(&mut p) }.is_err() || p.is_null() {
+            return "(읽지 못함)".into();
+        }
+        unsafe { p.to_string() }.unwrap_or_default()
+    })
 }
 
 /// 실패한 자리에 이유를 그린다. 하얀 화면보다 낫다.
@@ -187,11 +201,17 @@ pub(crate) fn go(hwnd: HWND, input: &str) {
     VIEW.with(|v| {
         if let Some(view) = v.borrow().as_ref() {
             // 안전: 넘기는 주소는 널로 끝나는 UTF-16 이다.
-            let _ = unsafe { view.webview.Navigate(PCWSTR(wide.as_ptr())) };
+            //
+            // **결과를 버리지 않는다.** 버렸더니 이동이 아예 시작되지 않았는데도 아무 말이
+            // 없어서, 화면이 왜 하얀지 한참 몰랐다.
+            if let Err(e) = unsafe { view.webview.Navigate(PCWSTR(wide.as_ptr())) } {
+                eprintln!("[nabi-web] {target} 로 옮겨 가지 못했다: {e}");
+            }
         }
     });
     crate::bar::set_text(hwnd, &target);
 }
+
 
 /// 도구 줄 단추를 눌렀다.
 pub(crate) fn command(hwnd: HWND, id: isize) {
