@@ -9,10 +9,15 @@ use std::time::{Duration, Instant, SystemTime};
 
 impl NabiApp {
     /// 파일 mtime을 기록한다(열기·저장 후). 자동 감지의 기준점.
+    /// 저장 뒤 기준 시각을 적는다.
+    ///
+    /// **저장했다는 통지도 여기서 함께 보낸다.** 저장하는 길이 둘인데(`save_editor_doc`·
+    /// `save_editor_as`) 전부 이 자리를 지나므로, 한쪽만 고쳐지는 일이 없다.
     pub(crate) fn record_editor_mtime(&mut self, pane: PaneId, path: &Path) {
         if let Ok(m) = std::fs::metadata(path).and_then(|m| m.modified()) {
             self.editor_mtimes.insert(pane, m);
         }
+        self.lsp_did_save(path);
     }
 
     /// 변경된 '경로 있는 일반 텍스트' 문서를 모두 정상 저장한다(인코딩·EOL·trim·mtime 갱신). 저장한 개수 반환.

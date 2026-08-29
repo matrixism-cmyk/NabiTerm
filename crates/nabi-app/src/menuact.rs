@@ -195,21 +195,7 @@ impl NabiApp {
                     }
                 }
             }
-            MenuAction::ImportSessions => {
-                if let Some(dir) = self.config_path.parent() {
-                    let path = dir.join("sessions_export.json");
-                    if let Ok(tree) = std::fs::read_to_string(&path)
-                        .map_err(|e| e.to_string())
-                        .and_then(|s| nabi_session::export::from_json(&s))
-                    {
-                        let n = tree.sessions.len();
-                        self.sessions.sessions.extend(tree.sessions);
-                        self.save_sessions();
-                        let label = tr(self.lang, "menu.importsessions");
-                        self.notify = Some((format!("{label} +{n}"), std::time::Instant::now()));
-                    }
-                }
-            }
+            MenuAction::ImportSessions => self.import_session_file(),
             MenuAction::OpenBrowserTab => {
                 self.open_browser_tab();
             }

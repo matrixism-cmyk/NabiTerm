@@ -187,6 +187,8 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("hist.title", "Full history", "전체 기록", "全履歴"),
     ("hist.toeditor", "Open in editor", "편집기로", "エディタで"),
     ("menu.newweb", "New Web Browser", "새 웹 브라우저", "新しい Web ブラウザー"),
+    ("sessions.importempty", "That file has no sessions in it.", "그 파일에는 세션이 들어 있지 않습니다.", "そのファイルにセッションはありません。"),
+    ("config.dropped", "Some settings could not be read and were left at their default:", "읽지 못해 기본값으로 둔 설정이 있습니다:", "読み取れず既定値のままにした設定があります:"),
     ("hist.open", "Open full history", "전체 기록 열기", "全履歴を開く"),
     ("hist.notrecording", "This pane is not being recorded, so there is no full history. Turn on 설정 ▸ 터미널 ▸ 모든 세션 기록 to keep one from now on.", "이 pane 은 기록 중이 아니라 전체 기록이 없습니다. 설정 ▸ 터미널 ▸ 모든 세션 기록을 켜면 이제부터 남습니다.", "このペインは記録中でないため全履歴がありません。設定 ▸ ターミナル ▸ すべてのセッションを記録 を有効にすると以後残ります。"),
     ("hist.empty", "The recording has nothing readable in it yet.", "기록에 아직 읽을 만한 것이 없습니다.", "記録にまだ読める内容がありません。"),

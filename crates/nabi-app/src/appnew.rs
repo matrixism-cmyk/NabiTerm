@@ -12,7 +12,11 @@ impl NabiApp {
         let hwnd = crate::windnd::hwnd_of(cc); // OS 파일 드롭 위치 판정용 창 핸들.
         let layout = nabi_config::StorageLayout::resolve();
         let first_run = !layout.config_file.exists(); // OOBE: 설정 파일이 없으면 첫 실행.
-        let config = nabi_config::load(&layout);
+        // **버린 키를 함께 받는다.** 설정 한 줄이 어긋나면 그 키만 버리고 나머지는
+        // 읽는데(tolerant), 지금까지 무엇을 버렸는지 아무도 말해 주지 않았다. 그래서
+        // 사용자는 자기 설정이 왜 원래대로 돌아갔는지 알 수 없었다 — 만들어 두고 쓰지
+        // 않던 `load_reporting` 을 이제 쓴다(2026-08-30 전수 점검).
+        let (config, dropped_keys) = nabi_config::load_reporting(&layout);
         // **어제 남은 토큰은 오늘도 토큰이다.** 가리기를 켜기 전에 쌓인 기록에는
         // 비밀이 그대로 있다 — 불러올 때 한 번 훑어 지운다(디스크에도 다음 저장에 반영).
         let config = crate::redact::sweep_history(config);
@@ -245,7 +249,7 @@ impl NabiApp {
             // 세션 파일이 손상돼 백업했다면 첫 화면에서 경로를 알린다(조용한 소멸 방지).
             // 시작할 때 알릴 것을 모은다. 둘 다 생겼으면 둘 다 말한다 — 하나가 다른
             // 하나를 덮으면 그 사실은 사용자가 영영 모른다(배치 AK).
-            notify: crate::appnew::startup_notice(lang, session_backup, shell_swap),
+            notify: crate::appnew::startup_notice(lang, session_backup, shell_swap, &dropped_keys),
             agent_watch: crate::agentwatch::AgentWatch::new(Some(&layout.base)),
             pane_status_ttl: HashMap::new(),
             ai_cli_auto: None,
@@ -309,8 +313,24 @@ pub(crate) fn startup_notice(
     lang: nabi_i18n::Lang,
     session_backup: Option<std::path::PathBuf>,
     shell_swap: Option<(String, String)>,
+    dropped_keys: &[String],
 ) -> Option<(String, std::time::Instant)> {
     let mut parts: Vec<String> = Vec::new();
+    if !dropped_keys.is_empty() {
+        // 몇 개인지와 **어느 키인지**를 함께 말한다. 개수만 말하면 어디를 고쳐야 할지 모른다.
+        // 많으면 앞의 셋만 — 알림 한 줄이 화면을 가로지르면 아무도 안 읽는다.
+        let shown: Vec<&str> = dropped_keys.iter().take(3).map(String::as_str).collect();
+        let more = dropped_keys.len().saturating_sub(shown.len());
+        let tail = match more {
+            0 => String::new(),
+            n => format!(" \u{2026}+{n}"),
+        };
+        parts.push(format!(
+            "\u{26a0} {} {}{tail}",
+            nabi_i18n::tr(lang, "config.dropped"),
+            shown.join(", ")
+        ));
+    }
     if let Some(b) = session_backup {
         parts.push(format!("\u{26a0} {} \u{2192} {}", nabi_i18n::tr(lang, "sessions.corrupt"), b.display()));
     }
@@ -318,4 +338,50 @@ pub(crate) fn startup_notice(
         parts.push(format!("{} {prev} \u{2192} {next}", nabi_i18n::tr(lang, "shell.swapped")));
     }
     (!parts.is_empty()).then(|| (parts.join(" \u{00b7} "), std::time::Instant::now()))
+}
+
+#[cfg(test)]
+mod notice_tests {
+    use super::startup_notice;
+    use nabi_i18n::Lang;
+
+    /// 아무 일도 없었으면 아무 말도 하지 않는다.
+    #[test]
+    fn 조용할_때는_알리지_않는다() {
+        assert!(startup_notice(Lang::Ko, None, None, &[]).is_none());
+    }
+
+    /// 읽지 못한 설정이 있으면 **어느 키인지** 말한다.
+    ///
+    /// 개수만 말하면 어디를 고쳐야 할지 모른다 — 그러면 알리지 않은 것과 비슷해진다.
+    #[test]
+    fn 버린_설정_키를_이름으로_말한다() {
+        let (msg, _) = startup_notice(Lang::Ko, None, None, &["appearance.font_size".into()])
+            .expect("알려야 한다");
+        assert!(msg.contains("appearance.font_size"), "{msg}");
+    }
+
+    /// 많으면 앞의 셋만 적고 나머지는 개수로 — 한 줄이 화면을 가로지르면 아무도 안 읽는다.
+    #[test]
+    fn 너무_많으면_줄여서_말한다() {
+        let keys: Vec<String> = (0..7).map(|i| format!("k{i}")).collect();
+        let (msg, _) = startup_notice(Lang::Ko, None, None, &keys).expect("알려야 한다");
+        assert!(msg.contains("k0") && msg.contains("k2"), "{msg}");
+        assert!(!msg.contains("k3"), "넷째부터는 이름을 적지 않는다: {msg}");
+        assert!(msg.contains("+4"), "남은 개수를 말해야 한다: {msg}");
+    }
+
+    /// 여러 가지가 한꺼번에 생겨도 **덮지 않고 함께** 말한다.
+    #[test]
+    fn 여러_가지가_함께_나온다() {
+        let (msg, _) = startup_notice(
+            Lang::Ko,
+            None,
+            Some(("pwsh".into(), "powershell".into())),
+            &["terminal.scrollback".into()],
+        )
+        .expect("알려야 한다");
+        assert!(msg.contains("terminal.scrollback"), "{msg}");
+        assert!(msg.contains("pwsh") && msg.contains("powershell"), "{msg}");
+    }
 }

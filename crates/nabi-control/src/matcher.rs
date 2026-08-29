@@ -76,6 +76,53 @@ pub fn resolve_all(panes: &[PaneInfo], m: &Match) -> Vec<u64> {
     panes.iter().filter(|p| m.matches(p)).map(|p| p.id).collect()
 }
 
+/// `--match` 를 **맞는 모든 pane** 으로 펼친다 — pane 하나에 인자 한 벌.
+///
+/// ## 왜 필요한가
+///
+/// `--match` 는 여럿이 걸리면 거절한다. 엉뚱한 pane 에 글자를 밀어 넣는 것보다 묻는 편이
+/// 낫기 때문이다. 그런데 **일부러 여럿에 시키고 싶을 때**가 있다 — "지금 놀고 있는 SSH
+/// 창 전부에 같은 명령을 보내라" 같은 것. 그때 거절은 방해가 된다.
+///
+/// 그래서 `--all` 을 함께 주면 거절 대신 펼친다. 여럿임을 **부르는 쪽이 알고 있다**는
+/// 표시라, 사고로 여러 창에 들어가는 일은 여전히 막힌다.
+///
+/// `--match` 가 없으면 원본 그대로 한 벌만 돌려준다.
+pub fn expand_args(
+    args: &[String],
+    fetch: impl FnOnce() -> Result<Vec<PaneInfo>, String>,
+) -> Result<Vec<Vec<String>>, String> {
+    let wants_all = args.iter().any(|a| a == "--all");
+    if !wants_all {
+        return resolve_args(args, fetch).map(|a| vec![a]);
+    }
+    let Some(i) = args.iter().position(|a| a == "--match") else {
+        return Err("--all 은 --match 와 함께 쓴다".into());
+    };
+    let expr = args.get(i + 1).ok_or("--match 다음에 조건이 필요함")?;
+    let m = parse(expr)?;
+    let ids = resolve_all(&fetch()?, &m);
+    if ids.is_empty() {
+        return Err(format!("조건에 맞는 pane 이 없다: {expr}"));
+    }
+    // 남는 인자에서 --match 두 칸과 --all 을 뺀 뒤, pane 마다 한 벌씩 만든다.
+    let rest: Vec<String> = args[..i]
+        .iter()
+        .chain(args[i + 2..].iter())
+        .filter(|a| *a != "--all")
+        .cloned()
+        .collect();
+    Ok(ids
+        .into_iter()
+        .map(|id| {
+            let mut v = rest.clone();
+            v.push("--pane".into());
+            v.push(id.to_string());
+            v
+        })
+        .collect())
+}
+
 /// CLI 인자에서 `--match <expr>`를 찾아 단일 pane으로 해석하고
 /// `--pane <id>`로 치환한 인자 목록을 돌려준다(없으면 원본 그대로).
 /// fetch는 ListPanes 결과를 가져오는 클로저(테스트 주입 가능).
@@ -109,6 +156,49 @@ mod tests {
             state: state.into(),
             ..Default::default()
         }
+    }
+
+    /// `--all` 이면 거절하지 않고 pane 마다 한 벌씩 펼친다.
+    #[test]
+    fn all_expands_to_every_match() {
+        let panes = vec![
+            pane(1, "pwsh", r"C:\proj", "idle"),
+            pane(2, "cmd", r"C:\proj", "idle"),
+            pane(3, "pwsh", r"D:\x", "working"),
+        ];
+        let args: Vec<String> = ["send", "--match", "state:idle", "--all", "--data", "hi"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let out = expand_args(&args, || Ok(panes)).unwrap();
+        assert_eq!(out.len(), 2, "맞는 pane 마다 한 벌");
+        assert!(out[0].ends_with(&["--pane".to_string(), "1".to_string()]));
+        assert!(out[1].ends_with(&["--pane".to_string(), "2".to_string()]));
+        // 원래 인자는 그대로 남는다.
+        assert!(out[0].contains(&"--data".to_string()) && out[0].contains(&"hi".to_string()));
+        // --all 과 --match 는 빠진다.
+        assert!(!out[0].contains(&"--all".to_string()));
+        assert!(!out[0].contains(&"--match".to_string()));
+    }
+
+    /// `--all` 없이 여럿이 걸리면 예전처럼 거절한다 — 사고를 막는 규칙은 그대로다.
+    #[test]
+    fn without_all_it_still_refuses_ambiguity() {
+        let panes = vec![pane(1, "a", "/x", "idle"), pane(2, "b", "/x", "idle")];
+        let args: Vec<String> =
+            ["send", "--match", "state:idle"].iter().map(|s| s.to_string()).collect();
+        assert!(expand_args(&args, || Ok(panes)).is_err());
+    }
+
+    /// 맞는 것이 없으면 조용히 아무것도 안 하지 않고 그렇다고 말한다.
+    #[test]
+    fn all_with_no_match_says_so() {
+        let panes = vec![pane(1, "a", "/x", "working")];
+        let args: Vec<String> = ["send", "--match", "state:idle", "--all"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        assert!(expand_args(&args, || Ok(panes)).is_err());
     }
 
     #[test]

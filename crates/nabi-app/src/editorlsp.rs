@@ -134,6 +134,29 @@ pub(crate) fn lsp_doc(doc: &nabi_editor::editor::EditorDoc) -> bool {
 }
 
 impl NabiApp {
+    /// 저장했다고 언어 서버에 알린다.
+    ///
+    /// ## 왜 따로 적어 두는가
+    ///
+    /// `didOpen`·`didChange` 는 보내고 있었는데 **`didSave` 만 빠져 있었다**(2026-08-30
+    /// 전수 점검에서 찾았다 — `did_save` 를 아무도 부르지 않았다). rust-analyzer 는 저장
+    /// 통지를 받아야 `cargo check` 를 돌린다. 그래서 저장해도 진짜 진단이 갱신되지 않고
+    /// 파일 안만 보고 아는 것들만 나왔다. 편집기를 가늠하는 자리에서 가장 눈에 띄는 결함이다.
+    ///
+    /// 보내기 직전에 글도 한 번 맞춘다 — 디바운스 때문에 서버가 옛 글을 들고 있으면
+    /// 진단이 엉뚱한 줄을 가리킨다.
+    pub(crate) fn lsp_did_save(&mut self, path: &std::path::Path) {
+        let text = self.editors.values().find(|d| d.path == path).map(|d| d.text.clone());
+        if let Some(c) = self.lsp.client_for(path) {
+            if let Some(t) = text {
+                c.did_change(path, &t);
+            }
+            c.did_save(path);
+        }
+    }
+}
+
+impl NabiApp {
     /// 매 프레임: rs 문서 동기화(didOpen/didChange 디바운스) + 진단 수신 + 정의 응답 처리.
     pub(crate) fn lsp_tick(&mut self) {
         let ids: Vec<nabi_types::PaneId> = self.editors.keys().copied().collect();

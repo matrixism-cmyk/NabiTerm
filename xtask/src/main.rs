@@ -21,6 +21,7 @@ mod overrides;
 mod prerelease;
 mod soak; mod postverify;
 mod pkg; mod releasetarget; mod unsafeaudit;
+mod unusedpub;
 
 use std::process::ExitCode;
 
@@ -29,6 +30,8 @@ fn main() -> ExitCode {
     match task.as_str() {
         "lines" => lines::run(),
         "unsafe-audit" => unsafeaudit::run(),
+        // 크레이트 밖에서 아무도 안 쓰는 pub fn — clippy 가 못 잡는 자리다(unusedpub.rs).
+        "unused" => unusedpub::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

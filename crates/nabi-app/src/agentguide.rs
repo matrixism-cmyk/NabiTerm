@@ -208,6 +208,13 @@ Instead of `--pane <id>` you can match by property:
     # keys: title (substring), cwd (prefix), kind, state, id
     # prefix a value with ! to negate, e.g. --match "kind:ssh,state:!idle"
 
+Matching more than one pane is refused by default — sending into the wrong pane is worse
+than being asked. Add `--all` when you mean every match, and the command runs once per pane:
+
+    nabi cli send --match "kind:ssh,state:idle" --all --data "uptime\r"
+
+It fails if any pane failed, so a partial result never reports success.
+
 ## Permissions
 
 Control mode lives in nabiTerm ▸ Settings ▸ Behavior ▸ Agent control: off / ask / on.

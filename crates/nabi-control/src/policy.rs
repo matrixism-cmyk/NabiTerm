@@ -143,11 +143,6 @@ impl ControlPolicy {
             }
         }
     }
-
-    /// (v1 호환) 쓰기 동작 허용 — inject 기준(가장 보수적).
-    pub fn allow_write(&self, from: Option<u64>) -> bool {
-        self.allow(Group::Inject, from)
-    }
 }
 
 #[cfg(test)]
@@ -186,7 +181,7 @@ mod tests {
         p.approve(7, Group::Act);
         assert!(!p.allow(Group::Inject, Some(7))); // act 승인이 inject를 풀지 않음(분리 집합).
         p.approve(7, Group::Inject);
-        assert!(p.allow(Group::Inject, Some(7)) && p.allow_write(Some(7)));
+        assert!(p.allow(Group::Inject, Some(7)));
         p.revoke(7, Group::Inject);
         assert!(!p.allow(Group::Inject, Some(7))); // revoke 후 거부.
     }

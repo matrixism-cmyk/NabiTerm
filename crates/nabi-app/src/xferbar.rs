@@ -23,8 +23,24 @@ pub(crate) struct XferView<'a> {
 }
 
 impl XferView<'_> {
+    /// 진행률과 남은 시간은 **한 곳에서만** 센다(`nabi_trzsz::Progress`).
+    ///
+    /// 예전에는 같은 식을 여기 한 번 더 적어 뒀다. 두 벌이 있으면 한쪽만 고쳐지고, 그러면
+    /// 같은 전송이 화면마다 다른 남은 시간을 말한다. 실제로 그쪽 함수는 아무도 쓰지 않는
+    /// 채로 남아 있었다(2026-08-30 전수 점검).
+    fn calc(&self) -> nabi_trzsz::Progress {
+        nabi_trzsz::Progress {
+            index: self.index,
+            count: self.count,
+            name: String::new(),
+            done: self.done,
+            total: self.total,
+            bps: self.bps,
+        }
+    }
+
     fn fraction(&self) -> Option<f32> {
-        (self.total > 0).then(|| (self.done as f64 / self.total as f64).clamp(0.0, 1.0) as f32)
+        self.calc().fraction()
     }
 
     /// `⬇ a.zip · 3/10 · 12.4MB/40MB · 3.1MB/s · 남은 9초`
@@ -49,7 +65,7 @@ impl XferView<'_> {
     }
 
     fn eta(&self) -> Option<u64> {
-        (self.bps > 0 && self.total > self.done).then(|| (self.total - self.done) / self.bps)
+        self.calc().eta_secs()
     }
 }
 

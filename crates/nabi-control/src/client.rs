@@ -50,7 +50,8 @@ pub fn run_cli(args: &[String]) -> i32 {
     // 머신 가독 출력(--json) + 속성 주소지정(--match → --pane 해석, CP-6).
     let json = args.iter().any(|a| a == "--json");
     let args: Vec<String> = args.iter().filter(|a| *a != "--json").cloned().collect();
-    let args = match crate::matcher::resolve_args(&args, || {
+    // `--match` 는 한 벌, `--match … --all` 은 맞는 pane 마다 한 벌로 펼쳐진다.
+    let mut sets = match crate::matcher::expand_args(&args, || {
         match request(&pipe, &token, &ControlRequest::ListPanes) {
             Ok(ControlResponse::Panes { panes }) => Ok(panes),
             Ok(other) => Err(format!("list 응답이 아님: {other:?}")),
@@ -60,6 +61,27 @@ pub fn run_cli(args: &[String]) -> i32 {
         Ok(a) => a,
         Err(e) => { eprintln!("오류: {e}"); return 1; }
     };
+    // 여럿으로 펼쳐졌으면 **같은 길을 pane 마다 한 번씩** 다시 탄다. 펼친 인자에는
+    // `--match`·`--all` 이 없으니 다시 펼쳐지지 않는다 — 출력·오류 처리를 복제하지 않으려고
+    // 이렇게 한다. 두 벌로 적으면 한쪽만 고쳐진다.
+    //
+    // **하나라도 실패하면 실패로 끝낸다.** 절반만 되고 성공이라고 하면 부른 쪽이 다 됐다고 믿는다.
+    if sets.len() > 1 {
+        let mut bad = 0;
+        for mut one in sets {
+            if json {
+                one.push("--json".into());
+            }
+            if run_cli(&one) != 0 {
+                bad += 1;
+            }
+        }
+        if bad > 0 {
+            eprintln!("{bad}개 pane 에서 실패");
+        }
+        return i32::from(bad > 0);
+    }
+    let args = sets.pop().unwrap_or_default();
     // B4: `layout apply --file <json>` — panes 목록을 spawn 요청으로 합성(선언적 부트스트랩).
     if args.first().map(String::as_str) == Some("layout")
         && args.get(1).map(String::as_str) == Some("apply")

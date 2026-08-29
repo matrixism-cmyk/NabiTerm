@@ -255,6 +255,12 @@ pub(crate) fn take_multiline_paste(ui: &egui::Ui, warn: bool) -> Option<String> 
 pub(crate) fn wrap_paste(text: &str, bracketed: bool) -> Vec<u8> {
     // 끼어든 마커 제거 + 제어문자 위생(붙여넣기 주입 방지).
     let clean = nabi_render::sanitize_paste(&text.replace("\x1b[200~", "").replace("\x1b[201~", ""));
+    // **줄바꿈을 CR 하나로 맞춘다.** 윈도우에서 복사한 글은 줄마다 CRLF 라서, 그대로
+    // 보내면 셸이 엔터를 두 번 받은 것처럼 굴어 빈 줄이 하나씩 더 실행된다. 다른 윈도우
+    // 터미널들도 붙여넣기에서 이렇게 맞춘다.
+    //
+    // 만들어 두고 아무도 쓰지 않던 함수였다(2026-08-30 전수 점검에서 찾았다).
+    let clean = nabi_render::paste::normalize_newlines(&clean);
     if !bracketed {
         return clean.into_bytes();
     }
@@ -267,6 +273,18 @@ pub(crate) fn wrap_paste(text: &str, bracketed: bool) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::wrap_paste;
+
+    /// 윈도우 글을 붙여넣으면 줄바꿈이 **\r 하나**로 간다.
+    ///
+    /// 안 맞추면 줄마다 엔터가 두 번 들어가 빈 줄이 그만큼 더 실행된다.
+    #[test]
+    fn crlf_becomes_one_cr() {
+        assert_eq!(wrap_paste("a\r\nb\r\nc", false), b"a\rb\rc".to_vec());
+        // \n 만 있는 글도 셸이 기대하는 \r 로 간다.
+        assert_eq!(wrap_paste("a\nb", false), b"a\rb".to_vec());
+        // 대괄호 붙여넣기에서도 같다 — 감싸는 것과 줄바꿈은 다른 이야기다.
+        assert_eq!(wrap_paste("a\r\nb", true), b"\x1b[200~a\rb\x1b[201~".to_vec());
+    }
 
     #[test]
     fn wrap_paste_strips_inner_markers() {

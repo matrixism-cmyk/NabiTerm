@@ -16,7 +16,7 @@ pub mod telegram;
 pub mod audit;
 
 pub use editor::EditorConfig;
-pub use load::{load, load_editor};
+pub use load::{load, load_editor, load_reporting};
 pub use paths::{resolve_base, StorageLayout};
 pub use persist::save;
 pub use aiprofile::AiProfileCfg;
