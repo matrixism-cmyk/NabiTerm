@@ -61,7 +61,25 @@ fn make_env() -> webview2_com::Result<ICoreWebView2Environment> {
     CreateCoreWebView2EnvironmentCompletedHandler::wait_for_async_operation(
         // 안전: 핸들러는 이 호출이 끝날 때까지 살아 있다.
         Box::new(|handler| unsafe {
-            CreateCoreWebView2Environment(&handler).map_err(webview2_com::Error::WindowsError)
+            // `NABI_WEB_ARGS` 로 엣지에 넘길 인자를 붙인다.
+            //
+            // 사내망에서 프록시를 지정해야 하거나(`--proxy-server=...`), 그 PC 에서만 나는
+            // 문제를 가려내야 할 때 쓴다. 기본은 아무것도 붙이지 않는다 — 우리가 모르는
+            // 인자를 몰래 넣어 두면 나중에 왜 그렇게 도는지 아무도 모른다.
+            let extra = std::env::var("NABI_WEB_ARGS").unwrap_or_default();
+            if extra.is_empty() {
+                return CreateCoreWebView2Environment(&handler).map_err(webview2_com::Error::WindowsError);
+            }
+            let opts = webview2_com::CoreWebView2EnvironmentOptions::default();
+            opts.set_additional_browser_arguments(extra);
+            let opts: ICoreWebView2EnvironmentOptions = opts.into();
+            CreateCoreWebView2EnvironmentWithOptions(
+                windows_core::PCWSTR::null(),
+                windows_core::PCWSTR::null(),
+                &opts,
+                &handler,
+            )
+            .map_err(webview2_com::Error::WindowsError)
         }),
         Box::new(move |code, env| {
             code?;
