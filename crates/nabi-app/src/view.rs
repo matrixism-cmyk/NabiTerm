@@ -4,6 +4,9 @@ use crate::app::NabiApp;
 
 impl NabiApp {
     pub(crate) fn central(&mut self, ui: &mut egui::Ui) {
+        // 이번 프레임에 그려진 웹 탭을 모은다. 안 그려진 것은 끝에서 숨긴다 —
+        // 자식 창이라 우리가 안 숨기면 다른 탭 위에 그대로 남는다.
+        let mut web_seen = crate::webtabui::seen_default();
         let ctx = &ui.ctx().clone();
         // 포커스된 탭의 활동 표시는 해제.
         let focused = self.focused_pane();
@@ -115,6 +118,9 @@ impl NabiApp {
             let mut wheel_hint: Option<String> = None;
             let mut viewer = crate::tabs::TermTabViewer {
                 pane_rects: &mut self.pane_rects,
+                web_tabs: &mut self.web_tabs,
+                hwnd: self.hwnd,
+                web_seen: &mut web_seen,
                 wheel_hinted: &mut self.wheel_hinted,
                 wheel_hint: &mut wheel_hint,
                 orch: &self.orch,
@@ -288,6 +294,8 @@ impl NabiApp {
         if let Some(s) = pick {
             self.connect_saved(s);
         }
+        // 이번 프레임에 안 그려진 웹 탭은 숨긴다 — 자식 창이라 안 숨기면 다른 탭 위에 남는다.
+        self.hide_unseen_web_tabs(&web_seen);
         // ssh:// 링크 Ctrl+클릭 → Quick Connect 프리필.
         if let Some(rest) = self.pending_ssh.take() {
             self.connect_ssh_url(&rest);

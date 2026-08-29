@@ -91,6 +91,8 @@ pub struct NabiApp {
     pub browser: crate::browserpanel::BrowserPanel,
     /// 탭으로 열린 브라우저들(PaneId→독립 상태) — 그룹마다 여러 개 가능.
     pub browser_tabs: HashMap<PaneId, crate::browserpanel::BrowserPanel>,
+    /// 웹 탭들(배치 AZ). WebView2 는 UI 실에서만 만질 수 있어 여기 둔다.
+    pub web_tabs: HashMap<PaneId, crate::webtab::WebTab>,
     pub sidebar_filter: String, // 세션 사이드바 필터.
     /// SSH 끊김 재연결 제안(끊긴 pane) / 미지 호스트키 TOFU 모달(id·host·port·algo·fp).
     pub reconnect_ask: Option<(PaneId, String)>, pub hostkey_prompt: Option<crate::hostkeyui::HostKeyAsk>,

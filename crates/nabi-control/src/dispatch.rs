@@ -206,9 +206,9 @@ pub(crate) fn dispatch_write(
             app_tx.send(AppCtl::Progress { pane, percent }).ok();
             ControlResponse::Ok
         }
-        ControlRequest::OpenWeb { url } => {
-            tracing::info!(target: "control", from = ?from, ?url, "web");
-            app_tx.send(AppCtl::OpenWeb { url }).ok();
+        ControlRequest::OpenWeb { url, window } => {
+            tracing::info!(target: "control", from = ?from, ?url, window, "web");
+            app_tx.send(AppCtl::OpenWeb { url, window }).ok();
             ControlResponse::Ok
         }
         ControlRequest::OpenEditor { path } => {

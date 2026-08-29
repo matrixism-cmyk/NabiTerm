@@ -74,7 +74,10 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             // --pct 를 빼면 "이제 없음"이라는 뜻이다. 끝났을 때 지우라고 말할 길이 있어야 한다.
             percent: flag(args, "--pct").and_then(|v| v.parse().ok()),
         }),
-        Some("web") => Ok(ControlRequest::OpenWeb { url: flag(args, "--url") }),
+        Some("web") => Ok(ControlRequest::OpenWeb {
+            url: flag(args, "--url"),
+            window: args.iter().any(|a| a == "--window"),
+        }),
         Some("open-file") => Ok(ControlRequest::OpenEditor {
             path: flag(args, "--path").ok_or("open-file: --path 가 필요합니다")?,
         }),

@@ -144,6 +144,7 @@ impl NabiApp {
                 ..Default::default()
             },
             browser_tabs: HashMap::new(),
+            web_tabs: HashMap::new(),
             sidebar_filter: String::new(),
             reconnect_ask: None, hostkey_prompt: None,
             trzsz: Default::default(),

@@ -54,6 +54,12 @@ pub struct TermTabViewer<'a> {
     /// 이번 프레임에 **위험 표식**이 붙은 pane들(guard.rs). 표식은 앱만 알고,
     /// 보내는 자리는 여기다 — 순서를 지키려면 판단이 보내는 자리에 있어야 한다.
     pub risky_panes: &'a std::collections::HashSet<PaneId>,
+    /// 웹 탭들 — 탭 하나가 웹 화면 하나를 갖는다.
+    pub web_tabs: &'a mut HashMap<PaneId, crate::webtab::WebTab>,
+    /// 메인 창 손잡이 — 웹 화면은 이 창의 자식으로 붙는다.
+    pub hwnd: Option<isize>,
+    /// 이번 프레임에 그려진 웹 탭 — 여기 없는 것은 숨긴다(자식 창이라 저절로 안 사라진다).
+    pub web_seen: &'a mut std::collections::HashSet<PaneId>,
     /// 위험 명령 확인을 켤 것인가(`terminal.guard_dangerous`).
     pub guard_dangerous: bool,
     /// 위험 명령 확인 대기(붙잡힌 입력).
@@ -293,6 +299,10 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         let pane = *tab;
         // 무엇을 그리든 자리는 같으니 맨 앞에서 적는다 — 아래 갈래마다 적으면 하나를 빠뜨린다.
         self.pane_rects.insert(pane, ui.max_rect());
+        // 웹 탭은 규칙이 달라 따로 뒀다(자식 창이라 그렸다고 표시해야 한다).
+        if crate::webtabui::draw_if_web(ui, pane, self.web_tabs, self.web_seen, self.hwnd, self.lang) {
+            return;
+        }
         if let Some(b) = self.browser_tabs.get_mut(&pane) {
             // 로컬 파일 브라우저 탭 — 액션은 central이 적용.
             self.browser_act.push((
@@ -320,32 +330,22 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
     }
 
     fn on_close(&mut self, tab: &mut PaneId) -> egui_dock::tab_viewer::OnCloseResponse {
+        use crate::tabsclose::TabKind;
         use egui_dock::tab_viewer::OnCloseResponse;
-        if self.browser_tabs.contains_key(tab) {
-            *self.browser_closed = Some(*tab); // UI 전용 탭 — 오케스트레이터 명령 없음.
-            return OnCloseResponse::Close;
+        match self.tab_kind(*tab) {
+            // UI 전용 탭들 — 오케스트레이터 명령 없이 중앙이 정리한다.
+            TabKind::Browser => *self.browser_closed = Some(*tab),
+            TabKind::Editor => *self.editor_closed = Some(*tab),
+            // 원격은 닫는 일 자체를 중앙이 한다 — 여기서 닫으면 두 번 닫힌다.
+            TabKind::Remote => {
+                *self.sftp_closed = Some(*tab);
+                return OnCloseResponse::Ignore;
+            }
+            TabKind::Terminal => {
+                self.orch.send(Command::ClosePane { pane: *tab });
+                self.last_grid.remove(tab);
+            }
         }
-        if self.editors.contains_key(tab) {
-            *self.editor_closed = Some(*tab); // 정리는 central에서.
-            return OnCloseResponse::Close;
-        }
-        if Some(*tab) == self.sftp_pane || self.sftp_bg.contains_key(tab) {
-            *self.sftp_closed = Some(*tab); // 정리는 central에서(닫힘 자체도 central이 수행).
-            return OnCloseResponse::Ignore;
-        }
-        self.orch.send(Command::ClosePane { pane: *tab });
-        self.last_grid.remove(tab);
         OnCloseResponse::Close
-    }
-}
-
-impl TermTabViewer<'_> {
-    /// pane이 원격(SFTP/FTP) 탭이면 그 호스트를, 아니면 None.
-    fn remote_host(&self, pane: PaneId) -> Option<String> {
-        if Some(pane) == self.sftp_pane {
-            Some(self.sftp.host.clone())
-        } else {
-            self.sftp_bg.get(&pane).map(|p| p.host.clone())
-        }
     }
 }

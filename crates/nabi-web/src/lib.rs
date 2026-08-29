@@ -35,6 +35,7 @@
 //! 부르는 쪽을 막지 않는다. 창 하나가 실 하나를 쓴다.
 
 mod bar;
+pub mod embed;
 pub mod runtime;
 pub mod url;
 mod view;

@@ -64,7 +64,13 @@ pub enum ControlRequest {
     /// 내장 **웹** 브라우저 창을 연다 — 에이전트가 "이 화면 좀 띄워 줘"를 할 수 있게.
     ///
     /// 포트 포워딩으로 끌어온 원격 웹 화면을 여는 것이 가장 잦은 쓰임이다.
-    OpenWeb { url: Option<String> },
+    OpenWeb {
+        url: Option<String>,
+        /// 탭이 아니라 **별도 창**으로 띄운다. 탭 안의 웹은 메인 창에 붙어 있어서
+        /// 분리 창으로 뗄 수 없다 — 떼어 놓고 보고 싶을 때 이 길을 쓴다.
+        #[serde(default)]
+        window: bool,
+    },
     /// U3: 저장 SFTP 세션을 새 탭으로 연결(CP-3). 자격증명은 볼트에서.
     OpenSftp { session: String },
     /// U7: 조건 충족까지 블록(스트림 — CP-4). until: exit|command-done|idle|output.

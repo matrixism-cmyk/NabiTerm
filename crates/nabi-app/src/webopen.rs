@@ -14,9 +14,12 @@
 //! 그대로 알려 주고, 그 명령은 우리 환경 관리자로도 실행할 수 있다.
 
 /// 시작할 때 보여 줄 곳. 우리 소개 문서다.
-const HOME: &str = "https://github.com/matrixism-cmyk/NabiTerm";
+pub(crate) const HOME: &str = "https://github.com/matrixism-cmyk/NabiTerm";
 
-/// 브라우저 창을 연다. 화면에 띄울 알림이 있으면 돌려준다.
+/// 브라우저 창을 연다(별도 창). 화면에 띄울 알림이 있으면 돌려준다.
+///
+/// 탭으로 여는 길은 `NabiApp::open_web_tab` 이다. 기본은 탭이고, 이 함수는 제어 평면에서
+/// **창으로 띄워 달라**고 할 때 쓴다.
 pub(crate) fn open(lang: nabi_i18n::Lang, url: Option<&str>) -> Option<String> {
     let target = url.unwrap_or(HOME);
     match nabi_web::open(target, nabi_i18n::tr(lang, "web.title")) {

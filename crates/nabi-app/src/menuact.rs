@@ -236,9 +236,8 @@ impl NabiApp {
             MenuAction::OpenKeygen => self.keygen = Some(crate::sshkeygenui::KeygenState::new()),
             MenuAction::OpenEnvMgr => self.open_env_mgr(),
             MenuAction::OpenWeb => {
-                if let Some(msg) = crate::webopen::open(self.lang, None) {
-                    self.notify = Some((msg, std::time::Instant::now()));
-                }
+                // 기본은 **탭**이다. 별도 창은 임시 형태였다(사용자 요청 2026-08-29).
+                self.open_web_tab(crate::webopen::HOME);
             }
             MenuAction::EditAutoForwards(n) => self.open_auto_forwards(n),
             MenuAction::EditSessionEnv(n) => self.open_session_env(n),

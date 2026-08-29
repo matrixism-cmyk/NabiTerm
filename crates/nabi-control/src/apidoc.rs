@@ -19,7 +19,7 @@ pub fn api_doc() -> serde_json::Value {
             "open-browser": { "params": ["path?"], "doc": "파일 브라우저 탭" },
             "open-file": { "params": ["path"], "doc": "파일을 nabiPad 편집기로 연다" },
             "open-here": { "params": ["path"], "doc": "그 폴더에서 새 터미널을 열고 창을 앞으로" },
-            "web": { "params": ["url?"], "doc": "내장 웹 브라우저 창을 연다(파일 브라우저는 open-browser)" },
+            "web": { "params": ["url?", "window?"], "doc": "내장 웹 브라우저를 탭으로 연다(--window 면 별도 창). 파일 브라우저는 open-browser" },
             "progress": { "params": ["pane", "pct?"], "doc": "진행률을 상태 표시줄에 띄운다(pct 없으면 지운다)" },
             "screenshot": { "params": ["pane?", "out?"], "doc": "화면을 PNG 로 뜬다(capture 는 글자, 이건 점)" },
             "pane-modes": { "params": ["pane"], "doc": "터미널 모드 진단(대체화면·마우스보고·1007 등)" },

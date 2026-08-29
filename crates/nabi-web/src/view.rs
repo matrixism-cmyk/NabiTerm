@@ -65,7 +65,7 @@ pub(crate) fn attach(hwnd: HWND, start: &str) -> Result<(), String> {
 }
 
 /// 1단계 — 환경.
-fn make_env() -> webview2_com::Result<ICoreWebView2Environment> {
+pub(crate) fn make_env() -> webview2_com::Result<ICoreWebView2Environment> {
     let (tx, rx) = std::sync::mpsc::channel();
     CreateCoreWebView2EnvironmentCompletedHandler::wait_for_async_operation(
         // 안전: 핸들러는 이 호출이 끝날 때까지 살아 있다.
@@ -103,7 +103,7 @@ fn make_env() -> webview2_com::Result<ICoreWebView2Environment> {
 }
 
 /// 2단계 — 조종기.
-fn make_controller(env: &ICoreWebView2Environment, hwnd: HWND) -> webview2_com::Result<ICoreWebView2Controller> {
+pub(crate) fn make_controller(env: &ICoreWebView2Environment, hwnd: HWND) -> webview2_com::Result<ICoreWebView2Controller> {
     let (tx, rx) = std::sync::mpsc::channel();
     let env = env.clone();
     CreateCoreWebView2ControllerCompletedHandler::wait_for_async_operation(

@@ -36,9 +36,19 @@ impl crate::app::NabiApp {
                         None => self.forget_progress(id),
                     }
                 }
-                AppCtl::OpenWeb { url } => {
-                    if let Some(msg) = crate::webopen::open(self.lang, url.as_deref()) {
-                        self.notify = Some((msg, std::time::Instant::now()));
+                AppCtl::OpenWeb { url, window } => {
+                    // 기본은 탭이다. 메뉴와 같은 곳에 연다 — 부르는 길에 따라 다르게
+                    // 열리면 헷갈린다. `--window` 를 준 때만 별도 창으로 띄운다.
+                    let u = url.unwrap_or_else(|| crate::webopen::HOME.to_string());
+                    match window {
+                        true => {
+                            if let Some(msg) = crate::webopen::open(self.lang, Some(&u)) {
+                                self.notify = Some((msg, std::time::Instant::now()));
+                            }
+                        }
+                        false => {
+                            self.open_web_tab(&u);
+                        }
                     }
                 }
                 AppCtl::OpenHere { path } => {
