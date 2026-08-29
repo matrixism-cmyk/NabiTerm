@@ -37,6 +37,8 @@ struct View {
 }
 
 thread_local! {
+    /// 오류 페이지를 띄우는 중인가. 맴도는 것을 막는다.
+    static SHOWING_ERROR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static VIEW: std::cell::RefCell<Option<View>> = const { std::cell::RefCell::new(None) };
 }
 
@@ -110,10 +112,16 @@ fn watch_navigation(webview: &ICoreWebView2) {
         // 안전: 받는 곳은 우리 지역 변수다.
         let _ = unsafe { args.IsSuccess(&mut ok) };
         if ok.as_bool() {
+            SHOWING_ERROR.with(|f| f.set(false));
             return Ok(());
         }
         let mut why = COREWEBVIEW2_WEB_ERROR_STATUS::default();
         let _ = unsafe { args.WebErrorStatus(&mut why) };
+        // 오류 페이지를 띄우면 그것도 "옮겨 감"이라 여기가 또 불린다. 막지 않으면 맴돈다 —
+        // 실제로 세 번 불리며 화면이 하얗게 남았다.
+        if SHOWING_ERROR.with(|f| f.replace(true)) {
+            return Ok(());
+        }
         eprintln!("[nabi-web] 페이지를 불러오지 못했다 (사유 {})", why.0);
         show_error(why.0);
         Ok(())
