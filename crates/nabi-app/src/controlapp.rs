@@ -38,6 +38,14 @@ impl crate::app::NabiApp {
                 }
                 AppCtl::WebList { seq } => self.control_web_list(seq),
                 AppCtl::WebEval { seq, pane, js } => self.control_web_eval(seq, pane, js),
+                AppCtl::ShowHistory { pane } => {
+                    // 번호를 안 주면 지금 보고 있는 pane 이다 — 사람에게 보여 주는 것이니
+                    // 눈앞의 것이 기본이어야 한다.
+                    if let Some(p) = pane.map(nabi_types::PaneId::new).or_else(|| self.focused_pane()) {
+                        self.open_history_view(p);
+                    }
+                }
+                AppCtl::WebAct { seq, pane, act, arg } => self.control_web_act(seq, pane, act, arg),
                 AppCtl::SelfUpdate { check } => self.control_self_update(check),
                 AppCtl::OpenWeb { url, window } => {
                     // 기본은 탭이다. 메뉴와 같은 곳에 연다 — 부르는 길에 따라 다르게

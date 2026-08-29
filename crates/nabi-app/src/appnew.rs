@@ -79,7 +79,31 @@ impl NabiApp {
         // 에이전트 제어 평면(named pipe) — main이 심은 디스커버리 env로 서버 가동.
         let mode = nabi_control::policy::Mode::parse(&config.terminal.control_mode);
         let (control_policy, control_ask_rx) = nabi_control::policy::ControlPolicy::new(mode);
+        // 제어 요청은 **UI 를 깨워야** 처리된다.
+        //
+        // egui 는 할 일이 있을 때만 다시 그린다. 그래서 앱이 놀고 있으면 `update()` 가
+        // 돌지 않고, 앱이 처리해야 하는 제어 요청(web-*, layout export, screenshot …)이
+        // 통에 담긴 채 그대로 있다가 시간 초과로 끝난다.
+        //
+        // 실제로 그렇게 걸렸다(2026-08-30). 웹 조종 열세 개가 전부 "웹 탭 응답 시간 초과"로
+        // 나왔는데, 로그를 보면 요청은 앱까지 도착해 있었다. 마우스를 움직이면 되고 가만두면
+        // 안 되는 것이 증상이었다 — 그래서 예전 시험은 통과했다.
+        //
+        // 그래서 통에 넣는 길 가운데에 한 겹을 둔다. 넣을 때마다 UI 를 깨운다.
         let (control_app_tx, control_app_rx) = crossbeam_channel::unbounded();
+        let control_app_tx = {
+            let (raw_tx, raw_rx) = crossbeam_channel::unbounded::<nabi_proto::AppCtl>();
+            let ctx = cc.egui_ctx.clone();
+            std::thread::spawn(move || {
+                while let Ok(a) = raw_rx.recv() {
+                    if control_app_tx.send(a).is_err() {
+                        break; // 앱이 끝났다.
+                    }
+                    ctx.request_repaint();
+                }
+            });
+            raw_tx
+        };
         // 파일 속성 창의 해시 계산은 곁 스레드가 돌린다 — 큰 파일에 창이 멈추지 않게.
         let (hash_tx, hash_rx) = std::sync::mpsc::channel();
         let control_events = nabi_control::subscribe::EventHub::new();

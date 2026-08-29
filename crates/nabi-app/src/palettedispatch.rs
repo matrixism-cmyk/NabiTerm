@@ -47,7 +47,7 @@ impl NabiApp {
             PaletteAction::FindAll => self.open_find_all(),
             PaletteAction::OpenPaneHistory => {
                 if let Some(p) = self.focused_pane() {
-                    self.open_pane_history(p);
+                    self.open_history_view(p); // 휠과 같은 겹 화면 — 표면마다 다르면 헷갈린다.
                 }
             }
             PaletteAction::OpenBrowserTab => {

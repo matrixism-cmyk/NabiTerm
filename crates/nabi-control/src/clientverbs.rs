@@ -75,6 +75,13 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             percent: flag(args, "--pct").and_then(|v| v.parse().ok()),
         }),
         Some("web-list") => Ok(ControlRequest::WebList),
+        Some("history") => Ok(ControlRequest::ShowHistory { pane: pane(args) }),
+        // 웹 조종 낱말들 — 부르는 쪽에는 아홉 개, 프로토콜에는 하나로 모인다.
+        Some(w) if web_act(w).is_some() => Ok(ControlRequest::WebAct {
+            pane: pane(args),
+            act: web_act(w).unwrap_or_default().to_string(),
+            arg: web_arg(w, args)?,
+        }),
         Some("web-eval") => Ok(ControlRequest::WebEval {
             pane: pane(args),
             js: flag(args, "--js").ok_or("--js <자바스크립트> 가 필요하다")?,
@@ -149,6 +156,28 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             _ => Err(usage.to_string()),
         },
         _ => Err(usage.to_string()),
+    }
+}
+
+/// `web-back` 같은 낱말을 동작 이름으로. 우리 것이 아니면 None.
+pub(crate) fn web_act(word: &str) -> Option<&'static str> {
+    // 소스가 곧 목록이다 — 여기 없는 낱말은 파지 않는다.
+    const ACTS: [&str; 9] = [
+        "back", "forward", "reload", "stop", "goto", "zoom", "shot", "pdf", "text",
+    ];
+    let rest = word.strip_prefix("web-")?;
+    ACTS.into_iter().find(|a| *a == rest)
+}
+
+/// 그 낱말이 요구하는 딸린 값. 없어도 되는 것은 빈 글.
+fn web_arg(word: &str, args: &[String]) -> Result<String, String> {
+    match web_act(word) {
+        Some("goto") => flag(args, "--url").ok_or_else(|| "--url <주소> 가 필요하다".into()),
+        Some("zoom") => flag(args, "--set")
+            .ok_or_else(|| "--set <배율> 이 필요하다 (1.0 = 100%)".into()),
+        // 저장 자리는 안 주면 앱이 임시 폴더에 짓고 어디에 뒀는지 알려 준다.
+        Some("shot") | Some("pdf") => Ok(flag(args, "--out").unwrap_or_default()),
+        _ => Ok(String::new()),
     }
 }
 

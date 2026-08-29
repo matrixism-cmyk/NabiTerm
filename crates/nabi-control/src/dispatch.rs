@@ -241,6 +241,15 @@ pub(crate) fn dispatch_write(
             ControlResponse::Ok
         }
         ControlRequest::WebList => web_roundtrip(app_tx, events, |seq| AppCtl::WebList { seq }),
+        ControlRequest::ShowHistory { pane } => {
+            tracing::info!(target: "control", from = ?from, ?pane, "history");
+            app_tx.send(AppCtl::ShowHistory { pane }).ok();
+            ControlResponse::Ok
+        }
+        ControlRequest::WebAct { pane, act, arg } => {
+            tracing::info!(target: "control", from = ?from, ?pane, %act, "web-act");
+            web_roundtrip(app_tx, events, |seq| AppCtl::WebAct { seq, pane, act, arg })
+        }
         ControlRequest::SelfUpdate { check } => {
             tracing::info!(target: "control", from = ?from, check, "update");
             app_tx.send(AppCtl::SelfUpdate { check }).ok();

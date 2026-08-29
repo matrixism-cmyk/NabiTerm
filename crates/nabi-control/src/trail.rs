@@ -195,6 +195,8 @@ pub fn describe(req: &crate::protocol::ControlRequest) -> (&'static str, String,
         // 주소는 남긴다 — 에이전트가 어디를 열었는지가 이 기록의 요점이다.
         R::OpenWeb { url, .. } => ("web", url.clone().unwrap_or_default(), 0),
         R::SelfUpdate { check } => ("update", check.to_string(), 0),
+        R::WebAct { act, arg, .. } => ("web-act", format!("{act} {arg}"), 0),
+        R::ShowHistory { pane } => ("history", String::new(), pane.unwrap_or(0) as usize),
         R::WebList => ("web-list", String::new(), 0),
         R::WebEval { pane, js } => ("web-eval", js.clone(), pane.unwrap_or(0) as usize),
         // 찍은 자리만 남기고 파일 경로는 남기지 않는다 — 그림 자체가 남의 데이터일 수 있다.

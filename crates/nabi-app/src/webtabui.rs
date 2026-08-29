@@ -47,24 +47,78 @@ pub(crate) fn render(
     ppp: f32,
     lang: nabi_i18n::Lang,
 ) {
+    // 갈 곳이 있는지 먼저 묻는다 — 단추를 늘 켜 두면 눌러도 아무 일이 없어 고장으로 보인다.
+    let (can_b, can_f) = match &tab.view {
+        Some(v) => (v.can_back(), v.can_forward()),
+        None => (false, false),
+    };
     let bar = ui.horizontal(|ui| {
-        // 단추는 화면이 만들어진 뒤에만 뜻이 있다.
-        let on = tab.view.is_some();
-        if ui.add_enabled(on, egui::Button::new("\u{25c0}")).on_hover_text(nabi_i18n::tr(lang, "web.back")).clicked() {
+        let tip = |s: &str| nabi_i18n::tr(lang, s);
+        if ui.add_enabled(can_b, egui::Button::new("\u{25c0}")).on_hover_text(tip("web.back")).clicked() {
             if let Some(v) = &tab.view { v.back(); }
         }
-        if ui.add_enabled(on, egui::Button::new("\u{25b6}")).on_hover_text(nabi_i18n::tr(lang, "web.fwd")).clicked() {
+        if ui.add_enabled(can_f, egui::Button::new("\u{25b6}")).on_hover_text(tip("web.fwd")).clicked() {
             if let Some(v) = &tab.view { v.forward(); }
         }
-        if ui.add_enabled(on, egui::Button::new("\u{21bb}")).on_hover_text(nabi_i18n::tr(lang, "web.reload")).clicked() {
-            if let Some(v) = &tab.view { v.reload(); }
+        // 읽어 오는 중에는 멈춤, 아니면 새로고침 — 같은 자리를 두 뜻으로 쓴다(브라우저 관례).
+        let busy = tab.view.as_ref().is_some_and(|v| v.is_loading());
+        let (glyph, key) = match busy {
+            true => ("\u{2715}", "web.stop"),
+            false => ("\u{21bb}", "web.reload"),
+        };
+        if ui.add_enabled(tab.view.is_some(), egui::Button::new(glyph)).on_hover_text(tip(key)).clicked() {
+            if let Some(v) = &tab.view {
+                match busy {
+                    true => v.stop(),
+                    false => v.reload(),
+                }
+            }
         }
-        let edit = egui::TextEdit::singleline(&mut tab.url).desired_width(ui.available_width());
+        // 주소 칸은 **지금 보고 있는 곳**을 보여야 한다. 링크를 눌러 옮겨 가도 처음 친
+        // 주소가 그대로 남아 있으면, 어디에 있는지 알 수 없고 새로고침이 엉뚱한 곳으로 간다.
+        //
+        // 다만 사용자가 그 칸을 쓰고 있는 중이면 건드리지 않는다 — 치던 것이 사라지는 것이
+        // 가장 짜증스럽다(분리 창의 `bar::set_text` 와 같은 규칙).
+        let id = egui::Id::new(("weburl", ui.id()));
+        let typing = ui.memory(|m| m.has_focus(id));
+        if !typing {
+            if let Some(v) = &tab.view {
+                let now = v.url();
+                if !now.is_empty() && now != tab.url {
+                    tab.url = now;
+                }
+            }
+        }
+        let edit = egui::TextEdit::singleline(&mut tab.url)
+            .id(id)
+            .desired_width(ui.available_width() - 96.0);
         if ui.add(edit).lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
             if let Some(v) = &tab.view {
                 v.go(&tab.url);
             }
         }
+        // 확대 배율 — 100% 가 아닐 때만 값을 보여 준다. 늘 보이면 자리만 차지한다.
+        if let Some(v) = &tab.view {
+            let z = v.zoom();
+            if (z - 1.0).abs() > 0.01 {
+                ui.label(format!("{:.0}%", z * 100.0)).on_hover_text(tip("web.zoom"));
+            }
+        }
+        ui.menu_button("\u{22ee}", |ui| {
+            let has = tab.view.is_some();
+            if ui.add_enabled(has, egui::Button::new(tip("web.zoomreset"))).clicked() {
+                if let Some(v) = &tab.view { v.set_zoom(1.0); }
+                ui.close();
+            }
+            if ui.add_enabled(has, egui::Button::new(tip("web.devtools"))).clicked() {
+                if let Some(v) = &tab.view { v.devtools(); }
+                ui.close();
+            }
+            if ui.add_enabled(has, egui::Button::new(tip("web.savepdf"))).clicked() {
+                tab.want_pdf = true;
+                ui.close();
+            }
+        });
     })
     .response
     .rect;
@@ -75,6 +129,17 @@ pub(crate) fn render(
         ui.max_rect().max,
     );
     ui.allocate_rect(area, egui::Sense::hover());
+
+    // Ctrl+휠로 확대/축소 — 브라우저의 관례다. 웹 화면은 자식 창이라 휠을 우리가 못 받지만,
+    // 도구 줄과 그 둘레에서는 받을 수 있다. WebView2 자체도 Ctrl+휠을 처리하므로 여기서는
+    // 우리 영역에서 굴렸을 때만 거든다.
+    let (ctrl, wheel) = ui.ctx().input(|i| (i.modifiers.command, i.smooth_scroll_delta.y));
+    if ctrl && wheel.abs() > 0.5 && ui.rect_contains_pointer(area) {
+        if let Some(v) = &tab.view {
+            let step = if wheel > 0.0 { 1.1 } else { 1.0 / 1.1 };
+            v.set_zoom(v.zoom() * step);
+        }
+    }
 
     // 탭을 끌거나 경계선을 옮기는 중이면 **웹 화면을 잠깐 숨긴다.**
     //

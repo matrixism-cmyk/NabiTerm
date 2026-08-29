@@ -132,6 +132,28 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   need, not the whole page. With one web tab open `--pane` is optional; with several,
   `web-list` tells you which number to target. A tab that has never been shown has no page
   yet — focus it once first.
+- `nabi cli history [--pane <id>]`
+  Show that pane's **full history** on screen — the same overlay the user gets by scrolling
+  up. Programs that redraw in place (Claude Code, vim, top) leave only fragments in the
+  terminal scrollback, but the session recording has everything. Use this when the person
+  asks "what happened earlier" and the answer is longer than a capture.
+- `nabi cli web-text [--pane <id>]`
+  The readable text of the page (`document.body.innerText`), as a JSON string. This is the
+  one you want most of the time — reading a page beats curling it and parsing HTML, because
+  what you get is what a person sees after scripts have run.
+- `nabi cli web-goto --url <url> [--pane <id>]` / `web-back` / `web-forward` / `web-reload` /
+  `web-stop`
+  Drive navigation. `web-back` and `web-forward` fail with a clear message when there is
+  nowhere to go, instead of silently doing nothing.
+- `nabi cli web-shot [--out <file.png>] [--pane <id>]`
+  A PNG of what the page currently shows. Without `--out` it writes to the temp folder and
+  the reply names the file. Use this to check rendering — `web-text` cannot tell you whether
+  an image loaded or a layout broke.
+- `nabi cli web-pdf [--out <file.pdf>] [--pane <id>]`
+  The **whole** page as a PDF, not just the visible part — use it to keep a long page.
+- `nabi cli web-zoom --set <factor> [--pane <id>]`
+  Zoom the page (1.0 = 100%, clamped to 0.25–5.0). Useful before `web-shot` when you want
+  more of a long page in one image.
 - `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
   Register a recurring job (runs inside nabiTerm; survives restarts).
 - `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
@@ -356,13 +378,44 @@ mod tests {
         .concat()
     }
 
-    /// 소스에서 `Some("x")` 로 파는 낱말을 모두 모은다.
+    /// 소스에서 실제로 파는 낱말을 모두 모은다.
+    ///
+    /// 두 갈래다. 대부분은 `Some("x")` 로 하나씩 파지만, 웹 조종처럼 **배열에 적어 두고
+    /// 접두어를 붙여** 파는 것도 있다. 한쪽만 보면 있는 것을 없다고 한다 — 실제로 그렇게
+    /// 걸렸다. 손으로 적지 않고 두 갈래를 다 읽는다.
     fn known_verbs() -> Vec<String> {
-        verb_sources()
+        let src = verb_sources();
+        let mut out: Vec<String> = src
             .split("Some(\"")
             .skip(1)
             .filter_map(|p| p.split('"').next().map(str::to_string))
             .filter(|w| !w.is_empty() && !w.starts_with("--"))
+            .collect();
+        out.extend(prefixed_verbs(&src));
+        out
+    }
+
+    /// `const ACTS: [&str; N] = ["back", ...]` + `strip_prefix("web-")` 꼴을 펴 낸다.
+    ///
+    /// 배열과 접두어를 **소스에서 읽는다.** 여기 목록을 또 적으면 언젠가 어긋나고,
+    /// 어긋난 검사기는 검사하지 않는 것보다 나쁘다.
+    fn prefixed_verbs(src: &str) -> Vec<String> {
+        let Some(arr) = src.split("const ACTS: [&str;").nth(1) else {
+            return Vec::new();
+        };
+        let Some(items) = arr.split('[').nth(1).and_then(|s| s.split(']').next()) else {
+            return Vec::new();
+        };
+        let prefix = src
+            .split("strip_prefix(\"")
+            .nth(1)
+            .and_then(|s| s.split('"').next())
+            .unwrap_or("");
+        items
+            .split(',')
+            .filter_map(|w| w.trim().trim_matches('"').split('"').next())
+            .filter(|w| !w.is_empty())
+            .map(|w| format!("{prefix}{w}"))
             .collect()
     }
 

@@ -77,6 +77,21 @@ impl crate::app::NabiApp {
     }
 
     /// 겹 화면을 그린다. 매 프레임 부른다 — 닫혀 있으면 아무 일도 없다.
+    ///
+    /// ## 왜 창처럼 보이지 않게 그리는가
+    ///
+    /// 처음에는 창틀을 두르고 제목을 달았다. 사용자가 물었다 — "휠을 그냥 굴려서 바로
+    /// 보여 줄 수는 없었냐"(2026-08-30). 맞는 말이다. **스크롤백을 보는 일**인데 다른
+    /// 물건이 뜨면 그건 스크롤이 아니라 창을 연 것이다.
+    ///
+    /// 그래서 터미널과 같은 것으로 보이게 그린다 — 같은 배경색, 같은 등폭 글꼴, 같은
+    /// 글자 크기, pane 을 정확히 덮는 크기. 창틀도 제목 줄도 없다. 위쪽에 얇은 띠 하나만
+    /// 남겨 무엇을 보고 있는지와 빠져나가는 길을 알린다.
+    ///
+    /// ## 아래로 끝까지 굴리면 저절로 닫힌다
+    ///
+    /// 올려서 들어왔으니 내려서 나가야 한다. 맨 아래에 닿은 뒤에도 계속 내리면 접는다 —
+    /// 그러면 한 번의 스크롤로 과거에 갔다가 현재로 돌아온 것처럼 이어진다.
     pub(crate) fn render_history_view(&mut self, ctx: &egui::Context) {
         let Some(h) = &self.hist_view else { return };
         let pane = h.pane;
@@ -89,35 +104,70 @@ impl crate::app::NabiApp {
         let mut refresh = false;
         let mut to_editor = false;
         let n = h.lines.len();
+        let (bg, fg) = (self.theme.bg, self.theme.fg);
+        let bg = egui::Color32::from_rgb(bg.r, bg.g, bg.b);
+        let fg = egui::Color32::from_rgb(fg.r, fg.g, fg.b);
+        let font = egui::FontId::monospace(self.font_size);
+        let lang = self.lang;
         egui::Area::new(egui::Id::new(("hist_view", pane)))
             .fixed_pos(rect.min)
             .order(egui::Order::Foreground)
             .show(ctx, |ui| {
                 ui.set_min_size(rect.size());
                 ui.set_max_size(rect.size());
-                egui::Frame::window(ui.style()).show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(format!("\u{1f4dc} {} \u{00b7} {n}", tr(self.lang, "hist.title")));
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            close |= ui.button("\u{2715}").clicked();
-                            to_editor = ui.button(tr(self.lang, "hist.toeditor")).clicked();
-                            refresh = ui.button("\u{21bb}").clicked();
-                        });
-                    });
-                    ui.separator();
-                    let row = ui.text_style_height(&egui::TextStyle::Monospace);
-                    egui::ScrollArea::vertical()
-                        .max_height(rect.height() - 60.0)
+                // 터미널과 같은 바탕 — 창틀도 그림자도 없다.
+                egui::Frame::NONE.fill(bg).show(ui, |ui| {
+                    ui.set_min_size(rect.size());
+                    let bar = ui
+                        .horizontal(|ui| {
+                            ui.add_space(4.0);
+                            ui.label(
+                                egui::RichText::new(format!(
+                                    "\u{25b2} {} \u{00b7} {n}",
+                                    tr(lang, "hist.title")
+                                ))
+                                .color(fg.gamma_multiply(0.6))
+                                .monospace(),
+                            );
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    ui.add_space(4.0);
+                                    close |= ui.small_button("\u{2715}").clicked();
+                                    to_editor =
+                                        ui.small_button(tr(lang, "hist.toeditor")).clicked();
+                                    refresh = ui.small_button("\u{21bb}").clicked();
+                                },
+                            );
+                        })
+                        .response
+                        .rect
+                        .height();
+                    let row = ui.ctx().fonts_mut(|f| f.row_height(&font));
+                    let out = egui::ScrollArea::vertical()
+                        .max_height(rect.height() - bar - 4.0)
+                        .auto_shrink([false, false])
                         .stick_to_bottom(true) // 열리면 맨 아래(최근)부터 — 위로 굴리면 풀린다.
                         .show_rows(ui, row, n, |ui, range| {
+                            ui.style_mut().spacing.item_spacing.y = 0.0;
                             let Some(h) = &self.hist_view else { return };
                             for line in &h.lines[range] {
                                 ui.add(
-                                    egui::Label::new(egui::RichText::new(line).monospace())
-                                        .wrap_mode(egui::TextWrapMode::Extend),
+                                    egui::Label::new(
+                                        egui::RichText::new(line)
+                                            .font(font.clone())
+                                            .color(fg),
+                                    )
+                                    .wrap_mode(egui::TextWrapMode::Extend),
                                 );
                             }
                         });
+                    // 맨 아래에 닿았는데 더 내리면 접는다 — 올려서 들어왔으니 내려서 나간다.
+                    let at_bottom = out.state.offset.y + 1.0
+                        >= (out.content_size.y - out.inner_rect.height()).max(0.0);
+                    if at_bottom && ui.input(|i| i.smooth_scroll_delta.y < -1.0) {
+                        close = true;
+                    }
                 });
             });
         if refresh {

@@ -36,6 +36,7 @@
 
 mod bar;
 pub mod embed;
+pub mod embedctl;
 pub mod runtime;
 pub mod url;
 mod view;

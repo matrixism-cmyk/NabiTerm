@@ -249,7 +249,9 @@ impl NabiApp {
         }
         self.render_history_view(ctx);
         if let Some(p) = open_history {
-            self.open_pane_history(p);
+            // 그 자리에서 겹 화면으로 연다 — 휠을 올렸을 때와 같은 것을 본다.
+            // 편집기로 넘기는 길은 그 겹 화면 안에 있다(검색·저장은 그쪽이 낫다).
+            self.open_history_view(p);
         }
         if let Some((p, copy_only)) = ai_handoff {
             if copy_only {

@@ -66,7 +66,7 @@ impl crate::app::NabiApp {
     }
 
     /// 어느 웹 탭에 물을 것인가.
-    fn pick_web_tab(&self, pane: Option<u64>) -> Result<PaneId, String> {
+    pub(crate) fn pick_web_tab(&self, pane: Option<u64>) -> Result<PaneId, String> {
         if let Some(n) = pane {
             let p = PaneId::new(n);
             return match self.web_tabs.contains_key(&p) {
@@ -83,7 +83,7 @@ impl crate::app::NabiApp {
         }
     }
 
-    fn reply_web(&self, seq: u64, ok: bool, data: String) {
+    pub(crate) fn reply_web(&self, seq: u64, ok: bool, data: String) {
         self.control_events.publish(&Event::WebResult { seq, ok, data });
     }
 }
@@ -92,7 +92,7 @@ impl crate::app::NabiApp {
 ///
 /// 쪽 제목에는 따옴표도 역슬래시도 줄바꿈도 들어온다. 그대로 붙이면 받는 쪽에서 JSON 이
 /// 깨진다 — 실제로 제목에 따옴표가 든 쪽은 흔하다.
-fn json_str(s: &str) -> String {
+pub(crate) fn json_str(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
     out.push('"');
     for c in s.chars() {

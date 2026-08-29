@@ -176,6 +176,13 @@ impl NabiApp {
                             ui.close();
                         }
                     });
+                    // 새 웹 브라우저 — 이것도 "새로 여는" 것이라 같은 자리에 있어야 한다
+                    // (사용자 요청 2026-08-30). 파일 메뉴의 파일 브라우저와 헷갈리지 않게
+                    // 이름은 팔레트·탭 줄과 같은 "웹 브라우저"를 쓴다.
+                    if ui.button(tr(lang, "menu.newweb")).clicked() {
+                        action = Some(MenuAction::OpenWeb);
+                        ui.close();
+                    }
                     ui.separator();
                     // 로컬 포워딩은 sessions_menu → manage_menu(공용)에 포함 — 사이드바 ⋯와 동일.
                     if let Some(a) = crate::sessionsmenu::sessions_menu(ui, lang, &saved, &last_conn, &active) {

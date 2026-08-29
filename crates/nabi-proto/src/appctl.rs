@@ -52,6 +52,9 @@ pub enum AppCtl {
     /// 웹 탭 목록 요청 — 앱이 Event::WebResult{seq,..}로 회신.
     WebList { seq: u64 },
     /// 웹 탭에서 자바스크립트 실행 — 앱이 Event::WebResult{seq,..}로 회신.
+    /// 그 pane 의 전체 기록 겹 화면을 띄운다.
+    ShowHistory { pane: Option<u64> },
+    WebAct { seq: u64, pane: Option<u64>, act: String, arg: String },
     WebEval { seq: u64, pane: Option<u64>, js: String },
     /// 레이아웃 export 요청(B4) — 앱이 Event::LayoutJson{seq,json}으로 회신.
     LayoutExport { seq: u64 },

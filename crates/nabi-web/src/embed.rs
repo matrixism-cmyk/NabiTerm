@@ -30,6 +30,11 @@ pub struct Embedded {
     last: RECT,
     /// 지금 보이는가. 같은 값이면 다시 시키지 않는다.
     shown: bool,
+    /// 지금 읽어 오는 중인가.
+    ///
+    /// 엣지가 알려 주는 것을 여기 적어 둔다 — 물어볼 방법이 없어서다. 새로고침 단추를
+    /// 멈춤 단추로 바꾸는 데 쓴다. 읽는 중인지 모르면 멈출 방법이 없다.
+    loading: std::rc::Rc<std::cell::Cell<bool>>,
 }
 
 impl Embedded {
@@ -44,7 +49,9 @@ impl Embedded {
             crate::view::make_controller(&env, hwnd).map_err(|e| format!("화면을 붙이지 못했다: {e}"))?;
         // 안전: 방금 받은 조종기에서 화면을 꺼낸다.
         let webview = unsafe { controller.CoreWebView2() }.map_err(|e| format!("화면을 얻지 못했다: {e}"))?;
-        let me = Self { controller, webview, last: RECT::default(), shown: true };
+        let loading = std::rc::Rc::new(std::cell::Cell::new(false));
+        watch_loading(&webview, &loading);
+        let me = Self { controller, webview, last: RECT::default(), shown: true, loading };
         me.go(url);
         Ok(me)
     }
@@ -149,6 +156,21 @@ impl Embedded {
         }
     }
 
+    /// 지금 읽어 오는 중인가.
+    pub fn is_loading(&self) -> bool {
+        self.loading.get()
+    }
+
+    /// 조종 기능(embedctl.rs)이 쓰는 손잡이 — 크레이트 안에서만 보인다.
+    pub(crate) fn webview(&self) -> &ICoreWebView2 {
+        &self.webview
+    }
+
+    /// 같은 이유의 조종기 손잡이. 확대 배율은 화면이 아니라 조종기가 갖고 있다.
+    pub(crate) fn controller(&self) -> &ICoreWebView2Controller {
+        &self.controller
+    }
+
     /// 지금 보고 있는 쪽의 **제목**. 아직 안 읽혔으면 빈 글.
     ///
     /// 탭 이름에 쓴다. 주소를 그대로 쓰면 `https://github.com/...` 처럼 길어서 탭이
@@ -174,6 +196,31 @@ impl Drop for Embedded {
 /// 두 자리가 같은가. 매 프레임 부르므로 같으면 아무 일도 하지 않는다.
 fn same(a: &RECT, b: &RECT) -> bool {
     a.left == b.left && a.top == b.top && a.right == b.right && a.bottom == b.bottom
+}
+
+/// 읽기 시작/끝을 엣지에게 들어 두고 깃발에 적는다.
+///
+/// 엣지에는 "지금 읽는 중이냐"고 물을 길이 없다. 시작할 때와 끝날 때 알려 줄 뿐이다.
+/// 그래서 우리가 받아 적어 둔다. 못 걸어도 큰일은 아니다 — 새로고침 단추가 멈춤으로
+/// 바뀌지 않을 뿐이라, 실패를 이유로 화면 만들기를 접지는 않는다.
+fn watch_loading(webview: &ICoreWebView2, flag: &std::rc::Rc<std::cell::Cell<bool>>) {
+    let on = flag.clone();
+    let started = webview2_com::NavigationStartingEventHandler::create(Box::new(move |_, _| {
+        on.set(true);
+        Ok(())
+    }));
+    let off = flag.clone();
+    let done = webview2_com::NavigationCompletedEventHandler::create(Box::new(move |_, _| {
+        off.set(false);
+        Ok(())
+    }));
+    // 표는 우리가 뗄 일이 없으니 받아만 두고 버린다(화면이 죽으면 함께 사라진다).
+    let mut token = 0i64;
+    // 안전: 이 실에서 만든 화면에 이 실에서 만든 처리기를 건다.
+    unsafe {
+        let _ = webview.add_NavigationStarting(&started, &mut token as *mut _);
+        let _ = webview.add_NavigationCompleted(&done, &mut token as *mut _);
+    }
 }
 
 #[cfg(test)]

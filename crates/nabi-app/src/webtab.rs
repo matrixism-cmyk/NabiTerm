@@ -34,11 +34,22 @@ pub(crate) struct WebTab {
     /// 여기 담아 두는 까닭은, 탭 이름을 정하는 곳에서는 웹 화면에 물어볼 수 없어서다.
     /// 그 자리는 안 보이는 탭의 이름도 정해야 하는데, 안 보이는 탭은 화면이 숨겨져 있다.
     pub title: String,
+    /// 이 쪽을 PDF 로 저장해 달라는 요청(도구 줄 메뉴에서 켠다). 중앙이 받아 처리한다.
+    ///
+    /// 그리는 자리에서 바로 저장하지 않는 까닭은, 파일 자리를 묻는 창을 띄우려면 앱을
+    /// 만져야 하는데 그리는 함수는 앱을 모르기 때문이다.
+    pub want_pdf: bool,
 }
 
 impl WebTab {
     pub(crate) fn new(url: &str) -> Self {
-        Self { view: None, url: url.to_string(), failed: None, title: String::new() }
+        Self {
+            view: None,
+            url: url.to_string(),
+            failed: None,
+            title: String::new(),
+            want_pdf: false,
+        }
     }
 }
 
@@ -102,6 +113,38 @@ impl crate::app::NabiApp {
         }
     }
 
+    /// 도구 줄에서 켠 "PDF 로 저장"을 처리한다. 매 프레임 부른다.
+    ///
+    /// 그리는 자리가 아니라 여기서 하는 까닭은, 파일 자리를 묻는 창이 앱을 만져야 하기
+    /// 때문이다. 그리는 함수는 앱을 모른다.
+    pub(crate) fn tick_web_pdf(&mut self) {
+        let Some(pane) = self.web_tabs.iter().find(|(_, w)| w.want_pdf).map(|(p, _)| *p) else {
+            return;
+        };
+        // 요청은 한 번만 지운다 — 창을 띄우는 동안 프레임이 여러 번 돈다.
+        if let Some(w) = self.web_tabs.get_mut(&pane) {
+            w.want_pdf = false;
+        }
+        let name = self
+            .web_tabs
+            .get(&pane)
+            .map(|w| pdf_name(&w.title, &w.url))
+            .unwrap_or_else(|| "page.pdf".into());
+        let Some(path) = rfd::FileDialog::new().set_file_name(name).save_file() else {
+            return;
+        };
+        let out = path.display().to_string();
+        if let Some(v) = self.web_tabs.get(&pane).and_then(|w| w.view.as_ref()) {
+            let note = out.clone();
+            v.print_pdf(&out, move |r| match r {
+                // 콜백은 UI 실에서 돌지만 앱을 만질 수는 없다(빌림) — 로그로 남긴다.
+                Ok(()) => tracing::info!(target: "web", %note, "PDF 저장"),
+                Err(e) => tracing::warn!(target: "web", %e, "PDF 저장 실패"),
+            });
+        }
+        self.notify = Some((format!("\u{1f4c4} {out}"), std::time::Instant::now()));
+    }
+
     /// 닫힌 웹 탭을 치운다.
     ///
     /// 다른 UI 전용 탭(파일 브라우저·편집기)과 같은 길이다. 치우면서 `Embedded` 가
@@ -161,5 +204,36 @@ mod tests {
         assert_eq!(super::short_url("example.com"), "example.com");
         // 로컬 파일은 자를 곳이 없다 — 그대로 둔다.
         assert_eq!(super::short_url("about:blank"), "about:blank");
+    }
+}
+
+/// PDF 파일 이름을 짓는다 — 쪽 제목에서 파일에 못 쓰는 글자를 뺀다.
+///
+/// 제목을 그대로 쓰면 `?` 나 `:` 때문에 저장이 실패한다. 실패는 저장 창을 닫은 뒤에야
+/// 드러나서, 사용자는 눌렀는데 아무 일도 안 일어난 것으로 본다.
+pub(crate) fn pdf_name(title: &str, url: &str) -> String {
+    const BAD: &str = r#"\/:*?"<>|"#;
+    let base = match title.trim().is_empty() {
+        false => title.trim(),
+        true => url,
+    };
+    let safe: String = base
+        .chars()
+        .map(|c| match BAD.contains(c) {
+            true => '_',
+            false => c,
+        })
+        .take(60)
+        .collect();
+    format!("{}.pdf", safe.trim())
+}
+
+#[cfg(test)]
+mod pdfname_tests {
+    #[test]
+    fn 파일에_못_쓰는_글자를_바꾼다() {
+        assert_eq!(super::pdf_name("a/b:c?d", ""), "a_b_c_d.pdf");
+        // 제목이 없으면 주소를 쓴다.
+        assert_eq!(super::pdf_name("  ", "https://x.com/a"), "https___x.com_a.pdf");
     }
 }

@@ -21,6 +21,8 @@ pub fn api_doc() -> serde_json::Value {
             "open-here": { "params": ["path"], "doc": "그 폴더에서 새 터미널을 열고 창을 앞으로" },
             "web-list": { "params": [], "doc": "열려 있는 웹 탭 목록(번호, 주소, 제목)" },
             "web-eval": { "params": ["pane?", "js"], "doc": "웹 탭에서 자바스크립트를 실행하고 결과를 JSON 으로 받는다" },
+            "history": { "params": ["pane?"], "doc": "그 pane 의 전체 기록을 화면에 띄운다(휠을 올렸을 때와 같은 겹 화면)" },
+            "web-act": { "params": ["pane?", "act", "arg?"], "doc": "웹 탭 조종 — back|forward|reload|stop|goto|zoom|shot|pdf|text (CLI 는 web-back 등으로 부른다)" },
             "update": { "params": ["check?"], "doc": "최신판으로 스스로 올린다(--check 면 확인만). 조용히 설치하고 다시 켠다" },
             "web": { "params": ["url?", "window?"], "doc": "내장 웹 브라우저를 탭으로 연다(--window 면 별도 창). 파일 브라우저는 open-browser" },
             "progress": { "params": ["pane", "pct?"], "doc": "진행률을 상태 표시줄에 띄운다(pct 없으면 지운다)" },
