@@ -57,6 +57,11 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   List panes: id, title, size, kind (local/ssh), cwd, state, last exit code.
 - `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
   Read a pane's screen/scrollback. `--lines 100` = last 100 lines; `--escapes` keeps ANSI colors.
+- `nabi cli screenshot [--pane <id>] [--out <path.png>]`
+  Save a PNG of the window, or of one pane's area. `capture` gives you **text**; this gives you
+  **pixels** — use it when text cannot tell you what you need: did the image render, is the
+  colour right, is the layout broken, did the built-in browser actually load the page.
+  Without `--out` it writes to the temp folder and reports the path.
 - `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
 - `nabi cli integration install claude` — auto-install a SessionStart hook that reports the
   session id, so workspace restore resumes the exact session (`claude --resume <id>`).
@@ -70,6 +75,23 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli agent explain --pane <id>` — why the state detector classified a pane as it did.
 - `nabi cli events [--pane <id>] [--kind spawned,exit,output,command-done,agent-status,cwd]`
   Stream events as they happen (no replay). `nabi cli api schema` prints the full protocol doc.
+- `nabi cli open-file --path <file>`
+  Open a file in nabiPad, the built-in editor. Use it instead of dumping a long file into the
+  terminal — the person can then read, search and edit it properly.
+- `nabi cli open-here --path <dir>`
+  Open a new terminal in that folder and bring the window to the front.
+- `nabi cli pane-modes --pane <id>`
+  Read the terminal modes of a pane (alternate screen, mouse reporting, bracketed paste...).
+  Useful when a pane behaves oddly: a full-screen program leaves different modes set.
+- `nabi cli progress --pane <id> [--pct <0-100>]`
+  Show a progress badge in the status bar for that pane. Leave `--pct` out to clear it.
+  nabiTerm also reads progress off the screen for cargo/cmake/pytest/docker, but telling it
+  directly is exact — a long job you drive yourself should report its own progress.
+- `nabi cli web [--url <url>]`
+  Open the built-in web browser in a separate window. Handy right after `forward` — you can
+  pull a remote web UI through the SSH tunnel and look at it without leaving nabiTerm.
+  (`open-browser` is the **file** browser; this one is the web.)
+  Needs the Edge WebView2 runtime; if it is missing you get told how to install it.
 - `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
   Register a recurring job (runs inside nabiTerm; survives restarts).
 - `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
@@ -195,3 +217,62 @@ When the pane exits, nabiTerm clears its status automatically.
 Notes: `nabi` is the same exe that runs the GUI; the `cli` subcommand does one
 request and exits. Pane ids are integers from `nabi cli list`.
 "#;
+
+#[cfg(test)]
+mod tests {
+    /// 동사를 파는 곳이 세 파일에 나뉘어 있다 — 하나만 보면 있는 것을 없다고 한다.
+    fn verb_sources() -> String {
+        [
+            include_str!("../../nabi-control/src/clientverbs.rs"),
+            include_str!("../../nabi-control/src/client.rs"),
+            include_str!("../../nabi-control/src/clientagent.rs"),
+        ]
+        .concat()
+    }
+
+    /// 소스에서 `Some("x")` 로 파는 낱말을 모두 모은다.
+    fn known_verbs() -> Vec<String> {
+        verb_sources()
+            .split("Some(\"")
+            .skip(1)
+            .filter_map(|p| p.split('"').next().map(str::to_string))
+            .filter(|w| !w.is_empty() && !w.starts_with("--"))
+            .collect()
+    }
+
+    /// 설명서에 적힌 동사가 **실제로 있는 동사인지** 대조한다.
+    ///
+    /// 이 설명서는 AI 에게 주는 것이다. 없는 동사를 적어 두면 AI 가 그것을 부르고 실패한다.
+    /// 그리고 실패한 AI 는 우리 프로그램이 고장 났다고 판단한다.
+    ///
+    /// 손으로 관리하는 목록은 언젠가 실제와 달라진다 — 설정 검색 색인에서 이미 두 번 겪었다.
+    #[test]
+    fn every_verb_in_the_guide_really_exists() {
+        let known = known_verbs();
+        let mut missing = Vec::new();
+        for line in super::AGENT_GUIDE_MD.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("- `nabi cli ") else { continue };
+            let Some(verb) = rest.split([' ', '`']).find(|w| !w.is_empty()) else { continue };
+            if !known.iter().any(|k| k == verb) {
+                missing.push(verb.to_string());
+            }
+        }
+        assert!(missing.is_empty(), "설명서에만 있고 실제로는 없는 동사: {missing:?}");
+    }
+
+    /// 새로 만든 동사를 설명서에 적는 것을 잊지 않게 한다.
+    ///
+    /// 앞의 시험과 방향이 반대다. 그쪽은 "없는 것을 적었나", 이쪽은 "있는 것을 빠뜨렸나"를 본다.
+    /// 둘 다 있어야 목록이 실제와 같아진다.
+    #[test]
+    fn every_real_verb_is_written_down() {
+        let guide = super::AGENT_GUIDE_MD;
+        let mut absent: Vec<String> = known_verbs()
+            .into_iter()
+            .filter(|v| !guide.contains(v.as_str()))
+            .collect();
+        absent.sort();
+        absent.dedup();
+        assert!(absent.is_empty(), "실제로 있는데 설명서에 없는 동사: {absent:?}");
+    }
+}

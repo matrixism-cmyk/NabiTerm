@@ -67,30 +67,17 @@ fn try_run(url: &str, title: &str) -> Result<(), String> {
     unsafe {
         // WebView2 는 이 방식(한 실만 쓰는 아파트)을 요구한다.
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
-        eprintln!("[dbg] 실 시작");
         let hwnd = win::create(title).map_err(|e| format!("창을 만들지 못했다: {e}"))?;
-        eprintln!("[dbg] 창 만듦 {hwnd:?}");
         if let Err(e) = bar::create(hwnd) {
             let _ = DestroyWindow(hwnd);
             CoUninitialize();
             return Err(format!("도구 줄을 만들지 못했다: {e}"));
         }
-        eprintln!("[dbg] 도구 줄 만듦");
         let _ = ShowWindow(hwnd, SW_SHOW);
-        eprintln!("[dbg] 보이기 요청함");
         if let Err(why) = view::attach(hwnd, url) {
             let _ = DestroyWindow(hwnd);
             CoUninitialize();
             return Err(why);
-        }
-        {
-            use windows::Win32::UI::WindowsAndMessaging::{GetWindowRect, IsWindowVisible};
-            let mut r = windows::Win32::Foundation::RECT::default();
-            let _ = GetWindowRect(hwnd, &mut r);
-            eprintln!(
-                "[dbg] 보임={} 위치=({},{}) 크기={}x{}",
-                IsWindowVisible(hwnd).as_bool(), r.left, r.top, r.right - r.left, r.bottom - r.top
-            );
         }
         let mut msg = MSG::default();
         while GetMessageW(&mut msg, None, 0, 0).into() {

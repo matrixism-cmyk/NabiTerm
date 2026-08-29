@@ -46,6 +46,7 @@ pub(crate) fn attach(hwnd: HWND, start: &str) -> Result<(), String> {
     let controller = make_controller(&env, hwnd).map_err(|e| format!("화면을 붙이지 못했다: {e}"))?;
     // 안전: 방금 받은 조종기에서 화면을 꺼낸다.
     let webview = unsafe { controller.CoreWebView2() }.map_err(|e| format!("화면을 얻지 못했다: {e}"))?;
+    watch_navigation(&webview);
     VIEW.with(|v| *v.borrow_mut() = Some(View { controller, webview }));
     on_resize(hwnd);
     go(hwnd, start);
@@ -92,6 +93,48 @@ fn make_controller(env: &ICoreWebView2Environment, hwnd: HWND) -> webview2_com::
         .ok()
         .flatten()
         .ok_or(webview2_com::Error::TaskCanceled)
+}
+
+/// 페이지를 못 불러오면 **말한다.**
+///
+/// 안 그러면 하얀 창만 남는다. 창은 떴고 주소 칸에는 주소가 적혀 있으니 사용자는 우리가
+/// 고장 난 줄 안다. 실제로 그렇게 한참 헤맸다 — 프록시인지, 네트워크인지, 우리 잘못인지
+/// 알 길이 없었다.
+///
+/// WebView2 는 실패 이유를 숫자로 준다. 그것을 그대로 화면에 띄운다.
+fn watch_navigation(webview: &ICoreWebView2) {
+    let handler = webview2_com::NavigationCompletedEventHandler::create(Box::new(|_, args| {
+        let Some(args) = args else { return Ok(()) };
+        // 안전: 이벤트 인자는 이 호출 동안만 살아 있고 여기서만 읽는다.
+        let mut ok = windows_core::BOOL::default();
+        // 안전: 받는 곳은 우리 지역 변수다.
+        let _ = unsafe { args.IsSuccess(&mut ok) };
+        if ok.as_bool() {
+            return Ok(());
+        }
+        let mut why = COREWEBVIEW2_WEB_ERROR_STATUS::default();
+        let _ = unsafe { args.WebErrorStatus(&mut why) };
+        eprintln!("[nabi-web] 페이지를 불러오지 못했다 (사유 {})", why.0);
+        show_error(why.0);
+        Ok(())
+    }));
+    let mut token = windows::Win32::Foundation::HANDLE::default();
+    // 안전: 토큰은 우리가 들고 있고, 화면이 사라지면 함께 사라진다.
+    let _ = unsafe { webview.add_NavigationCompleted(&handler, &mut token as *mut _ as *mut i64) };
+}
+
+/// 실패한 자리에 이유를 그린다. 하얀 화면보다 낫다.
+fn show_error(code: i32) {
+    let html = format!(
+        "<body style='font:16px sans-serif;padding:40px;color:#333'>         <h2>페이지를 불러오지 못했습니다</h2>         <p>주소를 다시 확인해 주세요. 사내망이라면 프록시 설정이 필요할 수 있습니다.</p>         <p style='color:#888'>사유 코드 {code}</p></body>"
+    );
+    let wide: Vec<u16> = html.encode_utf16().chain(std::iter::once(0)).collect();
+    VIEW.with(|v| {
+        if let Some(view) = v.borrow().as_ref() {
+            // 안전: 널로 끝나는 UTF-16 문자열을 넘긴다.
+            let _ = unsafe { view.webview.NavigateToString(PCWSTR(wide.as_ptr())) };
+        }
+    });
 }
 
 /// 창 크기가 바뀌었다. 도구 줄을 다시 놓고 웹 화면을 남은 자리에 맞춘다.
