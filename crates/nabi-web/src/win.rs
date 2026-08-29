@@ -106,9 +106,23 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LRES
                 crate::view::on_resize(hwnd);
                 LRESULT(0)
             }
+            m if m == crate::view::WM_SHOW_ERROR => {
+                crate::view::draw_pending_error();
+                LRESULT(0)
+            }
             WM_COMMAND => {
-                // 위쪽 16비트가 무슨 일인지, 아래 16비트가 어느 자식인지 알려 준다.
-                crate::view::command(hwnd, (wp.0 & 0xffff) as isize);
+                // 위쪽 16비트가 **무슨 일인지**, 아래 16비트가 어느 자식인지 알려 준다.
+                //
+                // 종류를 안 보고 번호만 봤더니 이렇게 됐다: 주소 칸에 글을 넣으면 윈도우가
+                // "내용이 바뀌었다"(EN_CHANGE)를 부모에게 보내는데, 그것을 "엔터를 눌렀다"로
+                // 읽고 다시 이동 → 주소 칸에 글 넣기 → 또 알림 … 이 겹겹이 쌓여
+                // **스택이 넘쳐 프로세스가 죽었다**(2026-08-29).
+                //
+                // 단추 눌림(BN_CLICKED)만 받는다. 그 값이 0이다.
+                let what = (wp.0 >> 16) & 0xffff;
+                if what == 0 {
+                    crate::view::command((wp.0 & 0xffff) as isize);
+                }
                 LRESULT(0)
             }
             _ => DefWindowProcW(hwnd, msg, wp, lp),

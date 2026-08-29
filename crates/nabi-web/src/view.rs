@@ -27,6 +27,9 @@ use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
 
 use crate::win::BAR_H;
 
+/// 창에 남기는 쪽지 — "오류 페이지를 띄워라".
+pub(crate) const WM_SHOW_ERROR: u32 = windows::Win32::UI::WindowsAndMessaging::WM_APP + 1;
+
 /// 이 실이 맡은 창의 상태.
 ///
 /// 창 손잡이는 여기 두지 않는다. 부르는 쪽이 늘 들고 오기 때문이다 — 두 군데 두면
@@ -39,6 +42,10 @@ struct View {
 thread_local! {
     /// 오류 페이지를 띄우는 중인가. 맴도는 것을 막는다.
     static SHOWING_ERROR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// 이 실이 맡은 창. 이벤트 처리에서 창에 쪽지를 남기는 데 쓴다.
+    static HWND_OF: std::cell::Cell<isize> = const { std::cell::Cell::new(0) };
+    /// 아직 그리지 못한 오류 사유.
+    static PENDING_ERR: std::cell::Cell<i32> = const { std::cell::Cell::new(0) };
     static VIEW: std::cell::RefCell<Option<View>> = const { std::cell::RefCell::new(None) };
 }
 
@@ -48,6 +55,7 @@ pub(crate) fn attach(hwnd: HWND, start: &str) -> Result<(), String> {
     let controller = make_controller(&env, hwnd).map_err(|e| format!("화면을 붙이지 못했다: {e}"))?;
     // 안전: 방금 받은 조종기에서 화면을 꺼낸다.
     let webview = unsafe { controller.CoreWebView2() }.map_err(|e| format!("화면을 얻지 못했다: {e}"))?;
+    HWND_OF.with(|h| h.set(hwnd.0 as isize));
     watch_navigation(&webview);
     watch_start(&webview);
     VIEW.with(|v| *v.borrow_mut() = Some(View { controller, webview }));
@@ -142,7 +150,22 @@ fn watch_navigation(webview: &ICoreWebView2) {
             return Ok(());
         }
         eprintln!("[nabi-web] {} 를 불러오지 못했다 (사유 {})", current_url(), why.0);
-        show_error(why.0);
+        // **여기서 다시 이동시키지 않는다.** 이벤트 처리 안에서 이동을 시키면 그 이동이
+        // 또 이 자리를 부르고, 그것이 겹겹이 쌓여 **스택이 넘친다**(2026-08-29에 실제로
+        // 그렇게 프로세스가 죽었다). 창에 쪽지만 남기고 나간다 — 메시지 루프가 처리한다.
+        PENDING_ERR.with(|e| e.set(why.0));
+        let h = HWND_OF.with(|h| h.get());
+        if h != 0 {
+            // 안전: 쪽지 하나를 큐에 넣을 뿐이고, 창이 죽었으면 실패를 돌려준다.
+            let _ = unsafe {
+                windows::Win32::UI::WindowsAndMessaging::PostMessageW(
+                    Some(HWND(h as *mut core::ffi::c_void)),
+                    WM_SHOW_ERROR,
+                    windows::Win32::Foundation::WPARAM(0),
+                    windows::Win32::Foundation::LPARAM(0),
+                )
+            };
+        }
         Ok(())
     }));
     let mut token = windows::Win32::Foundation::HANDLE::default();
@@ -181,6 +204,14 @@ fn current_url() -> String {
         }
         unsafe { p.to_string() }.unwrap_or_default()
     })
+}
+
+/// 메시지 루프가 쪽지를 받았다 — 이제 안전하게 오류 페이지를 그린다.
+pub(crate) fn draw_pending_error() {
+    let code = PENDING_ERR.with(|e| e.replace(0));
+    if code != 0 {
+        show_error(code);
+    }
 }
 
 /// 실패한 자리에 이유를 그린다. 하얀 화면보다 낫다.
@@ -234,8 +265,8 @@ pub(crate) fn go(hwnd: HWND, input: &str) {
 
 
 /// 도구 줄 단추를 눌렀다.
-pub(crate) fn command(hwnd: HWND, id: isize) {
-    use crate::win::{ID_ADDR, ID_BACK, ID_FWD, ID_RELOAD};
+pub(crate) fn command(id: isize) {
+    use crate::win::{ID_BACK, ID_FWD, ID_RELOAD};
     VIEW.with(|v| {
         let b = v.borrow();
         let Some(view) = b.as_ref() else { return };
@@ -255,9 +286,8 @@ pub(crate) fn command(hwnd: HWND, id: isize) {
             }
         }
     });
-    if id == ID_ADDR {
-        go(hwnd, &crate::bar::text(hwnd));
-    }
+    // 주소 칸은 여기서 다루지 않는다. 엔터는 그 칸에 끼운 함수가 받는다 —
+    // 여기서 또 받으면 글을 넣을 때마다 되풀이된다(그렇게 스택이 넘쳤다).
 }
 
 /// 이 실이 들고 있던 것을 놓는다. 창이 닫힐 때 부른다.
