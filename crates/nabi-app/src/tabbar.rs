@@ -72,6 +72,11 @@ impl NabiApp {
                     if ui.button(tr(lang, "menu.browsertab")).clicked() {
                         act = Some(1);
                     }
+                    // 웹 탭도 여기서 연다 — 이제 다른 탭과 같은 것이니 같은 자리에 있어야 한다
+                    // (사용자 요청 2026-08-29). 메뉴·팔레트와 표현을 맞춰 "웹 브라우저"로 적는다.
+                    if ui.button(tr(lang, "web.title")).clicked() {
+                        act = Some(3);
+                    }
                     if ui.button(tr(lang, "qc.title")).clicked() {
                         act = Some(2);
                     }
@@ -102,6 +107,9 @@ impl NabiApp {
                 self.open_browser_tab();
             }
             Some(2) => self.open_quick_connect(),
+            Some(3) => {
+                self.open_web_tab(crate::webopen::HOME);
+            }
             _ => {}
         }
     }

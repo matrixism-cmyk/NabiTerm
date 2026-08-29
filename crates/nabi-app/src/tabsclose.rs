@@ -8,6 +8,8 @@ use nabi_types::PaneId;
 /// 이 탭이 무엇인가.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TabKind {
+    /// 내장 웹 — 자식 창을 함께 닫아야 한다(안 닫으면 엣지 프로세스가 남는다).
+    Web,
     Browser,
     Editor,
     /// 원격(SFTP/FTP) — 닫는 일 자체를 중앙이 하므로 여기서는 닫지 않는다.
@@ -16,11 +18,12 @@ pub(crate) enum TabKind {
 }
 
 /// 있는지 없는지만 보고 종류를 정한다. 순서가 곧 우선순위다.
-pub(crate) fn kind(browser: bool, editor: bool, remote: bool) -> TabKind {
-    match (browser, editor, remote) {
-        (true, _, _) => TabKind::Browser,
-        (_, true, _) => TabKind::Editor,
-        (_, _, true) => TabKind::Remote,
+pub(crate) fn kind(web: bool, browser: bool, editor: bool, remote: bool) -> TabKind {
+    match (web, browser, editor, remote) {
+        (true, ..) => TabKind::Web,
+        (_, true, ..) => TabKind::Browser,
+        (_, _, true, _) => TabKind::Editor,
+        (.., true) => TabKind::Remote,
         _ => TabKind::Terminal,
     }
 }
@@ -37,6 +40,7 @@ impl crate::tabs::TermTabViewer<'_> {
     /// 이 탭이 무엇인지 — 위 `kind`에 실제 상태를 물어 넘긴다.
     pub(crate) fn tab_kind(&self, tab: PaneId) -> TabKind {
         kind(
+            self.web_tabs.contains_key(&tab),
             self.browser_tabs.contains_key(&tab),
             self.editors.contains_key(&tab),
             Some(tab) == self.sftp_pane || self.sftp_bg.contains_key(&tab),
@@ -49,10 +53,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 브라우저가_가장_먼저다() {
-        assert_eq!(kind(true, true, true), TabKind::Browser);
-        assert_eq!(kind(false, true, true), TabKind::Editor);
-        assert_eq!(kind(false, false, true), TabKind::Remote);
-        assert_eq!(kind(false, false, false), TabKind::Terminal);
+    fn 앞의_것이_이긴다() {
+        assert_eq!(kind(true, true, true, true), TabKind::Web);
+        assert_eq!(kind(false, true, true, true), TabKind::Browser);
+        assert_eq!(kind(false, false, true, true), TabKind::Editor);
+        assert_eq!(kind(false, false, false, true), TabKind::Remote);
+        assert_eq!(kind(false, false, false, false), TabKind::Terminal);
     }
 }

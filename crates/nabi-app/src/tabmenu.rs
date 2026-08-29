@@ -111,6 +111,8 @@ pub(crate) fn tab_context_menu(
     tear_off: &mut Option<PaneId>,
     sftp_open: &mut Option<PaneId>,
     ai_handoff: &mut Option<(PaneId, bool)>,
+    // 이 pane 의 전체 기록을 편집기로 열어 달라는 요청(중앙이 처리).
+    open_history: &mut Option<PaneId>,
     dock_float: Option<&mut Option<PaneId>>,
     // 같은 출처로 탭을 하나 더 여는 요청(명령 팔레트에만 있던 기능을 메뉴에도 노출).
     duplicate: &mut bool,
@@ -129,6 +131,12 @@ pub(crate) fn tab_context_menu(
                 md.reset();
             }
         }
+        ui.close();
+    }
+    // 전체 기록 열기 — 스크롤백에 안 남는 프로그램(클로드 코드 등) 때문에 필요하다.
+    // 지우는 항목 바로 위에 둔다: 지우기 전에 남길 길이 눈에 먼저 들어와야 한다.
+    if ui.button(tr(lang, "hist.open")).clicked() {
+        *open_history = Some(*tab);
         ui.close();
     }
     // 스크롤백(히스토리)만 비우기 — 화면 유지(Clear Buffer).

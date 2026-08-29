@@ -51,6 +51,8 @@ pub(crate) enum PaletteAction {
     ArrangeCascade,
     ToggleBrowser,
     OpenBrowserTab,
+    /// 포커스 pane 의 전체 기록을 편집기로 연다.
+    OpenPaneHistory,
     /// 열린 모든 창의 스크롤백을 한 번에 검색.
     FindAll,
     ToggleSessionsPanel,

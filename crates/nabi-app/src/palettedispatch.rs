@@ -45,6 +45,11 @@ impl NabiApp {
             PaletteAction::ArrangeCascade => self.pending_arrange = Some(ArrangeMode::Cascade),
             PaletteAction::ToggleBrowser => self.toggle_browser(),
             PaletteAction::FindAll => self.open_find_all(),
+            PaletteAction::OpenPaneHistory => {
+                if let Some(p) = self.focused_pane() {
+                    self.open_pane_history(p);
+                }
+            }
             PaletteAction::OpenBrowserTab => {
                 self.open_browser_tab(); // 반환값(PaneId)은 쓰지 않는다.
             }

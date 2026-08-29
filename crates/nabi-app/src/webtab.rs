@@ -29,11 +29,16 @@ pub(crate) struct WebTab {
     pub url: String,
     /// 만들다 실패했으면 그 이유. 화면에 그대로 보여 준다 — 빈 탭만 두지 않는다.
     pub failed: Option<String>,
+    /// 지금 쪽의 제목 — 탭 이름으로 쓴다. 그릴 때마다 웹 화면에 물어 갱신한다.
+    ///
+    /// 여기 담아 두는 까닭은, 탭 이름을 정하는 곳에서는 웹 화면에 물어볼 수 없어서다.
+    /// 그 자리는 안 보이는 탭의 이름도 정해야 하는데, 안 보이는 탭은 화면이 숨겨져 있다.
+    pub title: String,
 }
 
 impl WebTab {
     pub(crate) fn new(url: &str) -> Self {
-        Self { view: None, url: url.to_string(), failed: None }
+        Self { view: None, url: url.to_string(), failed: None, title: String::new() }
     }
 }
 
@@ -58,5 +63,103 @@ impl crate::app::NabiApp {
                 }
             }
         }
+    }
+
+    /// 열려 있는 웹 탭의 주소를 도크 순서대로 저장한다.
+    ///
+    /// 파일 브라우저 탭과 같은 방식이다(`.btabs` 옆에 `.wtabs`). 주소만 적는다 —
+    /// 웹 화면 자체는 다시 만들면 되고, 로그인 상태는 엣지가 알아서 들고 있다.
+    pub(crate) fn save_web_tabs(&self) {
+        let urls: Vec<String> = self
+            .dock
+            .iter_all_tabs()
+            .filter_map(|(_, p)| self.web_tabs.get(p))
+            .map(|w| w.url.clone())
+            .collect();
+        let path = self.workspace_path.with_extension("wtabs");
+        match urls.is_empty() {
+            true => {
+                let _ = std::fs::remove_file(path);
+            }
+            false => {
+                if let Ok(s) = ron::to_string(&urls) {
+                    let _ = std::fs::write(path, s);
+                }
+            }
+        }
+    }
+
+    /// 저장된 웹 탭들을 다시 연다.
+    ///
+    /// 하나가 깨져도 나머지는 연다 — 한 줄 때문에 열두 탭을 잃을 이유가 없다.
+    pub(crate) fn restore_web_tabs(&mut self) {
+        let Ok(s) = std::fs::read_to_string(self.workspace_path.with_extension("wtabs")) else {
+            return;
+        };
+        let (urls, _dropped) = crate::ronsalvage::parse_vec::<String>(&s);
+        for u in urls {
+            self.open_web_tab(&u);
+        }
+    }
+
+    /// 닫힌 웹 탭을 치운다.
+    ///
+    /// 다른 UI 전용 탭(파일 브라우저·편집기)과 같은 길이다. 치우면서 `Embedded` 가
+    /// 떨어지고, 그때 엣지 프로세스도 함께 닫힌다 — 안 치우면 프로세스가 남는다.
+    pub(crate) fn close_web_tab(&mut self, pane: PaneId) {
+        self.web_tabs.remove(&pane);
+    }
+}
+
+/// 긴 주소를 탭 이름에 쓸 만큼 줄인다 — 호스트 이름만 남긴다.
+///
+/// `https://github.com/matrixism-cmyk/NabiTerm` 를 그대로 쓰면 탭이 통째로 주소가 된다.
+/// 쪽 제목을 아직 못 읽었을 때만 쓰는 임시 이름이다.
+pub(crate) fn short_url(url: &str) -> String {
+    let no_scheme = url.split_once("://").map(|(_, r)| r).unwrap_or(url);
+    let host = no_scheme.split(['/', '?', '#']).next().unwrap_or(no_scheme);
+    match host.is_empty() {
+        true => url.to_string(),
+        false => host.to_string(),
+    }
+}
+
+/// 탭에 붙일 이름 — 쪽 제목이 있으면 그것을, 없으면 주소를 줄여 쓴다.
+///
+/// 길이를 자르는 까닭은 화면으로 확인했기 때문이다. 깃허브 쪽 제목을 그대로 달았더니
+/// 탭 하나가 창을 가로질러 다른 탭들을 전부 밀어냈다. 다른 탭들(파일·편집기)은 파일
+/// 이름만 달고 있어서 짧다 — 웹만 길면 나란히 놓을 수 없다.
+pub(crate) fn tab_name(title: &str, url: &str) -> String {
+    const MAX: usize = 24;
+    let full = match title.is_empty() {
+        false => title.to_string(),
+        true => short_url(url),
+    };
+    match full.chars().count() > MAX {
+        false => full,
+        true => full.chars().take(MAX - 1).collect::<String>() + "\u{2026}",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn 긴_제목은_줄인다() {
+        // 짧으면 그대로 둔다.
+        assert_eq!(super::tab_name("GitHub", "https://github.com"), "GitHub");
+        // 길면 잘리고 말줄임표가 붙는다 — 세는 단위는 글자다(한글도 한 글자).
+        let long = super::tab_name("가나다라마바사아자차카타파하가나다라마바사아자차카타", "");
+        assert_eq!(long.chars().count(), 24);
+        assert!(long.ends_with('\u{2026}'));
+        // 제목이 없으면 주소에서 호스트만.
+        assert_eq!(super::tab_name("", "https://example.com/a/b"), "example.com");
+    }
+
+    #[test]
+    fn 주소에서_호스트만_남긴다() {
+        assert_eq!(super::short_url("https://github.com/a/b?c=1"), "github.com");
+        assert_eq!(super::short_url("example.com"), "example.com");
+        // 로컬 파일은 자를 곳이 없다 — 그대로 둔다.
+        assert_eq!(super::short_url("about:blank"), "about:blank");
     }
 }

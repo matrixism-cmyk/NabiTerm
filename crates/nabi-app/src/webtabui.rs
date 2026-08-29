@@ -27,6 +27,13 @@ pub(crate) fn draw_if_web(
     };
     // 그렸다고 표시한다 — 표시하지 않은 웹 탭은 중앙에서 숨긴다(자식 창이라 필요하다).
     seen.insert(pane);
+    // 탭 이름이 쪽 제목을 따라가게 한다 — 그릴 때만 물으면 되고, 안 보이는 탭은 마지막 이름을 쓴다.
+    if let Some(v) = &w.view {
+        let t = v.title();
+        if !t.is_empty() {
+            w.title = t;
+        }
+    }
     let ppp = ui.ctx().pixels_per_point();
     render(ui, w, hwnd, ppp, lang);
     true

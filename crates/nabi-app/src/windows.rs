@@ -116,6 +116,10 @@ impl NabiApp {
             self.floating_browser(ui, pane);
             return;
         }
+        if self.web_tabs.contains_key(&pane) {
+            self.floating_web(ui, pane);
+            return;
+        }
         let font_size = self.pane_font.get(&pane).copied().unwrap_or(self.font_size);
         let blink_on = self.blink_on();
         let find = self.find_highlight(); // 탭과 같은 규칙(정규식·단어 단위는 강조 생략).

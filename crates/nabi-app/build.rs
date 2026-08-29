@@ -79,6 +79,44 @@ fn encode_ico(sizes: &[usize]) -> Vec<u8> {
     out
 }
 
+/// 웹 화면을 여는 데 필요한 `WebView2Loader.dll` 을 **빌드한 exe 옆에 갖다 놓는다.**
+///
+/// ## 왜 빌드 때 하는가
+///
+/// 이 DLL 이 없으면 exe 가 아예 뜨지 않는다. 창 하나 없이 "WebView2Loader.dll was not
+/// found" 라는 윈도우 오류 상자만 뜬다 — 프로그램이 고장 난 것처럼 보인다.
+///
+/// 설치본은 `xtask dist` 가 챙긴다. 하지만 `cargo run` 이나 `target/debug/nabi.exe` 를
+/// 그냥 실행하는 개발 중에는 아무도 챙기지 않았다. 실제로 두 번 당했다 — 한 번은 릴리스
+/// (v0.1.491), 한 번은 개발 중(2026-08-29, 오류 상자가 사용자 화면에까지 떴다).
+///
+/// 챙기는 자리를 **빌드로 옮기면** 두 경우가 한 번에 해결된다. 빌드한 결과 옆에 늘 있다.
+///
+/// 실패해도 빌드는 계속한다 — 웹 기능만 못 쓰고 나머지는 멀쩡하다.
+fn copy_webview_loader() {
+    // OUT_DIR = target/<프로파일>/build/<크레이트>-<해시>/out → 네 단계 위가 exe 자리.
+    let Ok(out_dir) = std::env::var("OUT_DIR") else { return };
+    let out = std::path::PathBuf::from(&out_dir);
+    let Some(profile_dir) = out.ancestors().nth(3) else { return };
+    let dest = profile_dir.join("WebView2Loader.dll");
+    if dest.exists() {
+        return; // 이미 있으면 그대로 둔다 — 빌드마다 덮어쓸 이유가 없다.
+    }
+    // 같은 build 폴더 아래 webview2-com-sys 가 풀어 놓은 x64 판을 찾는다.
+    let Some(build_dir) = out.ancestors().nth(2) else { return };
+    let Ok(rd) = std::fs::read_dir(build_dir) else { return };
+    for e in rd.flatten() {
+        if !e.file_name().to_string_lossy().starts_with("webview2-com-sys-") {
+            continue;
+        }
+        let src = e.path().join("out").join("x64").join("WebView2Loader.dll");
+        if src.exists() && std::fs::copy(&src, &dest).is_ok() {
+            return;
+        }
+    }
+    println!("cargo:warning=WebView2Loader.dll 을 찾지 못했다 — 내장 웹 브라우저가 뜨지 않는다.");
+}
+
 fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
         return;
@@ -97,4 +135,5 @@ fn main() {
     if let Err(e) = res.compile() {
         println!("cargo:warning=아이콘 임베드 생략: {e}");
     }
+    copy_webview_loader();
 }

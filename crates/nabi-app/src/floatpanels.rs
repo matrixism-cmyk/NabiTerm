@@ -111,6 +111,39 @@ impl NabiApp {
         }
     }
 
+    /// 분리 창으로 뗀 웹 탭.
+    ///
+    /// 웹 화면은 **메인 창의 자식**이라 여기까지 따라오지 못한다. 운영체제가 그 창에
+    /// 직접 그리기 때문에, 부모가 아닌 창에 놓으면 엉뚱한 자리에 나타난다.
+    ///
+    /// 그래서 빈 창을 보여 주는 대신 사정을 적고, 탭으로 되돌리는 단추를 둔다. 정말로
+    /// 창 하나에 웹만 띄우고 싶으면 `nabi cli web --window` 가 그 길이다.
+    pub(crate) fn floating_web(&mut self, ui: &mut egui::Ui, pane: PaneId) {
+        let lang = self.lang;
+        let mut back = false;
+        egui::CentralPanel::default().show(ui, |ui| {
+            ui.vertical_centered(|ui| {
+                ui.add_space(40.0);
+                if let Some(w) = self.web_tabs.get(&pane) {
+                    // 여기는 창 하나를 다 쓰므로 줄이지 않는다 — 제목을 그대로 보여 준다.
+                    ui.heading(match w.title.is_empty() {
+                        false => w.title.clone(),
+                        true => crate::webtab::short_url(&w.url),
+                    });
+                }
+                ui.add_space(8.0);
+                ui.label(nabi_i18n::tr(lang, "web.mainonly"));
+                ui.add_space(12.0);
+                back = ui.button(nabi_i18n::tr(lang, "web.backtotab")).clicked();
+            });
+        });
+        if back {
+            self.floating.retain(|x| *x != pane);
+            self.floating_shown.remove(&pane);
+            self.add_pane(pane);
+        }
+    }
+
     /// 분리 창의 SFTP 파일브라우저 렌더 + 액션 처리(활성 패널만 액션 처리, 배경은 표시).
     pub(crate) fn floating_sftp(&mut self, ui: &mut egui::Ui, pane: PaneId) {
         let vctx = &ui.ctx().clone();

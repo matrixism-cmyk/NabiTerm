@@ -250,6 +250,8 @@ impl NabiApp {
             self.connect_saved(s);
         }
         self.restore_floating(); // 분리 OS 창(torn-off)도 위치·크기와 함께 복원(P10).
+        // 웹 탭은 레이아웃 자리 매김에 끼우지 않고 뒤에 붙인다 — 자리보다 되살아나는 것이 먼저다.
+        self.restore_web_tabs();
         self.spawn_ctx = None; // 복원 종료 — 이후 일반 스폰은 컨텍스트 없음.
         restored
     }

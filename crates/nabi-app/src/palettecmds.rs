@@ -37,6 +37,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "menu.quickconnect").to_string(), PaletteAction::QuickConnect),
         (tr(lang, "menu.browser").to_string(), PaletteAction::ToggleBrowser),
         (tr(lang, "menu.browsertab").to_string(), PaletteAction::OpenBrowserTab),
+        (tr(lang, "hist.open").to_string(), PaletteAction::OpenPaneHistory),
         (tr(lang, "findall.title").to_string(), PaletteAction::FindAll),
         (tr(lang, "menu.sessionspanel").to_string(), PaletteAction::ToggleSessionsPanel),
         (tr(lang, "settings.statusbar").to_string(), PaletteAction::ToggleStatusBar),
