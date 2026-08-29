@@ -11,6 +11,7 @@
 //! - `e2e`   : 앱을 실제로 띄워 제어 평면으로 스모크(기동→pane→입력→캡처→종료).
 //! - `soak`  : 앱을 N분 굴리며 생존·응답성·메모리 관찰(수시/야간 점검).
 
+mod tellprogress;
 mod pedeps;
 mod dist;
 mod e2e;

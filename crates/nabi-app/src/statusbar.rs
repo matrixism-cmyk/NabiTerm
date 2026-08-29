@@ -52,6 +52,8 @@ impl NabiApp {
         let ai = focused.and_then(|p| crate::aistatus::ai_display(
             self.pane_status.get(&p), self.run_cmd.get(&p).map(|s| s.as_str()),
             self.cmd_start.get(&p).map(|t| t.elapsed()),
+            // 진행률도 이 줄에 함께 보여 준다 — 모르면 무작정 기다리게 된다(사용자 요청).
+            self.progress.get(&p).copied(),
         ));
         let cwd = focused.and_then(|p| self.cwds.get(&p).cloned());
         let exit = focused.and_then(|p| self.last_exit.get(&p).copied());

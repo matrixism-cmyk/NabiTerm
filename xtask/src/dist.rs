@@ -11,15 +11,23 @@ use std::process::{Command, ExitCode};
 
 pub fn run() -> ExitCode {
     let root = workspace_root();
-    if stage_release(&root, false).is_err() {
+    // 몇 분씩 도는 일이라 어디까지 왔는지 알려 준다 — 나비텀 안에서 돌면 상태 표시줄에 뜬다.
+    let mut steps = crate::tellprogress::Steps::new(5);
+    steps.step("빌드");
+    if stage_release(&root, false, &mut steps).is_err() {
+        steps.finish();
         return ExitCode::FAILURE;
     }
-    build_setup(&root)
+    steps.step("설치본 만들기");
+    let out = build_setup(&root);
+    steps.finish();
+    out
 }
 
 pub fn standalone() -> ExitCode {
     let root = workspace_root();
-    if stage_release(&root, true).is_err() {
+    let mut steps = crate::tellprogress::Steps::new(3);
+    if stage_release(&root, true, &mut steps).is_err() {
         return ExitCode::FAILURE;
     }
     build_standalone(&root)
@@ -31,7 +39,7 @@ pub fn mesa() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn stage_release(root: &Path, portable: bool) -> Result<(), ()> {
+fn stage_release(root: &Path, portable: bool, steps: &mut crate::tellprogress::Steps) -> Result<(), ()> {
     let ok = Command::new("cargo")
         .args(["build", "--release"])
         .current_dir(root)
@@ -60,8 +68,10 @@ fn stage_release(root: &Path, portable: bool) -> Result<(), ()> {
     // 내장 웹 브라우저를 붙이면서 exe 가 WebView2Loader.dll 을 요구하게 됐는데 설치본에
     // 넣지 않아 **프로그램이 아예 뜨지 않았다**(v0.1.491, 사용자 보고). 개발 중에는 cargo 가
     // 빌드 폴더에 그 DLL 을 놓아 줘서 아무 문제가 없었다 — 그래서 아무도 몰랐다.
+    steps.step("딸린 파일 챙기기");
     copy_runtime_dlls(root, &stage)?;
     // 넣었으니 됐다고 믿지 않는다. 실제로 띄워 본다.
+    steps.step("실행되는지 확인");
     smoke_test(&stage)?;
 
     let marker = stage.join("portable.toml");
