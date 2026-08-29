@@ -49,6 +49,7 @@ pub(crate) fn attach(hwnd: HWND, start: &str) -> Result<(), String> {
     // 안전: 방금 받은 조종기에서 화면을 꺼낸다.
     let webview = unsafe { controller.CoreWebView2() }.map_err(|e| format!("화면을 얻지 못했다: {e}"))?;
     watch_navigation(&webview);
+    watch_start(&webview);
     VIEW.with(|v| *v.borrow_mut() = Some(View { controller, webview }));
     on_resize(hwnd);
     go(hwnd, start);
@@ -147,6 +148,25 @@ fn watch_navigation(webview: &ICoreWebView2) {
     let mut token = windows::Win32::Foundation::HANDLE::default();
     // 안전: 토큰은 우리가 들고 있고, 화면이 사라지면 함께 사라진다.
     let _ = unsafe { webview.add_NavigationCompleted(&handler, &mut token as *mut _ as *mut i64) };
+}
+
+/// 이동을 **시작하기는 하는지** 본다(진단).
+///
+/// 불러오기 실패만 보면 "요청이 나갔는데 답이 없다"인지 "요청조차 안 나갔다"인지 모른다.
+/// 둘은 원인이 완전히 다르다.
+fn watch_start(webview: &ICoreWebView2) {
+    let handler = webview2_com::NavigationStartingEventHandler::create(Box::new(|_, args| {
+        let Some(args) = args else { return Ok(()) };
+        let mut uri = windows_core::PWSTR::null();
+        // 안전: 받는 곳은 지역 변수다.
+        let _ = unsafe { args.Uri(&mut uri) };
+        let uri = if uri.is_null() { String::new() } else { unsafe { uri.to_string() }.unwrap_or_default() };
+        eprintln!("[nabi-web] 이동 시작: {uri}");
+        Ok(())
+    }));
+    let mut token = 0i64;
+    // 안전: 토큰은 우리가 들고 있고 화면이 사라지면 함께 사라진다.
+    let _ = unsafe { webview.add_NavigationStarting(&handler, &mut token) };
 }
 
 /// 지금 화면이 가리키는 주소(진단용).
