@@ -75,6 +75,40 @@ impl NabiApp {
     }
 }
 
+impl NabiApp {
+    /// 설정이 켜져 있으면 **아직 기록하지 않는 pane 전부**에 기록을 시작한다(배치 AQ).
+    ///
+    /// ## 왜 이게 필요한가
+    ///
+    /// 지금까지는 pane 이 **새로 열릴 때만** 기록을 시작했다. 그것도 앱이 직접 연 pane 만이었고,
+    /// 제어 평면(`nabi cli spawn`)으로 연 것은 아예 그 길을 타지 않았다.
+    ///
+    /// 그래서 설정을 켜도 **이미 열려 있던 pane 은 아무 일도 일어나지 않았다.** 켜 두면 남는
+    /// 줄 알고 한참 쓴 뒤에야 아무것도 없다는 것을 알게 된다(2026-08-29에 실제로 그랬다).
+    ///
+    /// 설정 이름은 "모든 세션 기록"이다. 이름대로 하려면 **모든** pane 을 봐야 한다.
+    pub(crate) fn sweep_autolog(&mut self) {
+        if !self.config.terminal.session_log_auto {
+            return;
+        }
+        let panes: Vec<PaneId> = match self.orch.panes.read() {
+            Ok(m) => m.keys().copied().collect(),
+            Err(_) => return,
+        };
+        for pane in panes {
+            if self.session_logs.contains_key(&pane) {
+                continue;
+            }
+            // 출처를 알면 그 이름으로, 모르면 local 로 짓는다.
+            let host = match self.pane_origins.get(&pane) {
+                Some(nabi_session::SessionKind::Ssh { host, .. }) => host.clone(),
+                _ => "local".to_string(),
+            };
+            self.maybe_autolog(pane, &host);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{log_name, safe_stem};

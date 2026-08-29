@@ -35,7 +35,11 @@ fn main() {
     for a in &extra {
         cmd.arg(a);
     }
-    cmd.env("TERM", "xterm-256color");
+    // TERM 을 무엇으로 말하느냐에 따라 프로그램이 그리는 방식이 달라진다.
+    // NABI_PROBE_NOTERM=1 이면 아예 말하지 않는다(cmd·PowerShell 창과 같은 조건).
+    if std::env::var("NABI_PROBE_NOTERM").is_err() {
+        cmd.env("TERM", "xterm-256color");
+    }
     let mut child = pair.slave.spawn_command(cmd).expect("프로그램을 띄우지 못했다");
     drop(pair.slave);
 
@@ -88,6 +92,12 @@ fn main() {
     let _ = child.kill();
     drop(pair.master);
 
+    // 원본을 파일로 남긴다 — 세는 것만으로는 놓치는 것이 있다. 직접 들여다볼 수 있어야 한다.
+    if let Ok(out) = std::env::var("NABI_PROBE_DUMP") {
+        if std::fs::write(&out, &all).is_ok() {
+            println!("원본을 {out} 에 남겼다");
+        }
+    }
     println!("프로그램: {prog} {:?} · 받은 바이트: {}", extra, all.len());
     // 아무것도 안 나오면 프로그램이 뜨지 않은 것이다 — 앞부분을 그대로 보여 준다.
     if all.len() < 64 {
