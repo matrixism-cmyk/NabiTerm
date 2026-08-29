@@ -42,6 +42,14 @@ pub(crate) fn scan() -> EnvScan {
         let mut installed: Vec<String> = Vec::new();
         let mut versions = std::collections::HashMap::new();
         for t in crate::envcat::TOOLS.iter() {
+            // PATH 에 명령이 없는 것(런타임 등)은 폴더로 본다.
+            if let Some(dir) = t.folder {
+                if let Some(v) = probe_folder(dir) {
+                    installed.push(t.id.to_string());
+                    versions.insert(t.id.to_string(), v);
+                }
+                continue;
+            }
             match probe(t.probe) {
                 None => continue,
                 Some(v) => {
@@ -118,6 +126,27 @@ pub(crate) fn distro_script(name: &str, has_wsl: bool) -> String {
 ///
 /// **별칭일 때만 실행해 본다.** 그때는 파일이 있어도 실행되지 않을 수 있어서, 물어보는
 /// 수밖에 없다. winget 은 되고 스토어판 pwsh 는 안 된다.
+/// 폴더로 찾는다. 있으면 그 안의 **판 번호 폴더 이름**이 곧 버전이다.
+///
+/// WebView2 런타임처럼 실행 파일을 PATH 에 두지 않는 것들이 있다. `where.exe` 로 찾으면
+/// 영영 "없음"이 되어, 설치해 놓고도 설치하라고 계속 권하게 된다.
+fn probe_folder(rel: &str) -> Option<String> {
+    let base = std::env::var("ProgramFiles(x86)").unwrap_or_else(|_| r"C:\Program Files (x86)".into());
+    let dir = std::path::Path::new(&base).join(rel);
+    let mut best: Option<String> = None;
+    for e in std::fs::read_dir(&dir).ok()?.flatten() {
+        if !e.path().is_dir() {
+            continue;
+        }
+        let name = e.file_name().to_string_lossy().into_owned();
+        // 판 번호처럼 생긴 것만 — SetupMetrics 같은 폴더가 섞여 있다.
+        if name.starts_with(|c: char| c.is_ascii_digit()) && best.as_deref() < Some(name.as_str()) {
+            best = Some(name);
+        }
+    }
+    best
+}
+
 fn probe(name: &str) -> Option<Option<String>> {
     let Ok(o) = crate::aicli::hidden("where.exe").arg(name).output() else { return None };
     if !o.status.success() {

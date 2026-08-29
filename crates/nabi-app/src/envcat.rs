@@ -50,7 +50,26 @@ pub(crate) struct Tool {
     pub desc: &'static str,
     /// **윈도우에서 쓸 수 없는 것**이면 그 이유 키. 되는 척하지 않는다.
     pub unavailable: Option<&'static str>,
+    /// PATH 에 명령이 없는 것(런타임 등)은 **이 폴더가 있으면** 설치된 것으로 본다.
+    ///
+    /// WebView2 런타임처럼 실행 파일을 PATH 에 두지 않는 것들이 있다. 그런 것을
+    /// `where.exe` 로 찾으면 영영 "없음"이 된다. 폴더 안의 판 번호가 곧 버전이다.
+    pub folder: Option<&'static str>,
 }
+
+/// WebView2 런타임을 마이크로소프트 부트스트래퍼로 설치한다(winget 이 없을 때).
+///
+/// 부트스트래퍼는 2MB 짜리 껍데기이고, 실행하면 진짜 런타임을 내려받는다. 그래서
+/// **인터넷이 필요하다** — 폐쇄망에서는 오프라인 설치본을 따로 받아야 한다.
+const WEBVIEW2_PS: &str = r#"
+@@STEP 1/2 내려받는 중
+$u='https://go.microsoft.com/fwlink/p/?LinkId=2124703'
+$f=Join-Path $env:TEMP 'MicrosoftEdgeWebview2Setup.exe'
+Invoke-WebRequest -Uri $u -OutFile $f -UseBasicParsing
+@@STEP 2/2 설치하는 중
+Start-Process -FilePath $f -ArgumentList '/silent','/install' -Wait
+Remove-Item $f -ErrorAction SilentlyContinue
+"#;
 
 /// GitHub 릴리스에서 **최신** MSI를 찾아 조용히 설치하는 뼈대.
 ///
@@ -149,6 +168,22 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.winget",
         unavailable: None,
+        folder: None,
+    },
+    Tool {
+        id: "webview2",
+        name: "Edge WebView2 런타임",
+        // PATH 에 명령이 없다. 폴더로 본다(아래 folder).
+        probe: "",
+        group: Group::Pkg,
+        winget: Some("Microsoft.EdgeWebView2Runtime"),
+        store_pkg: None,
+        // winget 이 없는 PC(Windows Server 등)에서는 마이크로소프트 부트스트래퍼를 받아 실행한다.
+        fallback: Some(WEBVIEW2_PS),
+        remove: None,
+        desc: "env.desc.webview2",
+        unavailable: None,
+        folder: Some(r"Microsoft\EdgeWebView\Application"),
     },
     Tool {
         id: "pwsh",
@@ -162,6 +197,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         remove: None,
         desc: "env.desc.pwsh",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "gh",
@@ -174,6 +210,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.gh",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "ripgrep",
@@ -186,6 +223,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.ripgrep",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "fzf",
@@ -198,6 +236,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.fzf",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "jq",
@@ -210,6 +249,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.jq",
         unavailable: None,
+        folder: None,
     },
     // 언어 서버 — 편집기 설정이 "PATH에 없다"고 알려 주면 여기서 깔 수 있어야 한다.
     // 없는 것을 알려 주기만 하고 깔 길을 주지 않으면 절반만 한 것이다(배치 V T1).
@@ -224,6 +264,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.rustanalyzer",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "pyright",
@@ -237,6 +278,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.pyright",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "tsserver",
@@ -249,6 +291,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         store_pkg: None,
         desc: "env.desc.tsserver",
         unavailable: None,
+        folder: None,
     },
     Tool {
         id: "sshpass",
@@ -262,6 +305,7 @@ pub(crate) const TOOLS: &[Tool] = &[
         desc: "env.desc.sshpass",
         // 윈도우 네이티브 빌드가 없다. 되는 척하는 대신 대안을 안내한다.
         unavailable: Some("env.na.sshpass"),
+        folder: None,
     },
 ];
 
