@@ -55,6 +55,13 @@ fn stage_release(root: &Path, portable: bool) -> Result<(), ()> {
         eprintln!("스테이징 실패: {e}");
         return Err(());
     }
+    // exe 가 시작할 때 요구하는 DLL 을 함께 넣는다.
+    //
+    // 내장 웹 브라우저를 붙이면서 exe 가 WebView2Loader.dll 을 요구하게 됐는데 설치본에
+    // 넣지 않아 **프로그램이 아예 뜨지 않았다**(v0.1.491, 사용자 보고). 개발 중에는 cargo 가
+    // 빌드 폴더에 그 DLL 을 놓아 줘서 아무 문제가 없었다 — 그래서 아무도 몰랐다.
+    copy_runtime_dlls(root, &stage)?;
+
     let marker = stage.join("portable.toml");
     if portable {
         let _ = std::fs::write(&marker, "# nabiTerm 포터블 모드 마커 — 설정/세션을 exe 옆에 저장한다.\n");
@@ -115,6 +122,81 @@ fn build_setup(root: &Path) -> ExitCode {
         eprintln!("경고: 패키지 매니페스트를 만들지 못했다 — `xtask pkg` 를 따로 확인할 것");
     }
     ExitCode::SUCCESS
+}
+
+
+/// exe 옆에 있어야 하는 DLL 들을 스테이징에 넣고, **하나라도 빠지면 빌드를 멈춘다.**
+///
+/// 조용히 넘어가면 뜨지 않는 설치본이 그대로 나가고, 릴리스는 성공했으므로 아무 경고도
+/// 없다. 실제로 그렇게 한 판(v0.1.491)을 내보냈다.
+///
+/// 넣을 목록을 손으로 적어 두지 않는다 — 다음에 다른 DLL 이 늘면 또 같은 일이 난다.
+/// **exe 에게 직접 물어서** 윈도우가 갖고 있지 않은 것만 골라 넣는다.
+fn copy_runtime_dlls(root: &Path, stage: &Path) -> Result<(), ()> {
+    let exe = stage.join("nabiTerm.exe");
+    let bytes = std::fs::read(&exe).map_err(|e| eprintln!("스테이징 exe 를 읽지 못했다: {e}"))?;
+    let needed = crate::pedeps::imports(&bytes).map_err(|e| eprintln!("exe 를 읽지 못했다: {e}"))?;
+    let extra: Vec<&String> = needed.iter().filter(|n| !is_system_dll(n)).collect();
+    if extra.is_empty() {
+        return Ok(());
+    }
+    for dll in &extra {
+        let name = dll.as_str();
+        let Some(src) = find_build_dll(root, name) else {
+            eprintln!("{name} 을 찾지 못했다 — 이게 없으면 설치본이 실행되지 않는다.");
+            eprintln!("  찾은 곳: target/release/build/*/out/**/");
+            return Err(());
+        };
+        // 디스크에 있는 진짜 이름으로 넣는다. exe 의 표에는 소문자로 적혀 있지만
+        // 파일 이름은 WebView2Loader.dll 처럼 대소문자가 섞여 있다.
+        let real = src.file_name().unwrap_or_default().to_owned();
+        if let Err(e) = std::fs::copy(&src, stage.join(&real)) {
+            eprintln!("{name} 복사 실패: {e}");
+            return Err(());
+        }
+        println!("동봉: {}", real.to_string_lossy());
+    }
+    Ok(())
+}
+
+/// 윈도우가 이미 갖고 있는 DLL 인가. 이런 것은 우리가 넣지 않는다.
+///
+/// **이름 목록을 손으로 관리하지 않는다.** 처음에 쉰 개쯤 적어 뒀더니 첫 실행에서 바로
+/// `uiautomationcore.dll` 이 빠져 걸렸다. 윈도우 판이 바뀌면 또 어긋난다.
+///
+/// 그래서 **윈도우에게 직접 묻는다** — 시스템 폴더에 그 파일이 있으면 윈도우 것이다.
+///
+/// `api-ms-win-*` 와 `ext-ms-*` 는 파일이 아니라 이름표다(윈도우가 속으로 다른 파일로
+/// 연결해 준다). 폴더에 없지만 우리가 넣을 것도 아니므로 따로 넘긴다.
+fn is_system_dll(name: &str) -> bool {
+    if name.starts_with("api-ms-win-") || name.starts_with("ext-ms-") {
+        return true;
+    }
+    let sysdir = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
+    Path::new(&sysdir).join("System32").join(name).exists()
+}
+
+/// 빌드 스크립트가 놓아 둔 DLL 을 찾는다. 크레이트 폴더 이름에 해시가 붙어 훑어야 한다.
+fn find_build_dll(root: &Path, name: &str) -> Option<std::path::PathBuf> {
+    let build = root.join("target").join("release").join("build");
+    let mut found = None;
+    let mut stack = vec![build];
+    while let Some(dir) = stack.pop() {
+        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                stack.push(p);
+            } else if p.file_name().and_then(|f| f.to_str()).is_some_and(|f| f.eq_ignore_ascii_case(name)) {
+                // x64 판을 고른다 — 같은 이름이 arm64/x86 에도 있다.
+                if p.parent().is_some_and(|d| d.file_name().is_some_and(|f| f == "x64")) {
+                    return Some(p);
+                }
+                found = found.or(Some(p));
+            }
+        }
+    }
+    found
 }
 
 /// vendor/mesa의 Mesa llvmpipe(소프트웨어 OpenGL) DLL을 별도 옵션 자산 zip으로 묶는다.

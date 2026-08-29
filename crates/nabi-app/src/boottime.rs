@@ -73,10 +73,14 @@ mod tests {
     }
 
     #[test]
-    fn the_clock_moves_forward() {
+    fn the_ready_mark_is_never_before_the_start() {
         let mut b = Boot::start();
         b.window_ready();
-        assert!(b.ready.is_some());
-        assert!(b.started.elapsed().as_nanos() > 0);
+        let ready = b.ready.expect("창 준비 시각이 찍혀야 한다");
+        // "0보다 크다"고 물으면 안 된다. 두 줄 사이에 시계 눈금이 한 번도 안 넘어가면
+        // 0이 나와서 **아무 잘못이 없는데도** 실패한다(2026-08-29에 실제로 그랬다).
+        //
+        // 우리가 정말 알고 싶은 것은 시계가 뒤로 가지 않는가다. 그것만 묻는다.
+        assert!(ready >= b.started);
     }
 }

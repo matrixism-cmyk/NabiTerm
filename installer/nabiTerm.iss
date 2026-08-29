@@ -60,6 +60,9 @@ Root: HKA; Subkey: "Software\Classes\Drive\shell\nabiTerm\command"; ValueType: s
 
 [Files]
 Source: "..\dist\stage\nabiTerm.exe"; DestDir: "{app}"; Flags: ignoreversion
+; 내장 웹 브라우저 때문에 exe 가 시작할 때 이 DLL 을 요구한다. 빠뜨리면 프로그램이 아예
+; 뜨지 않는다 — v0.1.491 이 그렇게 나갔다. xtask dist 가 없으면 빌드를 멈춘다.
+Source: "..\dist\stage\WebView2Loader.dll"; DestDir: "{app}"; Flags: ignoreversion
 ; 소프트웨어 OpenGL 폴백(Mesa llvmpipe)은 메인 설치본에 넣지 않는다. GPU 없는 VM 사용자는
 ; mesa-runtime 고정 릴리스의 별도 자산을 받아 이 폴더(nabiTerm.exe 옆)에 푼다.
 
