@@ -152,6 +152,10 @@ impl TermTabViewer<'_> {
                     let lines = (wheel / ch * 3.0).round() as i32;
                     scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
                 }
+                None if target == crate::panewheel::WheelTo::History => {
+                    // 겹 화면이 뜨면 다음 프레임부터 휠은 그 안을 굴린다(우리 층이 위라서).
+                    *self.wheel_history = Some(pane);
+                }
                 None => {}
             }
         }

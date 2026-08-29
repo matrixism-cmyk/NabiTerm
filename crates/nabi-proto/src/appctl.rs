@@ -21,6 +21,8 @@ pub enum AppCtl {
     ///
     /// 위의 `OpenBrowser` 는 **파일** 탐색기다. 이름이 비슷해 헷갈리기 쉬워 나눠 적는다.
     OpenWeb { url: Option<String>, window: bool },
+    /// 스스로 최신판으로 올린다(check 면 확인만).
+    SelfUpdate { check: bool },
     /// 저장된 SFTP 세션 이름으로 원격 탭 열기.
     OpenSftp { session: String },
     /// 다음 PaneSpawned의 도킹 위치(split-right|split-down|new-window — CP-7).
@@ -47,6 +49,10 @@ pub enum AppCtl {
     },
     /// 스케줄 잡 등록(C3): spec="*/5 * * * *"|"every 15m"|"at 09:30", kind=send|command|notify.
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
+    /// 웹 탭 목록 요청 — 앱이 Event::WebResult{seq,..}로 회신.
+    WebList { seq: u64 },
+    /// 웹 탭에서 자바스크립트 실행 — 앱이 Event::WebResult{seq,..}로 회신.
+    WebEval { seq: u64, pane: Option<u64>, js: String },
     /// 레이아웃 export 요청(B4) — 앱이 Event::LayoutJson{seq,json}으로 회신.
     LayoutExport { seq: u64 },
     /// 제어평면 SFTP 조작(S6-55): 현재 열린 SFTP 연결 대상. 앱이 Event::SftpCtlDone{seq,…}로 회신.

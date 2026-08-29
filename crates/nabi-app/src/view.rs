@@ -21,10 +21,13 @@ impl NabiApp {
         // 탭 우클릭 신호: tear_off=새 OS 창, dock_float=창 안에 띄우기(P3), sftp_open=SFTP 열기.
         let (mut tear_off, mut dock_float, mut sftp_open): (Option<nabi_types::PaneId>, _, _) = (None, None, None);
         let mut dup_tab: Option<nabi_types::PaneId> = None;
-        let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None; // 탭 메뉴 AI 동선(표면 정합).
+        let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
+        let mut open_history: Option<nabi_types::PaneId> = None;
+        let mut wheel_history: Option<nabi_types::PaneId> = None; // 탭 메뉴 AI 동선(표면 정합).
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
         let mut browser_closed: Option<nabi_types::PaneId> = None;
+        let mut web_closed: Option<nabi_types::PaneId> = None;
         let mut editor_act: Vec<(nabi_types::PaneId, crate::editor::EditorAct)> = Vec::new();
         let mut editor_closed: Option<nabi_types::PaneId> = None;
         let remote_map = self.remote_compare_map();
@@ -188,10 +191,13 @@ impl NabiApp {
                 tear_off: &mut tear_off,
                 dup_tab: &mut dup_tab,
                 ai_handoff: &mut ai_handoff,
+                open_history: &mut open_history,
+                wheel_history: &mut wheel_history,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,
                 browser_act: &mut browser_act,
                 browser_closed: &mut browser_closed,
+                web_closed: &mut web_closed,
                 remote_map: &remote_map,
                 can_upload,
                 editors: &mut self.editors,
@@ -238,6 +244,13 @@ impl NabiApp {
             self.resize_badge = Some((g, std::time::Instant::now()));
         }
         // 탭 메뉴 AI 동선 적용(팔레트 dispatch와 동일 규칙).
+        if let Some(p) = wheel_history {
+            self.open_history_view(p);
+        }
+        self.render_history_view(ctx);
+        if let Some(p) = open_history {
+            self.open_pane_history(p);
+        }
         if let Some((p, copy_only)) = ai_handoff {
             if copy_only {
                 match self.command_markdown(p) {
@@ -260,6 +273,9 @@ impl NabiApp {
         self.open_terminal_pathline(); // 터미널 `파일:줄` 더블클릭 → 에디터로 점프(pending 처리).
         if let Some(p) = sftp_open { self.open_sftp_from_pane(p); }
         if let Some(p) = dup_tab { self.duplicate_pane(p); } // 탭 우클릭 ▸ 탭 복제(팔레트와 같은 경로).
+        if let Some(p) = web_closed {
+            self.close_web_tab(p); // 자식 창까지 함께 닫는다 — 안 치우면 엣지 프로세스가 남는다.
+        }
         self.apply_browser_tab_acts(ctx, browser_act, browser_closed);
         self.apply_editor_tab_acts(editor_act, editor_closed);
         // 도크 에디터가 연 nabiPad 설정 창은 메인 ctx에 렌더(분리 창은 floating_editor에서 vctx).

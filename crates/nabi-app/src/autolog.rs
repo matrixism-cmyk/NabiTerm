@@ -48,7 +48,18 @@ impl NabiApp {
     ///
     /// 이미 로그 중이면 아무것도 하지 않는다(손으로 켠 것을 덮지 않는다).
     pub(crate) fn maybe_autolog(&mut self, pane: PaneId, host: &str) {
-        if !self.config.terminal.session_log_auto || self.session_logs.contains_key(&pane) {
+        if !self.config.terminal.session_log_auto {
+            return;
+        }
+        self.autolog_now(pane, host);
+    }
+
+    /// 설정과 무관하게 **지금부터** 이 pane 을 기록한다.
+    ///
+    /// 휠 전체 기록이 부른다 — 기록이 없는 pane 에서 과거를 보려 했다면, 적어도
+    /// 이 순간부터는 남아야 다음번에는 볼 수 있다.
+    pub(crate) fn autolog_now(&mut self, pane: PaneId, host: &str) {
+        if self.session_logs.contains_key(&pane) {
             return;
         }
         let dir = self.cfg_dir().join("logs");

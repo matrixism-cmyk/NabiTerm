@@ -36,6 +36,9 @@ impl crate::app::NabiApp {
                         None => self.forget_progress(id),
                     }
                 }
+                AppCtl::WebList { seq } => self.control_web_list(seq),
+                AppCtl::WebEval { seq, pane, js } => self.control_web_eval(seq, pane, js),
+                AppCtl::SelfUpdate { check } => self.control_self_update(check),
                 AppCtl::OpenWeb { url, window } => {
                     // 기본은 탭이다. 메뉴와 같은 곳에 연다 — 부르는 길에 따라 다르게
                     // 열리면 헷갈린다. `--window` 를 준 때만 별도 창으로 띄운다.

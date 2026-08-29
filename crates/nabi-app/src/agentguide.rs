@@ -14,6 +14,26 @@ You are an AI agent (e.g. Claude Code) running inside a nabiTerm terminal pane.
 nabiTerm exposes a local control plane so you can open, inspect and drive other
 panes — spawn build/test shells, watch their output, send input, notify the user.
 
+## What nabiTerm is (read this first)
+
+nabiTerm is a Windows terminal that is also an SSH client, an SFTP file manager, a code
+editor (nabiPad) and a web browser — all in one window, all reachable from this CLI. Knowing
+that changes what you should do: when a task needs a file read, a page viewed, or a remote
+directory listed, you do **not** have to do it inside your own shell. Hand it to nabiTerm.
+
+| If you want to...              | Don't                      | Do instead                      |
+|--------------------------------|----------------------------|---------------------------------|
+| show the user a long file      | `cat` it into your pane     | `nabi cli open-file --path ...` |
+| run a build and watch it       | block your own shell        | `spawn` + `wait` + `capture`    |
+| know what is actually on screen| guess from text             | `nabi cli screenshot`           |
+| look at a web page / a web UI  | curl and parse HTML         | `nabi cli web --url ...`        |
+| browse a remote server         | shell out to `sftp`         | `open-sftp` + `sftp-list`       |
+| tell the user something        | print and hope they look    | `nabi cli notify`               |
+| show how far along you are     | say "almost done"           | `nabi cli progress --pct 60`    |
+
+Your pane is one of many. Other panes may hold other agents, builds, SSH sessions or the
+user's own shell. `nabi cli list` is how you find out what exists before you touch anything.
+
 ## How to call it
 
 The control CLI is the same executable that runs nabiTerm's GUI. On THIS machine it is:
@@ -87,11 +107,31 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   Show a progress badge in the status bar for that pane. Leave `--pct` out to clear it.
   nabiTerm also reads progress off the screen for cargo/cmake/pytest/docker, but telling it
   directly is exact — a long job you drive yourself should report its own progress.
-- `nabi cli web [--url <url>]`
-  Open the built-in web browser in a separate window. Handy right after `forward` — you can
-  pull a remote web UI through the SSH tunnel and look at it without leaving nabiTerm.
+- `nabi cli web [--url <url>] [--window]`
+  Open the built-in web browser **as a tab**, like any other tab: it has a title, it can be
+  split, reordered and closed, and it comes back with the workspace. `--window` opens it as
+  a separate OS window instead. Handy right after `forward` — you can pull a remote web UI
+  through the SSH tunnel and look at it without leaving nabiTerm.
   (`open-browser` is the **file** browser; this one is the web.)
   Needs the Edge WebView2 runtime; if it is missing you get told how to install it.
+  Combine it with `screenshot` to actually see what the page rendered.
+- `nabi cli web-list`
+  List the open web tabs as JSON: `[{"pane":N,"url":"...","title":"..."}]`. Web tabs are
+  UI-only, so they do NOT appear in `nabi cli list` — this is how you find their numbers.
+- `nabi cli web-eval [--pane <id>] --js <code>`
+  Run JavaScript inside a web tab and get the result back as JSON (Inject approval).
+  This is how you READ and DRIVE the web without leaving nabiTerm:
+
+      nabi cli web --url https://example.com
+      nabi cli web-eval --js "document.title"
+      nabi cli web-eval --js "document.body.innerText.slice(0, 4000)"
+      nabi cli web-eval --js "document.querySelector('a.next').click()"
+
+  The result is the value of the last expression, JSON-serialized (strings arrive quoted;
+  `undefined` arrives as `null`). Keep extractions small and targeted — pull the element you
+  need, not the whole page. With one web tab open `--pane` is optional; with several,
+  `web-list` tells you which number to target. A tab that has never been shown has no page
+  yet — focus it once first.
 - `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
   Register a recurring job (runs inside nabiTerm; survives restarts).
 - `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
@@ -113,6 +153,13 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli resize --pane <id> --cols <c> --rows <r>`
 - `nabi cli notify --title <text> [--body <text>]` — desktop/toast notification.
 - `nabi cli open-browser [--path <dir>]` — open the file browser.
+- `nabi cli update [--check]`
+  Upgrade nabiTerm to the latest release, with no clicking. It checks GitHub, downloads the
+  installer, **verifies its SHA-256 against the one the release published**, installs silently
+  and restarts nabiTerm. `--check` only reports whether a newer version exists.
+  Two things to know before you call it: nabiTerm restarts, so **every pane dies — including
+  yours**; and installing counts as Inject (see Permissions), so in `ask` mode a person has to
+  allow it once. If you are running inside a pane, tell the user what will happen first.
 
 ### Inject (separate approval in "ask" mode)
 
@@ -205,6 +252,85 @@ PowerShell equivalent (`command`: `pwsh -File ~/.claude/nabi-status.ps1`):
     $model
 
 When the pane exits, nabiTerm clears its status automatically.
+
+## Recipes
+
+**Run a build in its own pane and report back.**
+
+    $p = (nabi cli spawn --dock split-right --cwd C:\proj --json | ConvertFrom-Json).pane
+    nabi cli send --pane $p --data "cargo build`r"
+    nabi cli wait --pane $p --until command-done --timeout 900000
+    nabi cli capture --pane $p --lines 80        # read the tail, not the whole thing
+
+**Check a claim about the UI instead of guessing.** Text output cannot tell you whether an
+image drew, a colour is right, or a layout broke. Pixels can.
+
+    nabi cli screenshot --out C:	emp
+ow.png
+    # then read that PNG with your own image-reading tool
+
+**Watch for one thing without polling.**
+
+    nabi cli wait --pane 3 --until output --regex "error\[E\d+\]" --timeout 120000
+
+**Work with a remote machine.** Open the SSH session the user already saved, then use the
+SFTP verbs — they run over that connection, so you never handle credentials.
+
+    nabi cli open-sftp --session prod
+    nabi cli sftp-list --path /var/log
+    nabi cli sftp-get --remote /var/log/app.log --local C:	emppp.log
+    nabi cli open-file --path C:	emppp.log       # let the user read it properly
+
+**Read a web page without curl.** The built-in browser renders real pages (JS included),
+so you see what a person sees — and you can act on it.
+
+    nabi cli web --url https://github.com/matrixism-cmyk/NabiTerm/releases
+    nabi cli web-eval --js "document.body.innerText.slice(0, 3000)"
+
+**Ask another agent to do something and wait for it.**
+
+    nabi cli agent prompt --pane 5 --data "run the tests and report" --wait --until idle
+
+**Say what you are doing, all the time.** The user sees this in the status bar and on the
+tab, and it is the difference between waiting patiently and asking you every two minutes.
+
+    nabi cli status set task "refactoring auth"
+    nabi cli progress --pct 40
+    nabi cli progress                                # clear it when done
+
+## When something fails
+
+Errors are plain text on stderr with a non-zero exit code. The ones you will actually hit:
+
+- **`approval pending`** — the control mode is `ask` and this is the first Act or Inject.
+  Tell the user to click Allow in nabiTerm, then run the same command again. Do not retry
+  in a loop; nothing changes until a person clicks.
+- **`control disabled`** — the mode is `off`. Only the user can change it, in
+  Settings ▸ Behavior ▸ Agent control. Say so and stop.
+- **`pane <n> not found`** — that pane closed. Run `nabi cli list` and pick again; never
+  assume an id you saw earlier is still alive.
+- **`pipe not found` / connection refused** — nabiTerm is not running, or you are in a shell
+  it did not start (so `NABI_CONTROL_PIPE` is unset). Nothing here will work; say so.
+- **`no SFTP connection`** — the sftp-* verbs need a connected SFTP tab. `open-sftp` first.
+- **shell not installed** — `spawn` names the missing executable (e.g. `pwsh.exe`) instead of
+  hanging. Fall back to `--shell powershell`, which is always present on Windows.
+- **`wait` timed out** — it returns non-zero and tells you. That is information, not a bug:
+  the command is still running. `capture` the pane to see where it got stuck.
+
+## Rules to keep
+
+- **Send ASCII only with `send` and `agent prompt`.** Terminal programs — including other
+  AI agents' text UIs — corrupt their own screen when non-ASCII text is injected. Write to a
+  file and open it instead if the content must be Korean, Japanese or emoji.
+- **Read the tail, not the whole scrollback.** `capture --lines 100` almost always answers
+  the question. Dumping tens of thousands of lines wastes your context and tells you less.
+- **One pane, one job.** Spawn a pane per task rather than interleaving commands in one; you
+  can then `wait` on each independently and the user can see which is which.
+- **Clean up what you spawned.** `nabi cli kill --pane <id>` when a pane's job is done.
+  Panes you leave behind are the user's to close.
+- **Never leave an unbounded polling loop running.** Use `wait`, which blocks properly and
+  times out. A `while true` loop in a spawned shell keeps running after you stop.
+- **The user's own pane is not yours.** Do not `send` into the pane a person is typing in.
 
 ## Typical workflow (PowerShell)
 

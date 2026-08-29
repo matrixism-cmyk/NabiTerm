@@ -225,6 +225,8 @@ pub struct NabiApp {
     pub did_startup: bool, // 첫 프레임 시작 처리(워크스페이스 자동 복원) 완료 여부.
     pub about_open: bool,  // About 대화상자 표시 여부.
     /// 자동 업데이트(GitHub 릴리스) + 인스톨러 실행 후 종료 플래그.
+    /// `nabi cli update` 로 시작한 올리기가 확인 결과를 기다리는 중인가.
+    pub self_update_pending: bool,
     pub updater: nabi_release::UpdateChecker, pub update_quit: std::sync::Arc<std::sync::atomic::AtomicBool>,
     /// 세션 UI 플래그: 새 버전 알림 모달(seen=중복 방지) + 셸 통합 설치 권장 +
     /// 도움말>정보 진입 시 업데이트 자동검사 1회(창 닫으면 리셋).
@@ -295,6 +297,8 @@ pub struct NabiApp {
     /// pane별 작업 진행률(OSC 9;4) + SSH 서버 통계 + AI 도구 등 커스텀 상태 키-값(상태바/탭 표시).
     /// 각 탭이 마지막 프레임에 차지한 자리(논리 픽셀). 캡처·웹 브라우저가 함께 쓴다.
     pub pane_rects: HashMap<PaneId, egui::Rect>,
+    /// 휠로 연 전체 기록 겹 화면(histview) — 한 번에 하나.
+    pub hist_view: Option<crate::histview::HistView>,
     /// 마우스를 가져가는 프로그램에서 휠 안내를 이미 했는가(pane 마다 한 번).
     pub wheel_hinted: std::collections::HashSet<PaneId>,
     pub progress: HashMap<PaneId, u8>,

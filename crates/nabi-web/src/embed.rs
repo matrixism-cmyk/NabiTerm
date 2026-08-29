@@ -101,6 +101,66 @@ impl Embedded {
         }
         unsafe { p.to_string() }.unwrap_or_default()
     }
+
+    /// 이 쪽 안에서 **자바스크립트를 실행하고 결과를 받는다.**
+    ///
+    /// ## 왜 있는가
+    ///
+    /// pane 안의 AI 가 웹을 읽고 만질 수 있게 하려는 것이다. 지금까지는 열고 옮기는 것만
+    /// 됐다 — 무엇이 떠 있는지 알 길이 없으니 AI 에게는 없는 것과 같았다.
+    ///
+    /// ## 결과는 JSON 이다
+    ///
+    /// WebView2 는 마지막 식의 값을 **JSON 으로 직렬화해** 돌려준다. 문자열이면 따옴표가
+    /// 붙어 오고, `undefined` 면 `"null"` 이 온다. 그대로 넘긴다 — 부르는 쪽이 JSON 으로
+    /// 읽으면 되고, 우리가 벗기면 원래 문자열이었는지 알 수 없게 된다.
+    ///
+    /// ## 답은 나중에 온다
+    ///
+    /// 지금 자리에서 기다리지 않는다. 기다리면 UI 실이 멈추고, 그 실이 멈추면 화면이
+    /// 답을 만들 수 없어 서로 붙잡는다. 그래서 답이 오면 `done` 을 부른다.
+    pub fn eval(&self, js: &str, done: impl FnOnce(Result<String, String>) + 'static) {
+        let wide: Vec<u16> = js.encode_utf16().chain(std::iter::once(0)).collect();
+        // 답이 오는 길과 못 넣었을 때의 길이 **둘 다** 같은 함수를 불러야 한다.
+        // 둘 중 하나만 부르도록 상자에 담아 나눠 갖는다.
+        let slot = std::rc::Rc::new(std::cell::RefCell::new(Some(done)));
+        let mine = slot.clone();
+        let failed = move |r: Result<String, String>| {
+            if let Some(f) = mine.borrow_mut().take() {
+                f(r);
+            }
+        };
+        let handler = webview2_com::ExecuteScriptCompletedHandler::create(Box::new(
+            move |hr, json| {
+                let Some(f) = slot.borrow_mut().take() else { return Ok(()) };
+                f(match hr {
+                    Ok(()) => Ok(json.to_string()),
+                    Err(e) => Err(format!("{e}")),
+                });
+                Ok(())
+            },
+        ));
+        // 안전: 널로 끝나는 UTF-16 을 넘기고, 손잡이는 이 실에서 만든 화면이다.
+        // 넣지 못했으면 답이 영영 오지 않는다 — 부른 쪽이 영원히 기다리게 두지 않는다.
+        if let Err(e) = unsafe {
+            self.webview.ExecuteScript(windows_core::PCWSTR(wide.as_ptr()), &handler)
+        } {
+            failed(Err(format!("스크립트를 넣지 못했다: {e}")));
+        }
+    }
+
+    /// 지금 보고 있는 쪽의 **제목**. 아직 안 읽혔으면 빈 글.
+    ///
+    /// 탭 이름에 쓴다. 주소를 그대로 쓰면 `https://github.com/...` 처럼 길어서 탭이
+    /// 무엇인지 알아볼 수 없다 — 다른 탭들은 전부 짧은 이름을 달고 있다.
+    pub fn title(&self) -> String {
+        let mut p = windows_core::PWSTR::null();
+        // 안전: 받는 곳은 지역 변수다.
+        if unsafe { self.webview.DocumentTitle(&mut p) }.is_err() || p.is_null() {
+            return String::new();
+        }
+        unsafe { p.to_string() }.unwrap_or_default()
+    }
 }
 
 impl Drop for Embedded {

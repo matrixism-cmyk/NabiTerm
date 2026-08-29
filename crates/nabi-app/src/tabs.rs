@@ -146,6 +146,8 @@ pub struct TermTabViewer<'a> {
     pub browser_tabs: &'a mut HashMap<PaneId, crate::browserpanel::BrowserPanel>,
     pub browser_act: &'a mut Vec<(PaneId, crate::browser::BrowserAct)>,
     pub browser_closed: &'a mut Option<PaneId>,
+    /// 닫힌 웹 탭 — 중앙이 치운다(파일 브라우저·편집기와 같은 길).
+    pub web_closed: &'a mut Option<PaneId>,
     pub remote_map: &'a std::collections::HashMap<String, (bool, u64)>,
     pub can_upload: bool,
     /// 내장 에디터 탭들 + 수집 액션(저장 등) + 닫힘 신호.
@@ -163,6 +165,10 @@ pub struct TermTabViewer<'a> {
     pub sftp_open: &'a mut Option<PaneId>,
     /// 탭 메뉴 'AI에 넘기기/마크다운 복사' 신호: (pane, copy_only).
     pub ai_handoff: &'a mut Option<(PaneId, bool)>,
+    /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 편집기로 연다.
+    pub open_history: &'a mut Option<PaneId>,
+    /// 휠로 연 전체 기록 겹 화면 요청(중앙이 처리).
+    pub wheel_history: &'a mut Option<PaneId>,
 }
 
 impl egui_dock::TabViewer for TermTabViewer<'_> {
@@ -210,6 +216,10 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             id = format!("{b} {id}");
         } else if self.run_cmd.get(tab).is_some_and(|c| crate::aistatus::is_ai_command(c)) {
             id = format!("\u{1f916} {id}");
+        }
+        if let Some(w) = self.web_tabs.get(tab) {
+            let name = crate::webtab::tab_name(&w.title, &w.url);
+            return format!("{pin}\u{1f310} {name}").into();
         }
         if let Some(b) = self.browser_tabs.get(tab) {
             let name = b
@@ -278,7 +288,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             self.tab_names, self.broadcast_group, self.wheel_keys, self.wheel_keys_off,
             self.run_cmd.get(tab).is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
             self.tab_colors,
-            is_ssh, self.tear_off, self.sftp_open, self.ai_handoff,
+            is_ssh, self.tear_off, self.sftp_open, self.ai_handoff, self.open_history,
             if is_term { Some(&mut *self.dock_float) } else { None },
             &mut dup,
         );
@@ -334,6 +344,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         use egui_dock::tab_viewer::OnCloseResponse;
         match self.tab_kind(*tab) {
             // UI 전용 탭들 — 오케스트레이터 명령 없이 중앙이 정리한다.
+            TabKind::Web => *self.web_closed = Some(*tab),
             TabKind::Browser => *self.browser_closed = Some(*tab),
             TabKind::Editor => *self.editor_closed = Some(*tab),
             // 원격은 닫는 일 자체를 중앙이 한다 — 여기서 닫으면 두 번 닫힌다.

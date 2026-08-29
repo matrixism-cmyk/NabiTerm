@@ -59,7 +59,12 @@ pub(crate) fn group_of(req: &ControlRequest) -> crate::policy::Group {
         | ControlRequest::OpenSftp { .. }
         // 원격/로컬 파일을 실제로 쓰는 전송은 주입 등급(별도 승인).
         | ControlRequest::SftpGet { .. }
-        | ControlRequest::SftpPut { .. } => Group::Inject,
+        | ControlRequest::SftpPut { .. }
+        // 프로그램 자체를 바꿔 치우고 다시 켠다 — 가장 높은 등급으로 둔다.
+        // 확인만 하는 것은 아무것도 바꾸지 않으니 보통 등급이다.
+        | ControlRequest::SelfUpdate { check: false }
+        // 페이지에 코드를 넣는다 — pane 에 글자를 밀어 넣는 것과 같은 무게다.
+        | ControlRequest::WebEval { .. } => Group::Inject,
         _ => Group::Act,
     }
 }
@@ -90,6 +95,35 @@ fn sftp_roundtrip(
         std::thread::sleep(std::time::Duration::from_millis(50));
     }
     err("SFTP 조작 시간 초과")
+}
+
+/// 웹 탭 요청을 앱에 보내고 `WebResult{seq}` 회신을 기다린다(sftp_roundtrip 과 같은 모양).
+///
+/// 스크립트 결과는 화면이 만들어 주는 것이라 이 실에서 계산할 수 없다. 그래서 앱에 맡기고
+/// 답을 기다린다. 10초를 넘기면 포기한다 — 답 없는 페이지에 영원히 붙잡히지 않는다.
+fn web_roundtrip(
+    app_tx: &Sender<AppCtl>,
+    events: &EventHub,
+    make: impl FnOnce(u64) -> AppCtl,
+) -> ControlResponse {
+    let seq = SPAWN_SEQ.fetch_add(1, Ordering::Relaxed);
+    let rx = events.subscribe();
+    app_tx.send(make(seq)).ok();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while std::time::Instant::now() < deadline {
+        while let Ok(ev) = rx.try_recv() {
+            if let Event::WebResult { seq: s, ok, data } = ev {
+                if s == seq {
+                    return match ok {
+                        true => ControlResponse::Event { pane: 0, kind: "web".into(), data },
+                        false => err(&data),
+                    };
+                }
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    err("웹 탭 응답 시간 초과")
 }
 
 /// 승인된 쓰기 동작 실행(spawn/send/close/resize/open-browser/open-sftp).
@@ -205,6 +239,16 @@ pub(crate) fn dispatch_write(
             // 진행률은 pane 에 붙는 값이라 오케스트레이터가 아니라 앱 상태로 간다.
             app_tx.send(AppCtl::Progress { pane, percent }).ok();
             ControlResponse::Ok
+        }
+        ControlRequest::WebList => web_roundtrip(app_tx, events, |seq| AppCtl::WebList { seq }),
+        ControlRequest::SelfUpdate { check } => {
+            tracing::info!(target: "control", from = ?from, check, "update");
+            app_tx.send(AppCtl::SelfUpdate { check }).ok();
+            ControlResponse::Ok
+        }
+        ControlRequest::WebEval { pane, js } => {
+            tracing::info!(target: "control", from = ?from, ?pane, "web-eval");
+            web_roundtrip(app_tx, events, |seq| AppCtl::WebEval { seq, pane, js })
         }
         ControlRequest::OpenWeb { url, window } => {
             tracing::info!(target: "control", from = ?from, ?url, window, "web");

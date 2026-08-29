@@ -74,6 +74,14 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             // --pct 를 빼면 "이제 없음"이라는 뜻이다. 끝났을 때 지우라고 말할 길이 있어야 한다.
             percent: flag(args, "--pct").and_then(|v| v.parse().ok()),
         }),
+        Some("web-list") => Ok(ControlRequest::WebList),
+        Some("web-eval") => Ok(ControlRequest::WebEval {
+            pane: pane(args),
+            js: flag(args, "--js").ok_or("--js <자바스크립트> 가 필요하다")?,
+        }),
+        Some("update") => Ok(ControlRequest::SelfUpdate {
+            check: args.iter().any(|a| a == "--check"),
+        }),
         Some("web") => Ok(ControlRequest::OpenWeb {
             url: flag(args, "--url"),
             window: args.iter().any(|a| a == "--window"),

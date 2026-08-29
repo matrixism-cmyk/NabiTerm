@@ -206,6 +206,8 @@ impl NabiApp {
             confirm_close: false,
             did_startup: false,
             about_open: false,
+            hist_view: None,
+            self_update_pending: false,
             updater: nabi_release::UpdateChecker::new(), update_quit: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
             update_modal: false, update_seen: false, shellinteg_prompt: false, help_update_checked: false,
             font_installer: crate::fontinstall::FontInstaller::default(),
