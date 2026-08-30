@@ -10,6 +10,8 @@ pub(crate) const CATALOG_NET: &[(&str, &str, &str, &str)] = &[
     ("net.chan.closed", "ssh channel closed", "ssh 채널 닫힘", "sshチャネルが閉じられました"),
     ("net.ssh.err", "ssh error", "ssh 오류", "sshエラー"),
     ("net.legacy.notice", "Note: connected with legacy (SHA-1) algorithms because the server is outdated", "알림: 서버가 오래되어 레거시 알고리즘(SHA-1)으로 접속했습니다", "注意: サーバーが古いためレガシー(SHA-1)アルゴリズムで接続しました"),
+    ("net.pq.notpq", "Note: this connection is NOT quantum-resistant (the server does not offer ML-KEM)", "알림: 이 연결은 양자내성이 아닙니다(서버가 ML-KEM을 제공하지 않습니다)", "注意: この接続は耐量子ではありません(サーバーが ML-KEM を提供していません)"),
+    ("net.pq.rejected", "Refused: quantum-resistant key exchange is required, but the server does not offer it", "거부: 양자내성 키 교환을 요구하도록 설정돼 있는데 서버가 제공하지 않습니다", "拒否: 耐量子鍵交換を要求する設定ですが、サーバーが提供していません"),
     ("net.key.load", "Failed to load key", "키 로드 실패", "鍵の読み込みに失敗"),
     ("net.auth.fail", "SSH authentication failed", "SSH 인증 실패", "SSH認証に失敗しました"),
     ("net.fwd.agent", "Forwarding agent auth", "포워딩 에이전트 인증", "フォワーディングのエージェント認証"),

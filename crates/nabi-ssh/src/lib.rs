@@ -23,6 +23,7 @@ pub mod legacy;
 pub mod handler;
 pub mod conns;
 pub mod kexinfo;
+pub mod kexpolicy;
 pub mod keygen;
 pub mod params;
 pub mod session;

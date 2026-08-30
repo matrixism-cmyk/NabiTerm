@@ -240,6 +240,20 @@ pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s"))
         .on_hover_text(tr(lang, "settings.sshkeepalivehint"));
     ui.end_row();
+    // 양자내성 연결 정책 — 협상 결과를 보고 알리거나 끊는다.
+    // 배지 옆이 아니라 여기 두는 까닭: 배지는 지나간 일을 보여 주고, 이것은 앞으로를 정한다.
+    ui.label(tr(lang, "settings.kexpolicy"));
+    ui.horizontal(|ui| {
+        for (val, key) in [
+            ("auto", "settings.kexpolicy.auto"),
+            ("warn", "settings.kexpolicy.warn"),
+            ("require", "settings.kexpolicy.require"),
+        ] {
+            ui.radio_value(&mut cfg.terminal.ssh_kex_policy, val.to_string(), tr(lang, key))
+                .on_hover_text(tr(lang, "settings.kexpolicyhint"));
+        }
+    });
+    ui.end_row();
     // 서버 상태를 몇 초마다 물을 것인가. 0 이면 묻지 않는다.
     // 스키마 주석에 "기본 3, 0=비활성"이라고 적어 두고도 화면에 없었다.
     ui.label(tr(lang, "settings.statssecs"));

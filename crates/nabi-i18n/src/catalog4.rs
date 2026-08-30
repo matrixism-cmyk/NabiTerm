@@ -12,6 +12,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("ob.lang", "Language", "언어", "言語"), ("ob.shell", "Default shell", "기본 셸", "既定のシェル"), ("ob.font", "Font size", "글꼴 크기", "フォントサイズ"),
     ("ob.start", "Start", "시작하기", "はじめる"), ("settings.verifyhash", "Verify transfers (SHA-256)", "전송 해시 검증(SHA-256)", "転送ハッシュ検証(SHA-256)"),
     ("settings.verifyhashhint", "After each transfer, compare SHA-256 with the server (rclone-style). If the server has no hash command we tell you instead of skipping quietly; size check always runs.", "전송이 끝날 때마다 서버와 SHA-256을 대조합니다(rclone 방식). 서버에 해시 명령이 없으면 조용히 넘어가지 않고 알려 드립니다. 크기 비교는 항상 수행됩니다.", "転送のたびにサーバーとSHA-256を照合します(rclone方式)。ハッシュコマンドがないサーバーでは自動的にスキップされ、サイズ照合は常に実行されます。"),
+    ("status.notpq", "NOT quantum-resistant — this server does not offer ML-KEM. You asked to be told (Settings ▸ Terminal).", "양자내성이 아닙니다 — 이 서버는 ML-KEM을 제공하지 않습니다. 알려 달라고 설정해 두셨습니다(설정 ▸ 터미널).", "耐量子ではありません — このサーバーは ML-KEM を提供していません。知らせる設定になっています(設定 ▸ ターミナル)。"),
     ("status.pq", "Post-quantum key exchange (ML-KEM768+X25519) — protected against harvest-now-decrypt-later attacks", "포스트퀀텀 키 교환(ML-KEM768+X25519) — 지금 수집해 나중에 푸는 공격으로부터 보호됩니다", "ポスト量子鍵交換(ML-KEM768+X25519) — 収集後解読攻撃から保護されます"),
     ("status.kex", "Key exchange", "키 교환", "鍵交換"), ("status.cipher", "Cipher", "암호", "暗号"),
     ("lsp.gotodef", "nabiPad: go to definition (Rust)", "nabiPad: 정의로 이동(Rust)", "nabiPad: 定義へ移動(Rust)"),

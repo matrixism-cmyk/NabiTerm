@@ -51,6 +51,10 @@ pub(crate) fn ssh_badge(ui: &mut egui::Ui, lang: Lang, focused: Option<PaneId>) 
                             let detail = format!("{}: {}\n{}: {}", tr(lang, "status.kex"), k.kex, tr(lang, "status.cipher"), k.cipher);
                             if k.is_pq() {
                                 ("SSH \u{1f6e1}PQ".to_string(), format!("{}\n{detail}", tr(lang, "status.pq")))
+                            } else if pq_watched() {
+                                // 양자내성을 지키기로 해 놓고 아닌 연결을 쓰고 있다 —
+                                // 방패가 없는 것만으로는 눈에 띄지 않으니 표를 붙인다.
+                                ("SSH \u{26a0}".to_string(), format!("{}\n{detail}", tr(lang, "status.notpq")))
                             } else {
                                 ("SSH".to_string(), detail)
                             }
@@ -71,4 +75,12 @@ pub(crate) fn ssh_badge(ui: &mut egui::Ui, lang: Lang, focused: Option<PaneId>) 
                     let color = if kex.as_ref().is_some_and(|k| k.is_pq()) { crate::theme_ui::OK } else { crate::theme_ui::ACCENT };
                     let r = ui.colored_label(color, label);
                     if !tip.is_empty() { r.on_hover_text(tip); }
+}
+
+/// 양자내성을 지키기로 해 놓았는가(설정이 auto 가 아니면 참).
+///
+/// 설정을 다시 읽지 않고 연결 쪽이 이미 실어 둔 숫자를 본다 — 같은 사실을 두 곳에서
+/// 읽으면 언젠가 한쪽만 고쳐진다.
+fn pq_watched() -> bool {
+    nabi_ssh::session::SSH_KEX_POLICY.load(std::sync::atomic::Ordering::Relaxed) != 0
 }

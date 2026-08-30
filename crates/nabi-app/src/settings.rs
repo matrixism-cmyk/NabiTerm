@@ -149,6 +149,16 @@ impl NabiApp {
         // SSH keepalive 간격을 라이브 반영(다음 연결부터 적용).
         nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
         nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);
+        // 양자내성 정책 — 숫자로 실어 두면 연결 실이 잠금 없이 읽는다.
+        let pol = nabi_ssh::kexpolicy::KexPolicy::parse(&self.config.terminal.ssh_kex_policy);
+        nabi_ssh::session::SSH_KEX_POLICY.store(
+            match pol {
+                nabi_ssh::kexpolicy::KexPolicy::Warn => 1,
+                nabi_ssh::kexpolicy::KexPolicy::Require => 2,
+                nabi_ssh::kexpolicy::KexPolicy::Auto => 0,
+            },
+            std::sync::atomic::Ordering::Relaxed,
+        );
         // 팔레트도 같은 길로 — `ansi16` 한 곳이 이 값을 본다.
         nabi_types::palette::set_active(nabi_types::palette::Palette::from_name(&self.config.appearance.palette));
         crate::egress::set_offline(self.config.terminal.offline_mode);

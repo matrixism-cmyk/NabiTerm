@@ -17,6 +17,13 @@ use std::time::Duration;
 
 /// SSH keepalive 간격(초) — 0이면 끄기. 앱이 설정에서 갱신, 연결 시 읽는다(ServerAliveInterval 대응).
 pub static SSH_KEEPALIVE_SECS: AtomicU64 = AtomicU64::new(30);
+
+/// 양자내성 연결 정책 — 0=auto(기본) · 1=warn · 2=require.
+///
+/// 숫자로 두는 까닭은 원자값이라야 어느 실에서나 잠금 없이 읽을 수 있어서다.
+/// 설정 화면이 바꾸고, 연결이 읽는다(`SSH_KEEPALIVE_SECS` 와 같은 길).
+pub static SSH_KEX_POLICY: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(0);
+
 use tokio::runtime::Handle;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver};
 
@@ -80,6 +87,24 @@ async fn run(
     // 여기서 드롭되면 터널이 닫히고, SFTP 가 받아 간 목적지 핸들은 쓸모없어진다.
     let jump = jump.map(Arc::new);
     if let Some(info) = kex_slot.lock().ok().and_then(|s| s.clone()) {
+        // 정책을 먼저 본다 — 끊어야 할 연결이면 레지스트리에 적기 전에 끊는다.
+        // 적어 두면 죽은 연결의 배지가 잠깐 남는다.
+        //
+        // 무엇을 말하고 끊을지는 `kexpolicy::notice` 가 정한다. 여기 갈래를 두면
+        // 그 갈래는 실서버 없이 시험할 수 없어서, 판단만 순수 함수로 내려 두었다.
+        let pol = match SSH_KEX_POLICY.load(std::sync::atomic::Ordering::Relaxed) {
+            1 => crate::kexpolicy::KexPolicy::Warn,
+            2 => crate::kexpolicy::KexPolicy::Require,
+            _ => crate::kexpolicy::KexPolicy::Auto,
+        };
+        if let Some((key, disconnect)) = crate::kexpolicy::notice(pol, &info.kex) {
+            // 왜 끊겼는지 화면에 남긴다. 이유 없이 끊기면 우리가 고장 난 것으로 보인다.
+            let msg = format!("\r\n[{} \u{2014} {}]\r\n", nabi_i18n::trc(key), info.kex);
+            let _ = out_tx.send((pane, Bytes::from(msg)));
+            if disconnect {
+                return Err(russh::Error::Disconnect);
+            }
+        }
         crate::kexinfo::set(pane, info);
     }
     if old {

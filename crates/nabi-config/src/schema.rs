@@ -309,6 +309,12 @@ pub struct TerminalCfg {
     /// 로컬 브라우저 보기 모드(0=자세히,1=목록,2=큰,3=작은,4=타일).
     #[serde(default)]
     pub browser_view: u8,
+    /// 양자내성 연결 정책: "auto"(기본) | "warn" | "require".
+    ///
+    /// 기본이 "auto" 인 까닭은, 막는 것을 기본으로 두면 어제까지 되던 접속이 오늘
+    /// 안 되고 사용자는 우리가 고장 났다고 판단하기 때문이다. 지키고 싶은 사람이 켠다.
+    #[serde(default = "default_kex_policy")]
+    pub ssh_kex_policy: String,
     /// 에이전트 제어 평면 모드: "off" | "ask"(기본) | "on". (docs/agent-control.md)
     #[serde(default = "default_control_mode")]
     pub control_mode: String,
@@ -404,6 +410,7 @@ fn default_alert_pct() -> u32 { 90 }
 /// 30초. 사람이 "자리를 뜰까" 망설이기 시작하는 지점이라 알림이 쓸모 있어지는 첫 구간이다.
 fn default_slow_command_secs() -> u64 { 30 }
 fn default_control_mode() -> String { "ask".into() }
+fn default_kex_policy() -> String { "auto".into() }
 fn default_stats_secs() -> u64 { 3 }
 fn yes() -> bool { true }
 fn default_keepalive() -> u64 { 30 }
@@ -422,6 +429,7 @@ impl Default for TerminalCfg {
             editor_builtin: true,
             vault_remember: false,
             ssh_stats_secs: 3,
+            ssh_kex_policy: default_kex_policy(),
             auto_reconnect: false,
             ssh_stats_alert_pct: 90,
             slow_command_secs: default_slow_command_secs(),
