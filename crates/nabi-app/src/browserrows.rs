@@ -212,11 +212,16 @@ pub(crate) fn browser_rows(
         .striped(true)
         .resizable(true)
         .auto_shrink([false, false]) // 남은 높이까지 채움(아래 빈 영역도 패널의 일부로).
-        .column(Column::initial(150.0).at_least(80.0).clip(true)) // 이름
+        // **이름이 남는 자리를 가져간다.** 예전에는 이름을 150으로 고정하고 맨 끝에 빈
+        // 필러를 두었더니, 넓은 창에서 **오른쪽 절반이 통째로 비고 이름은 잘렸다**
+        // (2026-08-31 화면으로 확인). 파일 목록에서 가장 길고 가장 중요한 것이 이름이다.
+        //
+        // 나머지 셋은 내용 폭이 정해져 있어 고정으로 둔다 — 늘어나 봐야 빈칸만 는다.
+        .column(Column::remainder().at_least(160.0).clip(true)) // 이름
         .column(Column::initial(56.0).at_least(40.0)) // 유형
         .column(Column::initial(72.0).at_least(50.0)) // 크기
-        .column(Column::initial(150.0).at_least(120.0)) // 수정일 — clip 제거로 더블클릭 자동맞춤이 내용폭 측정(#11)
-        .column(Column::remainder()); // 빈 필러 — 수정일이 남은 공간을 다 차지하지 않게
+        // 수정일은 clip 을 안 건다 — 구분선 더블클릭 자동맞춤이 내용 폭을 재야 한다(#11).
+        .column(Column::initial(150.0).at_least(120.0)); // 수정일
     // 키보드 이동 시 선택 행이 보이도록 스크롤.
     if scroll_to_selected {
         if let Some(idx) = selected.and_then(|s| visible.iter().position(|r| r.name == s)) {
@@ -228,7 +233,6 @@ pub(crate) fn browser_rows(
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.type"), Some(Sort::Type), act(Sort::Type), desc, &mut set_sort));
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.size"), Some(Sort::Size), act(Sort::Size), desc, &mut set_sort));
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.modified"), Some(Sort::Date), act(Sort::Date), desc, &mut set_sort));
-            h.col(|_| {}); // 빈 필러 헤더.
         })
         .body(|body| {
             // body.rows()는 보이는 행만 그린다. row()를 항목마다 부르면 화면 밖 수천 행까지
@@ -244,7 +248,7 @@ pub(crate) fn browser_rows(
                             acts.nav = parent.clone();
                         }
                     });
-                    for _ in 0..4 {
+                    for _ in 0..3 {
                         r.col(|_| {});
                     }
                     return;
@@ -265,7 +269,6 @@ pub(crate) fn browser_rows(
                 r.col(|ui| {
                     ui.label(human_datetime(row.mtime));
                 });
-                r.col(|_| {}); // 빈 필러 셀.
             });
         });
     acts.set_sort = set_sort;

@@ -53,9 +53,17 @@ pub(crate) fn header_cell(
     // 리사이즈 핸들(우측 ~8px)은 클릭 영역에서 제외 — 그래야 구분선 드래그/더블클릭이 동작.
     let click = egui::Rect::from_min_max(rect.min, egui::pos2((rect.max.x - 8.0).max(rect.min.x), rect.max.y));
     let resp = ui.interact(click, ui.id().with(("hdr", label)), egui::Sense::click());
+    // **머리글은 그 칸 자료와 같은 쪽에 붙인다.** 가운데 정렬로 두었더니 이름 칸이 넓어진
+    // 뒤 "이름" 이 칸 오른쪽 끝에 떠서 어느 칸의 머리글인지 알아보기 어려웠다
+    // (2026-08-31 화면으로 확인). 크기만 오른쪽 — 자료가 오른쪽 정렬이다.
+    let right = matches!(sort, Some(Sort::Size));
+    let (at, align) = match right {
+        true => (egui::pos2(rect.max.x - 6.0, rect.center().y), egui::Align2::RIGHT_CENTER),
+        false => (egui::pos2(rect.min.x + 6.0, rect.center().y), egui::Align2::LEFT_CENTER),
+    };
     ui.painter().text(
-        rect.center(),
-        egui::Align2::CENTER_CENTER,
+        at,
+        align,
         format!("{label}{arrow}"),
         egui::TextStyle::Body.resolve(ui.style()),
         ui.visuals().strong_text_color(),
