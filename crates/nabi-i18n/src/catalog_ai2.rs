@@ -126,5 +126,5 @@ pub(crate) const CATALOG_AI2: &[(&str, &str, &str, &str)] = &[
     ("aicb.aider.report", "Report a problem as a GitHub issue", "GitHub 이슈로 문제 신고", "GitHub Issueで問題を報告"),
     ("aicb.aider.voice", "Record and transcribe voice input", "음성 입력 녹음·받아쓰기", "音声入力を録音して文字化"),
     ("aicb.aider.exit", "Exit aider", "aider 종료", "aiderを終了"),
-    ("aicb.quit.hint", "Quit the AI CLI in this pane", "이 pane의 AI CLI를 끝냅니다", "このペインのAI CLIを終了します"),
+    ("aicb.quit.hint", "Quit the AI CLI in this pane", "이 분할 칸의 AI CLI를 끝냅니다", "このペインのAI CLIを終了します"),
 ];

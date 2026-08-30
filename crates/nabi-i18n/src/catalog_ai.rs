@@ -24,7 +24,7 @@ pub(crate) const CATALOG_AI: &[(&str, &str, &str, &str)] = &[
     ("aicb.claude.autocompact", "Turn automatic context compaction on or off", "컨텍스트 자동 요약 켜기·끄기", "自動コンテキスト圧縮のオン・オフ"),
     ("aicb.claude.status", "Show model, effort, working folder and git state", "모델·노력·작업 폴더·git 상태 보기", "モデル・推論・作業フォルダ・git状態を表示"),
     ("aicb.claude.todos", "Show the current to-do list", "지금 할 일 목록 보기", "現在のToDoリストを表示"),
-    ("aicb.claude.exit", "Quit Claude Code in this pane", "이 pane의 Claude Code 종료", "このペインのClaude Codeを終了"),
+    ("aicb.claude.exit", "Quit Claude Code in this pane", "이 분할 칸의 Claude Code 종료", "このペインのClaude Codeを終了"),
     // 코드 검토.
     ("aicb.claude.codereview", "Review the current diff, a PR or a path", "현재 변경분·PR·경로를 코드 리뷰", "現在の差分・PR・パスをレビュー"),
     ("aicb.claude.secreview", "Review the diff for security vulnerabilities", "변경분의 보안 취약점 검토", "差分のセキュリティ脆弱性を検査"),

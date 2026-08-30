@@ -169,7 +169,7 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ("cmdhist.search", "Search commands", "명령 검색", "コマンドを検索"),
     ("cmdhist.failed", "Failed only", "실패만", "失敗のみ"),
     ("cmdhist.thisdir", "This folder only", "이 폴더만", "このフォルダーのみ"),
-    ("cmdhist.nodir", "The focused pane has no known folder.", "선택된 pane의 작업 폴더를 알 수 없습니다.", "選択中のpaneの作業フォルダーが不明です。"),
+    ("cmdhist.nodir", "The focused pane has no known folder.", "선택된 분할 칸의 작업 폴더를 알 수 없습니다.", "選択中のペインの作業フォルダーが不明です。"),
     ("cmdhist.none", "No commands recorded yet.", "아직 기록된 명령이 없습니다.", "まだ記録されたコマンドがありません。"),
     ("cmdhist.more", "more not shown", "더 있음(표시 생략)", "さらにあり(表示省略)"),
     ("sftp.preview", "Preview", "미리보기", "プレビュー"),

@@ -71,7 +71,7 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
     (
         "control.hint",
         "Allow it to spawn/send/close panes this session?",
-        "이 세션 동안 pane 생성·입력·종료를 허용할까요?",
+        "이 세션 동안 분할 칸 생성·입력·종료를 허용할까요?",
         "このセッション中、ペインの生成・入力・終了を許可しますか?",
     ),
     ("control.approve", "Allow", "허용", "許可"),
