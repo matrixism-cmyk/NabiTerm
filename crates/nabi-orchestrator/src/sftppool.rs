@@ -259,12 +259,27 @@ async fn run_job(
         // 폴더도 파일과 같은 방식으로 진행률을 보낸다 — 큐 줄이 끝날 때까지 멈춰 보이지 않게.
         Job::DownloadDir { xfer, remote, local } => {
             let mut p = progress_sink(id, *xfer, ev);
-            fs.download_dir(remote, Path::new(local), &mut p).await
+            // 건너뛴 것이 있으면 실패로 말한다 — 전송은 끝났지만 다 받은 것은 아니다.
+            fs.download_dir(remote, Path::new(local), &mut p).await.and_then(skipped_err)
         }
         Job::UploadDir { xfer, local, remote } => {
             let mut p = progress_sink(id, *xfer, ev);
             fs.upload_dir(Path::new(local), remote, &mut p).await
         }
+    }
+}
+
+/// 폴더를 다 받았는가. 건너뛴 것이 있으면 **성공이라고 말하지 않는다.**
+///
+/// 건너뛴 것은 서버가 준 이름이 받는 폴더를 벗어나는 경우다(`..` 나 절대 경로).
+/// 그런 이름을 그대로 쓰면 엉뚱한 자리에 파일이 써지므로 뺐는데, 그 사실을 숨기면
+/// 사용자는 다 받은 줄 알고 원본을 지운다.
+///
+/// 두 자리(큐 실행기·단발 요청)가 같은 말을 하도록 여기 한 곳에 둔다.
+pub(crate) fn skipped_err(skipped: usize) -> Result<(), String> {
+    match skipped {
+        0 => Ok(()),
+        n => Err(format!("sftp.skipped.unsafe:{n}")),
     }
 }
 

@@ -14,6 +14,15 @@ use nabi_i18n::{tr, Lang};
 
 /// 아래 층이 올려보낸 문자열이 i18n 키면 옮기고, 아니면 그대로 돌려준다.
 pub(crate) fn human(lang: Lang, msg: &str) -> String {
+    // `키:숫자` 꼴은 개수를 함께 보여 준다("건너뛴 것 3개").
+    if let Some((k, n)) = msg.split_once(':') {
+        if is_key(k) && !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()) {
+            let t = tr(lang, k);
+            if t != "?" && t != k {
+                return format!("{t} ({n})");
+            }
+        }
+    }
     if !is_key(msg) {
         return msg.to_string();
     }
@@ -65,5 +74,31 @@ mod tests {
     #[test]
     fn an_unknown_key_falls_back_to_itself() {
         assert_eq!(human(Lang::Ko, "nope.not.a.real.key"), "nope.not.a.real.key");
+    }
+}
+
+#[cfg(test)]
+mod 개수가_붙은_키 {
+    use nabi_i18n::Lang;
+
+    /// `키:숫자` 는 사람 말 + 개수로 보여 준다.
+    #[test]
+    fn 개수를_함께_보여_준다() {
+        let s = super::human(Lang::Ko, "sftp.skipped.unsafe:3");
+        assert!(s.contains("(3)"), "개수가 빠졌다: {s}");
+        assert!(!s.contains("sftp.skipped"), "키가 그대로 보인다: {s}");
+    }
+
+    /// 모르는 키는 원문 그대로 — 물음표 하나만 뜨면 아무도 뭘 모른다.
+    #[test]
+    fn 모르는_키는_그대로_둔다() {
+        assert_eq!(super::human(Lang::Ko, "no.such.key:7"), "no.such.key:7");
+    }
+
+    /// 서버가 준 오류문에 우연히 콜론이 있어도 망가뜨리지 않는다.
+    #[test]
+    fn 보통_오류문은_건드리지_않는다() {
+        let raw = "Permission denied: /etc/shadow";
+        assert_eq!(super::human(Lang::Ko, raw), raw);
     }
 }

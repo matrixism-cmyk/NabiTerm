@@ -42,7 +42,11 @@ impl SftpFs {
         Box::pin(async move {
             std::fs::create_dir_all(local).map_err(|e| e.to_string())?;
             for e in self.list_dir(remote).await? {
-                if e.name == "." || e.name == ".." {
+                // 이름은 **서버가 준 것**이다. 그대로 이어 붙이면 받는 폴더를 벗어난다
+                // (`..\evil` 은 위로, `C:\...` 는 폴더를 통째로 갈아 치운다).
+                // 건너뛴 개수를 세어 둔다 — 파일이 하나 없는데 아무 말도 없으면 받은 줄 안다.
+                if !crate::safename::is_safe_entry_name(&e.name) {
+                    prog.skipped += 1;
                     continue;
                 }
                 let rpath = format!("{}/{}", remote.trim_end_matches('/'), e.name);

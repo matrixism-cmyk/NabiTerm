@@ -8,6 +8,7 @@
 pub mod fs;
 pub mod hashcheck;
 pub mod namematch;
+pub mod safename;
 mod linkres;
 mod pipeline;
 pub mod raw;

@@ -177,6 +177,8 @@ pub fn spawn_sftp(
                 SftpReq::DownloadDir { xfer, remote, local } => {
                     let mut p = crate::sftppool::progress_sink(id, xfer, &ev);
                     let res = fs.download_dir(&remote, Path::new(&local), &mut p).await;
+                    // 건너뛴 것이 있으면 실패로 표시한다 — 다 받았다고 말하면 안 된다.
+                    let res = res.and_then(crate::sftppool::skipped_err);
                     let _ = ev.send(transfer_done(id, xfer, &local, res));
                 }
                 SftpReq::DownloadDirSync { remote, local, done } => {

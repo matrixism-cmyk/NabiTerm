@@ -106,11 +106,14 @@ impl Conn {
         remote: &str,
         local: &Path,
         p: &mut (dyn FnMut(u64) + Send),
-    ) -> Result<(), String> {
+    ) -> Result<usize, String> {
         match self {
             Conn::Sftp(f) => {
                 let mut prog = nabi_sftp::DirProgress { done: 0, skipped: 0, cb: p };
-                f.download_dir_progress(remote, local, &mut prog).await
+                f.download_dir_progress(remote, local, &mut prog).await?;
+                // 건너뛴 것이 있으면 **성공이라고만 말하지 않는다.** 받는 폴더를 벗어나는
+                // 이름이라 뺀 것이고, 사용자는 파일이 왜 없는지 알아야 한다.
+                Ok(prog.skipped)
             }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 다운로드 미지원".to_string()),
         }
