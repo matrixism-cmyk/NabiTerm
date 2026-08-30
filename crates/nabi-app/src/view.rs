@@ -24,7 +24,6 @@ impl NabiApp {
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
         let mut open_history: Option<nabi_types::PaneId> = None;
         let mut tab_notice: Option<String> = None;
-        let mut wheel_history: Option<nabi_types::PaneId> = None; // 탭 메뉴 AI 동선(표면 정합).
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
         let mut browser_closed: Option<nabi_types::PaneId> = None;
@@ -194,7 +193,6 @@ impl NabiApp {
                 ai_handoff: &mut ai_handoff,
                 open_history: &mut open_history,
                 tab_notice: &mut tab_notice,
-                wheel_history: &mut wheel_history,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,
                 browser_act: &mut browser_act,
@@ -244,10 +242,6 @@ impl NabiApp {
         // 포커스 pane 리사이즈 시 크기 배지를 잠시 띄운다(현대 터미널 관례).
         if let Some(g) = resized {
             self.resize_badge = Some((g, std::time::Instant::now()));
-        }
-        // 탭 메뉴 AI 동선 적용(팔레트 dispatch와 동일 규칙).
-        if let Some(p) = wheel_history {
-            self.open_history_view(p);
         }
         self.render_history_view(ctx);
         if let Some(m) = tab_notice {

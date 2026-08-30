@@ -165,12 +165,10 @@ pub struct TermTabViewer<'a> {
     pub sftp_open: &'a mut Option<PaneId>,
     /// 탭 메뉴 'AI에 넘기기/마크다운 복사' 신호: (pane, copy_only).
     pub ai_handoff: &'a mut Option<(PaneId, bool)>,
-    /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 편집기로 연다.
+    /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 겹 화면으로 연다.
     pub open_history: &'a mut Option<PaneId>,
     /// 탭 메뉴가 낸 한 줄(저장 성공·실패 등) — 중앙이 알림으로 띄운다.
     pub tab_notice: &'a mut Option<String>,
-    /// 휠로 연 전체 기록 겹 화면 요청(중앙이 처리).
-    pub wheel_history: &'a mut Option<PaneId>,
 }
 
 impl egui_dock::TabViewer for TermTabViewer<'_> {

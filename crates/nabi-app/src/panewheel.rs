@@ -35,8 +35,6 @@ pub(crate) enum WheelTo {
     OpenTui,
     /// 아무것도 하지 않는다(앱이 이미 마우스 보고로 받았다).
     Nothing,
-    /// 전체 기록 겹 화면을 연다(histview) — 덮어 그리는 프로그램의 지나간 내용을 보는 길.
-    History,
 }
 
 /// 화면 상태와 설정을 보고 휠의 목적지를 고른다.
@@ -55,14 +53,16 @@ pub(crate) fn wheel_target(c: WheelCtx) -> WheelTo {
     if c.mouse_on {
         // 앱이 휠을 직접 받는다. 대체 화면이거나 Shift면 우리가 겹쳐 움직이지 않는다.
         //
-        // 주 화면에서 **위로** 굴리면 전체 기록을 연다. 스크롤백을 보여 주던 때는
-        // 조각만 보였다 — 이런 프로그램은 화면을 덮어 그려서 스크롤백에 거의 아무것도
-        // 안 올라간다(실측: 6시간에 450줄). 지나간 내용은 세션 기록에 있고,
-        // 그것을 펴서 보여 주는 것이 사용자가 휠에 기대하는 일이다(요구 2026-08-29).
-        return match (c.alt_screen || c.shift, c.up) {
-            (true, _) => WheelTo::Nothing,
-            (false, true) => WheelTo::History,
-            (false, false) => WheelTo::Scrollback, // 아래로는 볼 과거가 없다 — 살던 대로.
+        // ⚠️ 한때 주 화면에서 위로 굴리면 전체 기록 겹 화면을 열도록 했다(배치 BB).
+        // 스크롤백에 조각만 남는 프로그램에서 지나간 것을 보여 주려던 것이었다.
+        // 그런데 **굴릴 때마다 창이 뜨는 것은 굴리는 사람이 기대한 일이 아니다.**
+        // 사용자가 그대로 말했다 — "클로드 코드는 아무 문제가 없었는데 점점 더
+        // 이상해지고 있다"(2026-08-30). 되돌린다.
+        //
+        // 전체 기록은 탭을 오른쪽 클릭해 연다. 휠은 굴리는 일만 한다.
+        return match c.alt_screen || c.shift {
+            true => WheelTo::Nothing,
+            false => WheelTo::Scrollback, // 주 화면에서는 스크롤백이 우선.
         };
     }
     // 1007을 **대체 화면 판정보다 먼저** 본다. 뒤에 두면 아래 alt_screen 분기가 먼저
@@ -165,8 +165,7 @@ pub(crate) fn wheel_bytes(target: WheelTo, wheel: f32, app_cursor: bool) -> Opti
         WheelTo::CursorKeys => Some(alt_scroll_bytes(wheel, app_cursor)),
         WheelTo::PageKeys => Some(tui_scroll_bytes(wheel)),
         WheelTo::OpenTui => Some(vec![TUI_OVERLAY_KEY]),
-        // History 도 보낼 바이트가 없다 — 겹 화면은 우리가 그린다.
-        WheelTo::Scrollback | WheelTo::Nothing | WheelTo::History => None,
+        WheelTo::Scrollback | WheelTo::Nothing => None,
     }
 }
 
@@ -270,13 +269,14 @@ mod tests {
     #[test]
     fn mouse_reporting_app_is_not_doubled() {
         let c = WheelCtx { mouse_on: true, ..Default::default() };
-        // 위로 = 과거를 보려는 것 → 전체 기록. 아래로 = 스크롤백(살던 대로).
-        assert_eq!(wheel_target(WheelCtx { up: true, ..c }), WheelTo::History);
+        // 위아래 **둘 다** 우리 스크롤백이다. 한때 위로 굴리면 기록 겹 화면을 열었는데,
+        // 굴릴 때마다 창이 뜨는 것은 굴리는 사람이 기대한 일이 아니었다(사용자 보고).
+        assert_eq!(wheel_target(WheelCtx { up: true, ..c }), WheelTo::Scrollback);
         assert_eq!(wheel_target(c), WheelTo::Scrollback);
         assert_eq!(wheel_target(WheelCtx { shift: true, ..c }), WheelTo::Nothing);
         assert_eq!(wheel_target(WheelCtx { alt_screen: true, ..c }), WheelTo::Nothing);
         // 주 화면에서 1007까지 켠 앱 — 예전에는 여기서 휠이 죽었다(Claude Code 사례).
-        assert_eq!(wheel_target(WheelCtx { alt_scroll: true, up: true, ..c }), WheelTo::History);
+        assert_eq!(wheel_target(WheelCtx { alt_scroll: true, up: true, ..c }), WheelTo::Scrollback);
     }
 
     /// 주 화면에서 Shift+휠은 언제나 우리 스크롤백이다(앱이 무엇을 켰든).

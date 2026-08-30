@@ -152,6 +152,17 @@ impl TriggerScanner {
         let Some(t) = parse_fields(&buf[start..end]) else {
             return Parsed::NotTrigger(end.max(start + 1));
         };
+        // **진짜 트리거는 줄 맨 앞에 온다.** trz/tsz 가 자기 줄에 혼자 찍기 때문이다.
+        //
+        // 이걸 안 보면 그 문자열을 담은 아무 글이나 전송을 시작시킨다. 실제로 그랬다 —
+        // 이 파일의 시험 코드를 화면에 출력했더니(`sed` 로 소스를 봤다) 나비텀이 전송이
+        // 시작된 줄 알고 `#ACT:` 를 셸에 보냈고, 받을 프로그램이 없으니 셸이 그대로
+        // 되받아 찍어 화면에 프로토콜 글자가 남았다(사용자 보고 2026-08-30).
+        //
+        // 소스·로그·문서를 읽는 것만으로 파일 전송이 시작되면 안 된다.
+        if !at_line_start(buf, idx) {
+            return Parsed::NotTrigger(end);
+        }
         // 가짜 판정: 트리거 뒤에 이런 낱말이 붙어 있으면 누가 로그를 화면에 뿌린 것이다.
         let tail_to = (idx + FAKE_SCAN).min(buf.len());
         if idx + 40 < tail_to && looks_like_log(&buf[idx + 40..tail_to]) {
@@ -185,6 +196,14 @@ enum Parsed {
     /// 트리거가 아니다(끝 위치 — 여기서부터 다시 찾는다).
     NotTrigger(usize),
     Found(Trigger, usize),
+}
+
+/// 매직이 **줄 맨 앞**에 있는가(앞에 공백만 있어도 맞다고 본다).
+///
+/// 앞쪽에서 줄바꿈을 못 찾고 버퍼 처음까지 갔으면 판단하지 않고 맞다고 본다 —
+/// 청크가 줄 중간에서 시작했을 수 있고, 진짜 전송을 놓치는 편이 더 나쁘다.
+fn at_line_start(buf: &[u8], idx: usize) -> bool {
+    buf[..idx].iter().rev().take_while(|c| **c != b'\n').all(u8::is_ascii_whitespace)
 }
 
 fn is_field(b: u8) -> bool {
@@ -248,6 +267,30 @@ mod tests {
 
     fn trig(s: &str) -> Option<Trigger> {
         TriggerScanner::new().feed(s.as_bytes()).trigger
+    }
+
+    /// **소스나 로그를 화면에 뿌리는 것만으로 전송이 시작되면 안 된다.**
+    ///
+    /// 실제로 그랬다. 이 파일의 시험 코드를 화면에 출력했더니 나비텀이 전송이 시작된
+    /// 줄 알고 셸에 `#ACT:` 를 보냈고, 받을 프로그램이 없으니 셸이 그대로 되받아 찍어
+    /// 화면에 프로토콜 글자가 남았다(사용자 보고 2026-08-30).
+    ///
+    /// 진짜 트리거는 trz/tsz 가 자기 줄에 혼자 찍는다. 앞에 다른 글자가 있으면 아니다.
+    #[test]
+    fn magic_in_the_middle_of_a_line_is_not_a_trigger() {
+        let mut sc = TriggerScanner::new();
+        // 이 파일의 다른 시험 한 줄을 그대로 흉내 낸다 — 화면에 그렇게 나왔었다.
+        let line = "        assert!(sc.feed(b\"::TRZSZ:TRANSFER:S:1.1.8:1755780000000\"));\n";
+        let r = sc.feed(line.as_bytes());
+        assert!(r.trigger.is_none(), "글 한가운데 있는 매직은 트리거가 아니다");
+        assert_eq!(r.display, line.as_bytes(), "그리고 화면에는 그대로 나와야 한다");
+    }
+
+    /// 앞에 들여쓰기만 있으면 진짜다 — 줄 맨 앞으로 친다.
+    #[test]
+    fn magic_after_only_spaces_is_still_a_trigger() {
+        let mut sc = TriggerScanner::new();
+        assert!(sc.feed(b"  ::TRZSZ:TRANSFER:S:1.1.8:1755780000000\n").trigger.is_some());
     }
 
     #[test]
@@ -314,8 +357,9 @@ mod tests {
 
     #[test]
     fn keeps_bytes_after_trigger_for_the_session() {
-        let r = TriggerScanner::new().feed(b"x::TRZSZ:TRANSFER:S:1.1.8:1755780000000\n#CFG:abc\n");
-        assert_eq!(r.display, b"x");
+        // 앞의 `x` 뒤에 줄을 바꾼다 — 트리거는 줄 맨 앞에 와야 진짜다.
+        let r = TriggerScanner::new().feed(b"x\n::TRZSZ:TRANSFER:S:1.1.8:1755780000000\n#CFG:abc\n");
+        assert_eq!(r.display, b"x\n");
         assert_eq!(r.rest, b"\n#CFG:abc\n");
     }
 
