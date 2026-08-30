@@ -150,8 +150,11 @@ fn profile_editor(ui: &mut egui::Ui, p: &mut AiProfileCfg, lang: Lang, i: usize)
         let shell_label = if p.shell.is_empty() { tr(lang, "aiprof.shell.default").to_string() } else { p.shell.clone() };
         egui::ComboBox::from_id_salt(("aiprof_shell", i)).selected_text(shell_label).show_ui(ui, |ui| {
             ui.selectable_value(&mut p.shell, String::new(), tr(lang, "aiprof.shell.default"));
-            for s in ["powershell", "pwsh", "cmd", "wsl", "gitbash"] {
-                ui.selectable_value(&mut p.shell, s.to_string(), s);
+            // 셸 목록은 **한 곳에서 온다**(menu::shell_choices). 여기 손으로 적어 두면
+            // 셸이 하나 늘 때 이 칸만 모른 척한다 — 실제로 그렇게 적혀 있었다.
+            for (_, kind) in crate::menu::shell_choices() {
+                let s = crate::workspace::shell_to_str(&kind);
+                ui.selectable_value(&mut p.shell, s.clone(), s);
             }
         });
         ui.end_row();

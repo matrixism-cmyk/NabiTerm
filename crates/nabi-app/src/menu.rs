@@ -336,3 +336,35 @@ fn detect_shells() -> Vec<(String, ShellKind)> {
     v.extend(crate::shelldetect::extras(&|p| std::path::Path::new(p).is_file()));
     v
 }
+
+#[cfg(test)]
+mod 셸_목록 {
+    /// 목록에 있는 셸은 **저장하고 다시 읽어도 같은 것이어야 한다.**
+    ///
+    /// 셸 이름은 워크스페이스 파일과 AI 프로필에 글자로 남는다. 목록에 셸을 하나 더하고
+    /// `shell_from_str` 을 잊으면, 저장은 되는데 다시 켤 때 조용히 기본 셸로 바뀐다 —
+    /// 사용자는 "설정이 안 지켜진다"고 느끼고 어디가 잘못됐는지는 알 수 없다.
+    #[test]
+    fn 목록의_셸은_모두_왕복한다() {
+        for (label, kind) in super::shell_choices() {
+            let s = crate::workspace::shell_to_str(&kind);
+            let back = crate::workspace::shell_from_str(&s);
+            assert_eq!(
+                crate::workspace::shell_to_str(&back),
+                s,
+                "{label}: 저장했다가 읽으면 다른 것이 된다"
+            );
+        }
+    }
+
+    /// 목록의 이름이 서로 겹치지 않는가 — 겹치면 하나가 다른 하나를 덮는다.
+    #[test]
+    fn 셸_이름이_겹치지_않는다() {
+        let mut names: Vec<String> =
+            super::shell_choices().iter().map(|(_, k)| crate::workspace::shell_to_str(k)).collect();
+        let before = names.len();
+        names.sort();
+        names.dedup();
+        assert_eq!(names.len(), before, "같은 이름을 쓰는 셸이 있다: {names:?}");
+    }
+}

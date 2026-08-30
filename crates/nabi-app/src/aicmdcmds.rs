@@ -188,3 +188,41 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod 도구_이름_판정 {
+    use super::KINDS;
+
+    /// 명령 바가 아는 도구는 **다른 판정도 전부 알아야 한다.**
+    ///
+    /// AI CLI 하나를 붙이려면 이름 목록이 여섯 자리에 흩어져 있다. 어느 하나를 빠뜨리면
+    /// 그 자리만 조용히 모른 척한다 — gemini 가 실제로 그랬다. 명령 바에는 붙였는데
+    /// 상태바는 AI 로 안 봤고, 창 제목으로도 못 알아봤다(배치 BI).
+    ///
+    /// 각 판정이 무엇을 뜻하는지.
+    ///
+    /// * `aihandoff::ai_command_name` — 이 pane 에서 도는 것이 AI 인가(AI 동선의 뿌리).
+    /// * `aistatus::is_ai_command` — 상태바에 🤖 배지를 붙일 것인가.
+    /// * `aimode::kind_from_title` — 창 제목만 보고 알아본다(원격 pane 판정의 핵심).
+    ///
+    /// `agy` 는 창 제목이 "Antigravity" 라 이름으로는 못 찾는다 — 그 자리만 예외로 둔다.
+    #[test]
+    fn 명령_바가_아는_도구는_다른_판정도_안다() {
+        for k in KINDS {
+            let cmd = format!("{k} --help");
+            assert_eq!(
+                crate::aihandoff::ai_command_name(&cmd),
+                Some(k),
+                "{k}: AI 명령으로 안 본다(aihandoff)"
+            );
+            assert!(crate::aistatus::is_ai_command(&cmd), "{k}: 상태바가 AI 로 안 본다");
+            if k != "agy" {
+                assert_eq!(
+                    crate::aimode::kind_from_title(&format!("{k} - 작업 중")),
+                    Some(k),
+                    "{k}: 창 제목으로 못 알아본다"
+                );
+            }
+        }
+    }
+}
