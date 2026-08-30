@@ -110,3 +110,49 @@ mod tests {
         assert!(missing.is_empty(), "처리하는데 도움말에 없는 키: {missing:?}");
     }
 }
+
+#[cfg(test)]
+mod reverse {
+    use super::{keys_in_source, label_covers};
+
+    /// 단축키를 실제로 잡는 파일들. 전역만 있는 것이 아니라 편집기·터미널도 잡는다.
+    ///
+    /// 파일을 여기 적어 두는 것이 손으로 관리하는 표처럼 보이지만 성격이 다르다 —
+    /// 빠뜨리면 **시험이 더 엄격해질 뿐**(없다고 보고한다) 조용히 넘어가지 않는다.
+    fn handled_everywhere() -> std::collections::BTreeSet<String> {
+        let mut all = std::collections::BTreeSet::new();
+        for src in [
+            include_str!("shortcuts.rs"),
+            include_str!("tabsterm.rs"),
+            include_str!("palette.rs"),
+            include_str!("palettedispatch.rs"),
+        ] {
+            all.extend(keys_in_source(src));
+        }
+        all
+    }
+
+    /// **도움말 표에 적어 놓고 아무 일도 안 하는 단축키가 있는가.**
+    ///
+    /// 이 파일 머리말이 두 방향 다 나쁘다고 적어 놓고도 이쪽은 안 봤다. 그런데 사용자에게는
+    /// 이쪽이 더 나쁘다 — 눌렀는데 아무 일이 없으면 자기가 잘못 눌렀다고 생각하고,
+    /// 그 기능이 없다는 사실은 끝내 모른다.
+    ///
+    /// 조합키는 보지 않는다(표기 취향에 걸린다). **그 키를 어디서든 잡기는 하는가**만 본다.
+    #[test]
+    fn 도움말에_적은_단축키는_어딘가에서_실제로_잡는다() {
+        let handled = handled_everywhere();
+        assert!(handled.len() > 20, "훑기가 망가졌다(찾은 키 {}개)", handled.len());
+        let mut dead = Vec::new();
+        for (label, key) in crate::helppages::KEYS {
+            // 숫자 범위(Alt+1~9)처럼 한 줄이 여러 키를 뜻하는 것은 이 방식으로 못 센다.
+            if label.contains('~') {
+                continue;
+            }
+            if !handled.iter().any(|k| label_covers(label, k)) {
+                dead.push(format!("{label} ({key})"));
+            }
+        }
+        assert!(dead.is_empty(), "도움말에는 있는데 아무도 안 잡는 단축키: {dead:?}");
+    }
+}

@@ -50,7 +50,7 @@ mod editorconflict; mod guard; mod guardui; mod inputline; mod lastfail; mod log
 #[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan;
 #[cfg(test)] mod i18nlint; mod envwsl; mod envprobe; mod envstate; mod envrun; mod envmgr; mod envmgrui;
-mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdother; mod aicmdmore; mod aimode;
+mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdgemini; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
 
 mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sftpgrid; mod browsersort; mod keyscan;

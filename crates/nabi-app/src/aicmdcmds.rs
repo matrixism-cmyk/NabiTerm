@@ -42,7 +42,7 @@ pub(crate) const fn u(cmd: &'static str, label: &'static str, desc: &'static str
 /// 실행 명령 → 명령 바를 아는 CLI 종류(판정은 aihandoff::ai_command_name과 공유 — SSOT).
 pub(crate) fn bar_kind(run_cmd: &str) -> Option<&'static str> {
     crate::aihandoff::ai_command_name(run_cmd)
-        .filter(|n| matches!(*n, "claude" | "codex" | "agy" | "aider"))
+        .filter(|n| matches!(*n, "claude" | "codex" | "agy" | "aider" | "gemini"))
 }
 
 /// 주요 명령(바에 바로 노출). 나머지는 "⋯" 더보기 메뉴(secondary_groups).
@@ -51,6 +51,7 @@ pub(crate) fn primary_commands(kind: &str) -> &'static [BarCmd] {
         "claude" => crate::aicmdclaude::primary(),
         "codex" => crate::aicmdother::codex_primary(),
         "agy" => crate::aicmdother::agy_primary(),
+        "gemini" => crate::aicmdgemini::primary(),
         _ => crate::aicmdother::aider_primary(),
     }
 }
@@ -61,6 +62,7 @@ pub(crate) fn secondary_groups(kind: &str) -> &'static [CmdGroup] {
         "claude" => crate::aicmdclaude::groups(),
         "codex" => crate::aicmdother::codex_groups(),
         "agy" => crate::aicmdother::agy_groups(),
+        "gemini" => crate::aicmdgemini::groups(),
         _ => crate::aicmdother::aider_groups(),
     }
 }
@@ -77,9 +79,33 @@ pub(crate) fn secondary_flat(kind: &str) -> impl Iterator<Item = &'static BarCmd
     secondary_groups(kind).iter().flat_map(|g| g.cmds.iter())
 }
 
+/// 명령 바가 아는 CLI 종류 — **한 곳에서만 적는다.**
+///
+/// 시험 일곱 군데가 이 목록을 저마다 손으로 들고 있었다. 새 CLI 를 붙이면 일곱 곳을 다
+/// 고쳐야 하는데, 하나만 빠뜨려도 그 CLI 는 검사 없이 지나간다 — 실제로 gemini 를 붙이며
+/// 드러났다. `bar_kind` 가 거르는 목록과 여기가 같아야 하고, 아래 시험이 그것을 지킨다.
+#[cfg(test)]
+pub(crate) const KINDS: [&str; 5] = ["claude", "codex", "agy", "aider", "gemini"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `KINDS` 와 `bar_kind` 가 거르는 목록이 같은가.
+    ///
+    /// 소스를 글자로 대조한다 — 한쪽에만 CLI 를 더하면 여기서 걸린다.
+    #[test]
+    fn 아는_종류_목록이_한곳과_같다() {
+        let src = include_str!("aicmdcmds.rs");
+        let at = src.find("matches!(*n,").expect("bar_kind 의 목록을 못 찾았다");
+        let line: String = src[at..].chars().take_while(|c| *c != ')').collect();
+        for k in KINDS {
+            assert!(line.contains(&format!("\"{k}\"")), "bar_kind 가 {k} 를 모른다");
+        }
+        // 반대로 bar_kind 에만 있는 것도 없어야 한다.
+        let n = line.matches('"').count() / 2;
+        assert_eq!(n, KINDS.len(), "목록 개수가 다르다: bar_kind {n} · KINDS {}", KINDS.len());
+    }
 
     #[test]
     fn kinds_are_strict_and_commands_ascii() {
@@ -87,7 +113,7 @@ mod tests {
         assert_eq!(bar_kind(r"C:\bin\codex.exe"), Some("codex"));
         assert_eq!(bar_kind("grep claude src"), None, "부분문자열 오탐 금지");
         assert_eq!(bar_kind(""), None);
-        for kind in ["claude", "codex", "agy", "aider"] {
+        for kind in KINDS {
             for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
                 assert!(bc.cmd.starts_with('/') && bc.cmd.is_ascii());
                 assert!(bc.desc.starts_with("aicb."), "설명 키 규약: {}", bc.desc);
@@ -108,7 +134,7 @@ mod tests {
     #[test]
     fn every_key_is_translated_in_all_languages() {
         use nabi_i18n::{tr, Lang};
-        for kind in ["claude", "codex", "agy", "aider"] {
+        for kind in KINDS {
             for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
                 for lang in [Lang::En, Lang::Ko, Lang::Ja] {
                     assert_ne!(tr(lang, bc.label), "?", "{lang:?} 라벨 없음: {}", bc.label);
@@ -124,7 +150,7 @@ mod tests {
     /// 같은 명령이 바와 더보기에 **동시에** 나오면 사용자가 헷갈린다(드리프트 방지).
     #[test]
     fn no_duplicate_between_primary_and_more() {
-        for kind in ["claude", "codex", "agy", "aider"] {
+        for kind in KINDS {
             let prim: Vec<_> = primary_commands(kind).iter().map(|b| b.cmd).collect();
             for bc in secondary_flat(kind) {
                 assert!(!prim.contains(&bc.cmd), "{kind}: {} 중복", bc.cmd);
@@ -135,7 +161,7 @@ mod tests {
     /// 종료는 바에 **버튼으로** 나온다 — 메뉴에도 있으면 같은 일이 두 군데가 된다.
     #[test]
     fn quit_lives_only_on_the_button() {
-        for kind in ["claude", "codex", "agy", "aider"] {
+        for kind in KINDS {
             for bc in primary_commands(kind).iter().chain(secondary_flat(kind)) {
                 assert_ne!(bc.cmd, QUIT_CMD, "{kind}: 종료가 목록에도 있다");
             }
@@ -154,7 +180,7 @@ mod tests {
     /// 더보기 안에서도 중복이 없어야 한다(묶음을 나누다 실수하기 쉬운 자리).
     #[test]
     fn more_menu_has_no_repeats() {
-        for kind in ["claude", "codex", "agy", "aider"] {
+        for kind in KINDS {
             let mut seen = std::collections::BTreeSet::new();
             for bc in secondary_flat(kind) {
                 assert!(seen.insert(bc.cmd), "{kind}: {} 두 번", bc.cmd);

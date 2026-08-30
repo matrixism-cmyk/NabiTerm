@@ -50,6 +50,14 @@ pub(crate) fn preset_switches(cmd: &str) -> &'static [(&'static str, &'static st
             ("--continue", "aiopt.agy.continue"),
             ("--disable-slash-commands", "aiopt.agy.noslash"),
         ],
+        // gemini 설명도 이미 번역돼 있었는데 표에 없었다 — 옵션 화면이 gemini 를 몰랐다.
+        // 이름은 Gemini CLI 문서 기준(--yolo·--sandbox·--checkpointing·--debug).
+        "gemini" => &[
+            ("--yolo", "aiopt.gemini.yolo"),
+            ("--sandbox", "aiopt.gemini.sandbox"),
+            ("--checkpointing", "aiopt.gemini.checkpoint"),
+            ("--debug", "aiopt.gemini.debug"),
+        ],
         "aider" => &[
             ("--yes-always", "aiopt.aider.yes"),
             ("--watch-files", "aiopt.aider.watch"),
@@ -99,7 +107,8 @@ fn is_preset(cmd: &str, arg: &str) -> bool {
 }
 
 /// 설정 UI의 CLI 종류 선택지(마지막 "custom"은 자유 입력).
-pub(crate) const CLI_CHOICES: [&str; 5] = ["claude", "codex", "antigravity", "aider", "custom"];
+pub(crate) const CLI_CHOICES: [&str; 6] =
+    ["claude", "codex", "antigravity", "aider", "gemini", "custom"];
 
 /// args에서 프리셋 스위치를 켜고 끈다(중복 없이, 순서 유지).
 pub(crate) fn toggle_arg(args: &mut Vec<String>, sw: &str, on: bool) {

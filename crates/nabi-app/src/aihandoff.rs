@@ -13,7 +13,7 @@ use nabi_types::PaneId;
 pub(crate) fn ai_command_name(cmd: &str) -> Option<&'static str> {
     let base = cmd.split_whitespace().next().unwrap_or("");
     let name = base.rsplit(['\\', '/']).next().unwrap_or(base).trim_end_matches(".exe").to_ascii_lowercase();
-    ["claude", "aider", "codex", "agy", "llm", "goose", "cursor"]
+    ["claude", "aider", "codex", "agy", "gemini", "llm", "goose", "cursor"]
         .iter()
         .find(|n| **n == name)
         .copied()

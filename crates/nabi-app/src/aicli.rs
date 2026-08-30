@@ -35,6 +35,7 @@ pub(crate) fn detect_all() -> Vec<CliStatus> {
         ("claude", "Claude Code", "claude"),
         ("codex", "OpenAI Codex", "codex"),
         ("antigravity", "Google Antigravity", "agy"),
+        ("gemini", "Gemini CLI", "gemini"),
     ]
     .into_iter()
     .map(|(id, name, command)| detect(id, name, command))
@@ -145,7 +146,7 @@ pub(crate) fn finish(job: &ActionJob, out: std::io::Result<Output>) {
 
 /// 별도 콘솔 창 없이 백그라운드에서 설치/제거한다. Codex는 Node.js LTS를 먼저 보장한다.
 pub(crate) fn start_action(id: &str, remove: bool) -> std::io::Result<ActionJob> {
-    if !matches!(id, "claude" | "codex" | "antigravity") {
+    if !matches!(id, "claude" | "codex" | "antigravity" | "gemini") {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
             "unknown AI CLI",
@@ -165,6 +166,9 @@ pub(crate) fn start_action(id: &str, remove: bool) -> std::io::Result<ActionJob>
             ("claude", true) => remove_npm(&worker, "Claude Code", "@anthropic-ai/claude-code"),
             ("codex", false) => install_codex(&worker),
             ("codex", true) => remove_npm(&worker, "Codex", "@openai/codex"),
+            // Gemini CLI 도 npm 으로 온다 — claude 와 같은 길을 그대로 쓴다.
+            ("gemini", false) => install_npm_cli(&worker, "Gemini CLI", "@google/gemini-cli@latest"),
+            ("gemini", true) => remove_npm(&worker, "Gemini CLI", "@google/gemini-cli"),
             ("antigravity", false) => install_antigravity(&worker),
             ("antigravity", true) => run_ps("Start-Process 'https://antigravity.google/download'"),
             _ => unreachable!(),
@@ -288,3 +292,46 @@ Write-Output 'done'
     )
 }
 
+
+#[cfg(test)]
+mod surfaces {
+    /// AI CLI 하나를 붙이려면 **네 자리**를 고쳐야 한다. 하나만 빠뜨려도 조용히 어긋난다.
+    ///
+    /// 실제로 gemini 가 그랬다 — 슬래시 명령 설명 16개와 실행 옵션 설명 4개가 번역까지
+    /// 끝나 있는데 어느 표에도 붙어 있지 않아, 사용자가 `gemini` 를 띄워도 명령 바가
+    /// 아무것도 모르는 상태였다(배치 BH).
+    ///
+    /// 네 자리는 이렇다.
+    ///
+    /// * `aicli::detect_all` — 설치·갱신을 관리한다.
+    /// * `aicli::start_action` — 설치·삭제를 실제로 한다.
+    /// * `aiprof::CLI_CHOICES` — 프로필에서 고를 수 있다.
+    /// * `aicmdcmds::bar_kind` — 명령 바가 슬래시 명령을 안다.
+    ///
+    /// 이름이 자리마다 다른 것은 그대로 둔다(프로필은 `antigravity`, 명령 바는 실제 명령인
+    /// `agy`). 여기서는 **관리 대상이 프로필에서 고를 수 있는가**만 본다 — 그것이
+    /// 빠지면 설치는 되는데 쓸 수가 없다.
+    #[test]
+    fn 관리하는_도구는_프로필에서_고를_수_있다() {
+        let managed: Vec<&str> = super::detect_all().iter().map(|c| c.id).collect();
+        assert!(managed.len() >= 4, "관리 목록이 너무 작다: {managed:?}");
+        let missing: Vec<&&str> = managed
+            .iter()
+            .filter(|id| !crate::aiprof::CLI_CHOICES.contains(id))
+            .collect();
+        assert!(missing.is_empty(), "설치는 관리하는데 프로필에서 못 고른다: {missing:?}");
+    }
+
+    /// 프로필에서 고를 수 있는 CLI 는 **실행 옵션 표가 있어야 한다.**
+    ///
+    /// 없으면 고른 뒤 옵션 칸이 텅 빈다. `custom` 은 사용자가 직접 적는 것이라 뺀다.
+    #[test]
+    fn 고를_수_있는_도구는_옵션_표가_있다() {
+        let empty: Vec<&&str> = crate::aiprof::CLI_CHOICES
+            .iter()
+            .filter(|c| **c != "custom")
+            .filter(|c| crate::aiprof::preset_switches(c).is_empty())
+            .collect();
+        assert!(empty.is_empty(), "고를 수는 있는데 옵션 표가 없다: {empty:?}");
+    }
+}

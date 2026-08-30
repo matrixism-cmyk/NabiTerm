@@ -108,6 +108,9 @@ pub(crate) fn palette_commands(
         (tr(lang, "handoff.copymd").to_string(), PaletteAction::CopyLastMd),
         (tr(lang, "sftp.history").to_string(), PaletteAction::XferHistory),
         (tr(lang, "settings.sec.schedule").to_string(), PaletteAction::OpenSchedule),
+        // 도구 메뉴에는 있는데 팔레트에서는 못 찾던 둘 — 아래 대조 시험이 이제 지킨다.
+        (tr(lang, "replay.title").to_string(), PaletteAction::OpenReplay),
+        (tr(lang, "trail.title").to_string(), PaletteAction::OpenAgentTrail),
         (tr(lang, "help.agent.title").to_string(), PaletteAction::OpenAiCli),
         (tr(lang, "aiprof.manage").to_string(), PaletteAction::AiProfiles),
     ];
@@ -140,4 +143,41 @@ pub(crate) fn palette_commands(
         }
     }
     v
+}
+
+#[cfg(test)]
+mod tests {
+    /// 메뉴에서 부르는 팔레트 동작은 **팔레트에서도 찾을 수 있어야 한다.**
+    ///
+    /// 메뉴는 마우스로 훑는 사람의 길이고 팔레트는 손을 안 떼는 사람의 길이다. 같은
+    /// 기능이 한쪽에만 있으면, 그쪽을 쓰지 않는 사람에게는 없는 기능이 된다.
+    ///
+    /// 실제로 둘이 그랬다 — 재생과 에이전트 기록은 도구 메뉴에만 있었다. 손으로 두
+    /// 목록을 맞춰 두면 언젠가 또 달라지므로 **소스를 훑어 대조한다.**
+    #[test]
+    fn 메뉴에_있는_것은_팔레트에서도_찾을_수_있다() {
+        let menus = concat!(
+            include_str!("toolsmenu.rs"),
+            include_str!("viewmenu.rs"),
+            include_str!("sessionsmenu.rs"),
+        );
+        let listed = include_str!("palettecmds.rs");
+        let mut missing = Vec::new();
+        for (i, _) in menus.match_indices("PaletteAction::") {
+            let name: String = menus[i + "PaletteAction::".len()..]
+                .chars()
+                .take_while(|c| c.is_alphanumeric())
+                .collect();
+            // 인자를 받는 것은 그때그때 만들어 넣으므로 이 대조에서 뺀다.
+            let takes_arg = menus[i..].chars().nth("PaletteAction::".len() + name.len()) == Some('(');
+            if name.is_empty() || takes_arg {
+                continue;
+            }
+            let used = format!("PaletteAction::{name}),");
+            if !listed.contains(&used) && !missing.contains(&name) {
+                missing.push(name);
+            }
+        }
+        assert!(missing.is_empty(), "메뉴에는 있는데 팔레트 목록에 없다: {missing:?}");
+    }
 }
