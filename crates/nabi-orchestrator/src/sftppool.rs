@@ -264,7 +264,7 @@ async fn run_job(
         }
         Job::UploadDir { xfer, local, remote } => {
             let mut p = progress_sink(id, *xfer, ev);
-            fs.upload_dir(Path::new(local), remote, &mut p).await
+            fs.upload_dir(Path::new(local), remote, &mut p).await.and_then(skipped_err)
         }
     }
 }

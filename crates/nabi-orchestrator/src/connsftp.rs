@@ -124,11 +124,13 @@ impl Conn {
         local: &Path,
         remote: &str,
         p: &mut (dyn FnMut(u64) + Send),
-    ) -> Result<(), String> {
+    ) -> Result<usize, String> {
         match self {
             Conn::Sftp(f) => {
                 let mut prog = nabi_sftp::DirProgress { done: 0, skipped: 0, cb: p };
-                f.upload_dir_progress(local, remote, &mut prog).await
+                f.upload_dir_progress(local, remote, &mut prog).await?;
+                // 링크를 건너뛰었으면 알린다 — 올린 줄 알고 로컬을 지우면 안 된다.
+                Ok(prog.skipped)
             }
             Conn::Ftp(_) => Err("FTP: 폴더 재귀 업로드 미지원".to_string()),
         }

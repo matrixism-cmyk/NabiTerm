@@ -190,7 +190,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sessions.importempty", "That file has no sessions in it.", "그 파일에는 세션이 들어 있지 않습니다.", "そのファイルにセッションはありません。"),
     ("import.none", "nothing to import", "가져올 것이 없습니다", "取り込むものがありません"),
     ("config.dropped", "Some settings could not be read and were left at their default:", "읽지 못해 기본값으로 둔 설정이 있습니다:", "読み取れず既定値のままにした設定があります:"),
-    ("sftp.skipped.unsafe", "Some items were skipped: the server gave names that would land outside the download folder", "받는 폴더를 벗어나는 이름이라 건너뛴 것이 있습니다", "ダウンロード先の外に出る名前だったため、スキップした項目があります"),
+    ("sftp.skipped.unsafe", "Some items were skipped \u{2014} names that would land outside the folder, and symlinks", "폴더를 벗어나는 이름과 링크는 건너뛰었습니다", "フォルダーの外に出る名前とシンボリックリンクはスキップしました"),
     ("browser.copyfailed", "Some items could not be copied:", "옮기지 못한 것이 있습니다:", "コピーできなかった項目があります:"),
     ("editor.undomem", "Undo history", "되돌리기 기록", "元に戻す履歴"),
     ("sessions.hostkey", "Show host key", "호스트키 보기", "ホストキーを表示"),

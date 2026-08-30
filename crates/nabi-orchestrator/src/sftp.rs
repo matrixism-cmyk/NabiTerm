@@ -190,6 +190,8 @@ pub fn spawn_sftp(
                 SftpReq::UploadDir { xfer, local, remote } => {
                     let mut p = crate::sftppool::progress_sink(id, xfer, &ev);
                     let res = fs.upload_dir(Path::new(&local), &remote, &mut p).await;
+                    // 링크를 건너뛰었으면 다 올렸다고 말하지 않는다.
+                    let res = res.and_then(crate::sftppool::skipped_err);
                     let _ = ev.send(transfer_done(id, xfer, &remote, res));
                 }
                 SftpReq::Exec { cmd } => {

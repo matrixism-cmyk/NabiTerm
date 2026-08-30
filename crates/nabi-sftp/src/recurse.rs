@@ -86,6 +86,17 @@ impl SftpFs {
                 let name = entry.file_name().to_string_lossy().into_owned();
                 let rpath = format!("{}/{}", remote.trim_end_matches('/'), name);
                 let lpath = entry.path();
+                // **링크는 따라가지 않는다.** `is_dir()` 는 링크를 따라가므로, 위를 가리키는
+                // 링크가 하나 있으면 끝없이 돈다(`a -> ..`). 그리고 폴더 밖을 가리키는
+                // 링크를 따라가면 사용자가 고르지 않은 파일이 서버로 올라간다.
+                //
+                // 내려받는 쪽은 링크를 종류로 구분해 이미 안 따라간다(`FileKind::Symlink`).
+                // 올리는 쪽만 빠져 있었다.
+                let link = entry.file_type().map(|t| t.is_symlink()).unwrap_or(false);
+                if link {
+                    prog.skipped += 1;
+                    continue;
+                }
                 if lpath.is_dir() {
                     self.upload_dir_progress(&lpath, &rpath, prog).await?;
                 } else {
@@ -227,5 +238,41 @@ impl SftpFs {
             }
             out
         })
+    }
+}
+
+#[cfg(test)]
+mod 링크는_따라가지_않는다 {
+    /// 올릴 때 링크를 걸러 내는 판단만 따로 본다(진짜 업로드는 실서버 시험이 맡는다).
+    ///
+    /// `is_dir()` 는 링크를 따라간다. 위를 가리키는 링크가 하나 있으면 끝없이 돌고,
+    /// 폴더 밖을 가리키는 링크를 따라가면 **사용자가 고르지 않은 파일이 올라간다.**
+    /// 그래서 `file_type().is_symlink()` 로 먼저 거른다.
+    ///
+    /// 윈도우에서 링크 만들기는 권한이 필요할 수 있다 — 못 만들면 시험을 건너뛴다
+    /// (권한 없는 PC 에서 빨개지면 아무도 안 보게 된다).
+    #[test]
+    fn 링크는_폴더로_보지_않는다() {
+        let base = std::env::temp_dir().join(format!("nabi-linktest-{}", std::process::id()));
+        let real = base.join("real");
+        let _ = std::fs::create_dir_all(&real);
+        let link = base.join("loop");
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_dir(&base, &link).is_ok();
+        #[cfg(not(windows))]
+        let made = std::os::unix::fs::symlink(&base, &link).is_ok();
+        if !made {
+            let _ = std::fs::remove_dir_all(&base);
+            return; // 링크를 못 만드는 환경 — 판단할 것이 없다.
+        }
+        let e = std::fs::read_dir(&base)
+            .unwrap()
+            .flatten()
+            .find(|e| e.file_name() == "loop")
+            .expect("링크를 못 찾았다");
+        assert!(e.file_type().unwrap().is_symlink(), "링크로 안 보인다");
+        // `is_dir()` 은 따라가므로 참이다 — 그래서 그것만 보면 안 된다는 것이 요지다.
+        assert!(e.path().is_dir(), "is_dir 는 링크를 따라간다(그래서 위험하다)");
+        let _ = std::fs::remove_dir_all(&base);
     }
 }
