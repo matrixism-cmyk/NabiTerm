@@ -59,21 +59,17 @@ pub fn human(n: u64) -> String {
 
 /// unix 초를 YYYY-MM-DD로(0이면 빈 문자열). Hinnant 민용력 알고리즘(외부 의존 없음).
 pub fn human_date(secs: u64) -> String {
-    if secs == 0 {
-        return String::new();
+    // 현지 시간대로 센다. 예전에는 여기만 UTC 로 셈해서, **같은 파일이 같은 목록 안에서
+    // 다른 날짜로 보였다** — 나이 칸은 `human_date`(UTC), 수정일시 칸은 `human_datetime`
+    // (현지)를 쓰기 때문이다. 한국(+9)에서는 새벽에 고친 파일이 하루 전으로 보였다.
+    //
+    // 손으로 셈하던 것(civil-from-days)을 그대로 두지 않고 `human_datetime` 과 **같은
+    // 길**로 보낸다. 셈이 둘이면 언젠가 또 갈린다.
+    let dt = human_datetime(secs);
+    match dt.split_once(' ') {
+        Some((date, _)) => date.to_string(),
+        None => dt, // 0 이거나 시간대 변환이 실패한 경우 — 그대로(빈 글).
     }
-    let days = (secs / 86400) as i64;
-    let z = days + 719_468;
-    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
-    let doe = (z - era * 146_097) as u64; // [0, 146096]
-    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365; // [0, 399]
-    let y = yoe as i64 + era * 400;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
-    let mp = (5 * doy + 2) / 153; // [0, 11]
-    let d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
-    let m = if mp < 10 { mp + 3 } else { mp - 9 }; // [1, 12]
-    let y = if m <= 2 { y + 1 } else { y };
-    format!("{y:04}-{m:02}-{d:02}")
 }
 
 /// unix 초를 로컬 시간대 "YYYY-MM-DD HH:MM"으로(0이면 빈 문자열). 탐색기 수정일시 컬럼용.
@@ -155,3 +151,28 @@ mod tests {
     }
 }
 
+
+#[cfg(test)]
+mod date_agree_tests {
+    use super::{human_date, human_datetime};
+
+    /// **한 목록 안에서 같은 파일이 다른 날짜로 보이면 안 된다.**
+    ///
+    /// 나이 칸(`human_age` → `human_date`)과 수정일시 칸(`human_datetime`)이 같은 값을
+    /// 받아 서로 다른 날을 말하던 적이 있다 — 한쪽은 UTC, 한쪽은 현지였다.
+    /// 한국(+9)에서는 새벽에 고친 파일이 하루 전으로 보였다.
+    #[test]
+    fn 날짜와_일시가_같은_날을_말한다() {
+        for secs in [1u64, 86_399, 86_400, 1_700_000_000, 1_767_225_600, 2_000_000_000] {
+            let d = human_date(secs);
+            let dt = human_datetime(secs);
+            assert_eq!(d, dt.split(' ').next().unwrap_or(""), "{secs} 에서 갈렸다");
+        }
+    }
+
+    #[test]
+    fn 시각이_없으면_빈_글() {
+        assert_eq!(human_date(0), "");
+        assert_eq!(human_datetime(0), "");
+    }
+}
