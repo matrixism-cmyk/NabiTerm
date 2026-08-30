@@ -143,6 +143,8 @@ fn watch_navigation(webview: &ICoreWebView2) {
             return Ok(());
         }
         let mut why = COREWEBVIEW2_WEB_ERROR_STATUS::default();
+        // 안전: 받는 곳은 지역 변수이고, 인자는 방금 WebView2 가 넘겨준 것이다.
+        // 못 읽어도 아래에서 기본값(알 수 없음)으로 이어 간다.
         let _ = unsafe { args.WebErrorStatus(&mut why) };
         // 오류 페이지를 띄우면 그것도 "옮겨 감"이라 여기가 또 불린다. 막지 않으면 맴돈다 —
         // 실제로 세 번 불리며 화면이 하얗게 남았다.

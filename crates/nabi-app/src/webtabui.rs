@@ -151,11 +151,16 @@ pub(crate) fn render(
     // **하나, 마우스를 누르고 있는가.** egui 가 눌림을 봤다면 우리 쪽을 만지는 중이다 —
     // 웹 화면 위를 누르면 그 신호는 자식 창으로 가서 egui 는 보지 못한다. 탭 끌기·경계선.
     //
-    // **둘, 팝업이 열려 있는가.** 메뉴는 마우스를 뗀 뒤에도 열려 있다. 눌림만 보면
-    // 오른쪽 클릭 메뉴가 웹 화면 아래로 들어가 고를 수 없다(사용자 보고 2026-08-29).
-    // **셋, 우리가 그린 무언가 위에 마우스가 있는가.** 메뉴·툴팁·창은 전부 egui 의
-    // "영역"이다. 그 위에 마우스가 있으면 사용자가 그것을 보고 있는 중이다.
-    let busy = ui.ctx().input(|i| i.pointer.any_down()) || something_above(ui);
+    // **둘, 웹 화면 자리 위에 우리가 그린 무언가가 있는가.**
+    //
+    // 예전에는 "마우스 아래에 무엇이 있는가"를 물었다. 틀린 물음이었다 — 도구 줄의
+    // 더보기(⋮)를 누르면 마우스는 **단추 위**(우리 층)에 있고 메뉴는 웹 화면 위에 열린다.
+    // 그래서 안 숨겼고 메뉴가 웹 화면 뒤로 들어가 보이지 않았다. 설정 창처럼 마우스와
+    // 상관없이 뜨는 것도 같은 이유로 가려졌다(사용자 보고 2026-08-30).
+    //
+    // 그래서 **자리를 여러 곳 짚어 본다.** 한 곳이라도 우리 층이 아니면 그 위에 무언가가
+    // 떠 있는 것이다.
+    let busy = ui.ctx().input(|i| i.pointer.any_down()) || covered(ui, area);
     if busy {
         if let Some(v) = &mut tab.view {
             v.show(false);
@@ -176,15 +181,24 @@ pub(crate) fn render(
     place(tab, hwnd, area, ppp);
 }
 
-/// 마우스가 있는 자리에 **우리가 그린 무언가가 위에 있는가**.
+/// 웹 화면 자리 위에 **우리가 그린 무언가가 덮고 있는가**.
 ///
-/// 메뉴·툴팁·창은 전부 egui 의 층(layer)이다. 마우스 아래의 맨 위 층이 이 탭의 층이
-/// 아니라면, 그 위에 무언가가 떠 있다는 뜻이다 — 그러면 웹 화면을 숨겨야 그것이 보인다.
-fn something_above(ui: &egui::Ui) -> bool {
-    let ctx = ui.ctx();
-    ctx.pointer_latest_pos()
-        .and_then(|p| ctx.layer_id_at(p))
-        .is_some_and(|l| l != ui.layer_id())
+/// 메뉴·툴팁·창은 전부 egui 의 층(layer)이다. 자식 창인 웹 화면은 우리 그림보다 늘 위에
+/// 오므로, 덮는 것이 있으면 그동안 웹 화면을 숨겨야 그것이 보인다.
+///
+/// 층이 어디를 차지하는지 직접 물을 길이 없어(`Areas::get` 은 공개가 아니다) **자리를
+/// 격자로 짚는다.** 5×5 면 메뉴 하나쯤은 반드시 걸린다. 짚는 일은 찾아보기라 싸다.
+fn covered(ui: &egui::Ui, area: egui::Rect) -> bool {
+    let (ctx, me) = (ui.ctx(), ui.layer_id());
+    const N: usize = 5;
+    (0..N * N).any(|i| {
+        let t = |k: usize| (k as f32 + 0.5) / N as f32;
+        let p = egui::pos2(
+            area.min.x + area.width() * t(i % N),
+            area.min.y + area.height() * t(i / N),
+        );
+        ctx.layer_id_at(p).is_some_and(|l| l != me)
+    })
 }
 
 /// 웹 화면을 이 자리에 놓는다. 없으면 만든다.

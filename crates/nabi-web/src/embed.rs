@@ -89,13 +89,19 @@ impl Embedded {
     }
 
     /// 뒤로·앞으로·새로고침.
+    ///
+    /// 셋 다 결과를 버린다 — 갈 곳이 없으면 실패하는데 그것은 정상이고, 사용자에게는
+    /// 단추가 아무 일도 안 한 것으로 보이면 충분하다.
     pub fn back(&self) {
+        // 안전: 이 실에서 만든 웹 화면을 이 실에서 부른다(WebView2 는 실 하나에 매인다).
         let _ = unsafe { self.webview.GoBack() };
     }
     pub fn forward(&self) {
+        // 안전: 위와 같다.
         let _ = unsafe { self.webview.GoForward() };
     }
     pub fn reload(&self) {
+        // 안전: 위와 같다.
         let _ = unsafe { self.webview.Reload() };
     }
 

@@ -105,6 +105,7 @@ pub(crate) fn create(parent: HWND) -> windows::core::Result<HWND> {
             None,
             None,
         )?;
+        // 안전: 우리가 이 파일에 정의한 함수를 가리킨다 — 모양이 윈도우가 요구하는 것과 같다.
         let f: unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT = edit_proc;
         // 만든 것들에 이 PC 의 화면 글꼴을 입힌다 — 안 입히면 옛 글꼴로 그려진다.
         let font = ui_font();
@@ -187,6 +188,8 @@ extern "system" fn edit_proc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) -> LR
         if old == 0 {
             return DefWindowProcW(hwnd, msg, wp, lp);
         }
+        // 안전: `old` 는 우리가 끼울 때 윈도우에게 받아 적어 둔 **원래 함수 주소**다.
+        // 다른 값이 들어올 길이 없고(이 실의 thread_local), 0 이면 위에서 빠져나갔다.
         let f: unsafe extern "system" fn(HWND, u32, WPARAM, LPARAM) -> LRESULT =
             std::mem::transmute(old);
         f(hwnd, msg, wp, lp)

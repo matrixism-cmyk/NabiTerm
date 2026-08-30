@@ -28,7 +28,15 @@ pub fn run() -> ExitCode {
             }
             total += 1;
             let from = i.saturating_sub(LOOKBACK);
-            if lines[from..=i].iter().any(|p| p.contains("SAFETY")) {
+            // **우리는 근거를 한국어로 적는다.** `SAFETY` 만 찾았더니 `// 안전:` 으로
+            // 적어 둔 58곳을 "근거 없음"으로 보고했다 — 검사기가 틀린 것이었다.
+            // 두 표기를 다 받는다. 새로 적을 때는 어느 쪽이든 뜻이 통하면 된다.
+            // `unsafe fn` 은 `# Safety` 문서 주석으로 조건을 적는 것이 러스트 관례다.
+            // 그것도 근거다 — 안 받으면 제대로 적어 둔 곳을 "없음"으로 보고한다.
+            if lines[from..=i]
+                .iter()
+                .any(|p| p.contains("SAFETY") || p.contains("안전:") || p.contains("# Safety"))
+            {
                 continue;
             }
             let rel = f.strip_prefix(&root).unwrap_or(f).display().to_string();
