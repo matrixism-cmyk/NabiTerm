@@ -13,6 +13,14 @@ use std::path::Path;
 pub(crate) fn copy_into(src: &Path, dst_dir: &Path) -> usize {
     let Some(name) = src.file_name() else { return 1 };
     let dst = dst_dir.join(name);
+    // **링크는 따라가지 않는다.** `is_dir()` 는 링크를 따라가므로, 위를 가리키는 링크가
+    // 하나 있으면 끝없이 돈다(`a -> ..`). SFTP 올리기에서 같은 것을 고쳤다(배치 BQ) —
+    // 로컬 복사도 같은 자리에 있었다.
+    //
+    // 못 옮긴 것으로 센다. 조용히 빼면 다 복사된 줄 알고 원본을 지운다.
+    if src.symlink_metadata().is_ok_and(|m| m.file_type().is_symlink()) {
+        return 1;
+    }
     if !src.is_dir() {
         return usize::from(std::fs::copy(src, &dst).is_err());
     }
@@ -156,6 +164,42 @@ mod tests {
         assert_eq!(super::copy_into(&src, &dst), 0, "멀쩡한 것은 하나도 안 빠진다");
         assert_eq!(std::fs::read(dst.join("src").join("a.txt")).unwrap(), b"x");
         assert_eq!(std::fs::read(dst.join("src").join("sub").join("b.txt")).unwrap(), b"y");
+        let _ = std::fs::remove_dir_all(&base);
+    }
+}
+
+#[cfg(test)]
+mod 링크_고리 {
+    /// **링크 고리가 있어도 끝나야 한다.**
+    ///
+    /// `is_dir()` 는 링크를 따라간다. 폴더 안에 자기 부모를 가리키는 링크가 하나 있으면
+    /// 복사가 끝없이 돈다 — 사용자는 멈춘 것으로 보고, 디스크는 계속 찬다.
+    ///
+    /// 윈도우에서 링크 만들기는 권한이 필요하다 — 못 만들면 건너뛴다.
+    #[test]
+    fn 자기_부모를_가리키는_링크가_있어도_끝난다() {
+        let base = std::env::temp_dir().join(format!("nabi-loopcopy-{}", std::process::id()));
+        let src = base.join("src");
+        if std::fs::create_dir_all(&src).is_err() {
+            return;
+        }
+        let _ = std::fs::write(src.join("a.txt"), b"x");
+        let link = src.join("up");
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_dir(&src, &link).is_ok();
+        #[cfg(not(windows))]
+        let made = std::os::unix::fs::symlink(&src, &link).is_ok();
+        if !made {
+            let _ = std::fs::remove_dir_all(&base);
+            return; // 링크를 못 만드는 환경.
+        }
+        let dst = base.join("dst");
+        let _ = std::fs::create_dir_all(&dst);
+        // 고치기 전이라면 여기서 끝나지 않는다.
+        let failed = super::copy_into(&src, &dst);
+        assert_eq!(failed, 1, "링크 하나를 건너뛴 것으로 세야 한다");
+        assert!(dst.join("src").join("a.txt").exists(), "나머지는 복사돼야 한다");
+        assert!(!dst.join("src").join("up").exists(), "링크는 따라가지 않는다");
         let _ = std::fs::remove_dir_all(&base);
     }
 }
