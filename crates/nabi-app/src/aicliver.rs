@@ -19,6 +19,7 @@ pub(crate) fn npm_package(id: &str) -> Option<&'static str> {
     match id {
         "claude" => Some("@anthropic-ai/claude-code"),
         "codex" => Some("@openai/codex"),
+        "gemini" => Some("@google/gemini-cli"),
         _ => None,
     }
 }
@@ -135,5 +136,36 @@ mod tests {
             println!("{pkg} latest = {v}");
             assert!(parse_version(&v).is_some(), "semver로 읽혀야 한다: {v}");
         }
+    }
+}
+
+#[cfg(test)]
+mod npm_묶음 {
+    /// **npm 으로 설치하는 CLI 는 판 확인도 npm 으로 해야 한다.**
+    ///
+    /// `aicli::start_action` 이 npm 으로 깔아 놓고 `npm_package` 가 그 이름을 모르면,
+    /// 설치는 되는데 "새 판이 있다"를 영영 못 알려 준다 — 사용자는 옛 판을 계속 쓰면서
+    /// 자기가 최신인 줄 안다. 실제로 gemini 가 그랬다(배치 BL).
+    ///
+    /// 설치 코드를 글자로 훑어 `install_npm_cli(...)` 를 부르는 id 를 뽑는다.
+    #[test]
+    fn npm_으로_까는_것은_판도_npm_으로_본다() {
+        let src = include_str!("aicli.rs");
+        let mut ids = Vec::new();
+        for (i, _) in src.match_indices("install_npm_cli(") {
+            // 바로 앞의 `("<id>", false)` 에서 id 를 꺼낸다.
+            let head = &src[i.saturating_sub(120)..i];
+            if let Some(q) = head.rfind("(\"") {
+                let name: String =
+                    head[q + 2..].chars().take_while(|c| c.is_ascii_lowercase()).collect();
+                if !name.is_empty() && !ids.contains(&name) {
+                    ids.push(name);
+                }
+            }
+        }
+        assert!(ids.len() >= 2, "설치 코드를 못 훑었다: {ids:?}");
+        let missing: Vec<&String> =
+            ids.iter().filter(|id| super::npm_package(id).is_none()).collect();
+        assert!(missing.is_empty(), "npm 으로 까는데 판 확인은 못 한다: {missing:?}");
     }
 }
