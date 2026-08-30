@@ -3044,7 +3044,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-agentdetect"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "regex",
  "serde",
@@ -3053,7 +3053,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-app"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "arboard",
  "bytes",
@@ -3115,7 +3115,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-config"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "directories",
  "figment",
@@ -3125,7 +3125,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-control"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -3147,7 +3147,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-editor"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "arboard",
  "chardetng",
@@ -3183,14 +3183,14 @@ dependencies = [
 
 [[package]]
 name = "nabi-error"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "thiserror 2.0.18",
 ]
 
 [[package]]
 name = "nabi-fs"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "async-trait",
  "tokio",
@@ -3198,7 +3198,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-ftp"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "async-trait",
  "nabi-fs",
@@ -3209,18 +3209,18 @@ dependencies = [
 
 [[package]]
 name = "nabi-i18n"
-version = "0.1.501"
+version = "0.1.502"
 
 [[package]]
 name = "nabi-image"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "image",
 ]
 
 [[package]]
 name = "nabi-log"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "crossbeam-channel",
  "nabi-types",
@@ -3231,7 +3231,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-orchestrator"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -3255,11 +3255,11 @@ dependencies = [
 
 [[package]]
 name = "nabi-osc"
-version = "0.1.501"
+version = "0.1.502"
 
 [[package]]
 name = "nabi-proto"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "nabi-types",
@@ -3268,7 +3268,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-pty"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -3280,7 +3280,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-release"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "native-tls",
  "serde_json",
@@ -3290,7 +3290,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-render"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "egui",
  "nabi-types",
@@ -3300,7 +3300,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-secret"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "aes-gcm 0.10.3",
  "argon2 0.5.3",
@@ -3314,7 +3314,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-session"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "nabi-config",
  "serde",
@@ -3324,7 +3324,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-sftp"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "async-trait",
  "encoding_rs",
@@ -3342,7 +3342,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-ssh"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "crossbeam-channel",
@@ -3357,7 +3357,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-ssh-ext"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "bytes",
  "nabi-config",
@@ -3371,7 +3371,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-telegram"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "native-tls",
  "serde_json",
@@ -3379,7 +3379,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-trzsz"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "base64 0.22.1",
  "flate2",
@@ -3390,7 +3390,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-types"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "serde",
  "unicode-width",
@@ -3398,7 +3398,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-vt"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "alacritty_terminal",
  "nabi-image",
@@ -3407,7 +3407,7 @@ dependencies = [
 
 [[package]]
 name = "nabi-web"
-version = "0.1.501"
+version = "0.1.502"
 dependencies = [
  "webview2-com",
  "windows 0.61.3",
@@ -7662,7 +7662,7 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 
 [[package]]
 name = "xtask"
-version = "0.1.501"
+version = "0.1.502"
 
 [[package]]
 name = "yaml-rust"
