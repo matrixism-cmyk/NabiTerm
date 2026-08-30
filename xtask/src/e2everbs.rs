@@ -61,6 +61,8 @@ fn probes(pane: u64) -> Vec<Probe> {
         p("show-history", format!(r#"{{"op":"show-history","pane":{pane}}}"#)),
         // 파일 브라우저 탭을 연다 — 프로세스를 만들지 않아 스모크에 안전하다.
         p("open-browser", r#"{"op":"open-browser","path":null}"#.into()),
+        // 그 폴더에서 셸을 하나 더 연다. pane 이 하나 남지만 스모크는 곧 앱을 닫는다.
+        p("open-here", format!(r#"{{"op":"open-here","path":"{}"}}"#, json_path(&tmp_dir()))),
         // `wait` 은 에이전트가 가장 많이 부르는 동사다 — 이것이 죽으면 에이전트가 멈춘다.
         //
         // **충족될 조건으로 부른다.** 시간 초과는 오류로 답하므로, 안 그러면 스윕이
@@ -74,6 +76,11 @@ fn probes(pane: u64) -> Vec<Probe> {
 /// 화면 캡처를 받아 볼 임시 파일 경로.
 fn shot_path() -> String {
     std::env::temp_dir().join("nabi-e2e-shot.png").display().to_string()
+}
+
+/// 임시 폴더 — `open-here` 가 열 자리.
+fn tmp_dir() -> String {
+    std::env::temp_dir().display().to_string()
 }
 
 /// 윈도우 경로를 JSON 문자열에 넣을 수 있게 고친다 — 역슬래시가 이스케이프로 읽힌다.
