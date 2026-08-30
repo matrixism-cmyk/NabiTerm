@@ -23,6 +23,9 @@ mod soak; mod postverify;
 mod pkg; mod releasetarget; mod unsafeaudit;
 mod unusedpub;
 mod configkeys;
+// 커버리지 대조는 시험으로만 돈다 — 배포 산출물에 들어갈 이유가 없다.
+#[cfg(test)]
+mod e2ecoverage;
 mod e2everbs;
 mod i18nkeys;
 mod errswallow;

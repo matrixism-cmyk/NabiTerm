@@ -63,6 +63,13 @@ fn probes(pane: u64) -> Vec<Probe> {
         p("open-browser", r#"{"op":"open-browser","path":null}"#.into()),
         // 그 폴더에서 셸을 하나 더 연다. pane 이 하나 남지만 스모크는 곧 앱을 닫는다.
         p("open-here", format!(r#"{{"op":"open-here","path":"{}"}}"#, json_path(&tmp_dir()))),
+        // 스크롤 — 화면만 옮긴다. 옮긴 뒤 곧바로 맨 아래로 되돌려 다음 프로브에 영향이 없게 한다.
+        p("scroll", format!(r#"{{"op":"scroll","pane":{pane},"lines":5,"to":""}}"#)),
+        p("scroll-bottom", format!(r#"{{"op":"scroll","pane":{pane},"lines":0,"to":"bottom"}}"#)),
+        // 내장 웹을 탭으로 연다. **두 번 깨졌던 기능이라 반드시 본다.**
+        // 엣지 런타임이 없는 PC 에서도 탭은 열리고 그 안에 까닭이 적힌다 — 응답은 성공이다.
+
+        p("web", r#"{"op":"open-web","url":"about:blank","window":false}"#.into()),
         // `wait` 은 에이전트가 가장 많이 부르는 동사다 — 이것이 죽으면 에이전트가 멈춘다.
         //
         // **충족될 조건으로 부른다.** 시간 초과는 오류로 답하므로, 안 그러면 스윕이
@@ -71,6 +78,12 @@ fn probes(pane: u64) -> Vec<Probe> {
             r#"{{"op":"wait","pane":{pane},"until":"idle","timeout_ms":8000}}"#
         )),
     ]
+}
+
+/// 프로브가 보내는 요청 JSON 만 — 커버리지 대조가 `op` 을 뽑아 쓴다.
+#[cfg(test)]
+pub(crate) fn probe_reqs(pane: u64) -> Vec<String> {
+    probes(pane).into_iter().map(|p| p.req).collect()
 }
 
 /// 화면 캡처를 받아 볼 임시 파일 경로.

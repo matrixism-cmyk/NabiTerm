@@ -8,6 +8,7 @@ pub mod client;
 mod clientagent;
 mod clientverbs;
 mod dispatchread;
+mod dispatchscroll;
 pub mod apidoc;
 pub mod keyspec;
 pub mod integration;

@@ -71,6 +71,20 @@ pub enum ControlRequest {
         #[serde(default)]
         window: bool,
     },
+    /// pane 의 스크롤백을 옮긴다 — 사람이 휠을 굴리는 것과 같은 일이다.
+    ///
+    /// 읽는 것만으로는 못 보는 것이 있다. `capture` 는 저장된 글을 주지만, **화면에 무엇이
+    /// 그려지는지**는 그리는 자리까지 가 봐야 안다. 스크롤해 놓고 `screenshot` 을 찍으면
+    /// 사람이 보는 것을 그대로 볼 수 있다(2026-08-30 스크롤 결함을 재현하려고 만들었다).
+    Scroll {
+        pane: u64,
+        /// 옮길 줄 수. +면 과거로, -면 최신으로.
+        #[serde(default)]
+        lines: i32,
+        /// `"top"` 이면 맨 위, `"bottom"` 이면 맨 아래. 비면 `lines` 를 쓴다.
+        #[serde(default)]
+        to: String,
+    },
     /// 스스로 최신판으로 올린다 — 사람이 단추를 누르지 않아도 된다.
     ///
     /// 설치는 조용히(`/SILENT`) 진행되고, 끝나면 인스톨러가 나비텀을 다시 켠다.
@@ -170,6 +184,8 @@ pub enum ControlRequest {
 pub enum ControlResponse {
     Ok,
     Panes { panes: Vec<PaneInfo> },
+    /// 스크롤 뒤의 자리 — 부른 쪽이 끝에 닿았는지 알아야 멈출 때를 안다.
+    Scrolled { offset: u64, history: u64 },
     Captured {
         pane: u64,
         text: String,

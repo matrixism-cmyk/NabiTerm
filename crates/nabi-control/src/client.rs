@@ -180,6 +180,11 @@ pub fn run_cli(args: &[String]) -> i32 {
             }
             0
         }
+        // 옮긴 뒤의 자리를 알려 준다 — 위로 계속 굴리는 쪽은 이 값으로 멈출 때를 안다.
+        Ok(ControlResponse::Scrolled { offset, history }) => {
+            println!("offset {offset} / history {history}");
+            0
+        }
         // 진단 출력은 사람이 읽는 것이 목적이다 — 한 줄에 하나씩, 이름 그대로.
         Ok(ControlResponse::Modes {
             pane, alt_screen, mouse_on, alt_scroll, bracketed_paste, app_cursor, kitty_keys,

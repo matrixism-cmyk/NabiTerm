@@ -285,6 +285,10 @@ pub(crate) fn dispatch_write(
             tracing::info!(target: "control", from = ?from, ?pane, %act, "web-act");
             web_roundtrip(app_tx, events, |seq| AppCtl::WebAct { seq, pane, act, arg })
         }
+        ControlRequest::Scroll { pane, lines, to } => {
+            tracing::info!(target: "control", from = ?from, pane, lines, %to, "scroll");
+            crate::dispatchscroll::scroll(panes, pane, lines, &to)
+        }
         ControlRequest::SelfUpdate { check } => {
             tracing::info!(target: "control", from = ?from, check, "update");
             app_tx.send(AppCtl::SelfUpdate { check }).ok();
