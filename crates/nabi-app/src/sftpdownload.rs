@@ -148,6 +148,9 @@ impl NabiApp {
         let Some(id) = self.sftp.id else { return };
         let remote = self.sftp.path.clone();
         let base = crate::sftppath::remote_basename(&remote);
+        if !self.name_is_safe(&base) {
+            return;
+        }
         let Some(dir) = self.resolve_download_folder() else { return };
         let local = dir.join(&base).to_string_lossy().into_owned();
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
@@ -157,11 +160,32 @@ impl NabiApp {
     /// 원격 디렉터리를 재귀 다운로드한다(대상 폴더를 물어본다).
     pub(crate) fn sftp_download_dir(&mut self, name: String) {
         let Some(id) = self.sftp.id else { return };
+        if !self.name_is_safe(&name) {
+            return;
+        }
         let remote = crate::sftppath::join_path(&self.sftp.path, &name);
         let Some(dir) = self.resolve_download_folder() else { return };
         let local = dir.join(&name).to_string_lossy().into_owned();
         self.sftp.status = tr(self.lang, "sftp.downloading").to_string();
         self.push_xfer(name, false, 0, |xfer| Command::SftpDownloadDir { id, xfer, remote, local });
+    }
+
+    /// 서버가 준 이름을 로컬 경로로 써도 되는가 — 아니면 까닭을 알리고 막는다.
+    ///
+    /// 재귀 내려받기 안쪽은 이미 걸렀는데(`nabi-sftp/recurse.rs`), **들어가는 자리**는
+    /// 안 걸렀다. 폴더 하나를 끌어다 놓는 길·폴더 통째로 받는 길이 그랬다. 목록에서
+    /// 여러 개 고르는 길만 검사하고 있었다(2026-08-30, OpenSSH 10.4 의 같은 계열
+    /// 수정을 보고 우리 쪽을 뒤져 찾았다).
+    ///
+    /// 조용히 건너뛰지 않고 **말한다.** 이 자리는 사용자가 방금 고른 하나이므로,
+    /// 아무 일도 안 일어나면 프로그램이 고장 난 것으로 보인다.
+    fn name_is_safe(&mut self, name: &str) -> bool {
+        if nabi_sftp::safename::is_safe_entry_name(name) {
+            return true;
+        }
+        self.sftp.status =
+            format!("{} {name}", tr(self.lang, "sftp.unsafename"));
+        false
     }
 
     /// 부분 파일이 남아 있으면 이어받기 오프셋(이름으로 원격 크기 조회). DnD 드롭 경로용.
@@ -173,6 +197,9 @@ impl NabiApp {
     /// 원격 항목을 로컬 브라우저의 하위 폴더로 다운로드한다(로컬 폴더 행에 드롭).
     pub(crate) fn download_remote_into(&mut self, subfolder: &str, name: String, is_dir: bool) {
         let Some(id) = self.sftp.id else { return };
+        if !self.name_is_safe(&name) {
+            return;
+        }
         let remote = join_path(&self.sftp.path, &name);
         let local = self
             .browser
@@ -196,6 +223,9 @@ impl NabiApp {
     /// 원격 항목을 로컬 브라우저 폴더로 다운로드한다(SFTP→로컬 DnD).
     pub(crate) fn download_remote_to_browser(&mut self, name: String, is_dir: bool) {
         let Some(id) = self.sftp.id else { return };
+        if !self.name_is_safe(&name) {
+            return;
+        }
         let remote = join_path(&self.sftp.path, &name);
         let local = self.browser.path.join(&name).to_string_lossy().into_owned();
         let resume = if is_dir { 0 } else { self.resume_offset(&local, &name) };

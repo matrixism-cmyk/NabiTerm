@@ -126,12 +126,9 @@ fn is_drive(comp: &str) -> bool {
 /// 서버 목록의 이름은 **우리가 정하지 않은 값**이다. 그 값을 그대로 경로에 붙이면
 /// 서버가 우리 디스크의 어디에 쓸지 고르게 된다.
 pub fn safe_name(name: &str) -> bool {
-    !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.contains('/')
-        && !name.contains('\\')
-        && !is_drive(name)
+    // 규칙은 한 곳에만 둔다. 두 벌로 두었더니 실제로 갈렸다 — 이쪽은 가운데 콜론을
+    // 허용하고 저쪽은 막고 있었다(2026-08-30 발견). 낮은 층이 유일한 출처다.
+    nabi_sftp::safename::is_safe_entry_name(name)
 }
 
 /// **윈도우가 이 이름으로 파일을 만들 수 있는가** — 내려받기 전에만 묻는다.
