@@ -111,9 +111,20 @@ pub fn install_cjk_fonts(ctx: &egui::Context, user_font: &str) {
         }
     }
 
-    for name in &added {
+    // **맨 뒤가 아니라 앞쪽에 꽂는다.** egui 는 그 글자를 가진 **첫 글꼴**을 쓰고 멈춘다.
+    //
+    // egui 가 기본으로 넣는 이모지 글꼴(`emoji-icon-font`)은 📁 💾 🎨 🔒 같은 코드포인트를
+    // cmap 에 갖고 있지만 실제로는 빈 네모를 그린다. 우리 폴백을 뒤에 붙였더니 그쪽이
+    // 먼저 잡혀 **파일 브라우저의 폴더 아이콘도, nabiPad 툴바도 전부 상자로 나왔다**
+    // (2026-08-31 화면으로 확인. seguisym 에는 그 글자들이 다 있다 — cmap 으로 확인했다).
+    //
+    // 맨 앞은 아니다 — 첫 자리는 본문 글꼴(등폭/비례)이어야 라틴 글자 모양이 안 바뀐다.
+    // 그래서 **본문 바로 다음**에 꽂는다.
+    for (i, name) in added.iter().enumerate() {
         for family in [egui::FontFamily::Monospace, egui::FontFamily::Proportional] {
-            fonts.families.entry(family).or_default().push(name.clone());
+            let list = fonts.families.entry(family).or_default();
+            let at = (1 + i).min(list.len());
+            list.insert(at, name.clone());
         }
     }
 

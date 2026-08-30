@@ -133,9 +133,12 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
     let mut action = None;
     let r = ui.horizontal(|ui| {
         ui.set_min_width(300.0); // 행 폭 확보 — 아이콘을 오른쪽 끝에 정렬.
-        // 연결 중이면 녹색 점 선두 표시(컬러 이모지라 테마색 무관, D9).
-        let dot = if live { "\u{1f7e2} " } else { "" };
-        let nm = if s.is_ftp { format!("{dot}{} (FTP)", s.name) } else { format!("{dot}{}", s.name) };
+        // 연결 중이면 점을 앞에 붙인다.
+        //
+        // 예전에는 컬러 이모지(U+1F7E2 🟢)를 썼는데 **그 글자가 어느 폴백 글꼴에도 없어**
+        // 네모 상자로 나왔다(`xtask glyphs` 가 찾았다, 2026-08-31). 어디에나 있는 ● 를
+        // 쓰고 색은 우리가 칠한다 — 글꼴에 기대지 않는 쪽이 늘 안전하다.
+        let nm = if s.is_ftp { format!("{} (FTP)", s.name) } else { s.name.clone() };
         // 이름 영역을 넓게(아이콘 공간만 남기고) — 행 대부분에서 연결된다. 이름은 좌측정렬로 직접 그린다
         // (add_sized는 centered_and_justified라 텍스트가 가운데로 몰림 — 그 회피).
         let bw = (ui.available_width() - 44.0).max(80.0); // 아이콘이 하나뿐이라 이름을 넓게.
@@ -145,13 +148,25 @@ fn session_row(ui: &mut egui::Ui, lang: Lang, s: &SavedSession, last: Option<i64
         if nb.hovered() {
             ui.painter().rect_filled(rect, vis.corner_radius, vis.bg_fill);
         }
-        ui.painter().text(
-            egui::pos2(rect.left() + 6.0, rect.center().y),
-            egui::Align2::LEFT_CENTER,
+        // 점만 초록으로, 이름은 보통 색으로 — 한 번에 그리려고 조각을 이어 붙인다.
+        // 예전에는 컬러 이모지가 색을 갖고 있어 이럴 필요가 없었다.
+        let font = egui::TextStyle::Button.resolve(ui.style());
+        let mut job = egui::text::LayoutJob::default();
+        if live {
+            job.append(
+                "\u{25cf} ",
+                0.0,
+                egui::TextFormat { font_id: font.clone(), color: crate::theme_ui::OK, ..Default::default() },
+            );
+        }
+        job.append(
             &nm,
-            egui::TextStyle::Button.resolve(ui.style()),
-            vis.text_color(),
+            0.0,
+            egui::TextFormat { font_id: font, color: vis.text_color(), ..Default::default() },
         );
+        let galley = ui.painter().layout_job(job);
+        let y = rect.center().y - galley.size().y / 2.0;
+        ui.painter().galley(egui::pos2(rect.left() + 6.0, y), galley, vis.text_color());
         // 마지막 접속 상대시간을 호버에 덧붙인다(D4).
         let hint = match last {
             Some(t) if t > 0 => format!("{}\n\u{1f553} {}", crate::connectsave::conn_hint(s), crate::humanfmt::human_age(t as u64, now as u64)),

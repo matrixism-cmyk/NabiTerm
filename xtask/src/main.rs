@@ -27,6 +27,7 @@ mod configkeys;
 #[cfg(test)]
 mod e2ecoverage;
 mod e2everbs;
+mod glyphs;
 mod i18nkeys;
 mod errswallow;
 mod rswalk;
@@ -42,6 +43,8 @@ fn main() -> ExitCode {
         "unused" => unusedpub::run(),
         // 화면에 ? 로 나올 i18n 키 — 오타 하나가 못 쓰는 단추를 만든다(i18nkeys.rs).
         "i18n-keys" => i18nkeys::run(),
+        // 화면에 두부(□)로 나올 글자 — 컴파일도 시험도 통과하는 자리다(glyphs.rs).
+        "glyphs" => glyphs::run(),
         // 적어 두기만 하고 아무도 안 읽는 설정 — 바꿔도 아무 일이 없다(configkeys.rs).
         "config-keys" => configkeys::run(),
         // 실패해도 아무도 모르는 저장·쓰기 — 모아 둔 헬퍼가 지켜지는지 본다(errswallow.rs).

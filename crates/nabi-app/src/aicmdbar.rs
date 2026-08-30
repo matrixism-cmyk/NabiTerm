@@ -256,7 +256,7 @@ pub(crate) fn show_bar(ui: &mut egui::Ui, lang: nabi_i18n::Lang, v: &BarView) ->
         }
         // 종료 버튼 — "⋯" 바로 앞. 끝내려고 매번 더보기를 열지 않게(사용자 요청 2026-08-22).
         // 되돌릴 수 없는 동작이라 붉은 계열로 두고, 무엇을 보내는지 툴팁에 밝힌다.
-        let quit = egui::Button::new(bar_text(format!("\u{23fb} {}", tr(lang, "aicb.l.exit"))))
+        let quit = egui::Button::new(bar_text(format!("\u{2715} {}", tr(lang, "aicb.l.exit"))))
             .fill(crate::theme_ui::ERR);
         let tip = format!("{} {}", crate::aicmdcmds::QUIT_CMD, tr(lang, "aicb.quit.hint"));
         if ui.add(quit).on_hover_text(tip).clicked() {
