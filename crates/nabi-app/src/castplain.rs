@@ -210,8 +210,34 @@ pub(crate) fn flatten(s: &str) -> String {
 
 /// 유난히 자주 덮어 그려진 행들 — 스피너·상태줄 같은 화면 장식이다.
 ///
-/// 기준은 중앙값의 여덟 배다. 화면 장식과 보통 줄의 차이는 실측에서 서른 배였으니
-/// 여덟 배는 넉넉히 안전하다 — 어중간하게 자주 그려진 줄은 남는다.
+/// ## 자를 두 개 쓴다 (2026-08-30, 실측으로 고침)
+///
+/// **① 다른 행보다 유난히 자주 그려졌나** — 중앙값의 여덟 배. 실측에서 장식과 보통 줄의
+/// 차이가 서른 배였으니 여덟 배는 넉넉하다. 어중간하게 자주 그려진 줄은 남는다.
+///
+/// **② 흘러간 줄 수만큼 다시 그려졌나** — 화면이 한 줄 흐를 때마다 다시 그려지는 행은
+/// 내용이 아니라 장식이다. 내용은 한 번 찍히고 흘러간다.
+///
+/// 자가 하나였을 때 새는 자리가 있었다. 아래 두 줄만 덮어 그리는 프로그램은 **덮어 그리는
+/// 행이 전부 장식**이라 중앙값 자체가 높아지고, 그러면 아무것도 걸리지 않는다. 표본이
+/// 적으면 판단을 접는 가드(`< 4`)도 같은 방향으로 틀렸다 — 적게 그리는 프로그램일수록
+/// 그 몇 줄이 장식일 가능성이 크다.
+///
+/// ## 윈도우에서는 이 셈이 반쪽이다 (실측, 2026-08-30)
+///
+/// 표식을 박은 기록으로 재 봤다. 프로그램은 `ESC[30;3H` 와 `ESC[31;3H` 를 **240번** 보냈는데
+/// 우리 기록에 남은 커서 이동은 **20번**뿐이었고, 그마저 다른 행(24)이었다.
+///
+/// 까닭은 ConPTY 다. **윈도우에서 우리가 받는 것은 프로그램이 보낸 escape 가 아니라
+/// ConPTY 가 자기 화면 버퍼를 보고 다시 그린 것이다.** 그래서 "프로그램이 어느 행을 몇 번
+/// 그렸나"를 escape 로 세면 실제보다 훨씬 적게 나온다.
+///
+/// 그 기록에서는 내용 121줄을 전부 살렸지만 장식 19줄이 함께 남았다. 자를 하나 더 대도
+/// 그대로였다 — 셀 신호 자체가 기록에 없기 때문이다. 진짜 클로드 코드 기록(12MB)으로는
+/// 두 자 사이의 차이가 0.6% 뿐이었으니(26,641 → 26,484줄) 더해서 손해는 없다.
+///
+/// 제대로 고치려면 escape 를 세는 대신 **펴 내면서 행마다 몇 번 덮였는지 세야** 한다.
+/// 그것은 이 함수를 두 번 도는 구조를 바꾸는 일이라 별도 배치로 미룬다.
 fn chrome_rows(s: &str) -> std::collections::HashSet<usize> {
     let mut count: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
     let mut it = s.chars().peekable();
@@ -224,14 +250,36 @@ fn chrome_rows(s: &str) -> std::collections::HashSet<usize> {
             *count.entry(p.first().copied().unwrap_or(0)).or_default() += 1;
         }
     }
-    let mut nums: Vec<usize> = count.values().copied().collect();
-    if nums.len() < 4 {
-        return Default::default(); // 표본이 적으면 판단하지 않는다.
+    if count.is_empty() {
+        return Default::default(); // 커서를 옮겨 그린 적이 없다 — 판단할 것이 없다.
     }
+    let mut nums: Vec<usize> = count.values().copied().collect();
     nums.sort_unstable();
     let median = nums[nums.len() / 2];
-    let cut = (median * 8).max(100);
-    count.into_iter().filter(|(_, n)| *n > cut).map(|(r, _)| r.saturating_sub(1)).collect()
+    let by_median = (median * 8).max(100);
+    // 화면이 몇 줄 흘렀는가 — 그만큼 다시 그려진 행은 내용이 아니다.
+    // 절반으로 잡는다: 매 줄마다는 아니어도 꾸준히 다시 그려지면 장식이다.
+    let scrolled = s.matches('\n').count();
+    let by_scroll = (scrolled / 2).max(10);
+    count
+        .into_iter()
+        .filter(|(_, n)| *n > by_median || *n >= by_scroll)
+        .map(|(r, _)| r.saturating_sub(1))
+        .collect()
+}
+
+/// 기록 파일을 읽는다 — **쓰이는 중에도 읽을 수 있어야 한다.**
+///
+/// `read_to_string` 을 쓰면 안 된다. 기록은 지금도 덧붙여지고 있어서 파일 끝에 **여러
+/// 바이트짜리 글자의 앞부분만** 남아 있는 순간이 흔하다. 그러면 UTF-8 로 못 읽는다며
+/// 통째로 실패한다 — 사용자에게는 "전체 기록 열기가 안 된다"로 보인다.
+/// 실제로 그렇게 됐다(2026-08-30, 12MB 기록에서 재현).
+///
+/// 잘린 끝은 버리면 된다. 형식이 한 줄에 하나씩인 JSON 이라 마지막 줄이 깨져도
+/// 그 줄만 빠진다(`sessioncastread::parse_cast` 가 이미 그렇게 동작한다).
+pub(crate) fn read_log(path: &std::path::Path) -> std::io::Result<String> {
+    let bytes = std::fs::read(path)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// 기록 파일 전체를 읽을 글로 바꾼다.

@@ -92,7 +92,7 @@ impl NabiApp {
     /// 이것이 되읽기 코드의 첫 사용처다. 읽을 수 있음을 **그 자리에서** 보여 주는 것이
     /// 요점이라, 못 읽으면 못 읽는다고 말한다 — 조용히 넘어가면 확인한 뜻이 없다.
     fn verify_cast(&self, path: &std::path::Path) -> String {
-        let Ok(text) = std::fs::read_to_string(path) else {
+        let Ok(text) = crate::castplain::read_log(path) else {
             return tr(self.lang, "log.stopped").to_string();
         };
         let ev = crate::sessioncastread::parse_cast(&text);

@@ -90,7 +90,7 @@ fn real_cast() {
     let Ok(path) = std::env::var("NABI_CAST") else {
         panic!("NABI_CAST 에 기록 파일 경로를 넣고 부를 것");
     };
-    let text = std::fs::read_to_string(&path).expect("기록을 읽지 못했다");
+    let text = read_log(std::path::Path::new(&path)).expect("기록을 읽지 못했다");
     let plain = cast_to_plain(&text);
     let lines: Vec<&str> = plain.lines().collect();
     println!("원본 {} 글자 → 편 글 {} 글자 · {} 줄", text.len(), plain.len(), lines.len());
@@ -100,6 +100,13 @@ fn real_cast() {
         println!("{}", &l.chars().take(150).collect::<String>());
     }
     assert!(lines.len() > 100, "펴 낸 줄이 너무 적다 — 무언가 잘못됐다");
+    // 표식이 박힌 기록이면 **정확도를 숫자로** 잰다(scratchpad/precise.ps1 가 만든다).
+    // KEEP 은 하나도 빠지면 안 되고, CHROME 은 하나도 남으면 안 된다.
+    let keep = lines.iter().filter(|l| l.contains("KEEP-")).count();
+    let chrome = lines.iter().filter(|l| l.contains("CHROME-")).count();
+    if keep > 0 || chrome > 0 {
+        println!("정확도: KEEP {keep} 줄 살아남음 · CHROME {chrome} 줄 남음");
+    }
 }
 
 #[test]

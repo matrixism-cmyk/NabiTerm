@@ -30,7 +30,8 @@ impl crate::app::NabiApp {
             ));
             return;
         };
-        let text = match std::fs::read_to_string(&src) {
+        // 기록은 지금도 쓰이는 중이다 — 끝이 잘려 있어도 읽어야 한다(castplain::read_log).
+        let text = match crate::castplain::read_log(&src) {
             Ok(t) => t,
             Err(e) => {
                 self.notify = Some((format!("\u{2715} {e}"), std::time::Instant::now()));
