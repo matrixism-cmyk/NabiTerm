@@ -187,7 +187,13 @@ impl NabiApp {
         });
         for (&ord, p) in pl.arrived.iter() {
             if let Some(f) = pl.fonts.get(ord) {
-                self.pane_font.insert(*p, *f);
+                // 파일에서 온 값이다 — 0 이나 NaN 이면 그 pane 의 글자가 안 보인다.
+                // 설정 파일과 같은 범위로 되돌린다(nabi_config::schema).
+                let f = match f.is_nan() {
+                    true => nabi_config::schema::DEFAULT_FONT_SIZE,
+                    false => f.clamp(nabi_config::schema::FONT_MIN, nabi_config::schema::FONT_MAX),
+                };
+                self.pane_font.insert(*p, f);
             }
             if let Some(n) = pl.names.get(ord).filter(|n| !n.is_empty()) {
                 self.tab_names.insert(*p, n.clone());

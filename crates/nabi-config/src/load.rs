@@ -56,7 +56,25 @@ fn sanitize(cfg: &mut AppConfig) -> Vec<String> {
 /// nabiPad 설정을 로드한다: 기본값 → nabipad.toml → `NABI_EDITOR_` 환경변수.
 /// 터미널 설정과 완전히 분리된 파일/네임스페이스를 쓴다(독립 프로그램화 대비).
 pub fn load_editor(layout: &StorageLayout) -> EditorConfig {
-    crate::tolerant::extract_tolerant(&layout.editor_file, "NABI_EDITOR_").0
+    let mut cfg: EditorConfig =
+        crate::tolerant::extract_tolerant(&layout.editor_file, "NABI_EDITOR_").0;
+    sanitize_editor(&mut cfg);
+    cfg
+}
+
+/// nabiPad 설정에서 말이 안 되는 값을 되돌린다.
+///
+/// 여기 `font_size` 는 **0 이 뜻을 갖는다**(앱 글꼴을 따른다). 그래서 0 은 그대로 두고
+/// 음수와 NaN 만 0 으로 돌린다 — 둘 다 "따라간다"로 읽는 편이 안전하다.
+/// 너무 큰 값은 글자 하나가 화면을 덮으므로 위쪽만 막는다.
+fn sanitize_editor(cfg: &mut EditorConfig) {
+    use crate::schema::FONT_MAX;
+    let f = cfg.font_size;
+    if f.is_nan() || f < 0.0 {
+        cfg.font_size = 0.0;
+    } else if f > FONT_MAX {
+        cfg.font_size = FONT_MAX;
+    }
 }
 
 #[cfg(test)]
@@ -132,5 +150,35 @@ mod 값_다듬기 {
     fn 멀쩡한_값은_그대로_둔다() {
         let mut c = AppConfig::default();
         assert!(super::sanitize(&mut c).is_empty(), "기본값을 고치려 들면 안 된다");
+    }
+}
+
+#[cfg(test)]
+mod 편집기_값_다듬기 {
+    use crate::editor::EditorConfig;
+    use crate::schema::FONT_MAX;
+
+    /// 0 은 "앱 글꼴을 따른다"는 뜻이라 **고치면 안 된다.**
+    #[test]
+    fn 영은_뜻이_있으니_그대로_둔다() {
+        let mut c = EditorConfig { font_size: 0.0, ..Default::default() };
+        super::sanitize_editor(&mut c);
+        assert_eq!(c.font_size, 0.0);
+    }
+
+    #[test]
+    fn 음수와_nan_은_따라가기로_돌린다() {
+        for bad in [-5.0, f32::NAN] {
+            let mut c = EditorConfig { font_size: bad, ..Default::default() };
+            super::sanitize_editor(&mut c);
+            assert_eq!(c.font_size, 0.0, "{bad} 를 못 고쳤다");
+        }
+    }
+
+    #[test]
+    fn 너무_큰_것은_막는다() {
+        let mut c = EditorConfig { font_size: 5000.0, ..Default::default() };
+        super::sanitize_editor(&mut c);
+        assert_eq!(c.font_size, FONT_MAX);
     }
 }
