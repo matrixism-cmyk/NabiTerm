@@ -5,7 +5,7 @@ use crate::app::NabiApp;
 impl NabiApp {
     /// 글꼴 크기 설정(클램프 + config 영속).
     pub(crate) fn set_font_size(&mut self, v: f32) {
-        self.font_size = v.clamp(6.0, 40.0);
+        self.font_size = v.clamp(nabi_config::schema::FONT_MIN, nabi_config::schema::FONT_MAX);
         self.config.appearance.font_size = self.font_size;
         self.save_config();
     }

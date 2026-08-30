@@ -12,7 +12,16 @@ use serde::{Deserialize, Serialize};
 /// (사용자 보고 2026-08-21). 이미 설정 파일이 있는 사용자는 영향받지 않는다 — 새 설치만 바뀐다.
 pub const DEFAULT_FONT_SIZE: f32 = 16.0;
 
-/// 앱 전체 설정.
+/// 글꼴 크기가 쓸 수 있는 범위.
+///
+/// 파일을 손으로 고치거나 설정이 깨져 0 이 들어오면 **글자가 아예 안 보인다.** 그러면
+/// 설정 화면을 열어 되돌릴 수도 없다 — 화면을 못 읽으니까. 그래서 읽을 때 다듬는다.
+pub const FONT_MIN: f32 = 6.0;
+pub const FONT_MAX: f32 = 40.0;
+/// UI 배율이 쓸 수 있는 범위. 0 이면 창이 사라지고, 크면 단추 하나가 화면을 덮는다.
+pub const SCALE_MIN: f32 = 0.5;
+pub const SCALE_MAX: f32 = 3.0;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 #[derive(Default)]

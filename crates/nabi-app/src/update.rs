@@ -12,7 +12,11 @@ impl eframe::App for NabiApp {
         // UI 배율(ppp) 적용 — 포인터를 누르고 있는 동안(배율 슬라이더 드래그/클릭 포함)에는
         // 재적용을 미룬다. 매 프레임 적용하면 ppp 변경이 슬라이더 좌표계를 바꿔 포인터→값 매핑이
         // 어긋나며 값이 극단으로 튀는 피드백 루프가 생긴다 → 버튼을 뗄 때 1회만 반영.
-        let scale = self.config.appearance.ui_scale.clamp(0.5, 3.0);
+        let scale = self
+            .config
+            .appearance
+            .ui_scale
+            .clamp(nabi_config::schema::SCALE_MIN, nabi_config::schema::SCALE_MAX);
         if !ctx.input(|i| i.pointer.any_down()) && (ctx.pixels_per_point() - scale).abs() > 1e-3 {
             ctx.set_pixels_per_point(scale);
         }
