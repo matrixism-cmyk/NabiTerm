@@ -63,6 +63,8 @@ pub(crate) enum MenuAction {
     /// AI 명령 바 표시 토글(terminal.ai_cmd_bar).
     ToggleAiCmdBar,
     ToggleAiDashboard, ConnectFolder(String), OpenNabiPad, MoveSessionToGroup(String, Option<String>),
+    /// nabiPad 를 이 창 안(pane)에 열지, 따로 띄울지 바꾼다.
+    TogglePadInWindow,
     RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenWeb, OpenCmdHistory, OpenSupportBundle,
     CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), BlockList, ToggleMark,
     PrevMark, NextMark, ClearMarks, PrevFailed, NextFailed,
@@ -134,6 +136,12 @@ impl NabiApp {
                     // '새 로컬 터미널'은 세션 메뉴로 통합(2026-08-18 사용자 요청 — 새로 열기 축 일원화).
                     // 파일 브라우저 탭 — "여는" 동작이라 보기 토글이 아닌 파일 메뉴에.
                     if ui.button(tr(lang, "menu.newpad")).clicked() { action = Some(MenuAction::OpenNabiPad); }
+                    // 이 창 안에 열지 따로 띄울지 — 설정 안쪽에만 있어서 아무도 못 찾았다
+                    // (사용자 요청 2026-08-30). 여는 동작 바로 옆이 제자리다.
+                    if ui.button(tr(lang, "nabipad.openinwindow")).clicked() {
+                        action = Some(MenuAction::TogglePadInWindow);
+                        ui.close();
+                    }
                     if ui.button(tr(lang, "menu.browsertab")).clicked() {
                         action = Some(MenuAction::OpenBrowserTab);
                         ui.close();

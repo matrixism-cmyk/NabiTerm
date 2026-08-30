@@ -60,6 +60,11 @@ impl NabiApp {
     /// 에디터 탭 액션(저장·인코딩·닫기 등) 적용 + 닫힘 정리.
     pub(crate) fn apply_editor_tab_acts(&mut self, acts: Vec<(PaneId, EditorAct)>, closed: Option<PaneId>) {
         for (p, a) in acts {
+            // 편집기가 혼자 파일을 쓰다 실패한 것 — 알릴 화면이 앱에만 있다.
+            if let Some(e) = &a.failed {
+                let msg = format!("{} — {e}", nabi_i18n::tr(self.lang, "editor.writefailed"));
+                self.notify = Some((msg, std::time::Instant::now()));
+            }
             if a.toggle_menu_bar { self.toggle_editor_menu_bar(); }
             if a.toggle_hex { self.toggle_editor_hex(p); }
             if a.reload { self.reload_editor_doc(p); }

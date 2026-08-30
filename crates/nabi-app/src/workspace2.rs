@@ -5,6 +5,14 @@ use nabi_session::{SavedSession, SessionKind, SessionTree};
 
 impl NabiApp {
     pub(crate) fn save_workspace(&self) {
+        // **편집기만 띄운 창은 워크스페이스를 저장하지 않는다.**
+        //
+        // 이 창에는 터미널이 하나도 없다. 그대로 저장하면 사용자가 쌓아 둔 탭 배치가
+        // 빈 것으로 덮어써지고, 다음에 나비텀을 켜면 아무것도 안 남아 있다.
+        // 파일 하나를 열었을 뿐인데 일하던 자리를 잃는 셈이다.
+        if self.pad_only {
+            return;
+        }
         // 원격(SFTP/FTP) 탭은 .stabs로 따로 복원되므로 세션 목록에서만 빠지고,
         // 도크 순서(ordered)엔 남긴다 — 레이아웃 서수(2000+i) 매핑에 필요하다.
         let ordered: Vec<nabi_types::PaneId> = self.dock.iter_all_tabs().map(|(_, p)| *p).collect();
@@ -58,6 +66,7 @@ impl NabiApp {
                     if let Ok(md) = v.model.lock() {
                         let txt = md.dump_text(2000);
                         if !txt.is_empty() {
+                            // 삼킴: 화면에 남은 글을 떠 두는 것이다. 없어도 pane 은 되살아난다.
                             let _ = std::fs::write(dir.join(format!("scroll_{i}.txt")), txt);
                         }
                     }
@@ -65,6 +74,7 @@ impl NabiApp {
             }
         }
         let tree = SessionTree { sessions };
+        // 삼킴: 끄는 중에 부르는 길이 있어 알릴 화면이 없다. 다음에 켤 때 복원만 못 한다.
         let _ = nabi_session::save_tree(&self.workspace_path, &tree);
         // 분할 레이아웃 + pane 사이드카(글꼴·이름·색) 저장(worklayout.rs).
         self.save_layout_sidecars(&ordered, &term_ordered, count);

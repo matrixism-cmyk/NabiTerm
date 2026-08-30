@@ -94,6 +94,7 @@ impl crate::app::NabiApp {
             }
             false => {
                 if let Ok(s) = ron::to_string(&urls) {
+                    // 삼킴: 웹 탭 주소다. 못 남기면 다시 켤 때 안 되살아난다.
                     let _ = std::fs::write(path, s);
                 }
             }

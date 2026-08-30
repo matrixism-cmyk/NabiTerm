@@ -80,6 +80,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "cmd.copytabsmd").to_string(), PaletteAction::CopyTabsMd),
         (tr(lang, "cmd.saveall").to_string(), PaletteAction::SaveAllDocs),
         (tr(lang, "menu.newpad").to_string(), PaletteAction::NewPad),
+        (tr(lang, "nabipad.openinwindow").to_string(), PaletteAction::PadInWindow),
         (tr(lang, "nabipad.openfile").to_string(), PaletteAction::OpenFileDialog),
         (tr(lang, "term.scrollbottom").to_string(), PaletteAction::ScrollBottom),
         (tr(lang, "term.scrolltop").to_string(), PaletteAction::ScrollTop),

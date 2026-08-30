@@ -48,7 +48,7 @@ impl NabiApp {
             }
         }
         self.editor_settings_for = None;
-        let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
+        self.save_editor_config();
         crate::editorsyntax::set_theme(self.editor_config.theme.clone());
         crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());
     }
@@ -62,7 +62,7 @@ impl NabiApp {
         for d in self.editors.values_mut() {
             d.show_menu = v;
         }
-        let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
+        self.save_editor_config();
     }
 }
 

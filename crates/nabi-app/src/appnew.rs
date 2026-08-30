@@ -205,6 +205,8 @@ impl NabiApp {
             keygen: None,
             sync_dlg: None, sync_seq: 0, sync_watch: None, last_run_cmd: Default::default(),
             onboarding_open: first_run,
+            // 탐색기 우클릭 "nabiPad로 편집" 으로 떴는가(main.rs 가 넣어 준다).
+            pad_only: std::env::var("NABI_PAD_ONLY").is_ok(),
             palette_query: String::new(),
             find_open: false,
             find_query: String::new(), find_regex: false, find_whole: false, replace_open: false, replace_find: String::new(), replace_to: String::new(), replace_count: None,
@@ -301,6 +303,7 @@ pub(crate) fn fix_default_shell(
     let prev = std::mem::replace(&mut config.terminal.default_shell, next.clone());
     // 설정 파일에도 바로 적는다 — 다음에 켤 때 또 같은 일을 겪지 않도록.
     // 여기서 실패해도 프로그램은 그대로 뜬다. 이번에 켠 동안은 바뀐 값으로 동작한다.
+    // 삼킴: 창이 뜨기 전이라 알릴 자리가 없다. 이번에 켠 동안은 바뀐 값으로 동작한다.
     let _ = nabi_config::save(&layout.config_file, &config);
     (config, Some((prev, next)))
 }

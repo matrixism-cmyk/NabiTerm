@@ -25,6 +25,8 @@ mod unusedpub;
 mod configkeys;
 mod e2everbs;
 mod i18nkeys;
+mod errswallow;
+mod rswalk;
 
 use std::process::ExitCode;
 
@@ -39,6 +41,8 @@ fn main() -> ExitCode {
         "i18n-keys" => i18nkeys::run(),
         // 적어 두기만 하고 아무도 안 읽는 설정 — 바꿔도 아무 일이 없다(configkeys.rs).
         "config-keys" => configkeys::run(),
+        // 실패해도 아무도 모르는 저장·쓰기 — 모아 둔 헬퍼가 지켜지는지 본다(errswallow.rs).
+        "err-swallow" => errswallow::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

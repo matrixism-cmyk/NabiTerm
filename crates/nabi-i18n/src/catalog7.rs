@@ -210,4 +210,8 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("web.backtotab", "Put it back in a tab", "탭으로 되돌리기", "タブに戻す"),
     ("web.noruntime", "The web browser needs the Edge WebView2 runtime, which is not installed on this PC. Install it with this command:", "웹 브라우저는 엣지 WebView2 런타임이 있어야 하는데 이 PC에는 설치되어 있지 않습니다. 이 명령으로 설치합니다:", "Web ブラウザーには Edge WebView2 ランタイムが必要ですが、この PC には未インストールです。次のコマンドで導入できます:"),
     ("shell.swapped", "The default shell could not run, so it was changed:", "기본 셸이 실행되지 않아 바꿨습니다:", "既定シェルが起動できないため変更しました:"),
+    ("sess.savefailed", "Could not save the session list", "세션 목록을 저장하지 못했습니다", "セッション一覧を保存できませんでした"),
+    ("nabipad.savefailed", "Could not save nabiPad settings", "nabiPad 설정을 저장하지 못했습니다", "nabiPad の設定を保存できませんでした"),
+    ("editor.writefailed", "Could not write the file", "파일을 쓰지 못했습니다", "ファイルを書き込めませんでした"),
+    ("link.webtab", "Open in the built-in browser", "내장 브라우저로 열기", "内蔵ブラウザーで開く"),
 ];

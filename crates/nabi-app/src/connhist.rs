@@ -77,6 +77,7 @@ pub(crate) fn load(base: &std::path::Path) -> Vec<Entry> {
 /// 쓴다. 실패는 조용히 넘긴다 — 이력을 못 남기는 것이 작업을 막을 이유는 아니다.
 pub(crate) fn save(base: &std::path::Path, list: &[Entry]) {
     if let Ok(text) = serde_json::to_string_pretty(list) {
+        // 삼킴: 접속 기록이다. 못 남기면 최근 목록이 안 늘어날 뿐이다.
         let _ = std::fs::write(path(base), text);
     }
 }

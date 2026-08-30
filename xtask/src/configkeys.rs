@@ -28,7 +28,6 @@
 //! `unused` 와 같은 이유다. 곧 쓸 작정으로 먼저 넣는 일이 있고, 이름만으로는 판단할 수
 //! 없다. 세어서 보여 주되 막지 않는다 — 막으면 예외 목록이 생기고, 예외 목록은 곧 낡는다.
 
-use std::path::Path;
 use std::process::ExitCode;
 
 /// 이름이 흔해 세면 거짓 양성이 나는 것들 — 다른 뜻으로 쓰이는 낱말이다.
@@ -50,7 +49,7 @@ pub fn run() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let files = rust_files(&cwd.join("crates"));
+    let files = crate::rswalk::rust_files(&cwd.join("crates"));
     // `nabi-config` 자신은 빼고 센다 — 거기서는 저장·불러오기에 늘 나온다.
     // 읽는 자리와 바꾸는 자리를 같은 글에서 센다(설정 UI 는 파일 이름으로 가릴 수 없다).
     let outside: String = files
@@ -204,24 +203,6 @@ fn strip_tests(s: &str) -> String {
     }
 }
 
-fn rust_files(root: &Path) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-    while let Some(dir) = stack.pop() {
-        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
-        for e in rd.flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.extension().is_some_and(|x| x == "rs") {
-                if let Ok(s) = std::fs::read_to_string(&p) {
-                    out.push((p.display().to_string(), s));
-                }
-            }
-        }
-    }
-    out
-}
 
 #[cfg(test)]
 mod tests {

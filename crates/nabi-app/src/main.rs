@@ -150,7 +150,12 @@ fn main() -> eframe::Result<()> {
     match padopen::handle(&args) {
         Some(padopen::Outcome::Delegated) => std::process::exit(0),
         // 넘길 곳이 없으면 평소대로 뜨되, 시작할 때 그 파일을 편집기로 연다.
-        Some(padopen::Outcome::PadOnly(p)) => std::env::set_var("NABI_OPEN_FILE", p),
+        Some(padopen::Outcome::PadOnly(p)) => {
+            // 편집기만 띄운다는 표시를 함께 남긴다 — 앱이 워크스페이스 복원과 기본 셸을
+            // 건너뛰는 근거다. 파일 이름만으로는 "왜 떴는지" 를 알 수 없다.
+            std::env::set_var("NABI_OPEN_FILE", p);
+            std::env::set_var("NABI_PAD_ONLY", "1");
+        }
         None => {}
     }
     // `nabi mcp`: stdio MCP 서버(제어 파이프 프록시) — Claude Code 등록:

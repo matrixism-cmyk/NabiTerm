@@ -46,6 +46,7 @@ impl NabiApp {
             let src = self.workspace_path.with_extension(ext);
             let dst = dir.join(format!("{name}.{ext}"));
             if src.exists() {
+                // 삼킴: 지난 워크스페이스 사본이다. 못 뜨면 되돌리기 한 판만 없다.
                 let _ = std::fs::copy(&src, &dst);
             } else {
                 let _ = std::fs::remove_file(&dst); // 사이드카가 없어졌으면 사본도 정리.
@@ -81,6 +82,7 @@ impl NabiApp {
             let src = dir.join(format!("{name}.{ext}"));
             let dst = self.workspace_path.with_extension(ext);
             if src.exists() {
+                // 삼킴: 지난 워크스페이스 사본이다. 못 뜨면 되돌리기 한 판만 없다.
                 let _ = std::fs::copy(&src, &dst);
             } else {
                 let _ = std::fs::remove_file(&dst);

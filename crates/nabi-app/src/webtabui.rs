@@ -84,7 +84,9 @@ pub(crate) fn render(
         if !typing {
             if let Some(v) = &tab.view {
                 let now = v.url();
-                if !now.is_empty() && now != tab.url {
+                // `about:blank` 는 옮겨 가기 전의 빈 쪽이다. 이것을 주소 칸에 적으면
+                // 웹 탭을 열 때마다 방금 친 주소가 잠깐 사라졌다 돌아온다.
+                if !now.is_empty() && now != "about:blank" && now != tab.url {
                     tab.url = now;
                 }
             }

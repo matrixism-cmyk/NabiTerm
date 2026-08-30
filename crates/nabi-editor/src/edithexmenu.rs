@@ -6,7 +6,13 @@ use crate::edithexedit::{parse_hex, to_hex_string};
 use nabi_i18n::{tr, Lang};
 
 /// 우클릭 메뉴 본문. 선택 여부·읽기 전용에 따라 항목을 노출한다.
-pub fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, lang: Lang) {
+pub fn context_menu(
+    ui: &mut egui::Ui,
+    h: &mut HexBuf,
+    readonly: bool,
+    lang: Lang,
+    failed: &mut Option<String>,
+) {
     if !readonly {
         ui.add_enabled_ui(!h.undo.is_empty(), |ui| {
             if ui.button(tr(lang, "editor.undo")).clicked() { h.undo(); ui.close(); }
@@ -61,7 +67,10 @@ pub fn context_menu(ui: &mut egui::Ui, h: &mut HexBuf, readonly: bool, lang: Lan
         if ui.button(tr(lang, "nabipad.exportsel")).clicked() {
             let data = h.selected_bytes();
             if let Some(path) = rfd::FileDialog::new().set_file_name("selection.bin").save_file() {
-                let _ = std::fs::write(path, data); // 선택 바이트를 파일로 추출.
+                // 선택 바이트를 파일로 추출. 실패하면 앱이 알린다.
+                if let Err(e) = std::fs::write(path, data) {
+                    *failed = Some(e.to_string());
+                }
             }
             ui.close();
         }

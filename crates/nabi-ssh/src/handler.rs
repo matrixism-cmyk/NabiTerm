@@ -72,7 +72,13 @@ impl ClientHandler {
             // 같은 경고가 뜬다(파일에 두 지문이 남아 늘 어긋난다).
             if let Some(line) = replace_line {
                 if let Ok(c) = std::fs::read_to_string(&self.known_hosts) {
-                    let _ = std::fs::write(&self.known_hosts, crate::keychange::remove_line(&c, line));
+                    let body = crate::keychange::remove_line(&c, line);
+                    if let Err(e) = std::fs::write(&self.known_hosts, body) {
+                        // 못 지우면 **다음 접속에도 같은 경고가 뜬다.** 사용자는 이미
+                        // 받아들였는데 또 물어보는 셈이라, 왜 그런지 알 길이 있어야 한다.
+                        tracing::warn!(target: "ssh", path = %self.known_hosts.display(), %e,
+                            "known_hosts 에서 옛 줄을 지우지 못했다 — 다음 접속에도 경고가 뜬다");
+                    }
                 }
             }
             self.learn(key);

@@ -8,7 +8,8 @@ impl NabiApp {
     /// Enter 또는 연결 버튼 = SSH 터미널, 🖧 = SFTP 브라우저로 연결.
     pub(crate) fn show_quickconnect_bar(&mut self, ui: &mut egui::Ui) {
         let _ctx = &ui.ctx().clone();
-        if !self.config.appearance.show_quickconnect_bar {
+        // 편집기만 띄운 창에는 접속할 대상이 없다 — 터미널 전용 줄이라 감춘다.
+        if self.pad_only || !self.config.appearance.show_quickconnect_bar {
             return;
         }
         let lang = self.lang;

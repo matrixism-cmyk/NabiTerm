@@ -82,6 +82,7 @@ impl NabiApp {
         if saves.is_empty() {
             let _ = std::fs::remove_file(path);
         } else if let Ok(s) = ron::to_string(&saves) {
+            // 삼킴: 전송 큐다. 못 남기면 다시 켰을 때 큐가 비어 있다.
             let _ = std::fs::write(path, s);
         }
     }
@@ -104,6 +105,7 @@ impl NabiApp {
         if saves.is_empty() {
             let _ = std::fs::remove_file(&path);
         } else if let Ok(s) = ron::to_string(&saves) {
+            // 삼킴: 전송 큐다. 못 남기면 다시 켰을 때 큐가 비어 있다.
             let _ = std::fs::write(&path, s);
         }
         for it in &taken.items {

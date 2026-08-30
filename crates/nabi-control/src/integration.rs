@@ -46,8 +46,12 @@ pub fn install_claude() -> Result<String, String> {
         return Ok("이미 설치됨(변경 없음)".into());
     }
     // 백업은 실제로 바꿀 때만(불필요한 .bak 양산 방지).
+    //
+    // **백업에 실패하면 원본을 건드리지 않는다.** 예전에는 실패를 삼키고 그대로 덮어썼다 —
+    // 되돌릴 길이 사라지는데 아무 말도 없었다(`xtask err-swallow`, 2026-08-30).
     if settings.exists() {
-        let _ = std::fs::copy(&settings, settings.with_extension("json.bak"));
+        std::fs::copy(&settings, settings.with_extension("json.bak"))
+            .map_err(|e| format!("백업을 만들지 못해 중단했습니다: {e}"))?;
     }
     let entry = json!({ "hooks": [{ "type": "command", "command": cmd }] });
     let arr = root

@@ -43,6 +43,7 @@ pub(crate) fn trim_notes(notes: &str, max_lines: usize) -> String {
 /// 있는데, 그때 옛 노트를 보여 주면 거짓말이 된다.
 pub(crate) fn stash(dir: &std::path::Path, version: &str, notes: &str) {
     let _ = std::fs::create_dir_all(dir);
+    // 삼킴: '새로운 것' 을 봤다는 표시다. 못 남기면 다음에 한 번 더 뜬다.
     let _ = std::fs::write(path(dir), format!("{version}\n{notes}"));
 }
 

@@ -73,9 +73,19 @@ impl NabiApp {
     /// 아니면 도크 탭으로 연다(browser_tabs와 동일 방식).
     pub(crate) fn add_editor_tab(&mut self, mut doc: EditorDoc) {
         let p = nabi_types::next_pane_id();
+        // 이 문서를 따로 띄우는가, 이 창 안(pane)에 두는가 — 아래 두 군데가 이 답을 쓴다.
+        let in_window = self.editor_config.open_in_window && !self.pad_only;
         // nabiPad 설정(nabipad.toml)을 새 문서에 적용: 메뉴바·강조·줄바꿈·공백 표시.
         let ec = &self.editor_config;
-        doc.show_menu = ec.show_menu_bar; doc.highlight = ec.syntax_highlight;
+        // **pane 으로 열면 메뉴바를 접어 둔다**(사용자 요청 2026-08-30).
+        //
+        // 창 맨 위에 나비텀 메뉴가 이미 있는데 그 아래 편집기 메뉴가 한 줄 더 붙으면
+        // 띠가 두 겹이 되고 글 보이는 자리가 줄어든다. 따로 띄운 창은 자기 메뉴가
+        // 그 창의 유일한 메뉴이므로 그대로 둔다.
+        //
+        // 접어 두는 것이지 없애는 것이 아니다 — 도구 줄 왼쪽 `≡` 로 언제든 편다.
+        doc.show_menu = ec.show_menu_bar && in_window;
+        doc.highlight = ec.syntax_highlight;
         doc.wrap = ec.word_wrap; doc.show_ws = ec.show_whitespace;
         self.editors.insert(p, doc);
         // 외부 변경 감시 기준 시각은 일반 로컬 텍스트 문서에만 기록한다.
@@ -85,7 +95,12 @@ impl NabiApp {
         if let Some(path) = plain.map(|d| d.path.clone()).filter(|p| !p.as_os_str().is_empty()) {
             self.record_editor_mtime(p, &path);
         }
-        if self.editor_config.open_in_window { self.floating.push(p); } else { self.add_pane(p); } // 분리창/도크탭.
+        // 분리창/도크탭. 다만 **편집기만 띄운 창**에서는 늘 이 창 안에 연다 —
+        // 따로 띄우면 빈 나비텀 창과 편집기 창이 둘 다 생긴다.
+        match in_window {
+            true => self.floating.push(p),
+            false => self.add_pane(p),
+        }
     }
 
     /// 초대용량(EDIT_CAP 초과) → memmap 읽기 전용 뷰어 탭(E4).
@@ -169,7 +184,7 @@ impl NabiApp {
         r.retain(|x| x != &s);
         r.insert(0, s);
         r.truncate(12);
-        let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
+        self.save_editor_config();
     }
 
     /// 로컬 파일을 내장 에디터 탭으로 연다. 이진=HEX, 대용량=rope 편집기(512MB 초과만 읽기 전용). (링크 메뉴에서도 호출.)

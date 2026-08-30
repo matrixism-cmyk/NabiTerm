@@ -72,17 +72,19 @@ pub fn hex_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct
             ui.separator(); ui.label(tr(lang, "nabipad.hexmode"));
         });
     });
-    hex_body(ui, doc, lang);
+    act.failed = hex_body(ui, doc, lang);
     act
 }
 
 /// 가상화 HEX 영역 — 보이는 줄만 그리고, 포커스 시 키/마우스로 편집한다.
-fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
+/// HEX 본문을 그린다. 우클릭 메뉴가 파일을 쓰다 실패하면 그 까닭을 돌려준다 —
+/// 편집기에는 알릴 화면이 없어서 앱까지 올려야 한다.
+fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Option<String> {
     let (fsize, readonly) = (doc.font_size, doc.readonly);
     let mono = egui::FontId::monospace(fsize);
     let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
     let cw = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
-    let Some(h) = doc.hex.as_mut() else { return };
+    let h = doc.hex.as_mut()?;
     let rows = h.rows();
     let scroll_off = h.scroll_to.take().map(|r| r as f32 * row_h); // 오프셋 이동 스크롤.
     // 칼럼 기준 x(문자 단위): 오프셋8 + 공백2 → HEX, HEX(49) + " | "(3) → ASCII.
@@ -103,6 +105,8 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
     // 방향키가 담당한다 — 움직이지 않는 것보다 훨씬 낫다.
     let total_h = rows as f32 * row_h;
     let scale = content_scale(rows, row_h);
+    // 메뉴가 파일을 쓰다 실패한 것을 닫힘 상자 밖으로 꺼낸다 — `act` 는 여기 있다.
+    let mut menu_failed: Option<String> = None;
     let mut sa = egui::ScrollArea::both().auto_shrink([false, false]).id_salt(("hx_body", doc_salt));
     if let Some(o) = scroll_off { sa = sa.vertical_scroll_offset(o / scale); }
     sa.show_viewport(ui, |ui, vp| {
@@ -120,7 +124,10 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
         let last = (first + visible).min(rows);
 
         // 우클릭 컨텍스트 메뉴(복사/잘라내기/삭제/붙여넣기-삽입/바이트 삽입/전체 선택).
-        resp.context_menu(|ui| crate::edithexmenu::context_menu(ui, h, readonly, lang));
+        // 메뉴가 파일을 쓰다 실패하면 여기 담기고, 앱이 알림으로 보여 준다.
+        resp.context_menu(|ui| {
+            crate::edithexmenu::context_menu(ui, h, readonly, lang, &mut menu_failed)
+        });
         // 마우스 → 커서/블록 선택(드래그=선택 확장, Shift+클릭=확장, 클릭=해제).
         if let Some(p) = resp.interact_pointer_pos() {
             let idx = hit_index(h, p, y0, first, left, x_hex, x_ascii, row_h, cw);
@@ -170,6 +177,7 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) {
             }
         }
     });
+    menu_failed
 }
 
 /// 줄 수와 줄 높이로 화면 압축 비율을 낸다. 1.0이면 압축 없음(작은 파일).

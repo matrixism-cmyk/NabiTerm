@@ -40,21 +40,7 @@ pub fn run() -> ExitCode {
         return ExitCode::FAILURE;
     };
     let root = cwd.join("crates");
-    let mut files: Vec<(String, String)> = Vec::new();
-    let mut stack = vec![root.clone()];
-    while let Some(dir) = stack.pop() {
-        let Ok(rd) = std::fs::read_dir(&dir) else { continue };
-        for e in rd.flatten() {
-            let p = e.path();
-            if p.is_dir() {
-                stack.push(p);
-            } else if p.extension().is_some_and(|x| x == "rs") {
-                if let Ok(s) = std::fs::read_to_string(&p) {
-                    files.push((p.display().to_string(), s));
-                }
-            }
-        }
-    }
+    let files = crate::rswalk::rust_files(&root);
 
     // 시험을 뺀 본문만 합쳐 둔다 — 여기서 이름을 센다.
     let body: String =

@@ -19,6 +19,7 @@ pub(crate) fn to_menu(a: &PaletteAction) -> Option<MenuAction> {
         PaletteAction::ConnectSession(s) => MenuAction::ConnectSaved(s.clone()),
         PaletteAction::AiDashboard => MenuAction::ToggleAiDashboard,
         PaletteAction::NewPad => MenuAction::OpenNabiPad,
+        PaletteAction::PadInWindow => MenuAction::TogglePadInWindow,
         // 이름이 같은 짝.
         PaletteAction::OpenSftp(s) => MenuAction::OpenSftp(s.clone()),
         PaletteAction::SendSnippet(c) => MenuAction::SendSnippet(c.clone()),

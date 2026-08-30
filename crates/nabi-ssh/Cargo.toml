@@ -14,4 +14,5 @@ russh = { workspace = true }
 tokio = { workspace = true }
 crossbeam-channel = { workspace = true }
 bytes = { workspace = true }
+tracing = { workspace = true }  # known_hosts 를 못 고쳤을 때 왜인지 남긴다.
 rand = "0.10"  # 키 생성(keygen.rs — ssh-key rand_core 0.10 정합)

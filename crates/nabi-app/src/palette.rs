@@ -80,7 +80,7 @@ pub(crate) enum PaletteAction {
     DuplicateConnection, ToggleSessionLog, NewTabHere, ClearBuffer,
     SyncUpload, SyncDownload, CopyOutputMd, CompareFiles, FindDuplicates, FindLargeFiles,
     CopySshCmd, GenSshKey, InstallPubkey, SelToPad, CopyTabsMd, SaveAllDocs,
-    NewPad, OpenFileDialog, ScrollBottom, ScrollTop, ReplaceInFiles, DirTree, DirStats,
+    NewPad, PadInWindow, OpenFileDialog, ScrollBottom, ScrollTop, ReplaceInFiles, DirTree, DirStats,
     /// 설정 ▸ 스케줄 페이지 바로 열기 / 도움말 ▸ AI 제어 페이지 바로 열기(T3-1 도구 메뉴).
     OpenSchedule, OpenAiCli,
     /// 워크스페이스 스냅샷 저장/목록(T7-2).

@@ -63,24 +63,30 @@ impl eframe::App for NabiApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
             // 브라우저 탭을 먼저 복원해 PaneId를 확보 → 레이아웃 서수(1000+i)와 매핑.
-            let bpanes = if self.config.terminal.restore_workspace {
+            let bpanes = if self.config.terminal.restore_workspace && !self.pad_only {
                 self.restore_browser_tabs()
             } else {
                 Vec::new()
             };
             // 볼트 기반 세션이 있고 볼트가 잠겨 있으면, 볼트 잠금해제 모달을 먼저 띄우고 복원을
             // 미룬다(잠금해제 후 자격증명 세션이 자동 연결되어 제자리에 복원되도록 — 사용자 제안).
-            if self.config.terminal.restore_workspace && self.workspace_wants_vault() {
+            if self.config.terminal.restore_workspace && !self.pad_only && self.workspace_wants_vault() {
                 self.vault_unlock_open = true;
                 self.pending_restore = Some(bpanes); // 볼트 해제/창닫힘 후 update 루프에서 복원.
             } else {
                 let ws_exists = self.workspace_path.exists();
-                let restored =
-                    self.config.terminal.restore_workspace && self.restore_workspace(bpanes);
+                let restored = self.config.terminal.restore_workspace
+                    && !self.pad_only
+                    && self.restore_workspace(bpanes);
                 // 기본 셸은 첫 실행(워크스페이스 파일 없음)이나 복원 비활성일 때만. 복원 활성+파일 존재인데
                 // 복원된 게 없으면(=이전에 모든 탭을 닫고 종료) 사용자 요청대로 빈 화면을 유지한다.
                 // OOBE(첫 실행) 중엔 자동 스폰 보류 — 환영 화면의 "시작하기"가 고른 셸을 띄운다.
-                if !(restored || self.onboarding_open || self.config.terminal.restore_workspace && ws_exists) {
+                // 편집기만 띄우는 길에서는 셸을 만들지 않는다 — 부른 적 없는 터미널이다.
+                if !(restored
+                    || self.pad_only
+                    || self.onboarding_open
+                    || self.config.terminal.restore_workspace && ws_exists)
+                {
                     let shell = crate::workspace::shell_from_str(&self.config.terminal.default_shell);
                     self.spawn_local(shell);
                 }

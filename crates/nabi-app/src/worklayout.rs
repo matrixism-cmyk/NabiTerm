@@ -63,6 +63,7 @@ impl NabiApp {
         if saves.is_empty() {
             let _ = std::fs::remove_file(&path);
         } else if let Ok(s) = ron::to_string(&saves) {
+            // 삼킴: 분할 자리다. 끄는 중에도 부르는 길이 있어 알릴 화면이 없다.
             let _ = std::fs::write(path, s);
         }
     }
@@ -80,6 +81,7 @@ impl NabiApp {
             if let Ok(md) = v.model.lock() {
                 let txt = md.dump_text(2000);
                 if !txt.is_empty() {
+                    // 삼킴: 화면에 남은 글을 떠 두는 것이다. 없어도 pane 은 되살아난다.
                     let _ = std::fs::write(d.join(format!("fscroll_{idx}.txt")), txt);
                 }
             }
@@ -279,6 +281,7 @@ impl NabiApp {
     /// 값을 RON으로 직렬화해 workspace 경로의 `.<ext>` 사이드카에 쓴다(실패는 무시).
     fn write_sidecar<T: serde::Serialize>(&self, ext: &str, value: &T) {
         if let Ok(s) = ron::to_string(value) {
+            // 삼킴: pane 딸린 값(글꼴·이름·색)이다. 없으면 기본값으로 되살아난다.
             let _ = std::fs::write(self.workspace_path.with_extension(ext), s);
         }
     }

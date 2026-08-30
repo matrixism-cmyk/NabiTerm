@@ -250,7 +250,7 @@ mod 링크는_따라가지_않는다 {
     /// 그래서 `file_type().is_symlink()` 로 먼저 거른다.
     ///
     /// 윈도우에서 링크 만들기는 권한이 필요할 수 있다 — 못 만들면 시험을 건너뛴다
-    /// (권한 없는 PC 에서 빨개지면 아무도 안 보게 된다).
+    /// (권한 없는 PC 에서 실패하면 아무도 이 시험을 안 보게 된다).
     #[test]
     fn 링크는_폴더로_보지_않는다() {
         let base = std::env::temp_dir().join(format!("nabi-linktest-{}", std::process::id()));

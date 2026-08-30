@@ -16,6 +16,7 @@ impl NabiApp {
                 cfg.appearance.window_x = x;
                 cfg.appearance.window_y = y;
             }
+            // 삼킴: 창을 닫는 중이라 알림을 띄울 화면이 이미 없다. 창 크기·자리만 잃는다.
             let _ = nabi_config::save(&self.config_path, &cfg);
         }
         // 워크스페이스는 항상 저장(복원 여부는 시작 시 설정이 결정).

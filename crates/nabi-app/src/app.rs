@@ -183,6 +183,12 @@ pub struct NabiApp {
     pub last_run_cmd: std::collections::HashMap<nabi_types::PaneId, String>,
     /// 첫 실행 환영 화면(OOBE) 표시 중 — 완료 전엔 기본 셸 자동 스폰 보류.
     pub onboarding_open: bool,
+    /// **nabiPad 만 띄우고 있는가** — 탐색기에서 `--edit` 로 불렀을 때.
+    ///
+    /// 이때는 워크스페이스를 되살리지도, 기본 셸을 띄우지도 않는다. 사용자가 부른 것은
+    /// 파일 하나를 여는 일이지 터미널이 아니다 — 예전에는 나비텀이 통째로 뜬 다음
+    /// 그 위에 편집기가 열려서, 부른 적 없는 창이 잔뜩 생겼다(사용자 지적 2026-08-30).
+    pub pad_only: bool,
     pub palette_query: String,
     pub find_open: bool, pub find_query: String, pub find_regex: bool, pub find_whole: bool, pub replace_open: bool, pub replace_find: String, pub replace_to: String, pub replace_count: Option<(usize, usize)>,
     pub tab_names: HashMap<PaneId, String>,
@@ -404,11 +410,6 @@ pub struct NabiApp {
 }
 
 impl NabiApp {
-    /// 저장 세션 트리를 디스크에 영속화한다.
-    pub fn save_sessions(&self) {
-        let _ = nabi_session::save_tree(&self.session_path, &self.sessions);
-    }
-
     /// 포커스된 pane id.
     pub fn focused_pane(&mut self) -> Option<PaneId> {
         self.dock.find_active_focused().map(|(_, t)| *t)

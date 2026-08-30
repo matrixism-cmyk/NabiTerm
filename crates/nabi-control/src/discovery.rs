@@ -22,6 +22,7 @@ fn path(dir: &Path) -> PathBuf {
 pub fn write(dir: &Path, pipe: &str, token: &str) {
     let _ = std::fs::create_dir_all(dir);
     let body = format!("{}\n{pipe}\n{token}\n", std::process::id());
+    // 삼킴: 못 남기면 탐색기 '여기서 열기'만 이 창을 못 찾는다. 프로그램은 그대로 돈다.
     let _ = std::fs::write(path(dir), body);
 }
 

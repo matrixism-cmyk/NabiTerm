@@ -160,7 +160,7 @@ impl NabiApp {
         let base = self.config_path.parent().unwrap_or(std::path::Path::new(".")).to_path_buf();
         self.tip_ai.retarget(&base, &self.config.terminal.tip_cache_path);
         // nabiPad 설정은 분리 파일(nabipad.toml)에 별도 저장(독립 프로그램화 대비).
-        let _ = nabi_config::save(&self.editor_config_path, &self.editor_config);
+        self.save_editor_config();
         // 구문 강조 테마·확장자 매핑을 라이브 반영(다음 하이라이트부터 적용).
         crate::editorsyntax::set_theme(self.editor_config.theme.clone());
         crate::editorsyntax::set_ext_map(self.editor_config.ext_map.clone());

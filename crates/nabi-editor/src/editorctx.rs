@@ -74,7 +74,9 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
         if ui.add_enabled(has_sel, egui::Button::new(tr(lang, "ctx.savesel"))).clicked() {
             if let Some(t) = sel_text(doc) {
                 if let Some(p) = rfd::FileDialog::new().save_file() {
-                    let _ = std::fs::write(p, t);
+                    if let Err(e) = std::fs::write(p, t) {
+                        act.failed = Some(e.to_string());
+                    }
                 }
             }
             ui.close();

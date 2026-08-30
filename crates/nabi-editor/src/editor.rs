@@ -185,6 +185,12 @@ pub struct EditorAct {
     pub lsp_complete: bool,
     /// 다른 파일의 지정 줄(0기반) 열기(참조 목록 클릭 — 앱이 open+jump).
     pub open_at: Option<(String, usize)>,
+    /// 편집기가 **혼자 실패한 것**을 앱에 올린다(앱이 알림으로 보여 준다).
+    ///
+    /// 편집기에는 알릴 화면이 없다. 그래서 파일을 직접 쓰는 두 자리(선택 저장·HEX
+    /// 선택 내보내기)가 실패를 삼키고 있었다 — 사용자는 대화상자에서 이름까지 골랐으니
+    /// 파일이 생긴 줄 안다(`xtask err-swallow` 가 찾았다, 2026-08-30).
+    pub failed: Option<String>,
 }
 
 /// 경로의 파일명(표시용).

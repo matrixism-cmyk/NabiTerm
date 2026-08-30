@@ -195,6 +195,10 @@ impl NabiApp {
                 self.save_config();
             }
             MenuAction::OpenNabiPad => self.open_empty_pad(),
+            MenuAction::TogglePadInWindow => {
+                self.editor_config.open_in_window = !self.editor_config.open_in_window;
+                self.save_editor_config();
+            }
             MenuAction::MoveSessionToGroup(name, folder) => self.set_session_folder(&name, folder),
             MenuAction::SetSessionTag(name, tag) => self.set_session_tag(&name, tag),
             MenuAction::RenameGroup(old, new) => self.rename_folder(&old, &new),

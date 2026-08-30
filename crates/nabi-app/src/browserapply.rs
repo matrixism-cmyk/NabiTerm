@@ -63,6 +63,7 @@ impl NabiApp {
         if saves.is_empty() {
             let _ = std::fs::remove_file(path);
         } else if let Ok(s) = ron::to_string(&saves) {
+            // 삼킴: 탐색기 탭 상태다. 못 남기면 다음에 켤 때 기본 자리로 열린다.
             let _ = std::fs::write(path, s);
         }
     }

@@ -40,7 +40,7 @@ mod tests {
     use super::{is_link, is_real_dir};
 
     /// 링크 하나를 실제로 만들어 본다. 윈도우는 권한이 필요해 못 만들면 건너뛴다 —
-    /// 권한 없는 PC 에서 빨개지면 아무도 안 보게 된다.
+    /// 권한 없는 PC 에서 실패하면 아무도 이 시험을 안 보게 된다.
     #[test]
     fn 폴더를_가리키는_링크는_폴더로_보지_않는다() {
         let base = std::env::temp_dir().join(format!("nabi-walk-{}", std::process::id()));

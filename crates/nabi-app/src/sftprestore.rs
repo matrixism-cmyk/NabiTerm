@@ -49,6 +49,7 @@ impl NabiApp {
         if saves.is_empty() {
             let _ = std::fs::remove_file(path);
         } else if let Ok(s) = ron::to_string(&saves) {
+            // 삼킴: 원격 탭 목록이다. 못 남기면 다시 켤 때 안 되살아난다.
             let _ = std::fs::write(path, s);
         }
     }

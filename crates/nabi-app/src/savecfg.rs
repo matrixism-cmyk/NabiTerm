@@ -36,4 +36,30 @@ impl NabiApp {
             ));
         }
     }
+
+    /// nabiPad 설정(`nabipad.toml`)을 저장하고, 실패하면 알린다.
+    ///
+    /// 나비텀 설정과 **파일이 다르다.** 그래서 위 함수가 생긴 뒤에도 이쪽은 네 곳에
+    /// `let _ =` 로 남아 있었다(2026-08-30에 `xtask err-swallow` 가 찾아냈다).
+    /// 한 곳으로 모으는 것만으로는 부족하다 — 모았는지 지켜보는 검사가 있어야 한다.
+    pub(crate) fn save_editor_config(&mut self) {
+        if let Err(e) = nabi_config::save(&self.editor_config_path, &self.editor_config) {
+            self.notify = Some((
+                format!("{} — {e}", tr(self.lang, "nabipad.savefailed")),
+                Instant::now(),
+            ));
+        }
+    }
+
+    /// 저장 세션 트리를 디스크에 영속화하고, 실패하면 알린다.
+    ///
+    /// 세션 목록은 사용자가 손으로 쌓아 온 것이라 조용히 잃으면 되돌릴 길이 없다.
+    pub fn save_sessions(&mut self) {
+        if let Err(e) = nabi_session::save_tree(&self.session_path, &self.sessions) {
+            self.notify = Some((
+                format!("{} — {e}", tr(self.lang, "sess.savefailed")),
+                Instant::now(),
+            ));
+        }
+    }
 }

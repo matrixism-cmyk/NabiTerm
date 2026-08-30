@@ -86,6 +86,7 @@ pub(crate) fn mark_starting() {
     if let Some(d) = p.parent() {
         let _ = std::fs::create_dir_all(d);
     }
+    // 삼킴: 그래픽 초기화 표시다. 못 남기면 다음에 켤 때 한 번 더 시험한다.
     let _ = std::fs::write(&p, b"gpu init in progress");
 }
 
