@@ -160,8 +160,18 @@ pub(crate) fn render(
     //
     // 그래서 **자리를 여러 곳 짚어 본다.** 한 곳이라도 우리 층이 아니면 그 위에 무언가가
     // 떠 있는 것이다.
-    let busy = ui.ctx().input(|i| i.pointer.any_down()) || covered(ui, area);
-    if busy {
+    //
+    // 덮인 것을 찾으면 **그 자리만 도려낸다.** 통째로 숨기면 작은 메뉴 하나에 웹 화면이
+    // 다 사라져 어색했다(사용자 지적 2026-08-30). 도려낼 수 없는 경우에만 통째로 숨긴다.
+    //
+    // **누르는 것과 끄는 것을 가른다.** 예전에는 마우스가 눌려 있기만 하면 통째로 숨겼다.
+    // 그래서 도구 줄의 단추를 누르는 그 순간에도 웹 화면이 사라져 **한 번 깜박였다**
+    // (사용자 지적 2026-08-30). 이제 실제로 끌고 있을 때만 숨긴다.
+    let dragging = ui.ctx().dragged_id().is_some()
+        || ui.ctx().input(|i| i.pointer.is_decidedly_dragging());
+    let hole = if dragging { Some(area) } else { covered_box(ui, area) };
+    let can_clip = !dragging && tab.view.as_ref().is_some_and(|v| v.can_clip());
+    if hole.is_some() && !can_clip {
         if let Some(v) = &mut tab.view {
             v.show(false);
         }
@@ -178,31 +188,51 @@ pub(crate) fn render(
         );
         return;
     }
-    place(tab, hwnd, area, ppp);
+    place(tab, hwnd, area, ppp, hole);
 }
 
-/// 웹 화면 자리 위에 **우리가 그린 무언가가 덮고 있는가**.
+/// 웹 화면 자리 위에서 **우리가 그린 무언가가 덮고 있는 자리**.
 ///
 /// 메뉴·툴팁·창은 전부 egui 의 층(layer)이다. 자식 창인 웹 화면은 우리 그림보다 늘 위에
-/// 오므로, 덮는 것이 있으면 그동안 웹 화면을 숨겨야 그것이 보인다.
+/// 오므로, 덮는 것이 있으면 그 자리를 도려내야 그것이 보인다.
 ///
 /// 층이 어디를 차지하는지 직접 물을 길이 없어(`Areas::get` 은 공개가 아니다) **자리를
-/// 격자로 짚는다.** 5×5 면 메뉴 하나쯤은 반드시 걸린다. 짚는 일은 찾아보기라 싸다.
-fn covered(ui: &egui::Ui, area: egui::Rect) -> bool {
+/// 격자로 짚는다.** 짚는 일은 찾아보기라 싸다.
+///
+/// 두 번에 나눠 짚는다. 먼저 성기게(9×9) 훑어 덮인 것이 있는지 보고, 있을 때만 촘촘히
+/// (33×33) 다시 짚어 **덮인 자리를 감싸는 네모**를 낸다. 격자라서 실제 경계보다 조금
+/// 모자랄 수 있으므로 한 칸씩 넓혀 준다 — 모자라면 메뉴 가장자리가 다시 가려진다.
+fn covered_box(ui: &egui::Ui, area: egui::Rect) -> Option<egui::Rect> {
     let (ctx, me) = (ui.ctx(), ui.layer_id());
-    const N: usize = 5;
-    (0..N * N).any(|i| {
-        let t = |k: usize| (k as f32 + 0.5) / N as f32;
-        let p = egui::pos2(
-            area.min.x + area.width() * t(i % N),
-            area.min.y + area.height() * t(i / N),
-        );
-        ctx.layer_id_at(p).is_some_and(|l| l != me)
-    })
+    let at = |x: f32, y: f32| ctx.layer_id_at(egui::pos2(x, y)).is_some_and(|l| l != me);
+    let grid = |n: usize| {
+        let (mut lo, mut hi) = (egui::pos2(f32::MAX, f32::MAX), egui::pos2(f32::MIN, f32::MIN));
+        for i in 0..n * n {
+            let t = |k: usize| (k as f32 + 0.5) / n as f32;
+            let (x, y) = (area.min.x + area.width() * t(i % n), area.min.y + area.height() * t(i / n));
+            if at(x, y) {
+                lo = egui::pos2(lo.x.min(x), lo.y.min(y));
+                hi = egui::pos2(hi.x.max(x), hi.y.max(y));
+            }
+        }
+        (lo.x <= hi.x).then(|| egui::Rect::from_min_max(lo, hi))
+    };
+    grid(9)?;
+    const N: usize = 33;
+    let r = grid(N)?;
+    // 격자 한 칸만큼 넓힌다 — 짚은 자리는 덮인 것의 안쪽이지 경계가 아니다.
+    let pad = egui::vec2(area.width() / N as f32, area.height() / N as f32);
+    Some(r.expand2(pad).intersect(area))
 }
 
 /// 웹 화면을 이 자리에 놓는다. 없으면 만든다.
-fn place(tab: &mut crate::webtab::WebTab, hwnd: Option<isize>, area: egui::Rect, ppp: f32) {
+fn place(
+    tab: &mut crate::webtab::WebTab,
+    hwnd: Option<isize>,
+    area: egui::Rect,
+    ppp: f32,
+    hole: Option<egui::Rect>,
+) {
     let Some(h) = hwnd else { return };
     if tab.view.is_none() {
         // 처음 그려질 때 만든다 — 탭을 열 때는 아직 자리를 모른다.
@@ -223,6 +253,15 @@ fn place(tab: &mut crate::webtab::WebTab, hwnd: Option<isize>, area: egui::Rect,
         (area.width() * ppp).round() as i32,
         (area.height() * ppp).round() as i32,
     );
+    // 덮인 자리를 도려낸다 — 창 안의 실제 점으로 바꿔 넘긴다(자리와 같은 규칙).
+    v.clip(hole.map(|h| {
+        (
+            (h.min.x * ppp).round() as i32,
+            (h.min.y * ppp).round() as i32,
+            (h.width() * ppp).round() as i32,
+            (h.height() * ppp).round() as i32,
+        )
+    }));
     v.show(true);
 }
 

@@ -30,6 +30,11 @@ pub struct Embedded {
     last: RECT,
     /// 지금 보이는가. 같은 값이면 다시 시키지 않는다.
     shown: bool,
+    /// WebView2 가 만든 창 — 여기에 **보일 영역**을 지정해 덮인 곳만 도려낸다.
+    /// 못 찾았으면 `None` 이고, 그때는 예전처럼 통째로 숨긴다.
+    host: Option<isize>,
+    /// 지금 도려낸 자리. 같은 값이면 다시 시키지 않는다.
+    hole: Option<RECT>,
     /// 지금 읽어 오는 중인가.
     ///
     /// 엣지가 알려 주는 것을 여기 적어 둔다 — 물어볼 방법이 없어서다. 새로고침 단추를
@@ -45,13 +50,24 @@ impl Embedded {
         }
         let hwnd = HWND(parent as *mut core::ffi::c_void);
         let env = crate::view::make_env().map_err(|e| format!("환경을 만들지 못했다: {e}"))?;
+        // 만들기 전의 자식 창을 적어 둔다 — 만든 뒤 견줘 새로 생긴 것이 웹 창이다.
+        let before = crate::clip::children(hwnd);
         let controller =
             crate::view::make_controller(&env, hwnd).map_err(|e| format!("화면을 붙이지 못했다: {e}"))?;
         // 안전: 방금 받은 조종기에서 화면을 꺼낸다.
         let webview = unsafe { controller.CoreWebView2() }.map_err(|e| format!("화면을 얻지 못했다: {e}"))?;
         let loading = std::rc::Rc::new(std::cell::Cell::new(false));
         watch_loading(&webview, &loading);
-        let me = Self { controller, webview, last: RECT::default(), shown: true, loading };
+        let host = crate::clip::new_child(hwnd, &before);
+        let me = Self {
+            controller,
+            webview,
+            last: RECT::default(),
+            shown: true,
+            host,
+            hole: None,
+            loading,
+        };
         me.go(url);
         Ok(me)
     }
@@ -61,6 +77,13 @@ impl Embedded {
         let r = RECT { left: x, top: y, right: x + w.max(0), bottom: y + h.max(0) };
         if same(&r, &self.last) {
             return;
+        }
+        // 자리가 바뀌면 도려낸 것도 뜻이 없어진다 — 다음 `clip` 이 다시 잡도록 비운다.
+        if self.hole.is_some() {
+            self.hole = None;
+            if let Some(host) = self.host {
+                crate::clip::punch(host, (0, 0), None);
+            }
         }
         self.last = r;
         // 안전: 조종기는 이 실에서 만든 것이고 아직 살아 있다.
@@ -175,6 +198,35 @@ impl Embedded {
     /// 같은 이유의 조종기 손잡이. 확대 배율은 화면이 아니라 조종기가 갖고 있다.
     pub(crate) fn controller(&self) -> &ICoreWebView2Controller {
         &self.controller
+    }
+
+    /// 이 자리를 **도려낸다**(부모 창 좌표). `None` 이면 온전히 보인다.
+    ///
+    /// 메뉴나 창이 웹 화면 위에 뜨면 그 자리만 파낸다. 예전에는 통째로 숨겼는데,
+    /// 작은 메뉴 하나에 웹 화면이 다 사라져 어색했다(사용자 지적 2026-08-30).
+    ///
+    /// 웹 창을 못 찾았으면 **아무것도 하지 않는다** — 부르는 쪽이 `can_clip()` 을 보고
+    /// 그때는 예전처럼 통째로 숨긴다.
+    pub fn clip(&mut self, hole: Option<(i32, i32, i32, i32)>) {
+        let Some(host) = self.host else { return };
+        // 부모 창 좌표를 웹 창 안의 좌표로 옮긴다.
+        let r = hole.map(|(x, y, w, h)| RECT {
+            left: x - self.last.left,
+            top: y - self.last.top,
+            right: x + w - self.last.left,
+            bottom: y + h - self.last.top,
+        });
+        if crate::clip::same_hole(r, self.hole) {
+            return;
+        }
+        self.hole = r;
+        let size = (self.last.right - self.last.left, self.last.bottom - self.last.top);
+        crate::clip::punch(host, size, r);
+    }
+
+    /// 도려낼 수 있는가 — 웹 창을 찾았는가.
+    pub fn can_clip(&self) -> bool {
+        self.host.is_some()
     }
 
     /// 지금 보고 있는 쪽의 **제목**. 아직 안 읽혔으면 빈 글.
