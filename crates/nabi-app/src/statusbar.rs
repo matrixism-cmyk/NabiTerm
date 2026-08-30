@@ -107,6 +107,12 @@ impl NabiApp {
         let mut open_fwd = false;
         let mut set_enc: Option<String> = None;
         let mut focus_sftp = false;
+        let mut jump_fail = false;
+        // 실패한 명령 수 — 가변 차용 전에 미리 센다(칩은 아래에서 그린다).
+        let failed = focused
+            .and_then(|p| self.orch.panes.read().ok().and_then(|m| m.get(&p).cloned()))
+            .and_then(|v| v.model.lock().ok().map(|md| md.failed_count()))
+            .unwrap_or(0);
 
         let sbar = egui::Frame::NONE
             .fill(crate::theme_ui::STATUS_FILL)
@@ -127,6 +133,9 @@ impl NabiApp {
                 let rec = focused.and_then(|p| self.session_logs.get(&p));
                 if crate::statuschips::rec_badge(ui, lang, rec.is_some(), rec.is_some_and(|l| l.cast)) {
                     stop_rec = true; // 배지를 누르면 기록을 멈춘다(실제 처리는 아래에서).
+                }
+                if crate::statuschips::failed_badge(ui, lang, failed) {
+                    jump_fail = true; // 누르면 실패한 자리로 간다(아래에서 처리).
                 }
                 // 표식(운영/스테이징/개발) — 색만이 아니라 글자로도 적는다. 지금 어디에
                 // 명령을 치고 있는지가 상태바에서 늘 보여야 한다.
@@ -332,6 +341,9 @@ impl NabiApp {
         // 코드를 두 벌 두면 언젠가 한쪽만 고쳐진다(배치 AK).
         if stop_rec {
             self.toggle_session_log();
+        }
+        if jump_fail {
+            self.jump_failed(true); // 칩을 누르면 다음 실패한 명령으로.
         }
         if focus_sftp {
             if let Some(p) = self.sftp_pane {

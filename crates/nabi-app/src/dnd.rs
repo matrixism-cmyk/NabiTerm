@@ -35,16 +35,14 @@ impl NabiApp {
         match target {
             Some(DropTarget::BrowserTab(pane)) => {
                 if let Some(dir) = self.browser_tabs.get(&pane).map(|b| b.path.clone()) {
-                    for src in &paths {
-                        crate::browserops::copy_into(src, &dir);
-                    }
+                    let failed = paths.iter().map(|s| crate::browserops::copy_into(s, &dir)).sum();
+                    self.note_copy_failed(failed);
                 }
             }
             Some(DropTarget::SidebarBrowser) => {
                 let dir = self.browser.path.clone();
-                for src in &paths {
-                    crate::browserops::copy_into(src, &dir);
-                }
+                let failed = paths.iter().map(|s| crate::browserops::copy_into(s, &dir)).sum();
+                self.note_copy_failed(failed);
             }
             Some(DropTarget::Sftp) => {
                 if self.sftp.id.is_some() {

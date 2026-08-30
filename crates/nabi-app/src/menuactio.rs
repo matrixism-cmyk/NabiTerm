@@ -53,4 +53,33 @@ impl NabiApp {    /// 가져온 세션들을 추가(이름 중복은 교체)하�
         }
     }
 
+    /// 세션을 파일로 내보낸다. **고른 확장자가 형식을 정한다.**
+    ///
+    /// 예전에는 설정 폴더에 `sessions_export.json` 을 만들고 탐색기를 열었다. 다른
+    /// 내보내기는 전부 저장 대화상자를 쓰는데 이것만 달랐고(드리프트), 어디에 무엇이
+    /// 생겼는지도 탐색기를 뒤져야 알 수 있었다.
+    ///
+    /// 그리고 **가져오기는 TOML 도 읽는데 내보내기는 JSON 만 냈다.** 내보낸 것을 그대로
+    /// 다시 넣을 수는 있었지만, TOML 로 관리하는 사람은 손으로 옮겨 적어야 했다
+    /// (`to_toml` 이 있는데 아무도 안 불렀다 — `xtask unused` 로 찾았다).
+    pub(crate) fn export_sessions(&mut self) {
+        let Some(p) = rfd::FileDialog::new()
+            .set_file_name("sessions_export.json")
+            .add_filter("json", &["json"])
+            .add_filter("toml", &["toml"])
+            .save_file()
+        else {
+            return; // 취소는 무언(無言) — 사용자가 그만둔 것이지 실패가 아니다.
+        };
+        let toml = p.extension().is_some_and(|e| e.eq_ignore_ascii_case("toml"));
+        let made = match toml {
+            true => nabi_session::export::to_toml(&self.sessions),
+            false => nabi_session::export::to_json(&self.sessions),
+        };
+        let msg = match made.and_then(|d| std::fs::write(&p, d).map_err(|e| e.to_string())) {
+            Ok(()) => format!("{} \u{2713} {}", tr(self.lang, "menu.exportsessions"), p.display()),
+            Err(e) => format!("\u{2715} {} \u{2014} {e}", p.display()),
+        };
+        self.notify = Some((msg, std::time::Instant::now()));
+    }
 }

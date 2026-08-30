@@ -26,6 +26,8 @@ pub(crate) fn session_menu_items(ui: &mut egui::Ui, s: &SavedSession, lang: Lang
             ui.close();
         }
         if ui.button(tr(lang, "sessions.testconn")).clicked() { action = Some(MenuAction::TestConnection(host.clone(), *port)); ui.close(); }
+        // 저장된 호스트키를 그 자리에서 — 관리 창에서 수백 줄 중 찾지 않아도 된다.
+        if ui.button(tr(lang, "sessions.hostkey")).clicked() { action = Some(MenuAction::ShowHostKey(host.clone(), *port)); ui.close(); }
         if ui.button(tr(lang, "sessions.copyurl")).clicked() {
             if let Some(url) = crate::sshconfig::to_ssh_url(s) { ui.ctx().copy_text(url); }
             ui.close();

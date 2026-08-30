@@ -118,6 +118,16 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         tr(lang, "settings.clock"),
         &mut cfg.appearance.show_clock,
     );
+    // 탭에 pane 번호(#N)를 붙인다. **켤 방법이 없었다** — 설정에는 있는데 화면에
+    // 스위치가 없어서 파일을 직접 고쳐야 했다(config-keys 검사로 찾았다).
+    // AI 제어에서 `--pane <N>` 을 쓰라고 안내하면서 정작 그 번호를 못 켜고 있었다.
+    chk_help(
+        ui,
+        tr(lang, "settings.showpaneids"),
+        tr(lang, "settings.showpaneids.hint"),
+        &mut cfg.appearance.show_pane_ids,
+        true,
+    );
     chk(
         ui,
         tr(lang, "settings.warnpaste"),
@@ -178,13 +188,33 @@ fn chk_help(ui: &mut egui::Ui, label: &str, help: &str, value: &mut bool, enable
     ui.end_row();
 }
 
-fn lang_choices() -> [(&'static str, &'static str); 4] {
+/// 언어 고르기 목록.
+///
+/// "System" 은 그것만 봐서는 **무엇으로 정해졌는지 알 수 없다.** 한국어로 나오는데
+/// 목록에는 "System" 이라고만 적혀 있으면, 이게 지금 한국어인지 영어인지 확인하려고
+/// 굳이 골라 봐야 한다. 그래서 실제로 정해진 언어를 괄호에 적는다.
+fn lang_choices() -> [(&'static str, String); 4] {
+    // `is_explicit` 은 "이 코드가 언어를 못 박는가"를 답한다. 못 박지 않는 값(system·빈 값)
+    // 이면 실제로 무엇이 뽑혔는지 보여 줘야 한다.
+    let auto = match nabi_i18n::Lang::is_explicit("system") {
+        true => String::new(), // 있을 수 없는 일이지만, 그러면 굳이 덧붙이지 않는다.
+        false => format!(" ({})", lang_name(nabi_i18n::Lang::from_code("system"))),
+    };
     [
-        ("system", "System"),
-        ("en", "English"),
-        ("ko", "한국어"),
-        ("ja", "日本語"),
+        ("system", format!("System{auto}")),
+        ("en", "English".to_string()),
+        ("ko", "한국어".to_string()),
+        ("ja", "日本語".to_string()),
     ]
+}
+
+/// 그 언어를 그 언어로 적은 이름.
+fn lang_name(l: Lang) -> &'static str {
+    match l {
+        Lang::Ko => "한국어",
+        Lang::Ja => "日本語",
+        _ => "English",
+    }
 }
 
 /// SSH 페이지 — 접속 유지·통계 경고처럼 "연결 자체"에 걸리는 설정만 모은다
@@ -209,6 +239,12 @@ pub(crate) fn ssh_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.sshkeepalive"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_keepalive_secs).range(0..=3600).suffix(" s"))
         .on_hover_text(tr(lang, "settings.sshkeepalivehint"));
+    ui.end_row();
+    // 서버 상태를 몇 초마다 물을 것인가. 0 이면 묻지 않는다.
+    // 스키마 주석에 "기본 3, 0=비활성"이라고 적어 두고도 화면에 없었다.
+    ui.label(tr(lang, "settings.statssecs"));
+    ui.add(egui::DragValue::new(&mut cfg.terminal.ssh_stats_secs).range(0..=60).suffix(" s"))
+        .on_hover_text(tr(lang, "settings.statssecshint"));
     ui.end_row();
     ui.label(tr(lang, "settings.statsalert"));
     ui.add(egui::Slider::new(&mut cfg.terminal.ssh_stats_alert_pct, 50..=100).suffix("%"));

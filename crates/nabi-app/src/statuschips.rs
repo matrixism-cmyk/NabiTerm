@@ -21,6 +21,27 @@ pub(crate) fn rec_badge(ui: &mut egui::Ui, lang: Lang, on: bool, cast: bool) -> 
         .clicked()
 }
 
+/// 이 pane 에서 **실패한 명령이 몇 개**인지. 누르면 그 자리로 간다.
+///
+/// 실패 지점으로 건너뛰는 길은 전부터 있었는데(`jump_failed_prompt`), 건너뛸 것이
+/// 있는지를 알 길이 없었다 — 눌러 보고 "실패한 명령이 없습니다"를 읽어야 알았다.
+/// 개수를 세는 함수도 이미 있었고 주석에 "화면에 개수를 보여 주려면 필요하다"고
+/// 적혀 있었는데 아무도 부르지 않았다(`xtask unused` 로 찾았다).
+///
+/// 0 이면 아무것도 그리지 않는다. 잘 되고 있을 때 눈에 걸리적거릴 이유가 없다.
+///
+/// 눌렀는지 돌려준다 — 실제로 옮기는 일은 부르는 쪽이 한다.
+pub(crate) fn failed_badge(ui: &mut egui::Ui, lang: Lang, n: usize) -> bool {
+    if n == 0 {
+        return false;
+    }
+    ui.separator();
+    let label = egui::RichText::new(format!("\u{2717} {n}")).color(crate::theme_ui::ERR);
+    ui.add(egui::Label::new(label).sense(egui::Sense::click()))
+        .on_hover_text(format!("{} \u{2014} {}", tr(lang, "status.failed"), tr(lang, "status.failedjump")))
+        .clicked()
+}
+
 /// SSH 배지: 협상 KEX가 PQ(ML-KEM 하이브리드)면 방패 + 상세 툴팁.
 pub(crate) fn ssh_badge(ui: &mut egui::Ui, lang: Lang, focused: Option<PaneId>) {
                     // T1-2: 협상된 KEX가 PQ(ML-KEM 하이브리드)면 방패 배지 + 상세 툴팁.

@@ -48,6 +48,17 @@ impl KnownHostEntry {
     pub fn to_line(&self) -> String {
         format!("{} {} {}", self.hosts.join(","), self.key_type, self.key_b64)
     }
+
+    /// 이 항목의 SHA-256 지문("SHA256:...") — 서버에서 `ssh-keygen -lf` 로 찍은 것과
+    /// **글자 그대로 견줄 수 있는** 형태다. 읽지 못하면 None.
+    ///
+    /// 지문을 새로 계산하지 않고 [`crate::fingerprint::sha256_fingerprint`] 를 쓴다 —
+    /// TOFU 창이 보여 주는 값과 다르면 견주는 뜻이 없다.
+    pub fn fingerprint(&self) -> Option<String> {
+        let openssh = format!("{} {}", self.key_type, self.key_b64);
+        let key = russh::keys::PublicKey::from_openssh(&openssh).ok()?;
+        Some(crate::fingerprint::sha256_fingerprint(&key))
+    }
 }
 
 /// known_hosts 내용에서 host/port에 해당하는 첫 항목을 찾는다(없으면 None).

@@ -66,7 +66,15 @@ pub(crate) fn status(ui: &mut egui::Ui, doc: &EditorDoc, cur: (usize, usize), se
             ui.label(format!("Sel {}", crate::humanfmt::human(b - a)));
         }
         ui.separator();
-        ui.label(format!("{lines} lines \u{00b7} {}", crate::humanfmt::human(tb.data.total())));
+        // 크기에 마우스를 올리면 **되돌리기가 들고 있는 양**을 함께 보여 준다.
+        // 이 화면은 기가바이트짜리 파일을 여는 자리라, 편집을 오래 하면 되돌리기가
+        // 파일보다 커지기도 한다. 늘 보여 주면 거슬리니 물었을 때만 답한다.
+        ui.label(format!("{lines} lines \u{00b7} {}", crate::humanfmt::human(tb.data.total())))
+            .on_hover_text(format!(
+                "{}: {}",
+                tr(lang, "editor.undomem"),
+                crate::humanfmt::human(tb.undo_bytes() as u64)
+            ));
         ui.separator();
         ui.label(tb.data.encoding());
         ui.separator();

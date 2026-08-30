@@ -32,6 +32,8 @@ pub(crate) enum MenuAction {
     NewSshConnection,
     DeleteSession(String),
     ExportSessions,
+    /// 이 호스트의 저장된 호스트키를 보여 준다(호스트, 포트).
+    ShowHostKey(String, u16),
     ImportSessions,
     ImportSshConfig,
     ImportFileZilla,

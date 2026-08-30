@@ -22,6 +22,7 @@ mod prerelease;
 mod soak; mod postverify;
 mod pkg; mod releasetarget; mod unsafeaudit;
 mod unusedpub;
+mod configkeys;
 mod i18nkeys;
 
 use std::process::ExitCode;
@@ -35,6 +36,8 @@ fn main() -> ExitCode {
         "unused" => unusedpub::run(),
         // 화면에 ? 로 나올 i18n 키 — 오타 하나가 못 쓰는 단추를 만든다(i18nkeys.rs).
         "i18n-keys" => i18nkeys::run(),
+        // 적어 두기만 하고 아무도 안 읽는 설정 — 바꿔도 아무 일이 없다(configkeys.rs).
+        "config-keys" => configkeys::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

@@ -1,4 +1,4 @@
-//! 터미널 화면 모델(alacritty_terminal 래퍼) + damage(dirty) 추적.
+//! 터미널 화면 모델(alacritty_terminal 래퍼) + 바뀜 세대(dirty_gen) 추적.
 //!
 //! vt100에서 교체(T1): 스크롤백 언더플로 버그 해결 + 향후 이미지/reflow 기반.
 
@@ -26,7 +26,6 @@ pub struct TermModel {
     pub(crate) next_img_id: u64,
     pub(crate) cell_px_h: f32,
     pub(crate) kitty: Option<crate::images::KittyPending>,
-    dirty: bool,
     /// 내용 변경 세대(process/resize마다 +1) — 렌더 캐시 무효화 키(cache.rs).
     pub(crate) dirty_gen: u64,
     /// 렌더 계산 캐시(render_rows / 밑줄맵) — 별개 RefCell(빌림 충돌 방지).
@@ -59,7 +58,6 @@ impl TermModel {
             next_img_id: 0,
             cell_px_h: 17.0,
             kitty: None,
-            dirty: true,
             dirty_gen: 0,
             rows_cache: std::cell::RefCell::default(),
             ul_cache: std::cell::RefCell::default(),
@@ -130,7 +128,6 @@ impl TermModel {
         if t != self.title {
             self.title = t;
         }
-        self.dirty = true;
         self.dirty_gen = self.dirty_gen.wrapping_add(1); // 렌더 캐시 무효화.
     }
 
@@ -165,7 +162,6 @@ impl TermModel {
     pub fn resize(&mut self, size: GridSize) {
         self.term
             .resize(TermSize::new(size.cols() as usize, size.rows() as usize));
-        self.dirty = true;
         self.dirty_gen = self.dirty_gen.wrapping_add(1); // 렌더 캐시 무효화(reflow).
     }
 
@@ -174,19 +170,9 @@ impl TermModel {
         GridSize::new(self.term.columns() as u16, self.term.screen_lines() as u16)
     }
 
-    /// 마지막 clear 이후 변경이 있었는지(재그리기 게이트).
-    pub fn dirty(&self) -> bool {
-        self.dirty
-    }
-
-    /// 렌더 후 dirty 플래그를 내린다.
-    pub fn clear_dirty(&mut self) {
-        self.dirty = false;
-    }
-
     /// 검색 등에서 화면 갱신 표시.
     pub(crate) fn mark_dirty(&mut self) {
-        self.dirty = true;
+
     }
 
     /// 현재 커서 상태(가시 영역 좌표).
@@ -271,7 +257,7 @@ impl TermModel {
     /// 스크롤백을 delta줄 이동(+=과거, -=최신). 상한은 코어가 클램프한다.
     pub fn scroll_by(&mut self, delta: i32) {
         self.term.scroll_display(Scroll::Delta(delta));
-        self.dirty = true;
+
     }
 
     /// 현재 스크롤백 오프셋(0=최신).
@@ -283,7 +269,7 @@ impl TermModel {
     pub fn scroll_to_bottom(&mut self) {
         if self.scrollback_offset() != 0 {
             self.term.scroll_display(Scroll::Bottom);
-            self.dirty = true;
+
         }
     }
 
@@ -311,13 +297,13 @@ impl TermModel {
         if delta > 0 {
             self.term.scroll_display(Scroll::Delta(delta.min(i32::MAX as usize) as i32));
         }
-        self.dirty = true;
+
     }
 
     /// 스크롤백 맨 위(가장 오래된)로 이동한다.
     pub fn scroll_to_top(&mut self) {
         self.term.scroll_display(Scroll::Top);
-        self.dirty = true;
+
     }
 
     /// 히스토리(스크롤백) 줄 수(렌더러 스크롤바 길이 산출에도 사용).
@@ -378,9 +364,6 @@ mod tests {
         let rows = m.render_rows(&crate::cell::Theme::default());
         assert_eq!(rows[0][0].text, "h");
         assert_eq!(rows[0][1].text, "i");
-        assert!(m.dirty());
-        m.clear_dirty();
-        assert!(!m.dirty());
     }
 
     #[test]

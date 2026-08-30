@@ -174,23 +174,7 @@ impl NabiApp {
             MenuAction::NewSshConnection => self.new_ssh_connection(),
             // 즉시 지우지 않고 한 번 묻는다 — ✕가 ✏ 옆이라 오클릭이 쉽고 되돌릴 수 없다(sessiondel).
             MenuAction::DeleteSession(name) => self.session_delete_ask = Some(name),
-            MenuAction::ExportSessions => {
-                if let (Ok(json), Some(dir)) =
-                    (nabi_session::export::to_json(&self.sessions), self.config_path.parent())
-                {
-                    let path = dir.join("sessions_export.json");
-                    // 내보내기는 대개 **백업 삼아** 한다. 실패했는데 탐색기만 열리면 사용자는
-                    // 파일이 생긴 줄 알고, 필요할 때가 되어서야 없다는 것을 안다(배치 AF).
-                    match std::fs::write(&path, json) {
-                        Ok(()) => {
-                            let _ = std::process::Command::new("explorer").arg(dir).spawn();
-                        }
-                        Err(e) => {
-                            self.notify = Some((format!("{}: {e}", path.display()), std::time::Instant::now()));
-                        }
-                    }
-                }
-            }
+            MenuAction::ExportSessions => self.export_sessions(),
             MenuAction::ImportSessions => self.import_session_file(),
             MenuAction::OpenBrowserTab => {
                 self.open_browser_tab();
@@ -236,6 +220,7 @@ impl NabiApp {
             MenuAction::CheckAllReachable => self.check_all_reachable(ctx),
             MenuAction::ReopenClosedDoc => self.reopen_closed_doc(),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
+            MenuAction::ShowHostKey(host, port) => self.show_host_key(&host, port, ctx),
             MenuAction::TogglePin(name) => {
                 let v = &mut self.config.appearance.pinned_sessions;
                 match v.iter().position(|x| x == &name) {

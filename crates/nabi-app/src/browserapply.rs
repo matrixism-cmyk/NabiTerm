@@ -143,7 +143,11 @@ impl NabiApp {
         }
         if let Some(name) = a.duplicate {
             for n in bulk(&name, &self.browser.multi) {
-                crate::browserops::duplicate_in_dir(&path, &n, nabi_i18n::tr(self.lang, "browser.copyword")); // 복제(충돌 시 번호).
+                // 복제(충돌 시 번호). 폴더 안의 몇 개가 잠겨 있으면 그것만 빠진다.
+                let failed = crate::browserops::duplicate_in_dir(&path, &n, nabi_i18n::tr(self.lang, "browser.copyword"))
+                    .map(|(_, f)| f)
+                    .unwrap_or(0);
+                self.note_copy_failed(failed);
             }
         }
         if let Some(name) = a.edit { self.edit_local_dispatch(name); } // 내장/외부 편집.
@@ -260,7 +264,12 @@ impl NabiApp {
             if let Some((old, new)) = self.browser.rename.take() {
                 let new = new.trim();
                 if crate::sftppath::valid_name(new) && new != old {
-                    let _ = std::fs::rename(path.join(&old), path.join(new));
+                    // 실패를 삼키면 이름이 그대로인 화면만 남는다 — 사용자는 프로그램이
+                    // 자기 입력을 무시했다고 본다. 파일이 열려 있거나 같은 이름이 이미
+                    // 있으면 실패하는데, 둘 다 흔하다.
+                    if let Err(e) = std::fs::rename(path.join(&old), path.join(new)) {
+                        self.notify = Some((format!("\u{2715} {old} \u{2192} {new}: {e}"), std::time::Instant::now()));
+                    }
                 }
             }
         }

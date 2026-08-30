@@ -75,7 +75,15 @@ impl NabiApp {
             return;
         }
         self.rules_drop_noticed = true;
-        let msg = format!("{} {}", tr(self.lang, "rules.dropped"), self.agent_watch.dropped);
+        // 버린 개수만 말하면 "몇 개 중에서"를 모른다. 특히 규칙 폴더 이름을 잘못
+        // 적어 하나도 안 읽힌 경우, 버린 것도 0 이라 아무 말도 안 하게 된다.
+        let loaded = self.agent_watch.rules_loaded();
+        let msg = format!(
+            "{} {} / {}",
+            tr(self.lang, "rules.dropped"),
+            self.agent_watch.dropped,
+            loaded
+        );
         self.notify = Some((msg, Instant::now()));
     }
 }

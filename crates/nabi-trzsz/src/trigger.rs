@@ -93,11 +93,6 @@ impl TriggerScanner {
         self.suspended = false;
     }
 
-    /// 지금 전송 중이라 화면 출력을 멈춘 상태인가.
-    pub fn is_suspended(&self) -> bool {
-        self.suspended
-    }
-
     /// 출력 청크를 넣고, 화면에 보낼 바이트와(있다면) 트리거를 받는다.
     pub fn feed(&mut self, chunk: &[u8]) -> Scanned {
         if self.suspended {
@@ -308,7 +303,8 @@ mod tests {
     fn suspends_until_resumed() {
         let mut sc = TriggerScanner::new();
         assert!(sc.feed(b"::TRZSZ:TRANSFER:S:1.1.8:1755780000000\n").trigger.is_some());
-        assert!(sc.is_suspended());
+        // 멈췄는지는 **하는 짓으로** 확인한다 — 다음 줄이 화면으로 안 가는 것이 곧 그것이다.
+        // 상태를 묻는 함수를 따로 두었더니 이 시험 말고는 아무도 부르지 않았다.
         let r = sc.feed(b"#CFG:eJx\n");
         assert!(r.display.is_empty(), "전송 중에는 화면에 아무것도 가지 않는다");
         assert_eq!(r.rest, b"#CFG:eJx\n");

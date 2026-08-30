@@ -42,6 +42,14 @@ impl AgentWatch {
         Self { manifests, dropped, last: Instant::now(), state: HashMap::new(), cand: HashMap::new() }
     }
 
+    /// 읽어 들인 규칙이 모두 몇 개인가.
+    ///
+    /// 버린 개수만 말하면 "몇 개 중에서"를 모른다. 특히 규칙 폴더 이름을 잘못 적어
+    /// 하나도 안 읽힌 경우, 버린 것도 0 이라 아무 말도 안 하게 된다.
+    pub fn rules_loaded(&self) -> usize {
+        self.manifests.iter().map(|m| m.rule_count()).sum()
+    }
+
     pub fn manifest(&self, kind: &str) -> Option<&Manifest> {
         self.manifests.iter().find(|m| m.id == kind)
     }
