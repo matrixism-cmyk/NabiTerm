@@ -10,6 +10,11 @@ use nabi_types::PaneId;
 /// 엄격한 AI CLI 판정: basename이 목록과 정확히 일치할 때만 그 이름을 돌려준다
 /// (aistatus의 부분문자열 폴백 배제 — 리뷰 #10, grep 'claude ' 따위 오탐 방지).
 /// 주입 대상 선정(handoff)과 AI 명령 바(aicmdbar)가 공유하는 단일 판정원.
+///
+/// **`aistatus::is_ai_command` 와 목록이 다른 것은 일부러다.** 저쪽은 상태바에 배지를
+/// 붙일지 정하는 것이라 넓게 본다(ollama·sgpt 처럼 대화형이 아닌 것도 포함). 이쪽은
+/// **글자를 밀어 넣을 상대**를 고르는 것이라 좁게 본다 — 잘못 고르면 남의 셸에
+/// 프롬프트가 찍힌다.
 pub(crate) fn ai_command_name(cmd: &str) -> Option<&'static str> {
     let base = cmd.split_whitespace().next().unwrap_or("");
     let name = base.rsplit(['\\', '/']).next().unwrap_or(base).trim_end_matches(".exe").to_ascii_lowercase();
