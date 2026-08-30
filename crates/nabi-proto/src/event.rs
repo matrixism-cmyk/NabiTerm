@@ -50,6 +50,8 @@ pub enum Event {
     AgentStatus { pane: PaneId, state: &'static str },
     /// 레이아웃 export 회신(B4) — 제어 평면 요청 seq에 JSON을 되돌려 준다.
     LayoutJson { seq: u64, json: String },
+    /// 화면 캡처 결과 — 성공이면 `path`, 실패면 `error` 에 이유가 담긴다.
+    ShotDone { seq: u64, path: String, error: String },
     /// 웹 탭 요청의 답(목록·스크립트 결과 공용). `ok` 가 false 면 `data` 가 까닭이다.
     WebResult { seq: u64, ok: bool, data: String },
     /// 제어평면 SFTP 조작 회신(S6-55): ok=성공, data=목록 JSON 또는 사유.

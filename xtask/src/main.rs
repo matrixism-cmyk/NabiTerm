@@ -23,6 +23,7 @@ mod soak; mod postverify;
 mod pkg; mod releasetarget; mod unsafeaudit;
 mod unusedpub;
 mod configkeys;
+mod e2everbs;
 mod i18nkeys;
 
 use std::process::ExitCode;

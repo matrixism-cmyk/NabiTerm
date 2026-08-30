@@ -21,6 +21,12 @@ pub enum AppCtl {
     ///
     /// 위의 `OpenBrowser` 는 **파일** 탐색기다. 이름이 비슷해 헷갈리기 쉬워 나눠 적는다.
     OpenWeb { url: Option<String>, window: bool },
+    /// 화면을 찍는다 — 앱이 `Event::ShotDone{seq, ..}` 로 **결과를 돌려준다.**
+    ///
+    /// 예전에는 요청을 넘기고 곧바로 "ok" 를 답했다. 그림은 다음 프레임에 그려지므로,
+    /// 부른 쪽이 바로 그 파일을 읽으면 없다. 어디에 남았는지도 알 수 없었다 —
+    /// 경로는 화면 토스트로만 갔다. 사람은 그걸 보지만 AI 에이전트는 못 본다.
+    ShotSeq { seq: u64, pane: Option<u64>, out: Option<String> },
     /// 스스로 최신판으로 올린다(check 면 확인만).
     SelfUpdate { check: bool },
     /// 저장된 SFTP 세션 이름으로 원격 탭 열기.

@@ -81,7 +81,9 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   Save a PNG of the window, or of one pane's area. `capture` gives you **text**; this gives you
   **pixels** — use it when text cannot tell you what you need: did the image render, is the
   colour right, is the layout broken, did the built-in browser actually load the page.
-  Without `--out` it writes to the temp folder and reports the path.
+  Without `--out` it writes to the temp folder. **It answers only once the file is written,
+  and the answer is the path** — so you can read that file immediately. If it fails you get
+  the reason, not a false success.
 - `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
 - `nabi cli integration install claude` — auto-install a SessionStart hook that reports the
   session id, so workspace restore resumes the exact session (`claude --resume <id>`).

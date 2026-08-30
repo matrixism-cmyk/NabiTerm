@@ -73,6 +73,20 @@ fn stage_release(root: &Path, portable: bool, steps: &mut crate::tellprogress::S
     // 넣었으니 됐다고 믿지 않는다. 실제로 띄워 본다.
     steps.step("실행되는지 확인");
     smoke_test(&stage)?;
+    // 뜨는 것과 **쓸 수 있는 것**은 다르다. 만든 그 exe 로 실제 시나리오를 끝까지 몬다 —
+    // 창을 띄우고, pane 을 열고, 명령을 넣고, 화면을 읽고, 제어 동사를 전수로 던진다.
+    //
+    // 여기까지 하는 이유는 v0.1.491 이다. 그때는 exe 가 아예 안 떴는데 게이트 셋이 모두
+    // 통과했다. 지금은 뜨는 것까지 본다. 하지만 뜨기만 하고 제어 평면이 죽어 있으면
+    // AI 에이전트에게는 고장 난 프로그램이고, 그것도 게이트로는 안 보인다.
+    steps.step("실제로 몰아 보기");
+    let staged_exe = stage.join("nabiTerm.exe");
+    if let Err(why) = crate::e2e::smoke(Some(staged_exe.display().to_string())) {
+        eprintln!("만든 exe 로 시나리오를 끝까지 몰지 못했다 — 이대로 내보내지 않는다.");
+        eprintln!("  {why}");
+        return Err(());
+    }
+    println!("실제로 몰아 봄: 창 기동 → pane → 입력 → 화면 읽기 → 제어 동사 전수");
 
     let marker = stage.join("portable.toml");
     if portable {

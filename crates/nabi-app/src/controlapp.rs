@@ -11,12 +11,12 @@ impl crate::app::NabiApp {
         while let Ok(act) = self.control_app_rx.try_recv() {
             match act {
                 AppCtl::Screenshot { pane, out } => {
-                    // 성공하면 어디에 남겼는지, 실패하면 왜인지 알린다. 조용히 끝나면
-                    // 부른 쪽이 파일을 어디서 찾아야 할지 알 수 없다.
-                    let msg = match self.take_screenshot(ctx, pane, out) {
-                        Ok(p) => format!("\u{1f4f7} {}", p.display()),
-                        Err(e) => format!("\u{1f4f7} {e}"),
-                    };
+                    let msg = self.shoot(ctx, pane, out, None);
+                    self.notify = Some((msg, std::time::Instant::now()));
+                }
+                AppCtl::ShotSeq { seq, pane, out } => {
+                    // 결과를 **부른 쪽에도** 돌려준다. 화면 토스트만으로는 AI 가 알 수 없다.
+                    let msg = self.shoot(ctx, pane, out, Some(seq));
                     self.notify = Some((msg, std::time::Instant::now()));
                 }
                 AppCtl::OpenBrowser { path } => {
@@ -155,4 +155,28 @@ impl crate::app::NabiApp {
         }
     }
 
+}
+
+impl crate::app::NabiApp {
+    /// 화면을 찍고, 알림에 쓸 한 줄을 돌려준다.
+    ///
+    /// `seq` 가 있으면 **부른 쪽에도** 결과를 이벤트로 보낸다. 화면 토스트만 내면 사람은
+    /// 보지만 AI 에이전트는 못 본다 — 어디에 남았는지도, 왜 실패했는지도 모른 채
+    /// "됐다"는 답만 받는다. 실제로 그 상태였고, 제어 동사 전수 스모크가 잡았다.
+    fn shoot(
+        &mut self,
+        ctx: &egui::Context,
+        pane: Option<u64>,
+        out: Option<String>,
+        seq: Option<u64>,
+    ) -> String {
+        let (msg, path, error) = match self.take_screenshot(ctx, pane, out) {
+            Ok(p) => (format!("\u{1f4f7} {}", p.display()), p.display().to_string(), String::new()),
+            Err(e) => (format!("\u{1f4f7} {e}"), String::new(), e.to_string()),
+        };
+        if let Some(seq) = seq {
+            self.control_events.publish(&nabi_proto::Event::ShotDone { seq, path, error });
+        }
+        msg
+    }
 }

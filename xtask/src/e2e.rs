@@ -136,6 +136,8 @@ fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
         // JSON 문자열 안의 "NABI_E2E_OK"가 명령 에코 줄 말고도 한 번 더(출력) 있으면 성공.
         if r.matches("NABI_E2E_OK").count() >= 2 {
             open_big_file(&mut pipe, &mut rd)?; // 흘려 읽기 편집기가 실제로 뜨는지.
+            // 제어 동사를 전수로 던져 본다 — 이름만 맞고 죽어 있는 것을 잡는다.
+            crate::e2everbs::sweep(&mut pipe, &mut rd, pane)?;
             let close = format!(r#"{{"op":"close-pane","pane":{pane}}}"#);
             let _ = roundtrip(&mut pipe, &mut rd, &close)?;
             return Ok(());

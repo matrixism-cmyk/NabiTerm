@@ -69,6 +69,37 @@ pub(crate) fn group_of(req: &ControlRequest) -> crate::policy::Group {
     }
 }
 
+/// 화면 캡처를 앱에 시키고 **다 찍을 때까지** 기다렸다가 경로를 돌려준다.
+///
+/// 기다리는 시간은 넉넉히 준다 — 큰 화면에서 몇 프레임 걸릴 수 있다. 시간이 지나면
+/// 실패로 답한다. "됐다"고 해 놓고 아무것도 없는 것보다 늦더라도 사실대로 말하는 편이 낫다.
+fn shot_roundtrip(
+    app_tx: &Sender<AppCtl>,
+    events: &EventHub,
+    pane: Option<u64>,
+    out: Option<String>,
+) -> ControlResponse {
+    let seq = SPAWN_SEQ.fetch_add(1, Ordering::Relaxed);
+    let rx = events.subscribe();
+    app_tx.send(AppCtl::ShotSeq { seq, pane, out }).ok();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while std::time::Instant::now() < deadline {
+        while let Ok(ev) = rx.try_recv() {
+            if let Event::ShotDone { seq: s, path, error } = ev {
+                if s != seq {
+                    continue;
+                }
+                return match error.is_empty() {
+                    true => ControlResponse::Event { pane: 0, kind: "shot".into(), data: path },
+                    false => err(&error),
+                };
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    err("화면 캡처 회신 시간 초과")
+}
+
 /// SFTP 조작을 앱에 보내고 `SftpCtlDone{seq}` 회신을 기다린다(LayoutExport와 같은 패턴).
 fn sftp_roundtrip(
     app_tx: &Sender<AppCtl>,
@@ -230,9 +261,13 @@ pub(crate) fn dispatch_write(
         }
         ControlRequest::Screenshot { pane, out } => {
             tracing::info!(target: "control", from = ?from, ?pane, "screenshot");
-            // 화면은 UI 실만 만질 수 있다. 앱에 시키고 결과 경로는 그쪽이 알린다.
-            app_tx.send(AppCtl::Screenshot { pane, out }).ok();
-            ControlResponse::Ok
+            // 화면은 UI 실만 만질 수 있다. 앱에 시키고 **다 찍을 때까지 기다린다.**
+            //
+            // 예전에는 시키자마자 "ok" 를 답했다. 그림은 다음 프레임에 그려지므로 부른
+            // 쪽이 곧바로 그 파일을 읽으면 없다. 어디에 남았는지도 알 수 없었다 —
+            // 경로가 화면 토스트로만 갔기 때문이다. 사람은 보지만 AI 는 못 본다.
+            // 제어 동사 전수 스모크가 이것을 잡았다(배치 BG).
+            shot_roundtrip(app_tx, events, pane, out)
         }
         ControlRequest::Progress { pane, percent } => {
             tracing::info!(target: "control", from = ?from, pane, ?percent, "progress");
