@@ -23,7 +23,7 @@ pub(crate) fn dir_tree(root: &Path, max: usize) -> String {
             let (branch, ext) = if i == last { ("\u{2514}\u{2500} ", "   ") } else { ("\u{251c}\u{2500} ", "\u{2502}  ") };
             let dir_mark = if e.path().is_dir() { "/" } else { "" };
             out.push_str(&format!("{prefix}{branch}{}{dir_mark}\n", e.file_name().to_string_lossy()));
-            if e.path().is_dir() {
+            if nabi_fs::walk::is_real_dir(&e.path()) {
                 walk(&e.path(), &format!("{prefix}{ext}"), out, n, max);
             }
         }
@@ -54,7 +54,7 @@ fn collect_ext(root: &Path, max_files: usize) -> BTreeMap<String, (u64, u64)> {
             if e.file_name().to_string_lossy().starts_with('.') {
                 continue;
             }
-            if p.is_dir() {
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
             } else if let Ok(md) = std::fs::metadata(&p) {
                 let ext = p.extension().and_then(|x| x.to_str()).map(|x| format!(".{x}")).unwrap_or_else(|| "(없음)".into());

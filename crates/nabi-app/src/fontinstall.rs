@@ -166,7 +166,8 @@ fn find_ttf(out: &Path, patt: &str) -> Option<PathBuf> {
         let Ok(rd) = std::fs::read_dir(&d) else { continue };
         for e in rd.flatten() {
             let p = e.path();
-            if p.is_dir() {
+            // 링크를 따라가면 끝없이 돈다 — 내려받아 푼 글꼴 묶음 안에 링크가 있을 수 있다.
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
                 continue;
             }

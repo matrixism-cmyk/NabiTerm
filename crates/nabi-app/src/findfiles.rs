@@ -52,7 +52,7 @@ pub(crate) fn search_dir(root: &Path, pat: &str, ci: bool, max_files: usize, max
             if name.to_string_lossy().starts_with('.') {
                 continue; // 숨김/.git 등 제외.
             }
-            if p.is_dir() {
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
                 continue;
             }
@@ -106,7 +106,7 @@ pub(crate) fn replace_in_dir(root: &Path, find: &str, to: &str, apply: bool, max
             if ent.file_name().to_string_lossy().starts_with('.') {
                 continue;
             }
-            if p.is_dir() {
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
                 continue;
             }

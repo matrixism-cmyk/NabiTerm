@@ -36,7 +36,7 @@ fn collect(root: &Path, max_files: usize) -> Vec<(String, u64, u64)> {
             if ent.file_name().to_string_lossy().starts_with('.') {
                 continue;
             }
-            if p.is_dir() {
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
                 continue;
             }

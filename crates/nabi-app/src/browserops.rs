@@ -37,7 +37,8 @@ pub(crate) fn dir_stats(path: &Path) -> (u64, u64) {
     if let Ok(rd) = std::fs::read_dir(path) {
         for e in rd.flatten() {
             let p = e.path();
-            if p.is_dir() {
+            // 링크를 따라가면 끝없이 돌고, 같은 것을 두 번 센다.
+            if nabi_fs::walk::is_real_dir(&p) {
                 let (f, b) = dir_stats(&p);
                 files += f;
                 bytes += b;

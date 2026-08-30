@@ -169,7 +169,8 @@ fn walk_capped(dir: &std::path::Path, prefix: &str, out: &mut Vec<(String, u64, 
         }
         let name = e.file_name().to_string_lossy().into_owned();
         let rel = if prefix.is_empty() { name.clone() } else { format!("{prefix}/{name}") };
-        let Ok(meta) = e.metadata() else { continue };
+        // `metadata()` 도 링크를 따라간다 — 링크 자신을 봐야 고리에 안 걸린다.
+        let Ok(meta) = e.path().symlink_metadata() else { continue };
         if meta.is_dir() {
             if !walk_capped(&e.path(), &rel, out, cap) {
                 return false;

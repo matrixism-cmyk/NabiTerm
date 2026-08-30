@@ -63,7 +63,7 @@ pub(crate) fn create(root: &Path, names: &[String], dest: &Path) -> Result<ZipRe
     let mut rep = ZipReport::default();
     for name in names {
         let path = root.join(name);
-        if path.is_dir() {
+        if nabi_fs::walk::is_real_dir(&path) {
             add_dir(&mut w, &path, Path::new(name), &opts, &mut rep)?;
         } else {
             add_file(&mut w, &path, name, &opts, &mut rep)?;
@@ -111,7 +111,8 @@ fn add_dir<W: Write + std::io::Seek>(
         let child = e.path();
         let crel = rel.join(e.file_name());
         let cname = crel.to_string_lossy().into_owned();
-        match child.is_dir() {
+        // 링크를 따라가면 끝없이 돈다 — 압축이 끝나지 않는다.
+        match nabi_fs::walk::is_real_dir(&child) {
             true => add_dir(w, &child, &crel, opts, rep)?,
             false => add_file(w, &child, &cname, opts, rep)?,
         }

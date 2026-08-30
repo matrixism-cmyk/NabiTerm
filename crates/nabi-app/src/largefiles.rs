@@ -26,7 +26,7 @@ fn collect(root: &Path, max_files: usize) -> Vec<(String, u64)> {
             if ent.file_name().to_string_lossy().starts_with('.') {
                 continue;
             }
-            if p.is_dir() {
+            if nabi_fs::walk::is_real_dir(&p) {
                 stack.push(p);
             } else if let Ok(md) = std::fs::metadata(&p) {
                 let rel = p.strip_prefix(root).unwrap_or(&p).to_string_lossy().into_owned();

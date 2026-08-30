@@ -3072,6 +3072,7 @@ dependencies = [
  "nabi-config",
  "nabi-control",
  "nabi-editor",
+ "nabi-fs",
  "nabi-i18n",
  "nabi-image",
  "nabi-log",
