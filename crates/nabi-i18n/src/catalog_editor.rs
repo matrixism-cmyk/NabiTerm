@@ -166,6 +166,7 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("editor.dedupe", "Remove duplicate lines", "중복 줄 제거", "重複行を削除"),
     ("editor.reverselines", "Reverse line order", "줄 순서 뒤집기", "行順を逆に"),
     ("nabipad.minimap", "Minimap", "미니맵", "ミニマップ"),
+    ("editor.minimap.hint", "Show a shrunken map of the whole file on the right. Click it to jump.", "파일 전체를 오른쪽에 축소해 보여 줍니다. 눌러서 그 자리로 갑니다.", "ファイル全体を右側に縮小表示します。クリックでその位置へ移動します。"),
     ("nabipad.outline", "Outline (structure)", "개요(구조)", "アウトライン(構造)"),
     ("editor.docinfo", "Document info", "문서 정보", "ドキュメント情報"),
     ("stat.lines", "Lines", "줄", "行"),

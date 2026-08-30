@@ -125,6 +125,9 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     // 안내선과 눈금은 둘 다 "보조선"이라 나란히 둔다 — 흩어 놓으면 하나만 찾게 된다.
     ui.label(tr(lang, "editor.guides")); ui.checkbox(&mut e.guides, "").on_hover_text(tr(lang, "editor.guides.hint"));
     ui.end_row();
+    // 미니맵 — 예전에는 문서마다 꺼진 채 시작해 켜도 다음 파일에서 다시 꺼졌다.
+    ui.label(tr(lang, "nabipad.minimap")); ui.checkbox(&mut e.minimap, "").on_hover_text(tr(lang, "editor.minimap.hint"));
+    ui.end_row();
     crate::editorsyntax::settings_ui(ui, e, lang);
 }
 

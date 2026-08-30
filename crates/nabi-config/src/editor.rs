@@ -33,6 +33,12 @@ pub struct EditorConfig {
     /// 들여쓰기 안내선.
     #[serde(default)]
     pub guides: bool,
+    /// 미니맵(오른쪽 축소 지도)을 켜 둘 것인가.
+    ///
+    /// 예전에는 문서마다 꺼진 채로 시작해서, 켜도 **다음 파일에서 다시 꺼졌다.**
+    /// 보기 설정은 사람의 취향이라 문서가 아니라 설정에 있어야 한다.
+    #[serde(default)]
+    pub minimap: bool,
     /// 탭 대신 공백으로 들여쓰기.
     pub indent_spaces: bool,
     /// 현재 줄 강조.
@@ -66,6 +72,7 @@ impl Default for EditorConfig {
             wrap_col: 80,
             rulers: String::new(),
             guides: false,
+            minimap: false, // 기본은 끔 — 좁은 창에서는 본문을 줄인다. 켜면 그대로 남는다.
             indent_spaces: true,
             highlight_current_line: true,
             trim_on_save: false,
