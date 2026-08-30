@@ -61,6 +61,13 @@ fn probes(pane: u64) -> Vec<Probe> {
         p("show-history", format!(r#"{{"op":"show-history","pane":{pane}}}"#)),
         // 파일 브라우저 탭을 연다 — 프로세스를 만들지 않아 스모크에 안전하다.
         p("open-browser", r#"{"op":"open-browser","path":null}"#.into()),
+        // `wait` 은 에이전트가 가장 많이 부르는 동사다 — 이것이 죽으면 에이전트가 멈춘다.
+        //
+        // **충족될 조건으로 부른다.** 시간 초과는 오류로 답하므로, 안 그러면 스윕이
+        // 늘 빨개진다. 방금 명령이 끝난 pane 은 곧 조용해지니 `idle` 이 곧 걸린다.
+        p("wait-idle", format!(
+            r#"{{"op":"wait","pane":{pane},"until":"idle","timeout_ms":8000}}"#
+        )),
     ]
 }
 
