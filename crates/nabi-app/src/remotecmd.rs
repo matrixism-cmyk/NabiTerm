@@ -162,3 +162,43 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod 이름이_명령이_되지_않는다 {
+    use super::{build, RemoteOp};
+
+    fn op() -> RemoteOp {
+        RemoteOp { key: "", template: "rm -f {}", mutates: true }
+    }
+
+    /// **파일 이름이 명령으로 읽히면 안 된다.**
+    ///
+    /// 원격 파일 이름은 우리가 짓지 않는다. 서버에 `$(reboot)` 라는 이름의 파일이 있으면
+    /// 그것을 지우려다 서버를 재시작시킬 수 있다. 인용을 한 자리라도 빠뜨리면 그렇게 된다.
+    ///
+    /// 여기서는 **만들어진 명령 전문**을 본다 — 인용 함수만 시험하면 그것을 부르는 것을
+    /// 잊었을 때 걸리지 않는다.
+    #[test]
+    fn 위험한_글자가_든_이름도_한_낱말로_묶인다() {
+        for evil in ["$(reboot)", "`id`", "a;rm -rf /", "a b", "a|b", "a&b", "a>b", "*"] {
+            let cmd = build(&op(), "/tmp", &[evil.to_string()]);
+            // 이름은 통째로 작은따옴표 안에 있어야 한다.
+            assert!(cmd.contains(&format!("'{evil}'")), "{evil} 가 안 묶였다: {cmd}");
+        }
+    }
+
+    /// 폴더 이름도 마찬가지다 — `cd` 뒤에 그대로 들어간다.
+    #[test]
+    fn 폴더_이름도_묶인다() {
+        let cmd = build(&op(), "/tmp/$(id)", &["a.txt".to_string()]);
+        assert!(cmd.starts_with("cd '/tmp/$(id)' && "), "{cmd}");
+    }
+
+    /// 이름에 든 작은따옴표로 인용을 깨고 나올 수 없어야 한다.
+    #[test]
+    fn 따옴표로_빠져나올_수_없다() {
+        let cmd = build(&op(), "/tmp", &["a';reboot;'b".to_string()]);
+        // 인용을 끊어 잇는 형태(`'\''`)로만 나타나야 하고, 맨 따옴표는 남지 않는다.
+        assert!(cmd.contains(r"'a'\'';reboot;'\''b'"), "{cmd}");
+    }
+}
