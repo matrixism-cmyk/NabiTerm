@@ -75,9 +75,8 @@ pub(crate) fn track_selection(
         false => crate::paneio::pointer_on_pane(ui, rect, *p),
     };
     if let Some(p) = ppos.filter(on_pane) {
-        let r = ((p.y - rect.top()) / ch).floor().max(0.0) as usize;
         // 시각 열 → render 셀 인덱스(와이드 문자 보정). 선택/렌더/추출 모두 render 인덱스로 일치.
-        let vcol = ((p.x - rect.left()) / cw).floor().max(0.0) as usize;
+        let (r, vcol) = crate::panecell::at(rect, cw, ch, p);
         let c = model.render_index_at(r as u16, vcol);
         if pressed {
             // Shift+클릭: 기존 선택의 헤드를 클릭 지점으로 확장. 아니면 새 선택.

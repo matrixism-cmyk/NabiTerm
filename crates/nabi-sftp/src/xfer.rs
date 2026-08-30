@@ -36,11 +36,30 @@ impl SftpFs {
         let part = format!("{local}.filepart");
         // 크기를 미리 알면 파일 끝 너머로 헛요청하지 않고, 끝에서 EOF 확인 왕복도 아낀다.
         let attrs = self.raw.stat(remote).await.ok();
+        // 지금 원격이 어떤 파일인가 — 이어받아도 되는지 판단하고, 새로 받으면 적어 둔다.
+        let now = attrs.as_ref().and_then(|a| {
+            Some(crate::resumeguard::Source { size: a.size?, mtime: a.mtime? as u64 })
+        });
+        // **남은 조각이 지금의 원격에서 나온 것인가.** 아니면 처음부터 받는다 —
+        // 어제 받다 만 조각에 오늘 바이트를 이어 붙이면 앞뒤가 다른 파일이 된다.
+        let resume_from = match resume_from > 0
+            && crate::resumeguard::may_resume(crate::resumeguard::read_note(&part), now)
+        {
+            true => resume_from,
+            false => 0,
+        };
         let handle = self.raw.open(remote, OpenFlags::READ).await?;
         let mut out = if resume_from > 0 {
             std::fs::OpenOptions::new().append(true).open(&part).map_err(|e| e.to_string())?
         } else {
-            std::fs::File::create(&part).map_err(|e| e.to_string())?
+            // 새로 받는다 — 이 조각이 어느 원격에서 나왔는지 옆에 적어 둔다.
+            let f = std::fs::File::create(&part).map_err(|e| e.to_string())?;
+            match now {
+                Some(src) => crate::resumeguard::write_note(&part, src),
+                // 지금 원격을 모르면 적어 둘 것이 없다 — 옛 기록도 지워 다음에 이어받지 않게 한다.
+                None => crate::resumeguard::clear_note(&part),
+            }
+            f
         };
         let raw = self.raw.clone();
         let start = std::time::Instant::now();
@@ -83,6 +102,7 @@ impl SftpFs {
             }
         }
         std::fs::rename(&part, local).map_err(|e| e.to_string())?;
+        crate::resumeguard::clear_note(&part); // 조각이 사라졌으니 옆에 적어 둔 것도 치운다.
         // 수정시각 보존: 원격 mtime을 로컬 파일에 적용(서버가 mtime을 줄 때만).
         if let Some(mt) = attrs.as_ref().and_then(|a| a.mtime) {
             if let Ok(f) = std::fs::File::options().write(true).open(local) {

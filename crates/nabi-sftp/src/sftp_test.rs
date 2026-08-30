@@ -145,18 +145,78 @@ async fn sftp_download_streamed_reports_progress() {
     let _ = std::fs::remove_file(&tmp);
 }
 
+/// 원격 `/foo.txt` 의 지금 (크기, 수정시각) — 이어받기 쪽지에 적을 값.
+async fn foo_source(fs: &mut crate::fs::SftpFs) -> crate::resumeguard::Source {
+    use nabi_fs::RemoteFs;
+    let e = fs
+        .list_dir("/")
+        .await
+        .expect("목록")
+        .into_iter()
+        .find(|e| e.name == "foo.txt")
+        .expect("foo.txt");
+    crate::resumeguard::Source { size: e.size, mtime: e.mtime }
+}
+
+/// **이어받기가 정말 이어받는가** — 앞부분을 다시 받지 않는지 본다.
+///
+/// 예전 시험은 조각을 `"fo"` 로 두고 결과가 `"foo"` 인지만 봤다. 그러면 이어받아도
+/// 처음부터 받아도 결과가 같아서 **무엇이 일어났는지 가리지 못한다.** 실제로 이어받기
+/// 관문을 넣었을 때 이 시험은 통과한 채로 이어받기가 꺼졌다.
+///
+/// 그래서 조각을 원격과 **다른 글자**(`"XX"`)로 둔다. 이어받았다면 뒤만 붙어 `"XXo"` 가
+/// 되고, 처음부터 받았다면 `"foo"` 가 된다. 이제 결과가 답을 말해 준다.
 #[tokio::test]
 async fn sftp_download_resumes_partial() {
     let mut fs = connect_fs().await;
-    // /foo.txt = "foo". 부분 .filepart("fo")가 있으면 오프셋 2부터 이어받아 "foo" 완성 후 rename.
+    let src = foo_source(&mut fs).await;
     let tmp = crate::sftp_boot::tmp_path("resume.txt");
     let part = format!("{}.filepart", tmp.to_str().unwrap());
-    std::fs::write(&part, b"fo").unwrap();
+    std::fs::write(&part, b"XX").unwrap();
+    crate::resumeguard::write_note(&part, src); // 이 조각은 지금의 원격에서 나왔다.
     fs.download("/foo.txt", tmp.to_str().unwrap(), 2, |_| {})
         .await
         .expect("resume");
-    assert_eq!(std::fs::read(&tmp).expect("read"), b"foo");
+    assert_eq!(std::fs::read(&tmp).expect("read"), b"XXo", "앞 2바이트를 다시 받지 않아야 한다");
     assert!(!std::path::Path::new(&part).exists(), "완료 후 .filepart는 rename되어 사라져야");
+    assert!(
+        !std::path::Path::new(&crate::resumeguard::note_path(&part)).exists(),
+        "조각이 사라졌으면 옆에 적어 둔 것도 사라져야 한다"
+    );
+    let _ = std::fs::remove_file(&tmp);
+}
+
+/// **원격이 바뀌었으면 이어받지 않는다** — 이것이 관문의 존재 이유다.
+///
+/// 크기가 같아도 수정 시각이 다르면 다른 파일이다. 이어 붙이면 앞뒤가 다른 파일이 된다.
+#[tokio::test]
+async fn sftp_download_restarts_when_the_remote_changed() {
+    let mut fs = connect_fs().await;
+    let mut src = foo_source(&mut fs).await;
+    src.mtime += 1; // 그사이 원격이 바뀌었다고 적어 둔다.
+    let tmp = crate::sftp_boot::tmp_path("resume-changed.txt");
+    let part = format!("{}.filepart", tmp.to_str().unwrap());
+    std::fs::write(&part, b"XX").unwrap();
+    crate::resumeguard::write_note(&part, src);
+    fs.download("/foo.txt", tmp.to_str().unwrap(), 2, |_| {})
+        .await
+        .expect("restart");
+    assert_eq!(std::fs::read(&tmp).expect("read"), b"foo", "처음부터 다시 받아야 한다");
+    let _ = std::fs::remove_file(&tmp);
+}
+
+/// 쪽지가 없으면(옛 판이 남긴 조각) 이어받지 않는다 — 모르면 다시 받는 쪽이 맞다.
+#[tokio::test]
+async fn sftp_download_restarts_when_there_is_no_note() {
+    let mut fs = connect_fs().await;
+    let tmp = crate::sftp_boot::tmp_path("resume-nonote.txt");
+    let part = format!("{}.filepart", tmp.to_str().unwrap());
+    std::fs::write(&part, b"XX").unwrap();
+    let _ = std::fs::remove_file(crate::resumeguard::note_path(&part));
+    fs.download("/foo.txt", tmp.to_str().unwrap(), 2, |_| {})
+        .await
+        .expect("restart");
+    assert_eq!(std::fs::read(&tmp).expect("read"), b"foo", "처음부터 다시 받아야 한다");
     let _ = std::fs::remove_file(&tmp);
 }
 

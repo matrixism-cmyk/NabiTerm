@@ -15,8 +15,7 @@ pub(crate) fn screen_url_at(
     if !rect.contains(pos) {
         return None;
     }
-    let row = ((pos.y - rect.top()) / ch).floor().max(0.0) as usize;
-    let vcol = ((pos.x - rect.left()) / cw).floor().max(0.0) as usize;
+    let (row, vcol) = crate::panecell::at(rect, cw, ch, pos);
     let col = model.render_index_at(row as u16, vcol); // 시각열→render 인덱스(와이드 보정).
     // 명시적 OSC 8 하이퍼링크가 우선(프로그램이 지정한 링크 — 텍스트 모양과 무관).
     if let Some((s, e, uri)) = model.hyperlink_span_at(row as u16, col) {

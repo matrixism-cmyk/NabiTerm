@@ -20,8 +20,8 @@ pub(crate) fn mouse_reports(
         if !rect.contains(p) {
             return;
         }
-        let col = ((p.x - rect.left()) / cw).floor().max(0.0) as u16;
-        let row = ((p.y - rect.top()) / ch).floor().max(0.0) as u16;
+        let (row, col) = crate::panecell::at(rect, cw, ch, p);
+        let (row, col) = (row.min(u16::MAX as usize) as u16, col.min(u16::MAX as usize) as u16);
         let md = i.modifiers;
         let mods = (md.shift as u16) * 4 + (md.alt as u16) * 8 + (md.ctrl as u16) * 16;
         for (btn, mb) in [

@@ -103,8 +103,7 @@ fn handle_double_click(
     if let Some(text) = double_click_screen_url(rect, cw, ch, pane, model, theme, pos, selection) {
         return Some(text);
     }
-    let r = ((pos.y - rect.top()) / ch).floor().max(0.0) as usize;
-    let vcol = ((pos.x - rect.left()) / cw).floor().max(0.0) as usize;
+    let (r, vcol) = crate::panecell::at(rect, cw, ch, pos);
     let c = model.render_index_at(r as u16, vcol); // 시각열→render 인덱스(와이드 보정).
     let rows = model.render_rows(theme);
     double_click_word(pane, &rows, r, c, selection)
@@ -149,7 +148,7 @@ fn handle_triple_click(
     if !rect.contains(pos) {
         return None;
     }
-    let r = ((pos.y - rect.top()) / ch).floor().max(0.0) as usize;
+    let r = crate::panecell::row(rect, ch, pos.y);
     let rows = model.render_rows(theme);
     rows.get(r)?; // 행 범위 밖이면 무시.
     // 소프트랩된 논리 줄 전체를 선택한다(여러 시각 행에 걸쳐도 한 줄로 복사됨).
