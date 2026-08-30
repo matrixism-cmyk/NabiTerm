@@ -67,9 +67,7 @@ pub(crate) fn enabled() -> bool {
 }
 
 /// POSIX 셸 단일 인용 — 경로에 어떤 문자가 있어도 명령 주입이 되지 않게.
-pub(crate) fn shell_quote(path: &str) -> String {
-    format!("'{}'", path.replace('\'', r"'\''"))
-}
+pub(crate) use nabi_proto::shquote::shell_quote;
 
 /// `sha256sum`/`shasum` 출력에서 64자리 16진 해시만 뽑는다(형식: `<hex>  <path>`).
 pub(crate) fn parse_hash_output(out: &str) -> Option<String> {

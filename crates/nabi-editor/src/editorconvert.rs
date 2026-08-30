@@ -129,9 +129,7 @@ pub fn backslash_escape(t: &str) -> String {
 }
 
 /// POSIX 셸 안전 인용(작은따옴표 래핑, 내부 '는 `'\''`로). 원격/로컬 명령 인자 조립용(SSH 도구).
-pub fn shell_quote(t: &str) -> String {
-    format!("'{}'", t.replace('\'', "'\\''"))
-}
+pub use nabi_proto::shquote::shell_quote;
 
 /// 역슬래시 이스케이프 해제(\\ \n \t \r \0 \", 그 외 `\c`는 c).
 pub fn backslash_unescape(t: &str) -> String {

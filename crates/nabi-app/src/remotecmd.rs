@@ -54,18 +54,7 @@ pub(crate) const OPS: &[RemoteOp] = &[
 ///
 /// 작은따옴표 안은 아무것도 해석되지 않는다. 안에 작은따옴표가 있으면 거기서 한 번 닫고,
 /// 이스케이프한 따옴표를 붙이고, 다시 연다(`'…'\''…'`).
-pub(crate) fn shell_quote(name: &str) -> String {
-    let mut out = String::with_capacity(name.len() + 2);
-    out.push('\'');
-    for c in name.chars() {
-        match c {
-            '\'' => out.push_str("'\\''"),
-            c => out.push(c),
-        }
-    }
-    out.push('\'');
-    out
-}
+pub(crate) use nabi_proto::shquote::shell_quote;
 
 /// 명령 전문을 만든다. 파일이 여럿이면 공백으로 이어 붙인다.
 ///

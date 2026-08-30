@@ -6,18 +6,6 @@
 use crate::app::NabiApp;
 use nabi_i18n::tr;
 
-/// ShellKind → 설정 문자열(workspace::shell_from_str의 역방향).
-pub(crate) fn shell_to_str(kind: &nabi_proto::ShellKind) -> &'static str {
-    use nabi_proto::ShellKind as K;
-    match kind {
-        K::Pwsh => "pwsh",
-        K::Cmd => "cmd",
-        K::Wsl { .. } => "wsl",
-        K::GitBash => "gitbash",
-        _ => "powershell",
-    }
-}
-
 impl NabiApp {
     /// 첫 실행 환영 모달. `onboarding_open`이 켜져 있는 동안 매 프레임 그린다.
     pub(crate) fn show_onboarding(&mut self, ctx: &egui::Context) {
@@ -55,13 +43,14 @@ impl NabiApp {
                     let cur = self.config.terminal.default_shell.clone();
                     let cur_label = shells
                         .iter()
-                        .find(|(_, k)| shell_to_str(k) == cur)
+                        .find(|(_, k)| crate::workspace::shell_to_str(k) == cur)
                         .map(|(l, _)| l.clone())
                         .unwrap_or_else(|| shells.first().map(|(l, _)| l.clone()).unwrap_or_default());
                     egui::ComboBox::from_id_salt("ob_shell").selected_text(cur_label).show_ui(ui, |ui| {
                         for (label, kind) in &shells {
-                            if ui.selectable_label(shell_to_str(kind) == cur, label).clicked() {
-                                self.config.terminal.default_shell = shell_to_str(kind).into();
+                            let this = crate::workspace::shell_to_str(kind);
+                            if ui.selectable_label(this == cur, label).clicked() {
+                                self.config.terminal.default_shell = this;
                             }
                         }
                     });

@@ -9,6 +9,7 @@ pub mod event;
 pub mod pane_msg;
 pub mod sftp;
 pub mod shell;
+pub mod shquote;
 pub mod ssh;
 pub mod stats;
 pub mod trzsz;
