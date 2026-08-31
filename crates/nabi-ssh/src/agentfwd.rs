@@ -71,9 +71,17 @@ where
 mod tests {
     use super::*;
 
-    /// 에이전트가 없는 상태에서 물어봐도 터지지 않는다(꺼져 있으면 false).
-    #[test]
-    fn asking_without_an_agent_is_safe() {
+    /// 에이전트가 있든 없든 물어보는 것만으로 터지지 않는다.
+    ///
+    /// **런타임 안에서 묻는다.** 예전에는 그냥 `#[test]` 였는데, 그러면 이 PC 에
+    /// ssh-agent 가 **켜져 있을 때만** 터졌다 — 파이프가 있어야 tokio 가 리액터를 찾고,
+    /// 리액터가 없으면 그 자리에서 패닉한다("there is no reactor running").
+    ///
+    /// 그래서 이 시험은 **윈도우 서비스 상태에 따라 통과하다 말다 했다.** 2026-08-31에
+    /// 실제로 그렇게 됐다 — 같은 코드가 아침에는 통과하고 저녁에는 깨졌다.
+    /// 실제 호출은 늘 런타임 안에서 일어나므로, 시험도 그 조건을 맞춰야 한다.
+    #[tokio::test]
+    async fn asking_about_the_agent_is_safe() {
         let _ = available();
     }
 

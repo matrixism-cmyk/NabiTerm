@@ -287,6 +287,11 @@ pub(crate) fn dispatch_write(
             tracing::info!(target: "control", from = ?from, ?pane, %act, "web-act");
             web_roundtrip(app_tx, events, |seq| AppCtl::WebAct { seq, pane, act, arg })
         }
+        ControlRequest::Restart => {
+            tracing::info!(target: "control", from = ?from, "restart");
+            app_tx.send(AppCtl::Restart).ok();
+            ControlResponse::Ok
+        }
         ControlRequest::Quit => {
             tracing::info!(target: "control", from = ?from, "quit");
             app_tx.send(AppCtl::Quit).ok();

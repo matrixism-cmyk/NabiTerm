@@ -258,7 +258,13 @@ pub(crate) fn shortcut_page(ui: &mut egui::Ui, lang: Lang) {
 }
 
 /// 주요 명령(짧은 표기, 설명 i18n 키) — 화면에서 무슨 명령인지 바로 알 수 있게.
-const CMDS: [(&str, &str); 7] = [
+/// 도움말에 보여 줄 주요 명령 — **전부가 아니라 자주 쓰는 것들**이다.
+/// 전체 목록과 문법은 아래 "복사"·"MD로 저장" 이 주는 설명서에 있다(`agentguide.rs`).
+///
+/// 왼쪽 낱말은 실제 동사여야 한다 — 아래 시험이 대조한다. 없는 명령을 적어 두면
+/// AI 가 그것을 부르고 실패하고, 실패한 AI 는 우리 프로그램이 고장 났다고 판단한다.
+const CMDS: &[(&str, &str)] = &[
+    // pane 을 다루는 기본 고리 — 열고, 보내고, 읽고, 기다린다.
     ("nabi cli list", "help.cmd.list"),
     ("nabi cli spawn …", "help.cmd.spawn"),
     ("nabi cli send …", "help.cmd.send"),
@@ -266,6 +272,14 @@ const CMDS: [(&str, &str); 7] = [
     ("nabi cli wait …", "help.cmd.wait"),
     ("nabi cli notify …", "help.cmd.notify"),
     ("nabi cli kill …", "help.cmd.kill"),
+    // 화면으로 확인하는 길 — 글로는 알 수 없는 것을 본다.
+    ("nabi cli screenshot …", "help.cmd.screenshot"),
+    ("nabi cli scroll …", "help.cmd.scroll"),
+    ("nabi cli history …", "help.cmd.history"),
+    // 프로그램 자체를 다루는 것 — 되돌릴 수 없으니 뜻을 밝혀 둔다.
+    ("nabi cli quit", "help.cmd.quit"),
+    ("nabi cli restart", "help.cmd.restart"),
+    ("nabi cli update …", "help.cmd.update"),
 ];
 
 /// AI 제어 페이지: 요약 + 주요 명령(설명 포함) + 사용설명 복사/저장 버튼(out 플래그로 신호).
@@ -292,7 +306,7 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
         .striped(true)
         .show(ui, |ui| {
             for (cmd, key) in CMDS {
-                ui.monospace(cmd);
+                ui.monospace(*cmd);
                 ui.label(tr(lang, key));
                 ui.end_row();
             }
@@ -337,4 +351,39 @@ pub(crate) fn licenses_page(ui: &mut egui::Ui, lang: Lang) {
         });
     ui.add_space(8.0);
     ui.weak(tr(lang, "help.lic.note"));
+}
+
+#[cfg(test)]
+mod cmds_tests {
+    /// 도움말 표의 명령이 **실제로 있는 동사인지** 대조한다.
+    ///
+    /// 이 표는 사람이 골라 적는다(전부를 적지 않는다). 그래서 자동으로 채울 수는 없지만,
+    /// 적힌 것이 실제와 맞는지는 셀 수 있다. 없는 명령을 적어 두면 그것을 읽은 AI 가
+    /// 부르고 실패한다 — 그리고 실패한 AI 는 우리 프로그램이 고장 났다고 판단한다.
+    #[test]
+    fn 도움말에_적힌_명령은_실제로_있다() {
+        let src = [
+            include_str!("../../nabi-control/src/clientverbs.rs"),
+            include_str!("../../nabi-control/src/client.rs"),
+            include_str!("../../nabi-control/src/clientagent.rs"),
+        ]
+        .concat();
+        let known: Vec<String> = src
+            .split("Some(\"")
+            .skip(1)
+            .filter_map(|p| p.split('"').next().map(str::to_string))
+            .collect();
+        let mut missing = Vec::new();
+        for (cmd, _) in super::CMDS {
+            let Some(rest) = cmd.strip_prefix("nabi cli ") else {
+                missing.push(cmd.to_string());
+                continue;
+            };
+            let verb = rest.split_whitespace().next().unwrap_or("");
+            if !known.iter().any(|k| k == verb) {
+                missing.push(verb.to_string());
+            }
+        }
+        assert!(missing.is_empty(), "도움말에만 있고 실제로는 없는 명령: {missing:?}");
+    }
 }

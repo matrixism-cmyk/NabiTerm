@@ -340,7 +340,7 @@ pub fn run_after_exit(pid_arg: &str, installer: &str) -> i32 {
 
 /// 그 PID의 프로세스가 아직 살아 있는가.
 #[cfg(windows)]
-fn process_alive(pid: u32) -> bool {
+pub fn process_alive(pid: u32) -> bool {
     use windows::Win32::Foundation::{CloseHandle, STILL_ACTIVE};
     use windows::Win32::System::Threading::{
         GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
@@ -359,7 +359,7 @@ fn process_alive(pid: u32) -> bool {
 }
 
 #[cfg(not(windows))]
-fn process_alive(_pid: u32) -> bool {
+pub fn process_alive(_pid: u32) -> bool {
     false
 }
 

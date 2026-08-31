@@ -73,7 +73,7 @@ mod sftpops; mod eventsftp;
 mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingslog; mod settingsxfer; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcuts; mod blocklistui; mod
 editspotsui; mod wordcompui; mod autolog; mod copyidui; mod cues; mod egress; mod redact; mod secretscan; mod secretui; mod diffrestore; mod opendoc; mod zipops; mod zipui; mod errkey; mod
 panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
-mod castplain; mod floatsize; mod panecell; mod hostkeyview; mod histview; mod menuimport; mod sessionimport; mod panehistory; mod selfupdate; mod webctl; mod webact; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
+mod castplain; mod floatsize; mod relaunch; mod panecell; mod hostkeyview; mod histview; mod menuimport; mod sessionimport; mod panehistory; mod selfupdate; mod webctl; mod webact; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod tabsclose; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;
 mod webopen; mod webtab; mod webtabui; mod handoff; mod padopen; mod progresswatch; mod screenshot; mod shotapply; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;
@@ -134,6 +134,11 @@ fn main() -> eframe::Result<()> {
     // 업데이트 도우미: 앱이 끝나기를 기다렸다가 인스톨러를 실행한다(GUI 없음).
     // 셸을 거치지 않으려고 우리 자신을 쓴다 — cmd를 거치면 명령줄 따옴표 규칙에 걸린다
     // (사용자 보고 2026-08-23: "''을(를) 찾을 수 없습니다", "Network path was not found").
+    // 껐다 켜기 도우미 — GUI 를 띄우지 않고 기다렸다가 우리를 다시 시작한다.
+    if args.get(1).map(String::as_str) == Some(relaunch::RELAUNCH_AFTER) {
+        let pid = args.get(2).cloned().unwrap_or_default();
+        std::process::exit(relaunch::wait_and_start(&pid));
+    }
     if args.get(1).map(String::as_str) == Some(nabi_release::RUN_AFTER_EXIT) {
         let (pid, exe) = (args.get(2).cloned().unwrap_or_default(), args.get(3).cloned().unwrap_or_default());
         std::process::exit(nabi_release::run_after_exit(&pid, &exe));

@@ -102,9 +102,19 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   terminal — the person can then read, search and edit it properly.
 - `nabi cli open-here --path <dir>`
   Open a new terminal in that folder and bring the window to the front.
+- `nabi cli scroll --pane <id> [--lines <+past/-recent>] [--top] [--bottom]`
+  Move a pane's scrollback the way a person turns the wheel, and report where it landed
+  (`offset / history`). Pair it with `screenshot` when you need to see what a person sees —
+  `capture` gives you the stored text, this gives you the view.
+- `nabi cli api schema`
+  Print the full control protocol as JSON: every verb, its parameters, and one line on what
+  it does. Read this when a verb below is not enough.
 - `nabi cli pane-modes --pane <id>`
   Read the terminal modes of a pane (alternate screen, mouse reporting, bracketed paste...).
   Useful when a pane behaves oddly: a full-screen program leaves different modes set.
+- `nabi cli status set <key> <value>` / `nabi cli status clear [key]`
+  Publish your own state — model, tokens, cost, what you are doing — into nabiTerm's status
+  bar and tab badge. See "Publishing your status" below for the keys that mean something.
 - `nabi cli progress --pane <id> [--pct <0-100>]`
   Show a progress badge in the status bar for that pane. Leave `--pct` out to clear it.
   nabiTerm also reads progress off the screen for cargo/cmake/pytest/docker, but telling it
@@ -177,6 +187,15 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli resize --pane <id> --cols <c> --rows <r>`
 - `nabi cli notify --title <text> [--body <text>]` — desktop/toast notification.
 - `nabi cli open-browser [--path <dir>]` — open the file browser.
+- `nabi cli web-back` — go back in the built-in browser tab.
+- `nabi cli web-forward` — go forward.
+- `nabi cli web-reload` — reload the page.
+- `nabi cli web-stop` — stop loading.
+- `nabi cli web-list` — list the open web tabs (id and current address).
+- `nabi cli restart`
+  Close and reopen nabiTerm, without asking. The workspace is saved first, so tabs, splits and
+  panes come back as they were. Use it after changing something that only takes effect on a
+  fresh start. **Every pane dies, including yours** — the new instance is a new process.
 - `nabi cli quit`
   Close nabiTerm **without asking**. Closing the window normally pops a "really close?" dialog
   when more than one tab is open — fine for a person, but it stops a script dead. This saves
@@ -459,13 +478,34 @@ mod tests {
     /// 둘 다 있어야 목록이 실제와 같아진다.
     #[test]
     fn every_real_verb_is_written_down() {
-        let guide = super::AGENT_GUIDE_MD;
+        // **낱말이 산문에 섞여 있는 것으로는 안 된다.** 예전에는 `guide.contains(v)` 였는데,
+        // `restart` 를 새로 만들었을 때 설명서에 없는데도 통과했다 — 다른 항목 설명에
+        // "restarts nabiTerm" 이라고 적혀 있었기 때문이다(2026-08-31에 겪었다).
+        //
+        // 그래서 **적힌 자리의 모양**을 본다. 설명서는 동사를 늘 `- \`nabi cli <낱말>` 로
+        // 시작하는 줄에 적는다 — 앞 시험(`every_verb_in_the_guide_really_exists`)이 같은
+        // 모양을 읽으므로, 둘이 같은 규칙을 본다.
+        let documented: Vec<String> = super::AGENT_GUIDE_MD
+            .lines()
+            .filter_map(|l| l.trim_start().strip_prefix("- `nabi cli "))
+            .filter_map(|r| r.split([' ', '`']).find(|w| !w.is_empty()))
+            .map(str::to_string)
+            .collect();
+        // 두 낱말짜리 동사(`agent report` 처럼)는 앞낱말만 적히므로 그것도 받아 준다.
         let mut absent: Vec<String> = known_verbs()
             .into_iter()
-            .filter(|v| !guide.contains(v.as_str()))
+            .filter(|v| !documented.iter().any(|d| d == v))
+            .filter(|v| !SUBWORDS.contains(&v.as_str()))
             .collect();
         absent.sort();
         absent.dedup();
         assert!(absent.is_empty(), "실제로 있는데 설명서에 없는 동사: {absent:?}");
     }
+
+    /// 두 낱말짜리 동사의 **뒷낱말** — 설명서에는 앞낱말 줄에 함께 적힌다.
+    const SUBWORDS: &[&str] = &[
+        "report", "release", "session", "prompt", "explain", "wait", "install", "create",
+        "export", "apply", "set", "clear", "audit", "schema", "goto", "zoom", "pdf", "shot",
+        "eval",
+    ];
 }

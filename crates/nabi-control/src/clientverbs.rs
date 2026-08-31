@@ -87,6 +87,7 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             js: flag(args, "--js").ok_or("--js <자바스크립트> 가 필요하다")?,
         }),
         Some("quit") => Ok(ControlRequest::Quit),
+        Some("restart") => Ok(ControlRequest::Restart),
         Some("scroll") => Ok(ControlRequest::Scroll {
             pane: pane(args).ok_or(usage)?,
             lines: flag(args, "--lines").and_then(|v| v.parse().ok()).unwrap_or(0),
