@@ -71,6 +71,11 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                 act.find_secrets = true;
                 ui.close();
             }
+            // 표에서 깨진 한 줄 찾기 — 수천 줄을 눈으로 세지 않게 한다.
+            if ui.button(tr(lang, "editor.findoddrows")).clicked() {
+                act.find_odd_rows = true;
+                ui.close();
+            }
             // 낱말 완성 — LSP가 없는 파일에서도 긴 이름을 다시 치지 않게.
             if ui.button(tr(lang, "editor.wordcomp")).clicked() {
                 act.complete_word = true;

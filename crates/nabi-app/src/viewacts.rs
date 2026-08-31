@@ -72,6 +72,7 @@ impl NabiApp {
             if a.complete_word { self.complete_word(p); }
             if let Some(s) = a.diff_restore { self.restore_diff_side(p, s); }
             if a.find_secrets { self.find_secrets_in_doc(p); }
+            if a.find_odd_rows { self.find_odd_rows_in_doc(p); }
             if a.save { self.save_editor_doc(p); }
             if a.save_all {
                 let n = self.save_all_docs();

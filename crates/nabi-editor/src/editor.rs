@@ -162,6 +162,8 @@ pub struct EditorAct {
     /// 파일 메뉴 ▸ 새 문서 / 열기(파일 대화상자) 요청(단독 에디터 필수).
     /// 이 문서에서 비밀로 보이는 줄을 찾는다(막지 않고 알려 주기만 한다).
     pub find_secrets: bool,
+    /// 표에서 **칸 수가 어긋난 줄**을 찾는다(`csvcheck`). 찾으면 첫 줄로 데려간다.
+    pub find_odd_rows: bool,
     /// diff 문서에서 한쪽 글을 복원해 새 문서로 연다(`Left`/`Right`).
     pub diff_restore: Option<crate::diffapply::Side>,
     /// 커서 앞 낱말을 문서 안의 낱말로 완성(되풀이하면 다음 후보).
