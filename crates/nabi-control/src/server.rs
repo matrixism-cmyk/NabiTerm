@@ -82,11 +82,13 @@ async fn handle_conn(
 ) {
     let (r, mut w) = tokio::io::split(stream);
     let mut lines = BufReader::new(r).lines();
-    // 인증: 첫 줄은 Hello여야 하고 토큰이 일치해야 한다.
-    match lines.next_line().await {
+    // 인증: 첫 줄은 Hello여야 하고 토큰이 일치해야 한다. 통과하면 그 줄이 밝힌 pane 번호를
+    // 그대로 들고 나온다 — 부른 쪽이 스스로 밝힌 **이름표**다(아래 설명 참고).
+    let from = match lines.next_line().await {
         Ok(Some(first)) => match serde_json::from_str::<ControlRequest>(&first) {
-            Ok(ControlRequest::Hello { token: t, .. }) if t == token => {
+            Ok(ControlRequest::Hello { token: t, from: f }) if t == token => {
                 let _ = write_resp(&mut w, &ControlResponse::Ok).await;
+                f
             }
             _ => {
                 tracing::warn!(target: "control", "인증 실패 접속 거부");
@@ -95,10 +97,20 @@ async fn handle_conn(
             }
         },
         _ => return,
-    }
-    // 모든 pane이 프로세스 환경에서 같은 인스턴스 토큰을 상속한다. 클라이언트가 보낸
-    // `from`은 인증된 신원이 아니므로 권한 판단에 사용하지 않는다(다른 pane 가장 방지).
-    let from = None;
+    };
+    // ## `from` 은 신원이 아니라 이름표다
+    //
+    // 모든 pane 이 같은 인스턴스 토큰을 환경에서 물려받으므로, 어느 pane 이 보냈다는 말은
+    // **증명이 아니라 자기 신고다.** 그래서 **권한 판단에는 쓰지 않는다** — `policy::allow`
+    // 가 이 값을 `_from` 으로 받아 통째로 버리고 승인을 인스턴스 하나에 묶는다.
+    //
+    // 하지만 "누가 보냈나"에는 쓴다. 상태 뱃지·알림 머리말이 그것 없이는 갈 곳이 없다.
+    // 예전에는 여기서 `None` 으로 덮었는데, 그러면 `PaneStatusSet` 이 있지도 않은 pane 0 에
+    // 상태를 쌓았다(pane 번호는 1부터다). 그래서 `status set`·`agent report`·`agent session`
+    // 셋이 **성공을 돌려주면서 아무 일도 하지 않았다.** 특히 `agent session` 이 죽어 있어
+    // 작업 공간을 되살릴 때 대화 번호를 못 찾고 매번 처음부터 시작했다.
+    //
+    // 이름표를 속여도 남의 상태 뱃지를 어지럽힐 뿐 권한은 한 치도 늘지 않는다.
     while let Ok(Some(line)) = lines.next_line().await {
         match serde_json::from_str::<ControlRequest>(&line) {
             // Wait/Tail은 읽기 전용 구독(read 그룹) — capture와 동급, 승인 불필요(G4).

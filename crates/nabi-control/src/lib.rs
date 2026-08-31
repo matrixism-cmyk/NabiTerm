@@ -18,6 +18,10 @@ pub mod matcher;
 pub mod mcp;
 pub mod pipe_acl;
 pub mod policy;
+// 설명서가 코드와 어긋나지 않는지 대조하는 데만 쓴다. 제품 코드에서 쓸 일이 생기면
+// 이 `cfg(test)` 를 떼면 된다(그때는 `unused` 검사기도 만족한다).
+#[cfg(test)]
+mod tiers;
 mod gate;
 pub mod trail;
 #[cfg(test)]

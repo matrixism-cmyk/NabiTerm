@@ -95,10 +95,14 @@ pub fn handle_command(
                 }
             }
         }
+        // 실제로 무언가를 닫았을 때만 "죽었다"고 알린다. 예전에는 없는 번호를 닫아도 알렸고,
+        // 그 번호를 `wait --until exit` 으로 기다리던 쪽은 끝난 줄 알고 다음으로 넘어갔다.
         Command::ClosePane { pane } => {
-            state.remove(&pane);
-            crate::pane_registry::panes_write(panes).remove(&pane);
-            let _ = event_tx.send(Event::PaneExited { pane, code: None });
+            let had_runtime = state.remove(&pane).is_some();
+            let had_entry = crate::pane_registry::panes_write(panes).remove(&pane).is_some();
+            if had_runtime || had_entry {
+                let _ = event_tx.send(Event::PaneExited { pane, code: None });
+            }
         }
         Command::SetEncoding { pane, label } => {
             if let Some(rt) = state.get_mut(&pane) {

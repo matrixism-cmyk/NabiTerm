@@ -39,9 +39,18 @@ pub fn dispatch(
         ControlRequest::ListPanes => crate::dispatchread::list_panes(panes),
         // 읽기 전용 진단 — 휠/붙여넣기가 왜 그렇게 도는지 추측하지 않고 확인한다.
         ControlRequest::PaneModes { pane } => crate::dispatchread::pane_modes(panes, pane),
+        // **읽기도 기록에 남긴다.** 캡처는 남의 pane 에 남아 있는 글자를 그대로 가져온다 —
+        // 거기에는 사람이 방금 친 비밀번호도 있을 수 있다. 쓰기만 남기면 "누가 무엇을 보았나"가
+        // 통째로 비고, 그것은 감사의 절반이다. 몇 글자를 가져갔는지도 함께 센다.
         ControlRequest::Capture { pane, lines, start, end, escapes } => {
             tracing::info!(target: "control", from = ?from, pane, lines, "capture");
-            crate::dispatchread::capture(panes, pane, lines, start, end, escapes)
+            let resp = crate::dispatchread::capture(panes, pane, lines, start, end, escapes);
+            let (bytes, outcome) = match &resp {
+                ControlResponse::Captured { text, .. } => (text.len(), crate::trail::Outcome::Allowed),
+                _ => (0, crate::trail::Outcome::Failed),
+            };
+            crate::trail::note(from, "capture", pane.to_string(), bytes, outcome);
+            resp
         }
         // 읽기 전용(capture 동급): 화면을 규칙으로 평가한 근거를 돌려준다(A4).
         ControlRequest::AgentExplain { pane } => crate::explain::agent_explain(panes, pane),
@@ -65,8 +74,10 @@ pub(crate) fn group_of(req: &ControlRequest) -> crate::policy::Group {
         | ControlRequest::SelfUpdate { check: false }
         // 페이지에 코드를 넣는다 — pane 에 글자를 밀어 넣는 것과 같은 무게다.
         | ControlRequest::WebEval { .. }
-        // 프로그램을 끝낸다 — 되돌릴 수 없다.
-        | ControlRequest::Quit => Group::Inject,
+        // 프로그램을 끝낸다 — 되돌릴 수 없다. 다시 켜기는 끄기를 포함하므로 같은 등급이다
+        // (한동안 restart 만 한 칸 낮았는데, 낮은 쪽으로 우회할 수 있으면 높은 쪽 승인은 뜻이 없다).
+        | ControlRequest::Quit
+        | ControlRequest::Restart => Group::Inject,
         _ => Group::Act,
     }
 }
@@ -236,7 +247,17 @@ pub(crate) fn dispatch_write(
                 .ok();
             ControlResponse::Ok
         }
+        // **없는 pane 은 없다고 말한다.** 예전에는 무엇을 넣든 성공을 돌려주고 오케스트레이터가
+        // "그 pane 이 죽었다"는 신호까지 뿌렸다. 웹 탭 번호처럼 여기 없는 번호를 닫으면
+        // `wait --until exit` 이 그 가짜 신호를 받고 끝난 줄 알았다.
         ControlRequest::ClosePane { pane } => {
+            let known = panes
+                .read()
+                .map(|m| m.contains_key(&PaneId::new(pane)))
+                .unwrap_or(false);
+            if !known {
+                return err(&format!("pane {pane} 없음 — `list` 로 번호를 확인할 것(웹 탭은 `web-list`)"));
+            }
             tracing::info!(target: "control", from = ?from, pane, "close");
             cmd_tx.send(Command::ClosePane { pane: PaneId::new(pane) }).ok();
             ControlResponse::Ok
@@ -376,9 +397,16 @@ pub(crate) fn dispatch_write(
             tracing::info!(target: "control", from = ?from, %spec, "schedule-create");
             app_tx.send(AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title }).ok(); ControlResponse::Ok
         }
+        // 부른 pane 자신의 상태를 적는다. 어느 pane 인지 모르면 **적을 곳이 없으니 그렇게
+        // 말한다** — 예전에는 pane 0 에 던지고 성공을 돌려줘서, 나비텀 밖에서 부른 사람은
+        // 왜 아무 일도 안 일어나는지 알 길이 없었다.
         ControlRequest::PaneStatusSet { key, value, ttl_ms } => {
-            tracing::info!(target: "control", from = ?from, "status-set");
-            app_tx.send(AppCtl::PaneStatus { pane: from.unwrap_or(0), key, value, ttl_ms }).ok(); ControlResponse::Ok
+            let Some(pane) = from else {
+                return err("어느 pane 인지 모른다 — 나비텀 pane 안에서 부를 것(NABI_PANE_ID)");
+            };
+            tracing::info!(target: "control", pane, %key, "status-set");
+            app_tx.send(AppCtl::PaneStatus { pane, key, value, ttl_ms }).ok();
+            ControlResponse::Ok
         }
         _ => err("알 수 없는 동작"),
     }

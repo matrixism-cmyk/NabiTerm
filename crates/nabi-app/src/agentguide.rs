@@ -8,7 +8,7 @@ pub(crate) fn agent_guide_md(exe_path: &str) -> String {
 }
 
 /// pane 안의 AI가 nabiTerm을 제어하는 방법을 정리한 Markdown 가이드 템플릿.
-const AGENT_GUIDE_MD: &str = r#"# Controlling nabiTerm from inside a pane
+pub(crate) const AGENT_GUIDE_MD: &str = r#"# Controlling nabiTerm from inside a pane
 
 You are an AI agent (e.g. Claude Code) running inside a nabiTerm terminal pane.
 nabiTerm exposes a local control plane so you can open, inspect and drive other
@@ -71,55 +71,67 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 
 ## Verbs
 
-### Inspect (always allowed)
+Every verb below is marked with the permission tier the app actually enforces:
 
-- `nabi cli list [--json]`
+- `(read)`   — looks at something and changes nothing. Always allowed, in every mode.
+- `(act)`    — changes something. In `ask` mode the first one asks the person once.
+- `(inject)` — types into a pane, moves a file, or cannot be undone. Asked separately.
+- `(local)`  — never reaches nabiTerm at all; it runs in your own process and prints.
+
+**Plan around these marks.** They are not a description someone wrote — a test compares every
+line here against the permission code, so a verb marked `(read)` will not stop and ask, and one
+marked `(inject)` will, unless the mode is `on`. The headings below only group verbs by what
+they are for; the mark on the line is what decides.
+
+### Looking around
+
+- (read) `nabi cli list [--json]`
   List panes: id, title, size, kind (local/ssh), cwd, state, last exit code.
-- `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
+- (read) `nabi cli capture --pane <id> [--lines <n>] [--start <l> --end <l>] [--escapes]`
   Read a pane's screen/scrollback. `--lines 100` = last 100 lines; `--escapes` keeps ANSI colors.
-- `nabi cli screenshot [--pane <id>] [--out <path.png>]`
+- (act) `nabi cli screenshot [--pane <id>] [--out <path.png>]`
   Save a PNG of the window, or of one pane's area. `capture` gives you **text**; this gives you
   **pixels** — use it when text cannot tell you what you need: did the image render, is the
   colour right, is the layout broken, did the built-in browser actually load the page.
   Without `--out` it writes to the temp folder. **It answers only once the file is written,
   and the answer is the path** — so you can read that file immediately. If it fails you get
   the reason, not a false success.
-- `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
-- `nabi cli integration install claude` — auto-install a SessionStart hook that reports the
+- (read) `nabi cli wait --pane <id> --until exit|command-done|idle|output [--match <text> | --regex <pat>] [--timeout <ms>]`
+- (local) `nabi cli integration install claude` — auto-install a SessionStart hook that reports the
   session id, so workspace restore resumes the exact session (`claude --resume <id>`).
-- `nabi cli agent report --state working|blocked|idle|done` / `agent release`
-- `nabi cli agent session <id>` — report your session id (hooks call this).
+- (act) `nabi cli agent report --state working|blocked|idle|done` / `agent release`
+- (act) `nabi cli agent session <id>` — report your session id (hooks call this).
   Publish your own state (authoritative — screen detection steps aside). Call from hooks/statusLine.
-- `nabi cli agent wait --pane <id> --until idle|working|blocked|done [--timeout <ms>]`
+- (read) `nabi cli agent wait --pane <id> --until idle|working|blocked|done [--timeout <ms>]`
   Block until the agent in that pane reaches a state (screen-detected or hook-published).
-- `nabi cli agent prompt --pane <id> --data <text> [--wait [--until <state>]] [--timeout <ms>]`
+- (inject) `nabi cli agent prompt --pane <id> --data <text> [--wait [--until <state>]] [--timeout <ms>]`
   Type a prompt into another agent pane (Enter included) and optionally wait for its state.
-- `nabi cli agent explain --pane <id>` — why the state detector classified a pane as it did.
-- `nabi cli events [--pane <id>] [--kind spawned,exit,output,command-done,agent-status,cwd]`
+- (read) `nabi cli agent explain --pane <id>` — why the state detector classified a pane as it did.
+- (read) `nabi cli events [--pane <id>] [--kind spawned,exit,output,command-done,agent-status,cwd]`
   Stream events as they happen (no replay). `nabi cli api schema` prints the full protocol doc.
-- `nabi cli open-file --path <file>`
+- (act) `nabi cli open-file --path <file>`
   Open a file in nabiPad, the built-in editor. Use it instead of dumping a long file into the
   terminal — the person can then read, search and edit it properly.
-- `nabi cli open-here --path <dir>`
+- (act) `nabi cli open-here --path <dir>`
   Open a new terminal in that folder and bring the window to the front.
-- `nabi cli scroll --pane <id> [--lines <+past/-recent>] [--top] [--bottom]`
+- (act) `nabi cli scroll --pane <id> [--lines <+past/-recent>] [--top] [--bottom]`
   Move a pane's scrollback the way a person turns the wheel, and report where it landed
   (`offset / history`). Pair it with `screenshot` when you need to see what a person sees —
   `capture` gives you the stored text, this gives you the view.
-- `nabi cli api schema`
+- (local) `nabi cli api schema`
   Print the full control protocol as JSON: every verb, its parameters, and one line on what
   it does. Read this when a verb below is not enough.
-- `nabi cli pane-modes --pane <id>`
+- (read) `nabi cli pane-modes --pane <id>`
   Read the terminal modes of a pane (alternate screen, mouse reporting, bracketed paste...).
   Useful when a pane behaves oddly: a full-screen program leaves different modes set.
-- `nabi cli status set <key> <value>` / `nabi cli status clear [key]`
+- (act) `nabi cli status set <key> <value>` / `nabi cli status clear [key]`
   Publish your own state — model, tokens, cost, what you are doing — into nabiTerm's status
   bar and tab badge. See "Publishing your status" below for the keys that mean something.
-- `nabi cli progress --pane <id> [--pct <0-100>]`
+- (act) `nabi cli progress --pane <id> [--pct <0-100>]`
   Show a progress badge in the status bar for that pane. Leave `--pct` out to clear it.
   nabiTerm also reads progress off the screen for cargo/cmake/pytest/docker, but telling it
   directly is exact — a long job you drive yourself should report its own progress.
-- `nabi cli web [--url <url>] [--window]`
+- (act) `nabi cli web [--url <url>] [--window]`
   Open the built-in web browser **as a tab**, like any other tab: it has a title, it can be
   split, reordered and closed, and it comes back with the workspace. `--window` opens it as
   a separate OS window instead. Handy right after `forward` — you can pull a remote web UI
@@ -127,10 +139,10 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   (`open-browser` is the **file** browser; this one is the web.)
   Needs the Edge WebView2 runtime; if it is missing you get told how to install it.
   Combine it with `screenshot` to actually see what the page rendered.
-- `nabi cli web-list`
+- (act) `nabi cli web-list`
   List the open web tabs as JSON: `[{"pane":N,"url":"...","title":"..."}]`. Web tabs are
   UI-only, so they do NOT appear in `nabi cli list` — this is how you find their numbers.
-- `nabi cli web-eval [--pane <id>] --js <code>`
+- (inject) `nabi cli web-eval [--pane <id>] --js <code>`
   Run JavaScript inside a web tab and get the result back as JSON (Inject approval).
   This is how you READ and DRIVE the web without leaving nabiTerm:
 
@@ -144,64 +156,64 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   need, not the whole page. With one web tab open `--pane` is optional; with several,
   `web-list` tells you which number to target. A tab that has never been shown has no page
   yet — focus it once first.
-- `nabi cli history [--pane <id>]`
+- (act) `nabi cli history [--pane <id>]`
   Show that pane's **full history** on screen — the same overlay the user gets by scrolling
   up. Programs that redraw in place (Claude Code, vim, top) leave only fragments in the
   terminal scrollback, but the session recording has everything. Use this when the person
   asks "what happened earlier" and the answer is longer than a capture.
-- `nabi cli web-text [--pane <id>]`
+- (act) `nabi cli web-text [--pane <id>]`
   The readable text of the page (`document.body.innerText`), as a JSON string. This is the
   one you want most of the time — reading a page beats curling it and parsing HTML, because
   what you get is what a person sees after scripts have run.
-- `nabi cli web-goto --url <url> [--pane <id>]` / `web-back` / `web-forward` / `web-reload` /
+- (act) `nabi cli web-goto --url <url> [--pane <id>]` / `web-back` / `web-forward` / `web-reload` /
   `web-stop`
   Drive navigation. `web-back` and `web-forward` fail with a clear message when there is
   nowhere to go, instead of silently doing nothing.
-- `nabi cli web-shot [--out <file.png>] [--pane <id>]`
+- (act) `nabi cli web-shot [--out <file.png>] [--pane <id>]`
   A PNG of what the page currently shows. Without `--out` it writes to the temp folder and
   the reply names the file. Use this to check rendering — `web-text` cannot tell you whether
   an image loaded or a layout broke.
-- `nabi cli web-pdf [--out <file.pdf>] [--pane <id>]`
+- (act) `nabi cli web-pdf [--out <file.pdf>] [--pane <id>]`
   The **whole** page as a PDF, not just the visible part — use it to keep a long page.
-- `nabi cli web-zoom --set <factor> [--pane <id>]`
+- (act) `nabi cli web-zoom --set <factor> [--pane <id>]`
   Zoom the page (1.0 = 100%, clamped to 0.25–5.0). Useful before `web-shot` when you want
   more of a long page in one image.
-- `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
+- (act) `nabi cli schedule create "<cron|every 15m|at 09:30>" --send <text>|--command <cmd>|--notify <text> [--pane-title <t>]`
   Register a recurring job (runs inside nabiTerm; survives restarts).
-- `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
+- (act) `nabi cli layout export` / `nabi cli layout apply --file <json>` — snapshot the tab layout
   (panes with cwd/command) and re-create a working set declaratively.
-- `nabi cli security audit [--json]` — report risky permission combinations (report-only).
+- (local) `nabi cli security audit [--json]` — report risky permission combinations (report-only).
   Block until the pane finishes its command / goes idle / outputs. Default timeout 60000 ms.
-- `nabi cli tail --pane <id>`
+- (read) `nabi cli tail --pane <id>`
   Stream a pane's output continuously.
 
-### Act (may require one-time approval in "ask" mode)
+### Driving panes, tabs and the browser
 
-- `nabi cli spawn [--shell powershell|pwsh|cmd|wsl|gitbash] [--cwd <path>] [--dock tab|split-right|split-down|new-window] [--ssh <session>]`
+- (act) `nabi cli spawn [--shell powershell|pwsh|cmd|wsl|gitbash] [--cwd <path>] [--dock tab|split-right|split-down|new-window] [--ssh <session>]`
   Open a new pane. Prints the new pane id — use it in later commands.
   `--shell` default is `powershell` (Windows PowerShell 5.1, always present). `pwsh` is
   PowerShell 7 (only if installed). If the chosen shell isn't installed, spawn returns a
   clear error immediately (naming the missing executable, e.g. pwsh.exe) instead of hanging.
-- `nabi cli focus --pane <id>` — bring a pane's tab to front.
-- `nabi cli set-title --pane <id> --title <text>` — rename a pane's tab.
-- `nabi cli resize --pane <id> --cols <c> --rows <r>`
-- `nabi cli notify --title <text> [--body <text>]` — desktop/toast notification.
-- `nabi cli open-browser [--path <dir>]` — open the file browser.
-- `nabi cli web-back` — go back in the built-in browser tab.
-- `nabi cli web-forward` — go forward.
-- `nabi cli web-reload` — reload the page.
-- `nabi cli web-stop` — stop loading.
-- `nabi cli web-list` — list the open web tabs (id and current address).
-- `nabi cli restart`
+- (act) `nabi cli focus --pane <id>` — bring a pane's tab to front.
+- (act) `nabi cli set-title --pane <id> --title <text>` — rename a pane's tab.
+- (act) `nabi cli resize --pane <id> --cols <c> --rows <r>`
+- (act) `nabi cli notify --title <text> [--body <text>]` — desktop/toast notification.
+- (act) `nabi cli open-browser [--path <dir>]` — open the file browser.
+- (act) `nabi cli web-back` — go back in the built-in browser tab.
+- (act) `nabi cli web-forward` — go forward.
+- (act) `nabi cli web-reload` — reload the page.
+- (act) `nabi cli web-stop` — stop loading.
+- (act) `nabi cli web-list` — list the open web tabs (id and current address).
+- (inject) `nabi cli restart`
   Close and reopen nabiTerm, without asking. The workspace is saved first, so tabs, splits and
   panes come back as they were. Use it after changing something that only takes effect on a
   fresh start. **Every pane dies, including yours** — the new instance is a new process.
-- `nabi cli quit`
+- (inject) `nabi cli quit`
   Close nabiTerm **without asking**. Closing the window normally pops a "really close?" dialog
   when more than one tab is open — fine for a person, but it stops a script dead. This saves
   the workspace first, so everything comes back next launch; it is not a kill.
   **Every pane dies, including yours.** Say what will happen before you call it.
-- `nabi cli update [--check]`
+- (inject) `nabi cli update [--check]`
   Upgrade nabiTerm to the latest release, with no clicking. It checks GitHub, downloads the
   installer, **verifies its SHA-256 against the one the release published**, installs silently
   and restarts nabiTerm. `--check` only reports whether a newer version exists.
@@ -209,21 +221,21 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
   yours**; and installing counts as Inject (see Permissions), so in `ask` mode a person has to
   allow it once. If you are running inside a pane, tell the user what will happen first.
 
-### Inject (separate approval in "ask" mode)
+### Typing into panes, moving files, one-way doors
 
-- `nabi cli send --pane <id> --data <text> [--raw]`
-- `nabi cli send --pane <id> --keys "ctrl+c enter esc pgup f1"` — named keys, no escape codes needed.
+- (inject) `nabi cli send --pane <id> --data <text> [--raw]`
+- (inject) `nabi cli send --pane <id> --keys "ctrl+c enter esc pgup f1"` — named keys, no escape codes needed.
   Type into a pane. Append a carriage return to press Enter (PowerShell: "cmd`r").
   Default wraps as a bracketed paste; `--raw` sends bytes verbatim (control keys).
-- `nabi cli kill --pane <id>` — close a pane.
-- `nabi cli open-sftp --session <name>` — open an SFTP browser for a saved session.
-- `nabi cli sftp-get --remote <path> --local <path>` — download one file over the
+- (inject) `nabi cli kill --pane <id>` — close a pane.
+- (inject) `nabi cli open-sftp --session <name>` — open an SFTP browser for a saved session.
+- (inject) `nabi cli sftp-get --remote <path> --local <path>` — download one file over the
   currently open SFTP connection (waits for completion; shows in the transfer queue).
-- `nabi cli sftp-put --local <path> --remote <path>` — upload one file (same rules).
+- (inject) `nabi cli sftp-put --local <path> --remote <path>` — upload one file (same rules).
 
-### Remote files (Act — needs an SFTP tab already connected)
+### Remote files (needs an SFTP tab already connected)
 
-- `nabi cli sftp-list [--path <remote dir>]` — list a remote directory as JSON
+- (act) `nabi cli sftp-list [--path <remote dir>]` — list a remote directory as JSON
   (`name`, `is_dir`, `size`, `mode`, `mtime`). Fails if no SFTP connection is open.
 
 ## Targeting a pane without an id
@@ -246,7 +258,7 @@ It fails if any pane failed, so a partial result never reports success.
 Control mode lives in nabiTerm ▸ Settings ▸ Behavior ▸ Agent control: off / ask / on.
 
 - off  — all control is refused.
-- ask  — (default) Inspect verbs always work. The first Act and the first Inject
+- ask  — (default) `(read)` verbs always work. The first `(act)` and the first `(inject)`
          in this nabiTerm instance pop an approval dialog; the user clicks Allow once
          (Act and Inject are approved separately).
 - on   — everything is allowed without prompting.
@@ -399,113 +411,3 @@ Notes: `nabi` is the same exe that runs the GUI; the `cli` subcommand does one
 request and exits. Pane ids are integers from `nabi cli list`.
 "#;
 
-#[cfg(test)]
-mod tests {
-    /// 동사를 파는 곳이 세 파일에 나뉘어 있다 — 하나만 보면 있는 것을 없다고 한다.
-    fn verb_sources() -> String {
-        [
-            include_str!("../../nabi-control/src/clientverbs.rs"),
-            include_str!("../../nabi-control/src/client.rs"),
-            include_str!("../../nabi-control/src/clientagent.rs"),
-        ]
-        .concat()
-    }
-
-    /// 소스에서 실제로 파는 낱말을 모두 모은다.
-    ///
-    /// 두 갈래다. 대부분은 `Some("x")` 로 하나씩 파지만, 웹 조종처럼 **배열에 적어 두고
-    /// 접두어를 붙여** 파는 것도 있다. 한쪽만 보면 있는 것을 없다고 한다 — 실제로 그렇게
-    /// 걸렸다. 손으로 적지 않고 두 갈래를 다 읽는다.
-    fn known_verbs() -> Vec<String> {
-        let src = verb_sources();
-        let mut out: Vec<String> = src
-            .split("Some(\"")
-            .skip(1)
-            .filter_map(|p| p.split('"').next().map(str::to_string))
-            .filter(|w| !w.is_empty() && !w.starts_with("--"))
-            .collect();
-        out.extend(prefixed_verbs(&src));
-        out
-    }
-
-    /// `const ACTS: [&str; N] = ["back", ...]` + `strip_prefix("web-")` 꼴을 펴 낸다.
-    ///
-    /// 배열과 접두어를 **소스에서 읽는다.** 여기 목록을 또 적으면 언젠가 어긋나고,
-    /// 어긋난 검사기는 검사하지 않는 것보다 나쁘다.
-    fn prefixed_verbs(src: &str) -> Vec<String> {
-        let Some(arr) = src.split("const ACTS: [&str;").nth(1) else {
-            return Vec::new();
-        };
-        let Some(items) = arr.split('[').nth(1).and_then(|s| s.split(']').next()) else {
-            return Vec::new();
-        };
-        let prefix = src
-            .split("strip_prefix(\"")
-            .nth(1)
-            .and_then(|s| s.split('"').next())
-            .unwrap_or("");
-        items
-            .split(',')
-            .filter_map(|w| w.trim().trim_matches('"').split('"').next())
-            .filter(|w| !w.is_empty())
-            .map(|w| format!("{prefix}{w}"))
-            .collect()
-    }
-
-    /// 설명서에 적힌 동사가 **실제로 있는 동사인지** 대조한다.
-    ///
-    /// 이 설명서는 AI 에게 주는 것이다. 없는 동사를 적어 두면 AI 가 그것을 부르고 실패한다.
-    /// 그리고 실패한 AI 는 우리 프로그램이 고장 났다고 판단한다.
-    ///
-    /// 손으로 관리하는 목록은 언젠가 실제와 달라진다 — 설정 검색 색인에서 이미 두 번 겪었다.
-    #[test]
-    fn every_verb_in_the_guide_really_exists() {
-        let known = known_verbs();
-        let mut missing = Vec::new();
-        for line in super::AGENT_GUIDE_MD.lines() {
-            let Some(rest) = line.trim_start().strip_prefix("- `nabi cli ") else { continue };
-            let Some(verb) = rest.split([' ', '`']).find(|w| !w.is_empty()) else { continue };
-            if !known.iter().any(|k| k == verb) {
-                missing.push(verb.to_string());
-            }
-        }
-        assert!(missing.is_empty(), "설명서에만 있고 실제로는 없는 동사: {missing:?}");
-    }
-
-    /// 새로 만든 동사를 설명서에 적는 것을 잊지 않게 한다.
-    ///
-    /// 앞의 시험과 방향이 반대다. 그쪽은 "없는 것을 적었나", 이쪽은 "있는 것을 빠뜨렸나"를 본다.
-    /// 둘 다 있어야 목록이 실제와 같아진다.
-    #[test]
-    fn every_real_verb_is_written_down() {
-        // **낱말이 산문에 섞여 있는 것으로는 안 된다.** 예전에는 `guide.contains(v)` 였는데,
-        // `restart` 를 새로 만들었을 때 설명서에 없는데도 통과했다 — 다른 항목 설명에
-        // "restarts nabiTerm" 이라고 적혀 있었기 때문이다(2026-08-31에 겪었다).
-        //
-        // 그래서 **적힌 자리의 모양**을 본다. 설명서는 동사를 늘 `- \`nabi cli <낱말>` 로
-        // 시작하는 줄에 적는다 — 앞 시험(`every_verb_in_the_guide_really_exists`)이 같은
-        // 모양을 읽으므로, 둘이 같은 규칙을 본다.
-        let documented: Vec<String> = super::AGENT_GUIDE_MD
-            .lines()
-            .filter_map(|l| l.trim_start().strip_prefix("- `nabi cli "))
-            .filter_map(|r| r.split([' ', '`']).find(|w| !w.is_empty()))
-            .map(str::to_string)
-            .collect();
-        // 두 낱말짜리 동사(`agent report` 처럼)는 앞낱말만 적히므로 그것도 받아 준다.
-        let mut absent: Vec<String> = known_verbs()
-            .into_iter()
-            .filter(|v| !documented.iter().any(|d| d == v))
-            .filter(|v| !SUBWORDS.contains(&v.as_str()))
-            .collect();
-        absent.sort();
-        absent.dedup();
-        assert!(absent.is_empty(), "실제로 있는데 설명서에 없는 동사: {absent:?}");
-    }
-
-    /// 두 낱말짜리 동사의 **뒷낱말** — 설명서에는 앞낱말 줄에 함께 적힌다.
-    const SUBWORDS: &[&str] = &[
-        "report", "release", "session", "prompt", "explain", "wait", "install", "create",
-        "export", "apply", "set", "clear", "audit", "schema", "goto", "zoom", "pdf", "shot",
-        "eval",
-    ];
-}

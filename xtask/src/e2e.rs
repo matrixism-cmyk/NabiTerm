@@ -100,6 +100,27 @@ pub(crate) fn scan_logs(cfg_dir: &std::path::Path) -> Result<(), String> {
     }
 }
 
+/// 파이프에 붙어 인사까지 마친다. `from` 은 "내가 어느 pane 인가"를 스스로 밝히는 자리다.
+fn connect_as(
+    pipe_name: &str,
+    token: &str,
+    from: Option<u64>,
+) -> Result<(std::fs::File, BufReader<std::fs::File>), String> {
+    let mut pipe = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(pipe_name)
+        .map_err(|e| format!("제어 파이프 재접속 실패: {e}"))?;
+    let mut rd = BufReader::new(pipe.try_clone().map_err(|e| e.to_string())?);
+    let who = from.map(|p| p.to_string()).unwrap_or_else(|| "null".into());
+    let hello = format!(r#"{{"op":"hello","token":"{token}","from":{who}}}"#);
+    let r = roundtrip(&mut pipe, &mut rd, &hello)?;
+    if !r.contains(r#""res":"ok""#) {
+        return Err(format!("hello 거부: {r}"));
+    }
+    Ok((pipe, rd))
+}
+
 /// 파이프 접속(재시도) 후 스모크 시나리오를 몬다.
 fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
     // 앱 기동 + 서버 리슨까지 기다린다(첫 프레임 이후) — 최대 30초.
@@ -114,6 +135,9 @@ fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
         }
     };
     let mut rd = BufReader::new(pipe.try_clone().map_err(|e| e.to_string())?);
+    // 첫 접속은 아직 pane 이 없으니 밝힐 것도 없다. spawn 뒤에 **그 pane 인 척** 다시 붙는다
+    // (아래 `sweep` 앞) — 실제 pane 안의 `nabi cli` 가 하는 것과 같다. 예전에는 여기서만
+    // 붙고 끝까지 `from` 이 없었는데, 서버가 어차피 버리고 있어서 아무도 몰랐다.
     let hello = format!(r#"{{"op":"hello","token":"{token}","from":null}}"#);
     let r = roundtrip(&mut pipe, &mut rd, &hello)?;
     if !r.contains(r#""res":"ok""#) {
@@ -137,7 +161,10 @@ fn drive(pipe_name: &str, token: &str) -> Result<(), String> {
         if r.matches("NABI_E2E_OK").count() >= 2 {
             open_big_file(&mut pipe, &mut rd)?; // 흘려 읽기 편집기가 실제로 뜨는지.
             // 제어 동사를 전수로 던져 본다 — 이름만 맞고 죽어 있는 것을 잡는다.
-            crate::e2everbs::sweep(&mut pipe, &mut rd, pane)?;
+            // **그 pane 인 척 다시 붙어서** 던진다. `status set` 같은 동사는 부른 pane 을
+            // 알아야 하고, 그 pane 이 어디인지는 접속할 때 밝힌다.
+            let (mut p2, mut rd2) = connect_as(pipe_name, token, Some(pane))?;
+            crate::e2everbs::sweep(&mut p2, &mut rd2, pane)?;
             let close = format!(r#"{{"op":"close-pane","pane":{pane}}}"#);
             let _ = roundtrip(&mut pipe, &mut rd, &close)?;
             return Ok(());

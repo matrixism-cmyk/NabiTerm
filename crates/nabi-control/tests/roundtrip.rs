@@ -268,3 +268,73 @@ fn sftp_ctl_roundtrip_via_app_reply() {
         other => panic!("Event 응답이 아님: {other:?}"),
     }
 }
+
+/// **없는 pane 을 닫으면 없다고 답한다** — 성공을 흉내 내지 않는다.
+///
+/// 예전에는 어떤 번호를 넣어도 `Ok` 였고, 오케스트레이터가 그 번호로 "죽었다"는 신호까지
+/// 뿌렸다. 웹 탭은 `list` 에 안 나오므로 그 번호를 넣기 쉬웠는데, 그러면 `wait --until exit`
+/// 이 가짜 신호를 받고 **끝나지도 않은 일을 끝났다고 보고했다.**
+#[test]
+fn closing_a_pane_that_is_not_there_says_so() {
+    let pipe = format!(r"\\.\pipe\nabi-ctl-close-{}", std::process::id());
+    let token = nabi_control::gen_token();
+    let panes = new_shared_panes();
+    let model = nabi_vt::TermModel::new(GridSize::new(40, 5), 100);
+    panes.write().unwrap().insert(
+        PaneId::new(3),
+        PaneView::new(Arc::new(Mutex::new(model)), "있는 pane".into(), "local"),
+    );
+    let (cmd_tx, cmd_rx) = unbounded();
+    let (app_tx, _app_rx) = unbounded();
+    let (policy, _ask_rx) = nabi_control::policy::ControlPolicy::new(nabi_control::policy::Mode::On);
+    nabi_control::server::start(
+        pipe.clone(),
+        token.clone(),
+        nabi_control::server::ServerCtx {
+            panes,
+            cmd_tx,
+            app_tx,
+            policy,
+            cfg: nabi_control::dispatch::SpawnCfg {
+                scrollback: 100,
+                encoding: "UTF-8".into(),
+                cols: 80,
+                rows: 24,
+            },
+            events: nabi_control::subscribe::EventHub::new(),
+        },
+    );
+    // 없는 번호(웹 탭 번호가 이렇게 들어온다) — 오류이고, 아무 명령도 나가지 않는다.
+    // 첫 요청은 파이프가 뜰 때까지 기다린다 — 시험 일곱 개가 동시에 서버를 띄우면
+    // 클라이언트의 1초 재시도 예산으로는 모자랄 때가 있다(느린 것이지 깨진 것이 아니다).
+    let r = connect_eventually(&pipe, &token, &ControlRequest::ClosePane { pane: 999 });
+    assert!(matches!(r, ControlResponse::Err { .. }), "없는 pane 인데 성공했다: {r:?}");
+    assert!(cmd_rx.try_recv().is_err(), "없는 pane 인데 닫기 명령을 보냈다");
+    // 있는 번호는 그대로 닫힌다.
+    let r = nabi_control::client::request(&pipe, &token, &ControlRequest::ClosePane { pane: 3 })
+        .unwrap();
+    assert!(matches!(r, ControlResponse::Ok), "있는 pane 을 못 닫았다: {r:?}");
+    assert!(cmd_rx.recv_timeout(std::time::Duration::from_secs(2)).is_ok());
+}
+
+/// 파이프가 뜰 때까지 기다렸다가 요청 하나를 보낸다(시험 전용).
+///
+/// 클라이언트 자체도 재시도하지만 예산이 1초뿐이라, 여러 시험이 한꺼번에 서버를 띄우는
+/// 동안에는 모자랄 때가 있다. **접속 실패만** 다시 시도하고, 서버가 준 오류 응답은 그대로
+/// 돌려준다 — 그러지 않으면 이 도우미가 진짜 실패까지 삼킨다.
+fn connect_eventually(
+    pipe: &str,
+    token: &str,
+    req: &ControlRequest,
+) -> ControlResponse {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    loop {
+        match nabi_control::client::request(pipe, token, req) {
+            Ok(r) => return r,
+            Err(e) if e.contains("파이프 접속 실패") && std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Err(e) => panic!("요청 실패: {e}"),
+        }
+    }
+}

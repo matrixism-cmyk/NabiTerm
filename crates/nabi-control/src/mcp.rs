@@ -208,6 +208,12 @@ fn tool_defs() -> Vec<Value> {
         ),
         t("nabi_open_browser", "로컬 파일 브라우저 탭 열기", json!({ "path": { "type": "string" } }), &[]),
         t(
+            "nabi_open_file",
+            "파일을 내장 편집기(nabiPad)로 연다 — 긴 파일을 화면에 쏟는 대신 사람이 읽고 고칠 수 있게 한다",
+            json!({ "path": { "type": "string", "description": "열 파일 경로" } }),
+            &["path"],
+        ),
+        t(
             "nabi_open_sftp",
             "저장 세션 이름으로 SFTP 탭 열기(자격증명은 볼트)",
             json!({ "session": { "type": "string" } }),
@@ -244,6 +250,34 @@ fn tool_defs() -> Vec<Value> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// **알리는 목록과 받아 주는 목록이 같은가.**
+    ///
+    /// MCP 클라이언트는 `tools/list` 에 나온 것만 부를 수 있다. 받아 주기만 하고 알리지
+    /// 않으면 그 도구는 **있는데 아무도 못 쓴다** — `nabi_open_file` 이 그렇게 한동안
+    /// 숨어 있었다. 반대로 알리기만 하고 못 받으면 부른 쪽이 오류를 받는다.
+    #[test]
+    fn what_we_advertise_is_what_we_accept() {
+        let advertised: Vec<String> = tool_defs()
+            .iter()
+            .filter_map(|d| d["name"].as_str().map(str::to_string))
+            .collect();
+        for name in &advertised {
+            // 인자가 모자라 거절당하는 것은 괜찮다 — "모르는 도구"만 아니면 된다.
+            let e = build_request(name, &json!({})).err().unwrap_or_default();
+            assert!(!e.contains("알 수 없는"), "{name}: 알리기만 하고 받지 않는다 ({e})");
+        }
+        // 소스가 곧 목록이다 — `build_request` 가 가진 이름을 여기서 읽어 온다.
+        let src = include_str!("mcp.rs");
+        let body = src.split("fn build_request").nth(1).unwrap_or_default();
+        let body = body.split("\nfn ").next().unwrap_or_default();
+        for name in body.split('"').filter(|w| w.starts_with("nabi_")) {
+            assert!(
+                advertised.iter().any(|a| a == name),
+                "{name}: 받아 주면서 tools/list 에 안 알린다 — 아무도 못 쓴다"
+            );
+        }
+    }
 
     /// **SFTP를 MCP로 연 것이 이 서버의 남다른 부분**이다 — 에이전트가 명령만 치는 것이
     /// 아니라 원격 파일을 옮긴다. 인자 이름이 어긋나면 조용히 실패하므로 시험으로 묶는다.
@@ -302,8 +336,17 @@ mod tests {
         assert!(matches!(r, ControlRequest::Capture { pane: 1, start: Some(-100), .. }));
         assert!(build_request("nabi_send", &json!({ "pane": 3 })).is_err());
         assert!(build_request("unknown", &json!({})).is_err());
-        // 도구 선언이 전부 유효한 JSON으로 직렬화된다(+A4 agent explain).
-        assert_eq!(tool_defs().len(), 16);
+        // 도구 선언이 전부 이름과 입력 스키마를 갖춘다.
+        //
+        // 예전에는 여기서 개수를 `16` 으로 못 박았다. 그런데 그 숫자는 **어긋난 쪽에 맞춰
+        // 적혀 있었다** — 도구 하나가 목록에서 빠진 채로 16이 맞았으므로, 어긋남을 잡기는커녕
+        // 못 박아 두는 셈이었다. 개수는 `what_we_advertise_is_what_we_accept` 가 양쪽을
+        // 맞대 보는 것으로 지킨다.
+        assert!(!tool_defs().is_empty());
+        for d in tool_defs() {
+            assert!(d["name"].as_str().is_some_and(|n| n.starts_with("nabi_")), "{d}");
+            assert!(d["inputSchema"]["type"] == "object", "{d}");
+        }
         let r = build_request("nabi_agent_explain", &json!({ "pane": 2 })).unwrap();
         assert!(matches!(r, ControlRequest::AgentExplain { pane: 2 }));
     }
