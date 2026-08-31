@@ -161,6 +161,39 @@ pub(crate) fn read_entries(path: &Path, sort: Sort, desc: bool, show_hidden: boo
 
 #[cfg(test)]
 mod tests {
+    /// **폴더 하나를 읽는 데 얼마나 드는가** — 캐시를 둘 근거를 숫자로 남긴다.
+    ///
+    /// 항목마다 `metadata()` 를 부르므로 파일 수만큼 시스템 호출이 난다. 화면은 초당 예순
+    /// 번 그려지니, 캐시가 없으면 그 수만큼 곱해진다. 네트워크 경로(UNC·폐쇄망 공유)에서는
+    /// 한 번이 곧 왕복이라 더 나쁘다.
+    ///
+    /// 평소에는 돌리지 않는다(파일 2천 개를 만든다) — 숫자가 궁금할 때만:
+    /// `cargo test -p nabi-app how_long -- --ignored --nocapture`
+    #[test]
+    #[ignore]
+    fn how_long_does_a_big_folder_take() {
+        use super::{read_entries, Sort};
+        let dir = std::env::temp_dir().join(format!("nabi-bench-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        for i in 0..2000 {
+            let _ = std::fs::write(dir.join(format!("f{i:04}.txt")), b"x");
+        }
+        let t = std::time::Instant::now();
+        let rows = read_entries(&dir, Sort::Name, false, false);
+        let ms = t.elapsed().as_secs_f64() * 1000.0;
+        println!("항목 {} 개 · 한 번 읽는 데 {ms:.1}ms · 60fps 면 초당 {:.0}ms", rows.len(), ms * 60.0);
+        // 캐시를 두면 읽는 대신 **복제**가 남는다. 그것이 얼마나 싼지도 재 둔다 —
+        // 복제가 읽기만큼 비싸면 캐시를 둔 뜻이 없다.
+        let t = std::time::Instant::now();
+        let mut n = 0usize;
+        for _ in 0..100 {
+            n += rows.clone().len();
+        }
+        let cms = t.elapsed().as_secs_f64() * 1000.0 / 100.0;
+        println!("복제 한 번 {cms:.2}ms · 60fps 면 초당 {:.0}ms (항목 {n} 확인)", cms * 60.0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn read_entries_hides_dotfiles() {
         use super::{read_entries, Sort};

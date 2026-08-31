@@ -29,6 +29,12 @@ pub(crate) struct BrowserPanel {
     pub fwd: Vec<PathBuf>,
     /// 편집 가능한 경로 주소창 버퍼(비편집 시 현재 경로 표시, Enter로 이동 — SFTP와 일관).
     pub addr: String,
+    /// 목록 캐시 — 매 프레임 폴더를 다시 읽지 않으려고 둔다(`browsercache` 참고).
+    pub cache: Vec<crate::browserfs::Row>,
+    pub cache_key: Option<crate::browsercache::CacheKey>,
+    pub cache_at: Option<std::time::Instant>,
+    /// 우리가 방금 뭔가를 바꿨다 — 기다리지 말고 곧바로 다시 읽는다.
+    pub cache_dirty: bool,
 }
 
 impl Default for BrowserPanel {
@@ -52,6 +58,10 @@ impl Default for BrowserPanel {
             back: Vec::new(),
             fwd: Vec::new(),
             addr: String::new(),
+            cache: Vec::new(),
+            cache_key: None,
+            cache_at: None,
+            cache_dirty: false,
         }
     }
 }

@@ -130,7 +130,16 @@ impl NabiApp {
     }
 
     /// 수집된 브라우저 액션을 실행한다(사이드패널·탭 공용).
+    /// 브라우저에서 나온 동작 하나를 적용한다.
+    ///
+    /// **여기를 지나면 목록 캐시를 무효로 본다.** 붙여넣기·삭제·이름변경·압축풀기처럼 파일을
+    /// 바꾸는 것이 대부분이고, 바꾸지 않는 것(정렬·선택)까지 한 번 더 읽어도 값이 싸다
+    /// (읽기 1.2ms 는 사람이 무언가를 누른 순간에만 난다 — 매 프레임이 아니다).
+    ///
+    /// 자리마다 표시하지 않는 까닭은 **하나라도 빠뜨리면 목록이 낡은 채로 남기** 때문이다.
+    /// 낡은 목록은 느린 것보다 나쁘다 — 지운 파일이 그대로 보인다.
     pub(crate) fn apply_browser_act(&mut self, ctx: &egui::Context, mut a: BrowserAct) {
+        self.browser.cache_dirty = true;
         let path = self.browser.path.clone();
         self.apply_clip_drag(&a, &path); // 탐색기 복사/붙여넣기/드래그-아웃.
         let mut nav = a.nav;

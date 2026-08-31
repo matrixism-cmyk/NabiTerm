@@ -110,11 +110,26 @@ fn render_inner(
     let path = b.path.clone();
     // 빈 경로 = "내 컴퓨터"(드라이브 목록). 그 외엔 일반 디렉터리.
     let is_drives = path.as_os_str().is_empty();
-    let entries = if is_drives {
-        Vec::new()
-    } else {
-        read_entries(&path, b.sort, b.sort_desc, b.show_hidden)
-    };
+    // **매 프레임 읽지 않는다.** 폴더가 그대로면 캐시를 그대로 쓴다 — 그리기는 초당 예순
+    // 번이고, 항목마다 `metadata()` 가 나가므로 그냥 보고만 있어도 코어를 갉아먹었다
+    // (2,000개 폴더에서 초당 64ms 를 쟀다 — `browsercache` 의 설명 참고).
+    if !is_drives {
+        let want = crate::browsercache::CacheKey {
+            path: path.clone(),
+            sort: b.sort,
+            desc: b.sort_desc,
+            hidden: b.show_hidden,
+        };
+        let now = std::time::Instant::now();
+        if crate::browsercache::needs_reread(b.cache_key.as_ref(), &want, b.cache_at, b.cache_dirty, now) {
+            b.cache = read_entries(&path, b.sort, b.sort_desc, b.show_hidden);
+            b.cache_key = Some(want);
+            b.cache_at = Some(now);
+            b.cache_dirty = false;
+        }
+    }
+    // 드라이브 목록("내 컴퓨터")은 아래에서 따로 그린다 — 여기서는 빈 목록이다.
+    let entries: Vec<crate::browserfs::Row> = if is_drives { Vec::new() } else { b.cache.clone() };
     ui.horizontal_wrapped(|ui| {
         ui.label("\u{1f4c1}");
         let full = path.to_string_lossy().into_owned();
