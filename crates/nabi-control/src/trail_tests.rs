@@ -144,7 +144,7 @@ fn every_verb_name_is_unique_and_nonempty() {
         R::Hello { token: String::new(), from: None },
         R::ListPanes,
         R::PaneModes { pane: 1 },
-        R::Capture { pane: 1, lines: 10, start: None, end: None, escapes: false },
+        R::Capture { pane: 1, lines: 10, start: None, end: None, escapes: false, view: false },
         R::AgentExplain { pane: 1 },
         R::SendInput { pane: 1, data: "x".into(), raw: false },
         R::ClosePane { pane: 1 },

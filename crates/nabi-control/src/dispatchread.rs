@@ -45,6 +45,7 @@ pub(crate) fn capture(
     start: Option<i64>,
     end: Option<i64>,
     escapes: bool,
+    view: bool,
 ) -> ControlResponse {
     let Ok(map) = panes.read() else {
         return err("pane 레지스트리 잠금 실패");
@@ -57,8 +58,13 @@ pub(crate) fn capture(
     };
     let cur = m.cursor();
     let lines = lines.clamp(1, 10_000) as usize;
+    // 지금 보고 있는 화면 그대로 — 스크롤을 올려 뒀으면 그 자리의 줄들이다.
+    let text = if view {
+        let top = m.top_abs_line();
+        let rows = m.size().rows() as usize;
+        m.lines_abs_text(top, top + rows).join("\n")
     // CP-8: 범위/SGR 캡처 — 음수 인덱스는 끝(총 줄 수)에서 거꾸로.
-    let text = if start.is_some() || end.is_some() || escapes {
+    } else if start.is_some() || end.is_some() || escapes {
         let total = m.total_abs_lines() as i64;
         let abs = |v: i64| if v < 0 { total + v } else { v }.clamp(0, total) as usize;
         let e = end.map(abs).unwrap_or(total as usize);

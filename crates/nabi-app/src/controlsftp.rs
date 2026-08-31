@@ -20,11 +20,34 @@ pub struct CtlSftp {
 impl NabiApp {
     /// AppCtl::SftpCtl 진입점 — 열린 연결이 없으면 즉시 실패 회신.
     pub(crate) fn on_sftp_ctl(&mut self, seq: u64, op: SftpCtlOp) {
+        // 여는 것은 **연결이 있기 전에** 하는 일이라 아래 검사보다 앞에 온다.
+        if let SftpCtlOp::Open { session } = op {
+            match self.sessions.sessions.iter().find(|s| s.name == session).cloned() {
+                Some(s) => {
+                    let ftp = s.is_ftp;
+                    self.open_sftp_saved(s, ftp);
+                    // 탭이 열렸다는 뜻이지 붙었다는 뜻은 아니다 — 붙었는지는 `sftp-list` 가 안다.
+                    self.sftp_ctl_reply(seq, true, format!("세션 '{session}' 탭을 열었습니다"));
+                }
+                None => {
+                    let names: Vec<&str> =
+                        self.sessions.sessions.iter().map(|s| s.name.as_str()).take(8).collect();
+                    self.sftp_ctl_reply(
+                        seq,
+                        false,
+                        format!("세션 '{session}' 없음 — 저장된 이름: {}", names.join(", ")),
+                    );
+                }
+            }
+            return;
+        }
         let Some(id) = self.sftp.id else {
             self.sftp_ctl_reply(seq, false, "열린 SFTP 연결이 없습니다 — 먼저 SFTP 탭을 연결하세요".into());
             return;
         };
         match op {
+            // 위에서 처리하고 돌아갔다 — 여기 오지 않는다.
+            SftpCtlOp::Open { .. } => {}
             SftpCtlOp::List { path } => {
                 // 같은 경로를 UI가 동시에 요청하는 드문 경우, 제어 회신을 우선한다.
                 self.ctl_sftp.list.push((path.clone(), seq));

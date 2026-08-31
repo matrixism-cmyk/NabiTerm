@@ -11,7 +11,7 @@ pub fn api_doc() -> serde_json::Value {
         "ops": {
             "hello": { "params": ["token", "from?"], "doc": "접속 인사+토큰 검증" },
             "list-panes": { "params": [], "doc": "pane 목록·상태" },
-            "capture": { "params": ["pane", "lines", "start?", "end?", "escapes?"], "doc": "화면/스크롤백 캡처" },
+            "capture": { "params": ["pane", "lines", "start?", "end?", "escapes?", "view?"], "doc": "화면/스크롤백 캡처" },
             "spawn-terminal": { "params": ["shell", "cwd?", "dock?", "ssh?"], "doc": "새 pane" },
             "send-input": { "params": ["pane", "data", "raw?"], "doc": "입력 주입(bracketed 보호)" },
             "close-pane": { "params": ["pane"], "doc": "pane 닫기" },

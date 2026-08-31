@@ -108,6 +108,7 @@ fn build_request(name: &str, a: &Value) -> Result<ControlRequest, String> {
             start: a.get("start").and_then(|v| v.as_i64()),
             end: a.get("end").and_then(|v| v.as_i64()),
             escapes: a.get("escapes").and_then(|v| v.as_bool()).unwrap_or(false),
+            view: a.get("view").and_then(|v| v.as_bool()).unwrap_or(false),
         },
         "nabi_spawn" => ControlRequest::SpawnTerminal {
             shell: s("shell").unwrap_or_else(|| "powershell".into()),

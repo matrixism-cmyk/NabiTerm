@@ -52,7 +52,7 @@ fn pipe_roundtrip_list_capture_and_auth() {
     let r = nabi_control::client::request(
         &pipe,
         &token,
-        &ControlRequest::Capture { pane: 7, lines: 10, start: None, end: None, escapes: false },
+        &ControlRequest::Capture { pane: 7, lines: 10, start: None, end: None, escapes: false, view: false },
     )
     .unwrap();
     match r {

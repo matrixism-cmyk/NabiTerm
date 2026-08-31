@@ -30,6 +30,7 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             start: flag(args, "--start").and_then(|s| s.parse().ok()),
             end: flag(args, "--end").and_then(|s| s.parse().ok()),
             escapes: args.iter().any(|a| a == "--escapes"),
+            view: args.iter().any(|a| a == "--view"),
         }),
         Some("spawn") => Ok(ControlRequest::SpawnTerminal {
             shell: flag(args, "--shell").unwrap_or_else(|| "powershell".into()),

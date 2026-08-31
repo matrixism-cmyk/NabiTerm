@@ -21,6 +21,13 @@ pub enum ControlRequest {
         end: Option<i64>,
         #[serde(default)]
         escapes: bool,
+        /// **지금 사람이 보고 있는 화면**만 준다(스크롤을 올려 뒀으면 그 자리).
+        ///
+        /// 다른 옵션은 전부 "쌓인 글의 끝에서 몇 줄"이라 스크롤과 상관이 없다. 그래서
+        /// 스크롤을 올려 둔 사람에게 "지금 뭐가 보이세요"를 물어볼 길이 없었다 —
+        /// 화면이 이상하다는 이야기를 받아도 우리가 볼 수가 없었다.
+        #[serde(default)]
+        view: bool,
     },
     /// U1: 새 터미널(CP-2). dock=tab|split-right|split-down|new-window(CP-7),
     /// ssh=저장 세션 이름(자격증명은 볼트 경유 — 평문 금지).
@@ -261,7 +268,7 @@ mod tests {
             lines: 50,
             start: None,
             end: None,
-            escapes: false,
+            escapes: false, view: false,
         };
         let s = serde_json::to_string(&r).unwrap();
         assert!(s.contains("\"op\":\"capture\""));

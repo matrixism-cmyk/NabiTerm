@@ -42,9 +42,9 @@ pub fn dispatch(
         // **읽기도 기록에 남긴다.** 캡처는 남의 pane 에 남아 있는 글자를 그대로 가져온다 —
         // 거기에는 사람이 방금 친 비밀번호도 있을 수 있다. 쓰기만 남기면 "누가 무엇을 보았나"가
         // 통째로 비고, 그것은 감사의 절반이다. 몇 글자를 가져갔는지도 함께 센다.
-        ControlRequest::Capture { pane, lines, start, end, escapes } => {
+        ControlRequest::Capture { pane, lines, start, end, escapes, view } => {
             tracing::info!(target: "control", from = ?from, pane, lines, "capture");
-            let resp = crate::dispatchread::capture(panes, pane, lines, start, end, escapes);
+            let resp = crate::dispatchread::capture(panes, pane, lines, start, end, escapes, view);
             let (bytes, outcome) = match &resp {
                 ControlResponse::Captured { text, .. } => (text.len(), crate::trail::Outcome::Allowed),
                 _ => (0, crate::trail::Outcome::Failed),
@@ -341,10 +341,11 @@ pub(crate) fn dispatch_write(
             app_tx.send(AppCtl::OpenEditor { path }).ok();
             ControlResponse::Ok
         }
+        // **앱에 물어보고 답을 기다린다.** 예전에는 던지고 성공을 돌려줬는데, 세션 이름을
+        // 잘못 적으면 사람에게만 토스트가 뜨고 부른 쪽은 잘된 줄 알았다.
         ControlRequest::OpenSftp { session } => {
             tracing::info!(target: "control", from = ?from, %session, "open-sftp");
-            app_tx.send(AppCtl::OpenSftp { session }).ok();
-            ControlResponse::Ok
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Open { session }, 15)
         }
         ControlRequest::Focus { pane } => {
             tracing::info!(target: "control", from = ?from, pane, "focus");
