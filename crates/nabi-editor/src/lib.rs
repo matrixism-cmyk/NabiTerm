@@ -85,6 +85,7 @@ pub mod editorminimap;
 pub mod editornum;
 pub mod editornumops;
 pub mod editoroutline;
+pub mod editorsticky;
 pub mod editorreplace;
 pub mod editorsort;
 pub mod editorstats;

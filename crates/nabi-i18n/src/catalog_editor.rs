@@ -167,6 +167,8 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("editor.reverselines", "Reverse line order", "줄 순서 뒤집기", "行順を逆に"),
     ("nabipad.minimap", "Minimap", "미니맵", "ミニマップ"),
     ("editor.minimap.hint", "Show a shrunken map of the whole file on the right. Click it to jump.", "파일 전체를 오른쪽에 축소해 보여 줍니다. 눌러서 그 자리로 갑니다.", "ファイル全体を右側に縮小表示します。クリックでその位置へ移動します。"),
+    ("nabipad.sticky", "Keep the enclosing name on top", "감싼 이름을 맨 위에 고정", "囲みの名前を上部に固定"),
+    ("editor.sticky.hint", "In a long file, keep the enclosing heading or function name pinned at the top so you can see where you are. Click a pinned line to jump to it.", "긴 파일에서 지금 있는 자리를 감싼 제목이나 함수 이름을 맨 위에 붙여 둡니다. 붙어 있는 줄을 누르면 그 자리로 갑니다.", "長いファイルで、現在位置を囲む見出しや関数名を上部に固定します。固定行をクリックするとその位置へ移動します。"),
     ("nabipad.outline", "Outline (structure)", "개요(구조)", "アウトライン(構造)"),
     ("editor.docinfo", "Document info", "문서 정보", "ドキュメント情報"),
     ("stat.lines", "Lines", "줄", "行"),

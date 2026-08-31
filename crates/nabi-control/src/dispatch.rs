@@ -170,6 +170,37 @@ fn web_roundtrip(
     err("웹 탭 응답 시간 초과")
 }
 
+/// **앱이 하는 일의 결과를 기다린다** — 성공/실패를 그대로 부른 쪽에 돌려준다.
+///
+/// `web_roundtrip`·`sftp_roundtrip` 과 같은 모양인데, 저쪽은 각자 자기 이벤트만 본다.
+/// 새 동사마다 이벤트를 하나씩 더 만들면 결국 답할 통로가 없어 **성공을 돌려주고 사람에게만
+/// 토스트를 띄우는** 모양으로 돌아간다. 그래서 여기 하나로 모았다 — 새 동사는 이것을 쓴다.
+fn ctl_roundtrip(
+    app_tx: &Sender<AppCtl>,
+    events: &EventHub,
+    make: impl FnOnce(u64) -> AppCtl,
+    timeout_secs: u64,
+) -> ControlResponse {
+    let seq = SPAWN_SEQ.fetch_add(1, Ordering::Relaxed);
+    let rx = events.subscribe();
+    app_tx.send(make(seq)).ok();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(timeout_secs);
+    while std::time::Instant::now() < deadline {
+        while let Ok(ev) = rx.try_recv() {
+            if let Event::CtlResult { seq: s, ok, data } = ev {
+                if s == seq {
+                    return match ok {
+                        true => ControlResponse::Event { pane: 0, kind: "ctl".into(), data },
+                        false => err(&data),
+                    };
+                }
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    err("앱 응답 시간 초과")
+}
+
 /// 승인된 쓰기 동작 실행(spawn/send/close/resize/open-browser/open-sftp).
 pub(crate) fn dispatch_write(
     req: ControlRequest,
@@ -183,9 +214,11 @@ pub(crate) fn dispatch_write(
     match req {
         ControlRequest::SpawnTerminal { ssh: Some(session), .. } => {
             // SSH 스폰: 자격증명은 앱(볼트/connect_saved) 경유 — 평문 금지 원칙.
+            //
+            // **답을 기다린다.** 예전에는 던지고 성공을 돌려줬는데, 세션 이름을 잘못 적으면
+            // 사람에게만 토스트가 뜨고 부른 쪽은 접속된 줄 알았다.
             tracing::info!(target: "control", from = ?from, %session, "spawn-ssh");
-            app_tx.send(AppCtl::ConnectSession { session }).ok();
-            ControlResponse::Ok
+            ctl_roundtrip(app_tx, events, |seq| AppCtl::ConnectSession { session, seq: Some(seq) }, 10)
         }
         ControlRequest::SpawnTerminal { shell, cwd, dock, ssh: None } => {
             tracing::info!(target: "control", from = ?from, %shell, ?dock, "spawn");
@@ -401,7 +434,13 @@ pub(crate) fn dispatch_write(
         }
         ControlRequest::ScheduleCreate { name, spec, kind, payload, pane_title } => {
             tracing::info!(target: "control", from = ?from, %spec, "schedule-create");
-            app_tx.send(AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title }).ok(); ControlResponse::Ok
+            // 사양(`*/5 * * * *` 같은 것)이 틀렸을 때 그 까닭을 돌려준다 — 예전에는 토스트뿐이었다.
+            ctl_roundtrip(
+                app_tx,
+                events,
+                |seq| AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title, seq: Some(seq) },
+                10,
+            )
         }
         // 부른 pane 자신의 상태를 적는다. 어느 pane 인지 모르면 **적을 곳이 없으니 그렇게
         // 말한다** — 예전에는 pane 0 에 던지고 성공을 돌려줘서, 나비텀 밖에서 부른 사람은

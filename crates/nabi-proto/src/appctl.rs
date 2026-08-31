@@ -38,7 +38,9 @@ pub enum AppCtl {
     /// 다음 PaneSpawned의 도킹 위치(split-right|split-down|new-window — CP-7).
     DockNext { dock: String },
     /// 저장 세션 이름으로 SSH 터미널 연결(자격증명은 볼트 경유 — CP-7).
-    ConnectSession { session: String },
+    /// 저장 세션으로 SSH 접속. `seq` 를 주면 앱이 `Event::CtlResult` 로 결과를 돌려준다
+    /// — 이름이 틀렸을 때 부르는 쪽이 알 수 있어야 한다(예전에는 토스트만 떴다).
+    ConnectSession { session: String, seq: Option<u64> },
     /// pane 탭 활성화(CP-7).
     Focus { pane: u64 },
     /// 탭 제목 변경(CP-7).
@@ -58,7 +60,8 @@ pub enum AppCtl {
         ttl_ms: Option<u64>,
     },
     /// 스케줄 잡 등록(C3): spec="*/5 * * * *"|"every 15m"|"at 09:30", kind=send|command|notify.
-    ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
+    /// 일정 등록. `seq` 를 주면 사양이 틀렸을 때 그 까닭을 돌려준다.
+    ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String, seq: Option<u64> },
     /// 웹 탭 목록 요청 — 앱이 Event::WebResult{seq,..}로 회신.
     WebList { seq: u64 },
     /// 웹 탭에서 자바스크립트 실행 — 앱이 Event::WebResult{seq,..}로 회신.

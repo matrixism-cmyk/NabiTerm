@@ -56,6 +56,14 @@ pub enum Event {
     WebResult { seq: u64, ok: bool, data: String },
     /// 제어평면 SFTP 조작 회신(S6-55): ok=성공, data=목록 JSON 또는 사유.
     SftpCtlDone { seq: u64, ok: bool, data: String },
+    /// **앱이 하는 일의 일반적인 답** — 성공했나(`ok`)와 그 사유/결과(`data`).
+    ///
+    /// 위의 셋(`ShotDone`·`WebResult`·`SftpCtlDone`)은 각자 하나의 동사만을 위해 생겼다.
+    /// 그러다 보니 새 동사는 답할 통로가 없어 **성공을 돌려주고 사람에게만 토스트를 띄우는**
+    /// 모양이 되었다 — 부르는 쪽이 에이전트면 실패를 모른 채 다음으로 넘어간다.
+    ///
+    /// 그래서 넷째를 또 만드는 대신 여기 하나로 모은다. 새 동사는 이것을 쓴다.
+    CtlResult { seq: u64, ok: bool, data: String },
     /// 설정 리로드 완료.
     ConfigReloaded,
     /// SFTP 연결 성공.

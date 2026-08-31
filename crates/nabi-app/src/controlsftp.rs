@@ -179,6 +179,16 @@ impl NabiApp {
         panel.id.ok_or_else(|| "그 SFTP 탭은 아직 연결되지 않았습니다".into())
     }
 
+    /// 앱이 한 일의 결과를 부른 쪽에 돌려준다(`seq` 가 없으면 아무도 안 기다리므로 넘어간다).
+    ///
+    /// 토스트는 사람이 보는 것이고 이것은 부른 쪽이 보는 것이다. 둘은 대신할 수 없다 —
+    /// 사람만 보는 실패는 에이전트에게 성공과 구별되지 않는다.
+    pub(crate) fn ctl_reply(&self, seq: Option<u64>, ok: bool, data: String) {
+        if let Some(seq) = seq {
+            self.control_events.publish(&nabi_proto::Event::CtlResult { seq, ok, data });
+        }
+    }
+
     fn sftp_ctl_reply(&self, seq: u64, ok: bool, data: String) {
         self.control_events.publish(&nabi_proto::Event::SftpCtlDone { seq, ok, data });
     }

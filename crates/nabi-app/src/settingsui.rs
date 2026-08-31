@@ -128,6 +128,9 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     // 미니맵 — 예전에는 문서마다 꺼진 채 시작해 켜도 다음 파일에서 다시 꺼졌다.
     ui.label(tr(lang, "nabipad.minimap")); ui.checkbox(&mut e.minimap, "").on_hover_text(tr(lang, "editor.minimap.hint"));
     ui.end_row();
+    // 긴 파일에서 "지금 어느 함수 안인가"를 맨 위에 붙여 둔다(VS Code 의 sticky scroll).
+    ui.label(tr(lang, "nabipad.sticky")); ui.checkbox(&mut e.sticky, "").on_hover_text(tr(lang, "editor.sticky.hint"));
+    ui.end_row();
     crate::editorsyntax::settings_ui(ui, e, lang);
 }
 

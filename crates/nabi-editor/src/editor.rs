@@ -58,6 +58,8 @@ pub struct EditorDoc {
     pub eols: crate::eolmix::EolCounts,
     /// 개요(좌측 아웃라인) 패널 표시 — 헤더/정의 줄 목록 클릭 점프.
     pub outline: bool,
+    /// 지금 어디 안에 있는지 맨 위에 붙여 둔다(고정 스크롤 — `editorsticky`).
+    pub sticky: bool,
     /// 좌측 줄 번호 거터 표시(기본 true, 보기 메뉴에서 토글).
     pub show_lineno: bool,
     /// 북마크한 줄(0기반) — 거터에 점 표시, 다음/이전 점프(VS Code식).
@@ -130,7 +132,7 @@ impl EditorDoc {
             title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None, huge: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false,
-            wrap_col: 0, rulers: String::new(), guides: false, eols: text_for_eols, outline: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
+            wrap_col: 0, rulers: String::new(), guides: false, eols: text_for_eols, outline: false, sticky: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
             diags: Vec::new(), cur_off: 0, lsp_info: None, lsp_refs: None, diag_popup: false, rename_open: false,
             lsp_comp: None, comp_anchor: 0, cursor_px: (0.0, 0.0), lsp_state: 0,
         }

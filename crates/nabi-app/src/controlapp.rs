@@ -97,14 +97,21 @@ impl crate::app::NabiApp {
                     "new-window" => self.control_float = true,
                     _ => {}
                 },
-                AppCtl::ConnectSession { session } => {
-                    if let Some(s) =
-                        self.sessions.sessions.iter().find(|s| s.name == session).cloned()
-                    {
-                        self.connect_saved(s); // 자격증명은 볼트 경유(평문 금지).
-                    } else {
-                        self.notify =
-                            Some((format!("세션 '{session}' 없음"), std::time::Instant::now()));
+                AppCtl::ConnectSession { session, seq } => {
+                    // 토스트는 사람에게, 회신은 부른 쪽에 — 둘 다 해야 한다.
+                    // 사람만 보는 실패는 에이전트에게 성공과 구별되지 않는다.
+                    match self.sessions.sessions.iter().find(|s| s.name == session).cloned() {
+                        Some(s) => {
+                            self.connect_saved(s); // 자격증명은 볼트 경유(평문 금지).
+                            self.ctl_reply(seq, true, format!("세션 '{session}' 접속을 시작했습니다"));
+                        }
+                        None => {
+                            let names: Vec<&str> =
+                                self.sessions.sessions.iter().map(|s| s.name.as_str()).take(8).collect();
+                            let msg = format!("세션 '{session}' 없음 — 저장된 이름: {}", names.join(", "));
+                            self.notify = Some((msg.clone(), std::time::Instant::now()));
+                            self.ctl_reply(seq, false, msg);
+                        }
                     }
                 }
                 AppCtl::Focus { pane } => {
@@ -139,11 +146,17 @@ impl crate::app::NabiApp {
                     let json = self.layout_export_json();
                     self.control_events.publish(&nabi_proto::Event::LayoutJson { seq, json });
                 }
-                AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title } => {
+                AppCtl::ScheduleCreate { name, spec, kind, payload, pane_title, seq } => {
                     let label = if name.is_empty() { spec.clone() } else { name.clone() };
                     match self.add_schedule(name, spec, kind, payload, pane_title) {
-                        Ok(()) => self.notify = Some((format!("\u{23f0} {} {label}", tr(self.lang, "sched.registered")), std::time::Instant::now())),
-                        Err(e) => self.notify = Some((format!("\u{2715} {} {e}", tr(self.lang, "sched.error")), std::time::Instant::now())),
+                        Ok(()) => {
+                            self.notify = Some((format!("\u{23f0} {} {label}", tr(self.lang, "sched.registered")), std::time::Instant::now()));
+                            self.ctl_reply(seq, true, label);
+                        }
+                        Err(e) => {
+                            self.notify = Some((format!("\u{2715} {} {e}", tr(self.lang, "sched.error")), std::time::Instant::now()));
+                            self.ctl_reply(seq, false, e); // 사양이 틀렸으면 그 까닭을 부른 쪽에도.
+                        }
                     }
                 }
                 AppCtl::PaneStatus { pane, key, value, ttl_ms } => {

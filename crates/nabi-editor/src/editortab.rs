@@ -80,10 +80,16 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
         let mm = egui::Panel::right(ui.id().with("ed_mm")).exact_size(84.0).resizable(false);
         mm.show(ui, |ui| mm_target = crate::editorminimap::minimap(ui, &doc.text, oy, ch, vh));
     }
-    // 개요(좌측 아웃라인) — 헤더/정의 줄 목록, 클릭 시 그 줄로 점프(작은 파일만 — 매프레임 스캔 비용).
+    // 개요(좌측 아웃라인)와 고정 스크롤(맨 위 고정)은 **같은 목록**을 쓴다 — 한 번만 판다.
+    // 둘이 따로 파싱하면 매 프레임 두 배로 훑고, 규칙이 갈라지면 붙어 있는 이름이 거짓이 된다.
     let mut ol_line = None;
-    if doc.outline && doc.text.len() < crate::editorhl::MAX_HL_BYTES {
-        let items = crate::editoroutline::outline_items(&doc.text);
+    let small = doc.text.len() < crate::editorhl::MAX_HL_BYTES;
+    let items = if small && (doc.outline || doc.sticky) {
+        crate::editoroutline::outline_items(&doc.text)
+    } else {
+        Vec::new()
+    };
+    if doc.outline && small {
         let ol = egui::Panel::left(ui.id().with("ed_ol")).default_size(170.0);
         ol.show(ui, |ui| ol_line = crate::editoroutline::outline_panel(ui, &items));
     }
@@ -95,12 +101,34 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
     // 점프(찾기/줄이동/개요)는 대상 줄을 화면 ≈40% 지점에 두어 위아래 맥락이 보이게 한다(VS Code식). 미니맵 스크럽은 정확 위치.
     let vh = ui.available_height();
     let center = |l: usize| (l as f32 * row_h - vh * 0.4).max(0.0);
-    let off = mm_target.or(ol_line.map(center)).or(doc.find.scroll_to.take().map(center)); // 미니맵>개요>찾기 우선.
+    // 고정 스크롤: 지금 화면 맨 위를 감싸고 있는 이름들을 본문 **위에** 붙인다.
+    // 누르면 그 줄로 간다 — 개요와 같은 점프 길(`center`)을 쓴다.
+    let mut sticky_line = None;
+    if doc.sticky && !items.is_empty() {
+        let (oy, _, _): (f32, f32, f32) = ui.data(|d| d.get_temp(scroll_id)).unwrap_or((0.0, 1.0, 1.0));
+        let first = crate::editorsticky::first_visible_line(oy, row_h);
+        for it in crate::editorsticky::chain(&items, first) {
+            let pad = "  ".repeat(it.depth as usize);
+            if ui.add(egui::Button::new(egui::RichText::new(format!("{pad}{}", it.label)).monospace())
+                .frame(false).min_size(egui::vec2(ui.available_width(), 0.0)))
+                .clicked()
+            {
+                sticky_line = Some(it.line);
+            }
+        }
+        ui.separator();
+    }
+    // 미니맵>개요>고정줄>찾기 우선. 앞의 것이 이번 프레임에 목표를 냈으면 그것을 따른다.
+    let off = mm_target
+        .or(ol_line.map(center))
+        .or(sticky_line.map(center))
+        .or(doc.find.scroll_to.take().map(center));
     let area = if doc.wrap { egui::ScrollArea::vertical() } else { egui::ScrollArea::both() };
     let mut sa = area.auto_shrink([false, false]).id_salt("ed_body");
     if let Some(o) = off { sa = sa.vertical_scroll_offset(o); }
     let out = sa.show(ui, |ui| editor_body(ui, doc, lang, &mut act));
-    if doc.minimap { ui.data_mut(|d| d.insert_temp(scroll_id, (out.state.offset.y, out.content_size.y, out.inner_rect.height()))); }
+    // 미니맵과 고정 스크롤이 **둘 다** 이 값을 본다 — 미니맵일 때만 저장하면 고정 줄이 안 따라온다.
+    if doc.minimap || doc.sticky { ui.data_mut(|d| d.insert_temp(scroll_id, (out.state.offset.y, out.content_size.y, out.inner_rect.height()))); }
     ui.data_mut(|d| d.insert_temp(cur_id, out.inner));
     act
 }

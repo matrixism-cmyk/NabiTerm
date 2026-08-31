@@ -39,6 +39,12 @@ pub struct EditorConfig {
     /// 보기 설정은 사람의 취향이라 문서가 아니라 설정에 있어야 한다.
     #[serde(default)]
     pub minimap: bool,
+    /// 지금 어디 안에 있는지 맨 위에 붙여 둔다(고정 스크롤).
+    ///
+    /// 긴 파일에서 아래로 내려가면 함수 이름이 화면 밖으로 나간다. 그때 지금 보는 코드가
+    /// 어느 함수의 것인지 알려면 위로 올라갔다 다시 내려와야 한다.
+    #[serde(default)]
+    pub sticky: bool,
     /// 탭 대신 공백으로 들여쓰기.
     pub indent_spaces: bool,
     /// 현재 줄 강조.
@@ -73,6 +79,8 @@ impl Default for EditorConfig {
             rulers: String::new(),
             guides: false,
             minimap: false, // 기본은 끔 — 좁은 창에서는 본문을 줄인다. 켜면 그대로 남는다.
+            // 기본은 끔 — 본문 위 몇 줄을 가져가므로, 원하는 사람이 켠다.
+            sticky: false,
             indent_spaces: true,
             highlight_current_line: true,
             trim_on_save: false,
