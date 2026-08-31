@@ -85,7 +85,8 @@ async fn run(
     let (handle, jump, old) = open_authed(&params, opts, known_hosts, verifier, kex_slot.clone()).await?;
     // 점프 핸들을 Arc 로 묶는다 — 레지스트리와 이 함수가 **함께** 들고 있어야 하기 때문이다.
     // 여기서 드롭되면 터널이 닫히고, SFTP 가 받아 간 목적지 핸들은 쓸모없어진다.
-    let jump = jump.map(Arc::new);
+    // 홉이 여럿일 수 있다 — **전부** 들고 있어야 그 위의 터널이 살아 있다.
+    let jump: Vec<Arc<_>> = jump.into_iter().map(Arc::new).collect();
     if let Some(info) = kex_slot.lock().ok().and_then(|s| s.clone()) {
         // 정책을 먼저 본다 — 끊어야 할 연결이면 레지스트리에 적기 전에 끊는다.
         // 적어 두면 죽은 연결의 배지가 잠깐 남는다.
@@ -161,10 +162,39 @@ async fn run(
     result
 }
 
-/// 인증된 target 핸들을 얻는다. params.jump가 있으면 점프 호스트를 경유(direct-tcpip 터널 위
-/// 두 번째 SSH 세션). 반환=(target, jump 유지용 핸들). jump 핸들이 드롭되면 터널이 끊기므로 보관.
+/// 점프 사슬을 **먼저 붙는 순서**로 편다.
 ///
-/// 반환의 마지막 `bool`은 레거시(SHA-1) 알고리즘으로 붙었는지.
+/// `sshjump::build_jumps("a,b")` 는 중첩으로 만든다 — 바깥이 `b`, 그 `.jump` 가 `a` 다.
+/// OpenSSH 의 `-J a,b` 는 "a 에 붙고, a 를 통해 b 에 붙고, b 를 통해 목적지" 라는 뜻이므로
+/// 연결 순서는 안쪽부터다. 그래서 뒤집어 돌려준다.
+///
+/// 순수 함수라 실서버 없이 시험할 수 있다 — 아래 `mod jumptests` 에서 순서를 못 박는다.
+fn jump_chain(params: &SshParams) -> Vec<&SshParams> {
+    let mut out = Vec::new();
+    let mut cur = params.jump.as_deref();
+    while let Some(j) = cur {
+        out.push(j);
+        cur = j.jump.as_deref();
+    }
+    out.reverse(); // 안쪽(먼저 붙는 것)부터.
+    out
+}
+
+/// 인증된 target 핸들을 얻는다.
+///
+/// ## 멀티홉 (2026-09-01 수정)
+///
+/// 예전에는 `params.jump` **하나만** 보고 그 호스트에 직접 붙었다. 사슬은
+/// `sshjump::build_jumps` 가 중첩으로 만들어 주는데(`b.jump = a`) 여기서 `jump.jump` 를
+/// 보지 않았으므로, `a,b` 를 적으면 **a 를 건너뛰고 b 에 직접** 붙었다. 폐쇄망처럼 b 가
+/// 직접 닿지 않는 곳에서는 그냥 실패했고, 닿는 곳에서는 사용자가 적은 것과 **다른 길**로
+/// 갔다. 파싱 쪽에는 시험까지 있어서 되는 줄 알기 쉬웠다.
+///
+/// 이제 사슬을 끝까지 따라간다. 홉마다 **자기 호스트 이름으로** 호스트키를 검증한다 —
+/// 마지막만 검증하면 침해된 경유지가 목적지 행세를 할 수 있다.
+///
+/// 반환=(target, 살려 둘 홉 핸들들, 레거시(SHA-1) 여부). 홉 핸들이 드롭되면 그 위의
+/// 터널이 끊기므로 **전부** 들고 있어야 한다.
 #[allow(clippy::type_complexity)]
 async fn open_authed(
     params: &SshParams,
@@ -172,60 +202,72 @@ async fn open_authed(
     known_hosts: PathBuf,
     verifier: Option<crate::verify::HostKeyVerifier>,
     kex_slot: crate::kexinfo::KexSlot,
-) -> Result<
-    (client::Handle<ClientHandler>, Option<client::Handle<ClientHandler>>, bool),
-    russh::Error,
-> {
+) -> Result<(client::Handle<ClientHandler>, Vec<client::Handle<ClientHandler>>, bool), russh::Error>
+{
     // 제한을 정하는 규칙은 `conntimeout` 한 곳에 있다(시험도 거기 있다).
     let d15 = crate::conntimeout::current(verifier.is_some());
-    if let Some(jump) = &params.jump {
+    let mut hops: Vec<client::Handle<ClientHandler>> = Vec::new();
+    let mut old_any = false;
+    for hop in jump_chain(params) {
         // 옛 서버 대응(legacy.rs): 협상이 안 되면 SHA-1 목록으로 한 번만 다시 붙는다.
-        let (mut jhandle, old_j) = crate::legacy::connect_compat(&opts, |cfg| {
-            let h = ClientHandler::new(jump.host.clone(), jump.port, known_hosts.clone(), verifier.clone());
+        let (mut h, old) = crate::legacy::connect_compat(&opts, |cfg| {
+            // 홉마다 자기 이름으로 검증한다 — known_hosts 항목도 홉마다 따로다.
+            let handler =
+                ClientHandler::new(hop.host.clone(), hop.port, known_hosts.clone(), verifier.clone());
+            // 앞 홉이 있으면 그 위의 터널로, 없으면 직접 붙는다.
+            let prev = hops.last();
             async move {
-                tokio::time::timeout(d15, client::connect(cfg, (jump.host.as_str(), jump.port), h))
+                match prev {
+                    None => tokio::time::timeout(
+                        d15,
+                        client::connect(cfg, (hop.host.as_str(), hop.port), handler),
+                    )
                     .await
-                    .map_err(|_| russh::Error::ConnectionTimeout)?
+                    .map_err(|_| russh::Error::ConnectionTimeout)?,
+                    Some(p) => {
+                        let ch = p
+                            .channel_open_direct_tcpip(hop.host.clone(), hop.port as u32, "127.0.0.1", 0)
+                            .await?;
+                        client::connect_stream(cfg, ch.into_stream(), handler).await
+                    }
+                }
             }
         })
         .await?;
-        authenticate(&mut jhandle, jump).await?;
-        // 터널 위의 목적지도 따로 협상한다 — 재시도 때는 채널부터 다시 연다.
-        let (mut thandle, old_t) = crate::legacy::connect_compat(&opts, |cfg| {
-            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
-                .with_kex_slot(kex_slot.clone())
-                // 포워딩은 **목적지에만** 켠다. 점프 호스트는 통로일 뿐인데 거기까지 켜면
-                // 경유지 관리자에게도 내 키를 내주는 셈이 된다.
-                .with_agent_forward(params.agent_forward);
-            let jh = &jhandle;
-            async move {
-                let ch = jh
-                    .channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
-                    .await?;
-                client::connect_stream(cfg, ch.into_stream(), h).await
-            }
-        })
-        .await?;
-        authenticate(&mut thandle, params).await?;
-        Ok((thandle, Some(jhandle), old_j || old_t))
-    } else {
-        let (mut handle, old) = crate::legacy::connect_compat(&opts, |cfg| {
-            let h = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
-                .with_kex_slot(kex_slot.clone())
-                // 포워딩은 **목적지에만** 켠다. 점프 호스트는 통로일 뿐인데 거기까지 켜면
-                // 경유지 관리자에게도 내 키를 내주는 셈이 된다.
-                .with_agent_forward(params.agent_forward);
-            async move {
-                tokio::time::timeout(d15, client::connect(cfg, (params.host.as_str(), params.port), h))
-                    .await
-                    .map_err(|_| russh::Error::ConnectionTimeout)?
-            }
-        })
-        .await?;
-        authenticate(&mut handle, params).await?;
-        Ok((handle, None, old))
+        authenticate(&mut h, hop).await?;
+        old_any |= old;
+        hops.push(h);
     }
+    // 목적지. 터널 위에서도 따로 협상한다 — 재시도 때는 채널부터 다시 연다.
+    let (mut target, old_t) = crate::legacy::connect_compat(&opts, |cfg| {
+        let handler = ClientHandler::new(params.host.clone(), params.port, known_hosts.clone(), verifier.clone())
+            .with_kex_slot(kex_slot.clone())
+            // 포워딩은 **목적지에만** 켠다. 점프 호스트는 통로일 뿐인데 거기까지 켜면
+            // 경유지 관리자에게도 내 키를 내주는 셈이 된다.
+            .with_agent_forward(params.agent_forward);
+        let prev = hops.last();
+        async move {
+            match prev {
+                None => tokio::time::timeout(
+                    d15,
+                    client::connect(cfg, (params.host.as_str(), params.port), handler),
+                )
+                .await
+                .map_err(|_| russh::Error::ConnectionTimeout)?,
+                Some(p) => {
+                    let ch = p
+                        .channel_open_direct_tcpip(params.host.clone(), params.port as u32, "127.0.0.1", 0)
+                        .await?;
+                    client::connect_stream(cfg, ch.into_stream(), handler).await
+                }
+            }
+        }
+    })
+    .await?;
+    authenticate(&mut target, params).await?;
+    Ok((target, hops, old_any || old_t))
 }
+
 
 /// 출력 버스로 보낸다. 버스가 가득 차면 **블록하지 않고** 잠깐 양보 후 재시도한다.
 ///
@@ -304,5 +346,47 @@ async fn authenticate(
         Ok(())
     } else {
         Err(russh::Error::NotAuthenticated)
+    }
+}
+
+#[cfg(test)]
+mod jumptests {
+    use super::jump_chain;
+    use nabi_proto::SshParams;
+
+    fn p(host: &str) -> SshParams {
+        SshParams::password(host.to_string(), 22, "u".to_string(), String::new())
+    }
+
+    /// 점프가 없으면 사슬도 없다.
+    #[test]
+    fn no_jump_means_no_chain() {
+        assert!(jump_chain(&p("target")).is_empty());
+    }
+
+    /// `-J a,b` 는 **a 부터** 붙는다 — 중첩은 바깥이 b 이므로 뒤집어야 맞다.
+    ///
+    /// 이 순서가 뒤집히면 폐쇄망에서 닿지 않는 호스트에 먼저 붙으려 든다.
+    #[test]
+    fn the_innermost_hop_is_connected_first() {
+        let mut b = p("b");
+        b.jump = Some(Box::new(p("a"))); // build_jumps("a,b") 가 만드는 모양.
+        let mut t = p("target");
+        t.jump = Some(Box::new(b));
+        let got: Vec<&str> = jump_chain(&t).iter().map(|h| h.host.as_str()).collect();
+        assert_eq!(got, ["a", "b"], "a 를 먼저 거쳐야 한다");
+    }
+
+    /// 세 홉도 순서대로. 예전에는 사슬을 따라가지 않아 **바깥 하나만** 썼다.
+    #[test]
+    fn three_hops_keep_their_order() {
+        let mut c = p("c");
+        let mut b = p("b");
+        b.jump = Some(Box::new(p("a")));
+        c.jump = Some(Box::new(b));
+        let mut t = p("target");
+        t.jump = Some(Box::new(c));
+        let got: Vec<&str> = jump_chain(&t).iter().map(|h| h.host.as_str()).collect();
+        assert_eq!(got, ["a", "b", "c"]);
     }
 }

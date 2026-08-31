@@ -16,7 +16,7 @@ pub struct SftpFs {
     /// pane 을 닫아도 여기서 부드는 동안은 연결이 살아 있어 진행 중인 전송이 끊기지 않는다.
     pub(crate) handle: std::sync::Arc<Handle<Handler>>,
     /// 점프 호스트 핸들(ProxyJump). 드롭되면 터널이 끊기므로 세션 동안 보관(D2).
-    _jump: Option<std::sync::Arc<Handle<Handler>>>,
+    _jump: Vec<std::sync::Arc<Handle<Handler>>>,
     /// 전송 속도 제한(bytes/sec, 0=무제한).
     pub(crate) limit_bps: u64,
     /// true가 되면 진행 중인 전송을 중단(외부에서 set). swap으로 1회성 소비.
@@ -63,14 +63,14 @@ impl SftpFs {
     ///
     /// 그래도 함께 넘기는 이유: 그 수명이 우리가 정하지 않은 구현 세부에 기대고 있고, 그
     /// 세부는 예고 없이 바뀔 수 있다. 잡고 있는 값은 싸다.
-    pub fn jump_for_reuse(&self) -> Option<std::sync::Arc<Handle<Handler>>> {
+    pub fn jump_for_reuse(&self) -> Vec<std::sync::Arc<Handle<Handler>>> {
         self._jump.clone()
     }
 
     pub(crate) fn new(
         raw: RawFs,
         handle: std::sync::Arc<Handle<Handler>>,
-        jump: Option<std::sync::Arc<Handle<Handler>>>,
+        jump: Vec<std::sync::Arc<Handle<Handler>>>,
     ) -> Self {
         Self {
             hash_probe: Default::default(),

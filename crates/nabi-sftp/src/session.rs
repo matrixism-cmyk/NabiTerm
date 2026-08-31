@@ -114,7 +114,8 @@ pub async fn connect_sftp_reusing(
         (handle, None)
     };
 
-    open_on(std::sync::Arc::new(handle), jump.map(std::sync::Arc::new)).await
+    // 홉이 여럿일 수 있다 — 사슬 전체를 들고 간다.
+    open_on(std::sync::Arc::new(handle), jump.into_iter().map(std::sync::Arc::new).collect()).await
 }
 
 /// 연결 위에 SFTP 서브시스템 채널을 열고 `SftpFs` 를 만든다.
@@ -123,7 +124,7 @@ pub async fn connect_sftp_reusing(
 /// 언젠가 한쪽에만 고침이 들어간다.
 async fn open_on(
     handle: std::sync::Arc<client::Handle<Handler>>,
-    jump: Option<std::sync::Arc<client::Handle<Handler>>>,
+    jump: Vec<std::sync::Arc<client::Handle<Handler>>>,
 ) -> Result<SftpFs, String> {
     let channel = handle
         .channel_open_session()

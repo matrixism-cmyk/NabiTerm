@@ -29,12 +29,12 @@ use std::sync::{Arc, Mutex, OnceLock};
 
 /// 한 pane이 붙들고 있는 살아 있는 SSH 연결.
 ///
-/// `jump`는 점프 호스트(ProxyJump) 핸들이다. **드롭되면 터널이 끊기므로** 목적지 핸들만
-/// 넘겨받으면 안 된다 — 둘을 함께 들고 가야 한다.
+/// `jump`는 점프 호스트(ProxyJump) 핸들**들**이다. **드롭되면 터널이 끊기므로** 목적지
+/// 핸들만 넘겨받으면 안 된다 — 사슬 전체를 함께 들고 가야 한다(멀티홉은 여럿이다).
 #[derive(Clone)]
 pub struct SshConn {
     pub handle: Arc<Handle<ClientHandler>>,
-    pub jump: Option<Arc<Handle<ClientHandler>>>,
+    pub jump: Vec<Arc<Handle<ClientHandler>>>,
     /// 이 연결이 **누구로 어디에** 붙어 있는지. 재사용 대상을 고를 때 대조한다.
     pub who: Who,
     /// 등록 직후의 `Arc` 참조 수 — 이 위로 늘어난 만큼이 **물려 쓰는 곳**이다.
@@ -75,7 +75,7 @@ impl SshConn {
     /// 등록할 연결을 만든다. `base` 는 `set` 이 등록 직후에 잡으므로 여기서는 0이다.
     pub fn new(
         handle: Arc<Handle<ClientHandler>>,
-        jump: Option<Arc<Handle<ClientHandler>>>,
+        jump: Vec<Arc<Handle<ClientHandler>>>,
         who: Who,
     ) -> Self {
         Self { handle, jump, who, base: 0 }
