@@ -8,6 +8,7 @@ pub mod editbig;
 pub mod editbuf;
 pub mod csvcheck;
 pub mod csvcol;
+pub mod csvcolor;
 mod editbufboxpaste;
 mod editbufboxsel;
 pub mod editbufmatch;
