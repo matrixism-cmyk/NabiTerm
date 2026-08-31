@@ -125,7 +125,7 @@ fn a_notify_body_is_not_recorded() {
 fn paths_are_recorded_because_that_is_the_point() {
     // 어떤 파일을 가져갔는지는 감사의 핵심이다 — 경로는 남긴다.
     use crate::protocol::ControlRequest as R;
-    let req = R::SftpGet { remote: "/etc/shadow".into(), local: "C:/tmp/x".into() };
+    let req = R::SftpGet { pane: None, remote: "/etc/shadow".into(), local: "C:/tmp/x".into() };
     let (verb, target, _) = describe(&req);
     assert_eq!((verb, target.as_str()), ("sftp-get", "/etc/shadow"));
 }
@@ -156,7 +156,7 @@ fn every_verb_name_is_unique_and_nonempty() {
         R::OpenHere { path: "p".into() },
         R::OpenEditor { path: "p".into() },
         R::OpenSftp { session: "s".into() },
-        R::SftpList { path: "p".into() },
+        R::SftpList { pane: None, path: "p".into() },
         R::Notify { title: "t".into(), body: "b".into() },
         R::LayoutExport,
         R::Tail { pane: 1 },

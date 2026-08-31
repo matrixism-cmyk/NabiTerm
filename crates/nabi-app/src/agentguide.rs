@@ -235,8 +235,17 @@ they are for; the mark on the line is what decides.
 
 ### Remote files (needs an SFTP tab already connected)
 
-- (act) `nabi cli sftp-list [--path <remote dir>]` — list a remote directory as JSON
-  (`name`, `is_dir`, `size`, `mode`, `mtime`). Fails if no SFTP connection is open.
+- (act) `nabi cli sftp-tabs`
+  List the open SFTP tabs as JSON: `[{"pane":N,"host":"...","path":"...","connected":true}]`.
+  SFTP tabs are UI-only, so they do NOT appear in `nabi cli list` — this is how you find
+  their numbers, exactly like `web-list` does for web tabs.
+- (act) `nabi cli sftp-list [--pane <id>] [--path <remote dir>]` — list a remote directory as
+  JSON (`name`, `is_dir`, `size`, `mode`, `mtime`).
+
+  **Say which tab when more than one is open.** With `--pane` the command goes to that tab;
+  without it, it runs only when exactly one SFTP tab is open, and otherwise tells you the
+  numbers to choose from. The same applies to `sftp-get` and `sftp-put`. Guessing here means
+  uploading to the wrong server, so it asks instead.
 
 ## Targeting a pane without an id
 

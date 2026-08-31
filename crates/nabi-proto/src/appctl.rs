@@ -80,10 +80,15 @@ pub enum SftpCtlOp {
     /// 예전에는 이것만 회신 없이 던지고 성공을 돌려줬다. 이름을 잘못 적으면 사람에게만
     /// 토스트가 뜨고 부른 쪽은 잘된 줄 알았다 — 에이전트는 그다음 단계로 넘어가 버린다.
     Open { session: String },
+    /// 열려 있는 SFTP 탭 목록(번호·호스트·현재 경로).
+    ///
+    /// 웹 탭의 `web-list` 와 같은 몫이다. SFTP 탭도 `list` 에는 안 나오므로, 번호를 알려면
+    /// 따로 묻는 길이 있어야 한다.
+    Tabs,
     /// 원격 디렉터리 목록(JSON 배열로 회신).
-    List { path: String },
+    List { pane: Option<u64>, path: String },
     /// 원격 → 로컬 단일 파일 다운로드(전송 큐 경유 — UI에도 보인다).
-    Get { remote: String, local: String },
+    Get { pane: Option<u64>, remote: String, local: String },
     /// 로컬 → 원격 단일 파일 업로드.
-    Put { local: String, remote: String },
+    Put { pane: Option<u64>, local: String, remote: String },
 }

@@ -243,7 +243,7 @@ fn sftp_ctl_roundtrip_via_app_reply() {
     // 가짜 앱: SftpCtl 요청을 받아 즉시 성공 회신을 이벤트로 발행.
     std::thread::spawn(move || {
         while let Ok(ctl) = app_rx.recv() {
-            if let nabi_proto::AppCtl::SftpCtl { seq, op: nabi_proto::SftpCtlOp::List { path } } = ctl {
+            if let nabi_proto::AppCtl::SftpCtl { seq, op: nabi_proto::SftpCtlOp::List { path, .. } } = ctl {
                 let data = format!(r#"[{{"name":"{path}","is_dir":true,"size":0,"mode":0,"mtime":0}}]"#);
                 hub.publish(&nabi_proto::Event::SftpCtlDone { seq, ok: true, data });
             }
@@ -259,7 +259,7 @@ fn sftp_ctl_roundtrip_via_app_reply() {
     };
     let _ = tracing_subscriber::fmt().with_test_writer().try_init();
     nabi_control::server::start(pipe.clone(), token.clone(), ctx);
-    let r = nabi_control::client::request(&pipe, &token, &ControlRequest::SftpList { path: "/tmp".into() }).unwrap();
+    let r = nabi_control::client::request(&pipe, &token, &ControlRequest::SftpList { pane: None, path: "/tmp".into() }).unwrap();
     match r {
         ControlResponse::Event { kind, data, .. } => {
             assert_eq!(kind, "sftp");

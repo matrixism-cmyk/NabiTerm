@@ -382,17 +382,22 @@ pub(crate) fn dispatch_write(
             err("레이아웃 회신 시간 초과")
         }
         // S6-55: SFTP 조작 — 앱(UI 스레드)의 열린 연결로 실행하고 seq 상관으로 회신을 기다린다.
-        ControlRequest::SftpList { path } => {
+        // 열려 있는 SFTP 탭 목록  14 번호를 알아야 지목할 수 있다.
+        ControlRequest::SftpTabs => {
+            tracing::info!(target: "control", from = ?from, "sftp-tabs");
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Tabs, 10)
+        }
+        ControlRequest::SftpList { pane, path } => {
             tracing::info!(target: "control", from = ?from, %path, "sftp-list");
-            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::List { path }, 30)
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::List { pane, path }, 30)
         }
-        ControlRequest::SftpGet { remote, local } => {
+        ControlRequest::SftpGet { pane, remote, local } => {
             tracing::info!(target: "control", from = ?from, %remote, "sftp-get");
-            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Get { remote, local }, 600)
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Get { pane, remote, local }, 600)
         }
-        ControlRequest::SftpPut { local, remote } => {
+        ControlRequest::SftpPut { pane, local, remote } => {
             tracing::info!(target: "control", from = ?from, %remote, "sftp-put");
-            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Put { local, remote }, 600)
+            sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Put { pane, local, remote }, 600)
         }
         ControlRequest::ScheduleCreate { name, spec, kind, payload, pane_title } => {
             tracing::info!(target: "control", from = ?from, %spec, "schedule-create");

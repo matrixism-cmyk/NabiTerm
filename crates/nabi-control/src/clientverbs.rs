@@ -109,12 +109,20 @@ pub(crate) fn parse_verb(args: &[String]) -> Result<ControlRequest, String> {
             path: flag(args, "--path").ok_or("open-file: --path 가 필요합니다")?,
         }),
         // S6-55: 열린 SFTP 연결로 원격 목록/전송(에이전트 파일 왕복).
-        Some("sftp-list") => Ok(ControlRequest::SftpList { path: flag(args, "--path").unwrap_or_else(|| ".".into()) }),
+        // 열려 있는 SFTP 탭 목록 — 지목하려면 번호를 알아야 한다(`web-list` 와 같은 몫).
+        Some("sftp-tabs") => Ok(ControlRequest::SftpTabs),
+        // `--pane` 을 주면 그 탭에, 안 주면 열린 것이 하나일 때만 그것에 시킨다.
+        Some("sftp-list") => Ok(ControlRequest::SftpList {
+            pane: pane(args),
+            path: flag(args, "--path").unwrap_or_else(|| ".".into()),
+        }),
         Some("sftp-get") => Ok(ControlRequest::SftpGet {
+            pane: pane(args),
             remote: flag(args, "--remote").ok_or(usage)?,
             local: flag(args, "--local").ok_or(usage)?,
         }),
         Some("sftp-put") => Ok(ControlRequest::SftpPut {
+            pane: pane(args),
             local: flag(args, "--local").ok_or(usage)?,
             remote: flag(args, "--remote").ok_or(usage)?,
         }),

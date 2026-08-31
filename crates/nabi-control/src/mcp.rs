@@ -91,14 +91,18 @@ fn build_request(name: &str, a: &Value) -> Result<ControlRequest, String> {
         // SFTP를 MCP에 여는 것이 이 서버에서 가장 남다른 부분이다 — 에이전트가 명령만
         // 치는 것이 아니라 **원격 파일을 실제로 옮긴다.** 붙어 있는 SFTP 세션을 그대로
         // 쓰므로 새 인증이 없고, 권한 정책(off/ask/on)도 다른 동사와 똑같이 걸린다.
+        "nabi_sftp_tabs" => ControlRequest::SftpTabs,
         "nabi_sftp_list" => ControlRequest::SftpList {
+            pane: n("pane"),
             path: s("path").unwrap_or_else(|| ".".into()),
         },
         "nabi_sftp_get" => ControlRequest::SftpGet {
+            pane: n("pane"),
             remote: s("remote").ok_or("remote 인자 필요")?,
             local: s("local").ok_or("local 인자 필요")?,
         },
         "nabi_sftp_put" => ControlRequest::SftpPut {
+            pane: n("pane"),
             local: s("local").ok_or("local 인자 필요")?,
             remote: s("remote").ok_or("remote 인자 필요")?,
         },
@@ -162,10 +166,11 @@ fn tool_defs() -> Vec<Value> {
     let pane = json!({ "type": "integer", "description": "pane ID (nabi_list_panes 참조)" });
     vec![
         t("nabi_list_panes", "nabiTerm pane 목록(제목·크기·종류·cwd·활동상태·exit code)", json!({}), &[]),
+        t("nabi_sftp_tabs", "열려 있는 SFTP 탭 목록(번호·호스트·경로·연결 여부)", json!({}), &[]),
         t(
             "nabi_sftp_list",
             "붙어 있는 SFTP 세션에서 원격 디렉터리 목록(이름·크기·수정시각·권한)",
-            json!({ "path": { "type": "string", "description": "원격 경로(기본 현재 위치)" } }),
+            json!({ "pane": pane.clone(), "path": { "type": "string", "description": "원격 경로(기본 현재 위치)" } }),
             &[],
         ),
         t(
@@ -285,15 +290,15 @@ mod tests {
     #[test]
     fn an_agent_can_move_files_over_sftp() {
         let r = build_request("nabi_sftp_list", &json!({ "path": "/var/log" })).unwrap();
-        assert!(matches!(r, ControlRequest::SftpList { ref path } if path == "/var/log"));
+        assert!(matches!(r, ControlRequest::SftpList { ref path, .. } if path == "/var/log"));
         // 경로를 안 주면 현재 위치.
         let r = build_request("nabi_sftp_list", &json!({})).unwrap();
-        assert!(matches!(r, ControlRequest::SftpList { ref path } if path == "."));
+        assert!(matches!(r, ControlRequest::SftpList { ref path, .. } if path == "."));
 
         let r = build_request("nabi_sftp_get", &json!({ "remote": "/a/x.log", "local": "./x.log" })).unwrap();
-        assert!(matches!(r, ControlRequest::SftpGet { ref remote, ref local } if remote == "/a/x.log" && local == "./x.log"));
+        assert!(matches!(r, ControlRequest::SftpGet { ref remote, ref local, .. } if remote == "/a/x.log" && local == "./x.log"));
         let r = build_request("nabi_sftp_put", &json!({ "local": "./y", "remote": "/b/y" })).unwrap();
-        assert!(matches!(r, ControlRequest::SftpPut { ref local, ref remote } if local == "./y" && remote == "/b/y"));
+        assert!(matches!(r, ControlRequest::SftpPut { ref local, ref remote, .. } if local == "./y" && remote == "/b/y"));
 
         // 한쪽만 주면 조용히 넘어가지 않고 오류다(엉뚱한 곳에 쓰면 안 된다).
         assert!(build_request("nabi_sftp_get", &json!({ "remote": "/a" })).is_err());

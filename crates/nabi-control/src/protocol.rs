@@ -189,12 +189,32 @@ pub enum ControlRequest {
     ScheduleCreate { name: String, spec: String, kind: String, payload: String, pane_title: String },
     /// B4: 현재 탭·분할 레이아웃을 JSON으로 회신(apply가 소비하는 panes 목록 + 정확한 tree).
     LayoutExport,
+    /// 열려 있는 SFTP 탭 목록(번호·호스트·현재 경로·연결 여부).
+    ///
+    /// SFTP 탭은 `list` 에 나오지 않는다 — `web-list` 와 같은 몫이다.
+    SftpTabs,
     /// S6-55: 열린 SFTP 연결의 원격 디렉터리 목록(JSON 배열 회신).
-    SftpList { path: String },
+    ///
+    /// `pane` 을 주면 그 탭에, 안 주면 열린 것이 **하나일 때만** 그것에 시킨다.
+    SftpList {
+        #[serde(default)]
+        pane: Option<u64>,
+        path: String,
+    },
     /// S6-55: 원격 → 로컬 단일 파일 다운로드(전송 큐 경유, 완료까지 대기).
-    SftpGet { remote: String, local: String },
+    SftpGet {
+        #[serde(default)]
+        pane: Option<u64>,
+        remote: String,
+        local: String,
+    },
     /// S6-55: 로컬 → 원격 단일 파일 업로드(완료까지 대기).
-    SftpPut { local: String, remote: String },
+    SftpPut {
+        #[serde(default)]
+        pane: Option<u64>,
+        local: String,
+        remote: String,
+    },
 }
 
 /// 서버 → 클라이언트 응답(요청당 한 줄).

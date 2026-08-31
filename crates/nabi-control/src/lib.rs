@@ -1,3 +1,6 @@
+// `apidoc` 의 `json!` 하나가 동작 서른여섯 개를 한 리터럴에 담는다 — 기본 한도(128)를
+// 넘겨 컴파일이 멈춘다. 동작이 하나 늘 때마다 깊이가 늘어나므로 여유를 둔다.
+#![recursion_limit = "256"]
 //! nabi-control — 에이전트 제어 평면(docs/agent-control.md).
 //!
 //! pane 안의 프로세스가 named pipe(NDJSON)로 nabiTerm을 질의·제어한다.

@@ -202,6 +202,7 @@ pub fn describe(req: &crate::protocol::ControlRequest) -> (&'static str, String,
         R::WebAct { act, arg, .. } => ("web-act", format!("{act} {arg}"), 0),
         R::ShowHistory { pane } => ("history", String::new(), pane.unwrap_or(0) as usize),
         R::WebList => ("web-list", String::new(), 0),
+        R::SftpTabs => ("sftp-tabs", String::new(), 0),
         R::WebEval { pane, js } => ("web-eval", js.clone(), pane.unwrap_or(0) as usize),
         // 찍은 자리만 남기고 파일 경로는 남기지 않는다 — 그림 자체가 남의 데이터일 수 있다.
         R::Screenshot { pane, .. } => (
@@ -219,7 +220,7 @@ pub fn describe(req: &crate::protocol::ControlRequest) -> (&'static str, String,
         ),
         R::OpenEditor { path } => ("open-editor", path.clone(), 0),
         R::OpenSftp { session } => ("open-sftp", session.clone(), 0),
-        R::SftpList { path } => ("sftp-list", path.clone(), 0),
+        R::SftpList { path, .. } => ("sftp-list", path.clone(), 0),
         R::SftpGet { remote, .. } => ("sftp-get", remote.clone(), 0),
         R::SftpPut { remote, .. } => ("sftp-put", remote.clone(), 0),
         // 알림 제목·본문은 사용자 화면에 뜨는 글이라 담지 않는다(남의 데이터일 수 있다).

@@ -42,9 +42,10 @@ pub fn api_doc() -> serde_json::Value {
             "agent-explain": { "params": ["pane"], "doc": "상태 감지 근거" },
             "schedule-create": { "params": ["name", "spec", "kind", "payload", "pane_title"], "doc": "스케줄 등록(send|command|notify)" },
             "layout-export": { "params": [], "doc": "레이아웃 JSON(panes 목록+분할 tree) — layout apply가 panes를 소비" },
-            "sftp-list": { "params": ["path"], "doc": "열린 SFTP 연결의 원격 목록(JSON 배열)" },
-            "sftp-get": { "params": ["remote", "local"], "doc": "원격→로컬 단일 파일 다운로드(완료 대기)" },
-            "sftp-put": { "params": ["local", "remote"], "doc": "로컬→원격 단일 파일 업로드(완료 대기)" },
+            "sftp-tabs": { "params": [], "doc": "열려 있는 SFTP 탭 목록(번호·호스트·경로·연결 여부)" },
+            "sftp-list": { "params": ["pane?", "path"], "doc": "SFTP 탭의 원격 목록(JSON 배열). pane 을 안 주면 열린 것이 하나일 때만" },
+            "sftp-get": { "params": ["pane?", "remote", "local"], "doc": "원격→로컬 단일 파일 다운로드(완료 대기)" },
+            "sftp-put": { "params": ["pane?", "local", "remote"], "doc": "로컬→원격 단일 파일 업로드(완료 대기)" },
         }
     })
 }

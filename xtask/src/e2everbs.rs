@@ -43,6 +43,8 @@ fn probes(pane: u64) -> Vec<Probe> {
         p("agent-explain", format!(r#"{{"op":"agent-explain","pane":{pane}}}"#)),
         p("layout-export", r#"{"op":"layout-export"}"#.into()),
         p("web-list", r#"{"op":"web-list"}"#.into()),
+        // 연결이 없어도 답한다(빈 배열) — 그래서 다른 sftp 동사와 달리 실제로 몰아 본다.
+        p("sftp-tabs", r#"{"op":"sftp-tabs"}"#.into()),
         p("set-title", format!(r#"{{"op":"set-title","pane":{pane},"title":"e2e"}}"#)),
         p("focus", format!(r#"{{"op":"focus","pane":{pane}}}"#)),
         p("resize", format!(r#"{{"op":"resize","pane":{pane},"cols":90,"rows":30}}"#)),
