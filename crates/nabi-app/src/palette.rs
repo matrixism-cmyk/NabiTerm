@@ -91,6 +91,11 @@ pub(crate) enum PaletteAction {
     GotoDefinition, LspHover, LspRefs, LspFormat,
     /// SSH ed25519 키 생성 모달.
     OpenKeygen,
+    /// 다른 프로그램에서 세션 가져오기 — 이 PC를 훑어 찾은 것부터 보여 준다.
+    ///
+    /// 메뉴에서 제품별 항목 여섯 줄을 걷어내면서 팔레트에 길을 냈다. 메뉴를 줄인 만큼
+    /// 다른 자리에서 닿을 수 있어야 한다.
+    OpenImportScreen,
     CopyId,
     OpenEnvMgr,
     OpenWeb,

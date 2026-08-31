@@ -96,6 +96,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "lsp.refs.pal").to_string(), PaletteAction::LspRefs),
         (tr(lang, "lsp.format.pal").to_string(), PaletteAction::LspFormat),
         (tr(lang, "keygen.title").to_string(), PaletteAction::OpenKeygen),
+        (tr(lang, "menu.importscreen").to_string(), PaletteAction::OpenImportScreen),
         (tr(lang, "copyid.title").to_string(), PaletteAction::CopyId),
         (tr(lang, "env.title").to_string(), PaletteAction::OpenEnvMgr),
         (tr(lang, "web.title").to_string(), PaletteAction::OpenWeb),

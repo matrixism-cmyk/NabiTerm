@@ -85,16 +85,17 @@ pub(crate) fn manage_menu(ui: &mut egui::Ui, lang: Lang) -> Option<MenuAction> {
             }
         });
     };
+    // 제품별 항목(PuTTY·MobaXterm·FileZilla·WinSCP·Xshell·ssh config)은 **가져오기 화면
+    // 안에만** 둔다. 그 화면은 이 PC를 훑어 **찾은 것을 먼저** 보여 주고, 못 찾은 것도
+    // "직접 고르기"로 남긴다 — 메뉴에 같은 여섯 줄을 또 두면 열 줄짜리 메뉴가 되는데,
+    // 그러면 무엇을 눌러야 할지 고르는 일이 오히려 어려워진다.
+    //
+    // 화면 자체가 그 문제를 풀려고 만든 것이었다(감사 2026-08-25). 그런데 만들면서 옛
+    // 항목을 걷어내지 않아 **둘이 나란히 남았다** — 정리는 그때 함께 했어야 한다.
     group(ui, "menu.import", vec![
         ("menu.importscreen", MenuAction::OpenImportScreen),
         ("menu.importsessions", MenuAction::ImportSessions),
-        ("menu.importsshconfig", MenuAction::ImportSshConfig),
-        ("menu.importfilezilla", MenuAction::ImportFileZilla),
-        ("menu.importmobaxterm", MenuAction::ImportMobaXterm),
-        ("menu.importputty", MenuAction::ImportPuTTY),
-        ("menu.importwinscp", MenuAction::ImportWinScp),
         ("menu.restoreall", MenuAction::RestoreAll),
-        ("menu.importxshell", MenuAction::ImportXshell),
     ]);
     group(ui, "menu.export", vec![
         ("menu.exportsessions", MenuAction::ExportSessions),
