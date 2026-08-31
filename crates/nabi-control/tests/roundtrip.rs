@@ -394,4 +394,30 @@ fn every_verb_that_takes_a_pane_refuses_an_unknown_one() {
     assert!(wrong.is_empty(), "없는 pane 인데 성공을 돌려준 동사:\n  {}", wrong.join("\n  "));
     // 거절했으면 앱에 시키지도 않았어야 한다 — 답만 오류이고 실제로는 보냈다면 반쪽이다.
     assert!(app_rx.try_recv().is_err(), "거절했는데 앱에 일을 시켰다");
+
+    // ── 경로를 받는 동사도 같은 결함이 있었다(2026-09-01) ──
+    //
+    // 없는 경로를 줘도 성공을 돌려주고, 사람에게만 토스트가 떴다. 위와 같은 자리에서
+    // 함께 본다 — 서버를 또 띄우지 않아도 되고, 두 결함이 같은 뿌리라는 것도 드러난다.
+    let gone = std::env::temp_dir().join("nabi-정말-없는-경로-8f2a");
+    let gone = gone.display().to_string();
+    let paths: Vec<(&str, ControlRequest)> = vec![
+        ("open-file", ControlRequest::OpenEditor { path: gone.clone() }),
+        ("open-here", ControlRequest::OpenHere { path: gone.clone() }),
+        ("open-browser", ControlRequest::OpenBrowser { path: Some(gone.clone()) }),
+    ];
+    let mut wrong = Vec::new();
+    for (name, req) in paths {
+        let r = connect_eventually(&pipe, &token, &req);
+        if !matches!(r, ControlResponse::Err { .. }) {
+            wrong.push(format!("{name}: {r:?}"));
+        }
+    }
+    assert!(wrong.is_empty(), "없는 경로인데 성공을 돌려준 동사:\n  {}", wrong.join("\n  "));
+    assert!(app_rx.try_recv().is_err(), "거절했는데 앱에 일을 시켰다(경로)");
+
+    // 있는 경로는 그대로 통과해야 한다 — 막아 버리면 더 나쁘다.
+    let here = std::env::temp_dir().display().to_string();
+    let r = connect_eventually(&pipe, &token, &ControlRequest::OpenHere { path: here });
+    assert!(matches!(r, ControlResponse::Ok), "있는 폴더인데 거절했다: {r:?}");
 }

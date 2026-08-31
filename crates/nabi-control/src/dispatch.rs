@@ -302,12 +302,19 @@ pub(crate) fn dispatch_write(
                 .ok();
             ControlResponse::Ok
         }
+        // 경로를 안 주면 홈에서 연다 — 준 경우에만 있는지 본다.
         ControlRequest::OpenBrowser { path } => {
+            if let Some(e) = path.as_deref().and_then(|p| crate::dispatchread::no_such_path(p, true)) {
+                return e;
+            }
             tracing::info!(target: "control", from = ?from, ?path, "open-browser");
             app_tx.send(AppCtl::OpenBrowser { path }).ok();
             ControlResponse::Ok
         }
         ControlRequest::OpenHere { path } => {
+            if let Some(e) = crate::dispatchread::no_such_path(&path, true) {
+                return e;
+            }
             tracing::info!(target: "control", from = ?from, %path, "open-here");
             app_tx.send(AppCtl::OpenHere { path }).ok();
             ControlResponse::Ok
@@ -371,7 +378,11 @@ pub(crate) fn dispatch_write(
             app_tx.send(AppCtl::OpenWeb { url, window }).ok();
             ControlResponse::Ok
         }
+        // 편집기는 파일이든 폴더든 받지만, 없는 것은 열 수 없다.
         ControlRequest::OpenEditor { path } => {
+            if let Some(e) = crate::dispatchread::no_such_path(&path, false) {
+                return e;
+            }
             tracing::info!(target: "control", from = ?from, %path, "open-file");
             app_tx.send(AppCtl::OpenEditor { path }).ok();
             ControlResponse::Ok

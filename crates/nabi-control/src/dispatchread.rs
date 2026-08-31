@@ -107,6 +107,24 @@ pub(crate) fn err(m: &str) -> ControlResponse {
 /// "not found" 라고 답하고 있었다.
 ///
 /// 앱까지 물어볼 것도 없다. pane 목록은 여기 있으므로 **오가지 않고** 답할 수 있다.
+/// **그 경로가 실제로 있는가** — 없으면 돌려줄 오류를, 있으면 `None` 을 준다.
+///
+/// `open-file`·`open-here`·`open-browser` 는 경로를 앱에 던지고 곧바로 성공을 돌려줬다.
+/// 경로를 잘못 적으면 사람에게만 토스트가 뜨고 부른 쪽은 열린 줄 안다 — 에이전트는
+/// 그다음 단계로 넘어가 버린다(2026-09-01 점검).
+///
+/// 앱에 물어볼 것 없이 여기서 본다. 제어 서버는 앱과 **같은 프로세스**라 상대 경로도
+/// 앱이 보는 것과 같은 자리에서 풀린다 — 다른 프로세스였다면 이 검사가 오히려 틀렸을 것이다.
+///
+/// `want_dir` 이 참이면 폴더여야 한다(`open-here` 는 폴더에서 터미널을 연다).
+pub(crate) fn no_such_path(path: &str, want_dir: bool) -> Option<ControlResponse> {
+    let p = std::path::Path::new(path);
+    if !p.exists() {
+        return Some(err(&format!("경로 없음: {path}")));
+    }
+    (want_dir && !p.is_dir()).then(|| err(&format!("폴더가 아님: {path}")))
+}
+
 pub(crate) fn no_such_pane(panes: &SharedPanes, pane: u64) -> Option<ControlResponse> {
     let known = panes
         .read()
