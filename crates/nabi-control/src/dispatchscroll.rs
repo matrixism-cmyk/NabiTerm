@@ -24,7 +24,7 @@ pub(crate) fn scroll(panes: &SharedPanes, pane: u64, lines: i32, to: &str) -> Co
         return ControlResponse::Err { message: "pane 레지스트리 잠금 실패".into() };
     };
     let Some(v) = map.get(&id) else {
-        return ControlResponse::Err { message: format!("pane {pane} not found") };
+        return ControlResponse::Err { message: format!("pane {pane} 없음 — `list` 로 번호를 확인할 것") };
     };
     let Ok(mut m) = v.model.lock() else {
         return ControlResponse::Err { message: "pane 모델 잠금 실패".into() };

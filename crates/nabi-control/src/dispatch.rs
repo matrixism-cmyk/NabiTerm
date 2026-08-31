@@ -284,18 +284,15 @@ pub(crate) fn dispatch_write(
         // "그 pane 이 죽었다"는 신호까지 뿌렸다. 웹 탭 번호처럼 여기 없는 번호를 닫으면
         // `wait --until exit` 이 그 가짜 신호를 받고 끝난 줄 알았다.
         ControlRequest::ClosePane { pane } => {
-            let known = panes
-                .read()
-                .map(|m| m.contains_key(&PaneId::new(pane)))
-                .unwrap_or(false);
-            if !known {
-                return err(&format!("pane {pane} 없음 — `list` 로 번호를 확인할 것(웹 탭은 `web-list`)"));
+            if let Some(e) = crate::dispatchread::no_such_pane(panes, pane) {
+                return e;
             }
             tracing::info!(target: "control", from = ?from, pane, "close");
             cmd_tx.send(Command::ClosePane { pane: PaneId::new(pane) }).ok();
             ControlResponse::Ok
         }
         ControlRequest::Resize { pane, cols, rows } => {
+            if let Some(e) = crate::dispatchread::no_such_pane(panes, pane) { return e; }
             tracing::info!(target: "control", from = ?from, pane, cols, rows, "resize");
             cmd_tx
                 .send(Command::Resize {
@@ -326,6 +323,7 @@ pub(crate) fn dispatch_write(
             shot_roundtrip(app_tx, events, pane, out)
         }
         ControlRequest::Progress { pane, percent } => {
+            if let Some(e) = crate::dispatchread::no_such_pane(panes, pane) { return e; }
             tracing::info!(target: "control", from = ?from, pane, ?percent, "progress");
             // 진행률은 pane 에 붙는 값이라 오케스트레이터가 아니라 앱 상태로 간다.
             app_tx.send(AppCtl::Progress { pane, percent }).ok();
@@ -333,6 +331,10 @@ pub(crate) fn dispatch_write(
         }
         ControlRequest::WebList => web_roundtrip(app_tx, events, |seq| AppCtl::WebList { seq }),
         ControlRequest::ShowHistory { pane } => {
+            // 번호를 준 경우에만 본다 — 안 주면 "지금 보고 있는 pane" 이라는 뜻이다.
+            if let Some(e) = pane.and_then(|p| crate::dispatchread::no_such_pane(panes, p)) {
+                return e;
+            }
             tracing::info!(target: "control", from = ?from, ?pane, "history");
             app_tx.send(AppCtl::ShowHistory { pane }).ok();
             ControlResponse::Ok
@@ -381,11 +383,13 @@ pub(crate) fn dispatch_write(
             sftp_roundtrip(app_tx, events, nabi_proto::SftpCtlOp::Open { session }, 15)
         }
         ControlRequest::Focus { pane } => {
+            if let Some(e) = crate::dispatchread::no_such_pane(panes, pane) { return e; }
             tracing::info!(target: "control", from = ?from, pane, "focus");
             app_tx.send(AppCtl::Focus { pane }).ok();
             ControlResponse::Ok
         }
         ControlRequest::SetTitle { pane, title } => {
+            if let Some(e) = crate::dispatchread::no_such_pane(panes, pane) { return e; }
             tracing::info!(target: "control", from = ?from, pane, "set-title");
             app_tx.send(AppCtl::SetTitle { pane, title }).ok();
             ControlResponse::Ok

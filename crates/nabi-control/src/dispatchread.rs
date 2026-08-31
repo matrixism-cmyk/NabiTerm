@@ -95,6 +95,26 @@ pub(crate) fn err(m: &str) -> ControlResponse {
     ControlResponse::Err { message: m.to_string() }
 }
 
+/// **그 pane 이 실제로 있는가** — 없으면 돌려줄 오류를, 있으면 `None` 을 준다.
+///
+/// ## 왜 한 곳에 모으는가
+///
+/// `--pane` 을 받는 동사가 열 개가 넘는데, 확인하는 것과 안 하는 것이 섞여 있었다
+/// (2026-09-01 점검: `resize`·`focus`·`set-title`·`progress`·`history` 다섯이 안 했다).
+/// 확인하지 않으면 없는 번호에도 성공을 돌려주고, 부른 쪽은 된 줄 안다.
+///
+/// 자리마다 적으면 새 동사에서 또 빠진다. 문구도 갈라진다 — 실제로 `scroll` 만 영어로
+/// "not found" 라고 답하고 있었다.
+///
+/// 앱까지 물어볼 것도 없다. pane 목록은 여기 있으므로 **오가지 않고** 답할 수 있다.
+pub(crate) fn no_such_pane(panes: &SharedPanes, pane: u64) -> Option<ControlResponse> {
+    let known = panes
+        .read()
+        .map(|m| m.contains_key(&PaneId::new(pane)))
+        .unwrap_or(false);
+    (!known).then(|| err(&format!("pane {pane} 없음 — `list` 로 번호를 확인할 것")))
+}
+
 /// pane의 **터미널 모드**를 그대로 돌려준다 — "왜 휠이 안 돼요" 같은 물음에 추측 없이 답하려고.
 ///
 /// 대체 화면·마우스 보고·DEC 1007·bracketed paste·커서 키 모드는 눈으로 볼 수 없는데,

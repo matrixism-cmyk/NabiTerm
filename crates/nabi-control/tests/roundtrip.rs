@@ -338,3 +338,60 @@ fn connect_eventually(
         }
     }
 }
+
+/// **`--pane` 을 받는 동사는 없는 번호를 거절해야 한다.**
+///
+/// 2026-09-01 점검에서 다섯이 확인 없이 던지고 있었다(`resize`·`focus`·`set-title`·
+/// `progress`·`history`). 확인하지 않으면 없는 번호에도 성공을 돌려주고, 부른 쪽은
+/// 된 줄 안다 — 에이전트에게는 그것이 가장 나쁜 답이다.
+///
+/// 자리마다 적으면 새 동사에서 또 빠지므로, 여기서 **한꺼번에** 본다.
+#[test]
+fn every_verb_that_takes_a_pane_refuses_an_unknown_one() {
+    let pipe = format!(r"\\.\pipe\nabi-ctl-nopane-{}", std::process::id());
+    let token = nabi_control::gen_token();
+    let (cmd_tx, _cmd_rx) = unbounded();
+    let (app_tx, app_rx) = unbounded();
+    let (policy, _ask_rx) = nabi_control::policy::ControlPolicy::new(nabi_control::policy::Mode::On);
+    nabi_control::server::start(
+        pipe.clone(),
+        token.clone(),
+        nabi_control::server::ServerCtx {
+            panes: new_shared_panes(), // 비어 있다 — 어떤 번호도 없다.
+            cmd_tx,
+            app_tx,
+            policy,
+            cfg: nabi_control::dispatch::SpawnCfg {
+                scrollback: 100,
+                encoding: "UTF-8".into(),
+                cols: 80,
+                rows: 24,
+            },
+            events: nabi_control::subscribe::EventHub::new(),
+        },
+    );
+    const GONE: u64 = 999;
+    let reqs: Vec<(&str, ControlRequest)> = vec![
+        ("capture", ControlRequest::Capture { pane: GONE, lines: 10, start: None, end: None, escapes: false, view: false }),
+        ("pane-modes", ControlRequest::PaneModes { pane: GONE }),
+        ("send-input", ControlRequest::SendInput { pane: GONE, data: "x".into(), raw: false }),
+        ("close-pane", ControlRequest::ClosePane { pane: GONE }),
+        ("resize", ControlRequest::Resize { pane: GONE, cols: 80, rows: 24 }),
+        ("focus", ControlRequest::Focus { pane: GONE }),
+        ("set-title", ControlRequest::SetTitle { pane: GONE, title: "t".into() }),
+        ("progress", ControlRequest::Progress { pane: GONE, percent: Some(1) }),
+        ("show-history", ControlRequest::ShowHistory { pane: Some(GONE) }),
+        ("scroll", ControlRequest::Scroll { pane: GONE, lines: 1, to: String::new() }),
+        ("agent-explain", ControlRequest::AgentExplain { pane: GONE }),
+    ];
+    let mut wrong = Vec::new();
+    for (name, req) in reqs {
+        let r = connect_eventually(&pipe, &token, &req);
+        if !matches!(r, ControlResponse::Err { .. }) {
+            wrong.push(format!("{name}: {r:?}"));
+        }
+    }
+    assert!(wrong.is_empty(), "없는 pane 인데 성공을 돌려준 동사:\n  {}", wrong.join("\n  "));
+    // 거절했으면 앱에 시키지도 않았어야 한다 — 답만 오류이고 실제로는 보냈다면 반쪽이다.
+    assert!(app_rx.try_recv().is_err(), "거절했는데 앱에 일을 시켰다");
+}
