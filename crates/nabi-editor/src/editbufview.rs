@@ -211,6 +211,8 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
                 .or_else(|| crate::ropehl::window_spans(hl_id, eb, ext, first, last))
         });
         let mut unfold_click = None;
+        // 여백의 접기 표를 누른 줄 — (줄, 지금 접혀 있나).
+        let mut fold_click: Option<(usize, bool)> = None;
         for vis in first_vis..last_vis {
             let i = eb.folds.vis_to_src(vis);
             if i >= lc { break; }
@@ -235,9 +237,47 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
                     unfold_click = Some(s);
                 }
             }
+            // **여백의 접기 표.** 접는 길이 지금까지 메뉴뿐이었다 — 접힌 뒤에는 줄 끝
+            // 배지로 펼칠 수 있었지만, 접으려면 메뉴를 열어야 한다는 것을 알아야 했다.
+            //
+            // 접을 수 있는지 판단은 그 줄부터 아래로 훑어야 해서 싸지 않다. 그래서
+            // **마우스가 그 표 자리에 있을 때만** 묻는다 — 한 프레임에 많아야 한 줄이다.
+            let mrect = egui::Rect::from_min_size(
+                egui::pos2(text_left - char_w * 1.6, y),
+                egui::vec2(char_w * 1.4, row_h),
+            );
+            let folded = eb.folds.header_at(i).is_some();
+            let hovered = ui.rect_contains_pointer(mrect);
+            let foldable = !folded
+                && hovered
+                && crate::editbuffold::fold_range_at(i, lc, |n| eb.fold_indent(n)).is_some();
+            if folded || foldable {
+                // 접힌 것은 늘 보인다(왜 줄이 사라졌는지 알아야 한다). 접을 수 있는 것은
+                // 마우스가 왔을 때만 — 늘 보이면 여백이 화살표로 뒤덮인다.
+                painter.text(
+                    mrect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    if folded { "\u{25b8}" } else { "\u{25be}" },
+                    mono.clone(),
+                    ctx.gutter_col,
+                );
+                if hovered && ui.input(|inp| inp.pointer.primary_clicked()) {
+                    fold_click = Some((i, folded));
+                }
+            }
         }
         if let Some(s) = unfold_click {
             eb.folds.unfold_containing(s);
+        }
+        if let Some((line, folded)) = fold_click {
+            match folded {
+                true => eb.folds.unfold_containing(line),
+                false => {
+                    if let Some((s, e)) = crate::editbuffold::fold_range_at(line, lc, |n| eb.fold_indent(n)) {
+                        eb.folds.toggle(s, e);
+                    }
+                }
+            }
         }
         if focused {
             painter.rect_filled(caret, egui::CornerRadius::ZERO, CARET);

@@ -73,7 +73,7 @@ mod sftpops; mod eventsftp;
 mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingslog; mod settingsxfer; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcuts; mod blocklistui; mod
 editspotsui; mod wordcompui; mod autolog; mod copyidui; mod cues; mod egress; mod redact; mod secretscan; mod secretui; mod diffrestore; mod opendoc; mod zipops; mod zipui; mod errkey; mod
 panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
-mod castplain; mod panecell; mod hostkeyview; mod histview; mod menuimport; mod sessionimport; mod panehistory; mod selfupdate; mod webctl; mod webact; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
+mod castplain; mod floatsize; mod panecell; mod hostkeyview; mod histview; mod menuimport; mod sessionimport; mod panehistory; mod selfupdate; mod webctl; mod webact; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod tabmenu; mod tabops; mod tabspawn;
 mod theme_ui; mod themeimport; mod themeimport2; mod toast; mod titlebar; mod tabs; mod tabsclose; mod vault; mod view; mod viewacts; mod winclip; mod windnd; mod whatsnew; mod whatsnewui; mod winpos; mod winscp;
 mod windndvirt; mod windndfolder; mod viewportcmd; mod windows; mod workspace; mod workspace2; mod worksnap; mod xfersummary; mod worksnapui; mod backup; mod boottime;
 mod webopen; mod webtab; mod webtabui; mod handoff; mod padopen; mod progresswatch; mod screenshot; mod shotapply; mod broadcastview; mod worktree; mod worktreeui; mod schedspec; mod scheduler; mod schedui;

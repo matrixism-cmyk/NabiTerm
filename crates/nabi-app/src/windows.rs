@@ -41,7 +41,10 @@ impl NabiApp {
                 });
                 builder = match geom {
                     Some(g) => builder.with_position([g[0], g[1]]).with_inner_size([g[2], g[3]]),
-                    None => builder.with_inner_size([820.0, 540.0]),
+                    None => builder.with_inner_size(crate::floatsize::first_size(
+                        self.editors.contains_key(&pane),
+                        ctx.input(|i| i.viewport().monitor_size),
+                    )),
                 };
             }
             ctx.show_viewport_immediate(
