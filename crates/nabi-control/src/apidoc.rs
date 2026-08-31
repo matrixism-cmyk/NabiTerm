@@ -23,6 +23,7 @@ pub fn api_doc() -> serde_json::Value {
             "web-eval": { "params": ["pane?", "js"], "doc": "웹 탭에서 자바스크립트를 실행하고 결과를 JSON 으로 받는다" },
             "history": { "params": ["pane?"], "doc": "그 pane 의 전체 기록을 화면에 띄운다(휠을 올렸을 때와 같은 겹 화면)" },
             "web-act": { "params": ["pane?", "act", "arg?"], "doc": "웹 탭 조종 — back|forward|reload|stop|goto|zoom|shot|pdf|text (CLI 는 web-back 등으로 부른다)" },
+            "quit": { "params": [], "doc": "나비텀을 끝낸다 — 묻지 않는다. 작업 공간은 저장한다" },
             "scroll": { "params": ["pane", "lines?", "to?"], "doc": "pane 스크롤백을 옮긴다(+과거/-최신, --top/--bottom). screenshot 과 함께 쓰면 사람이 보는 화면을 그대로 본다" },
             "update": { "params": ["check?"], "doc": "최신판으로 스스로 올린다(--check 면 확인만). 조용히 설치하고 다시 켠다" },
             "web": { "params": ["url?", "window?"], "doc": "내장 웹 브라우저를 탭으로 연다(--window 면 별도 창). 파일 브라우저는 open-browser" },

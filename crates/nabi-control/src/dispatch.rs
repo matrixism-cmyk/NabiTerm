@@ -64,7 +64,9 @@ pub(crate) fn group_of(req: &ControlRequest) -> crate::policy::Group {
         // 확인만 하는 것은 아무것도 바꾸지 않으니 보통 등급이다.
         | ControlRequest::SelfUpdate { check: false }
         // 페이지에 코드를 넣는다 — pane 에 글자를 밀어 넣는 것과 같은 무게다.
-        | ControlRequest::WebEval { .. } => Group::Inject,
+        | ControlRequest::WebEval { .. }
+        // 프로그램을 끝낸다 — 되돌릴 수 없다.
+        | ControlRequest::Quit => Group::Inject,
         _ => Group::Act,
     }
 }
@@ -284,6 +286,11 @@ pub(crate) fn dispatch_write(
         ControlRequest::WebAct { pane, act, arg } => {
             tracing::info!(target: "control", from = ?from, ?pane, %act, "web-act");
             web_roundtrip(app_tx, events, |seq| AppCtl::WebAct { seq, pane, act, arg })
+        }
+        ControlRequest::Quit => {
+            tracing::info!(target: "control", from = ?from, "quit");
+            app_tx.send(AppCtl::Quit).ok();
+            ControlResponse::Ok
         }
         ControlRequest::Scroll { pane, lines, to } => {
             tracing::info!(target: "control", from = ?from, pane, lines, %to, "scroll");

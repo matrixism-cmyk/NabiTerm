@@ -23,6 +23,7 @@
 /// 스모크가 사용자의 컴퓨터를 바꾸면 안 된다.
 pub(crate) const SKIP: &[(&str, &str)] = &[
     ("update", "프로그램을 갈아 끼우고 다시 켠다"),
+    ("quit", "스모크가 쓰는 그 앱을 끝낸다 — 뒤의 프로브가 전부 죽는다(스모크 본문이 마지막에 닫는다)"),
     ("integration", "사용자의 ~/.claude/settings.json 을 고친다"),
     ("install", "위와 같은 동사의 뒷낱말"),
     ("schedule", "일정이 파일에 남는다"),

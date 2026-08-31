@@ -177,6 +177,11 @@ control pipe, so the permission policy (off/ask/on) applies identically — MCP 
 - `nabi cli resize --pane <id> --cols <c> --rows <r>`
 - `nabi cli notify --title <text> [--body <text>]` — desktop/toast notification.
 - `nabi cli open-browser [--path <dir>]` — open the file browser.
+- `nabi cli quit`
+  Close nabiTerm **without asking**. Closing the window normally pops a "really close?" dialog
+  when more than one tab is open — fine for a person, but it stops a script dead. This saves
+  the workspace first, so everything comes back next launch; it is not a kill.
+  **Every pane dies, including yours.** Say what will happen before you call it.
 - `nabi cli update [--check]`
   Upgrade nabiTerm to the latest release, with no clicking. It checks GitHub, downloads the
   installer, **verifies its SHA-256 against the one the release published**, installs silently

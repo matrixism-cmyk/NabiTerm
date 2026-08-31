@@ -46,6 +46,8 @@ impl crate::app::NabiApp {
                     }
                 }
                 AppCtl::WebAct { seq, pane, act, arg } => self.control_web_act(seq, pane, act, arg),
+                // 묻지 않고 끝낸다. `quit` 이 작업 공간을 저장하고 프로세스를 닫는다.
+                AppCtl::Quit => self.quit(),
                 AppCtl::SelfUpdate { check } => self.control_self_update(check),
                 AppCtl::OpenWeb { url, window } => {
                     // 기본은 탭이다. 메뉴와 같은 곳에 연다 — 부르는 길에 따라 다르게

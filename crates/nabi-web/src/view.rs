@@ -19,6 +19,7 @@
 //! WebView2 는 자기를 만든 실에서만 만질 수 있다. 그래서 창 하나가 실 하나를 통째로 쓰고,
 //! 상태를 `thread_local` 에 둔다. 실이 갈리지 않으니 자물쇠가 필요 없다.
 
+use std::os::windows::ffi::OsStrExt;
 use webview2_com::Microsoft::Web::WebView2::Win32::*;
 use webview2_com::{CreateCoreWebView2ControllerCompletedHandler, CreateCoreWebView2EnvironmentCompletedHandler};
 use windows::core::{Interface, PCWSTR};
@@ -64,27 +65,52 @@ pub(crate) fn attach(hwnd: HWND, start: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// 엣지가 캐시·쿠키·로그인 상태를 둘 폴더.
+///
+/// **이것을 지정하지 않으면 엣지는 exe 옆에 만들려 한다**(`<exe>.WebView2`). 설치본은
+/// `C:\Program Files (x86)\nabiTerm\` 에 있어서 일반 사용자는 거기 쓸 수 없다. 그러면
+/// 환경 만들기가 `0x80070005 액세스가 거부되었습니다` 로 실패한다 — 새 PC 에 설치한
+/// 사용자가 브라우저를 열자마자 이 오류를 봤다(2026-08-31 보고).
+///
+/// 개발 PC 에서는 관리자로 돌아 폴더가 만들어졌고, 그래서 여기서는 한 번도 안 났다.
+///
+/// `%LOCALAPPDATA%` 아래에 둔다 — 사용자마다 따로이고, 로밍 프로필로 실려 다니지 않는다
+/// (캐시는 옮겨 다닐 것이 아니다).
+fn user_data_dir() -> std::path::PathBuf {
+    let base = std::env::var_os("LOCALAPPDATA")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir);
+    let dir = base.join("nabiTerm").join("WebView2");
+    // 삼킴: 만들지 못해도 아래에서 엣지가 다시 시도하고, 실패하면 그 오류가 화면에 뜬다.
+    let _ = std::fs::create_dir_all(&dir);
+    dir
+}
+
 /// 1단계 — 환경.
 pub(crate) fn make_env() -> webview2_com::Result<ICoreWebView2Environment> {
     let (tx, rx) = std::sync::mpsc::channel();
+    // 널로 끝나는 UTF-16 — 핸들러가 도는 동안 살아 있어야 해서 밖에서 만든다.
+    let udf: Vec<u16> =
+        user_data_dir().as_os_str().encode_wide().chain(std::iter::once(0)).collect();
     CreateCoreWebView2EnvironmentCompletedHandler::wait_for_async_operation(
         // 안전: 핸들러는 이 호출이 끝날 때까지 살아 있다.
-        Box::new(|handler| unsafe {
+        Box::new(move |handler| unsafe {
             // `NABI_WEB_ARGS` 로 엣지에 넘길 인자를 붙인다.
             //
             // 사내망에서 프록시를 지정해야 하거나(`--proxy-server=...`), 그 PC 에서만 나는
             // 문제를 가려내야 할 때 쓴다. 기본은 아무것도 붙이지 않는다 — 우리가 모르는
             // 인자를 몰래 넣어 두면 나중에 왜 그렇게 도는지 아무도 모른다.
             let extra = std::env::var("NABI_WEB_ARGS").unwrap_or_default();
-            if extra.is_empty() {
-                return CreateCoreWebView2Environment(&handler).map_err(webview2_com::Error::WindowsError);
-            }
             let opts = webview2_com::CoreWebView2EnvironmentOptions::default();
-            opts.set_additional_browser_arguments(extra);
+            if !extra.is_empty() {
+                opts.set_additional_browser_arguments(extra);
+            }
             let opts: ICoreWebView2EnvironmentOptions = opts.into();
+            // **자료 폴더를 늘 지정한다.** 인자가 없을 때도 마찬가지다 — 예전에는 그때
+            // 기본 경로(exe 옆)로 떨어져서 설치본에서만 권한 오류가 났다.
             CreateCoreWebView2EnvironmentWithOptions(
                 windows_core::PCWSTR::null(),
-                windows_core::PCWSTR::null(),
+                windows_core::PCWSTR(udf.as_ptr()),
                 &opts,
                 &handler,
             )

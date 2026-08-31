@@ -27,6 +27,8 @@ pub enum AppCtl {
     /// 부른 쪽이 바로 그 파일을 읽으면 없다. 어디에 남았는지도 알 수 없었다 —
     /// 경로는 화면 토스트로만 갔다. 사람은 그걸 보지만 AI 에이전트는 못 본다.
     ShotSeq { seq: u64, pane: Option<u64>, out: Option<String> },
+    /// 나비텀을 끝낸다 — 묻지 않고, 작업 공간은 저장한다.
+    Quit,
     /// 스스로 최신판으로 올린다(check 면 확인만).
     SelfUpdate { check: bool },
     /// 저장된 SFTP 세션 이름으로 원격 탭 열기.
