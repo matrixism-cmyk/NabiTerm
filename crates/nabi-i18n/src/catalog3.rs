@@ -66,6 +66,7 @@ pub(crate) const CATALOG3: &[(&str, &str, &str, &str)] = &[
     ("ctx.movedown", "Move line down", "줄 아래로 이동", "行を下へ移動"),
     ("menu.invertsel", "Invert selection", "선택 반전", "選択を反転"),
     ("term.copyoutput", "Copy output to clipboard", "출력 클립보드 복사", "出力をクリップボードにコピー"),
+    ("term.outputmenu", "Send output to\u{2026}", "출력 보내기\u{2026}", "出力を送る\u{2026}"),
     ("term.copyoutputmd", "Copy output as Markdown (for AI)", "AI용 출력 복사(코드블록)", "出力をMarkdownでコピー(AI用)"),
     ("ssh.copycmd", "Copy ssh command (current session)", "ssh 명령 복사(현재 세션)", "sshコマンドをコピー(現セッション)"),
     ("ssh.cmdcopied", "\u{2713} ssh command copied", "\u{2713} ssh 명령 복사됨", "\u{2713} sshコマンドをコピー"),

@@ -60,8 +60,13 @@ impl NabiApp {
             SyncDir::Up => (&local, &remote),
             SyncDir::Down => (&remote, &local),
         };
-        let acts = plan(src, dst, dlg.by, dlg.mirror);
+        // 이름만 바뀐 파일은 올리지 않고 옮긴다(폴더 이름 하나에 5GB 를 다시 보내던 자리).
+        let acts = crate::syncmove::detect_moves(plan(src, dst, dlg.by, dlg.mirror), src, dst);
         // 삭제는 기본 체크 해제(안전) — 복사/갱신은 기본 체크.
+        //
+        // **이동은 기본 체크한다.** 삭제를 꺼 두는 이유는 되돌릴 수 없어서인데, 이동은
+        // 바이트가 그대로 대상 쪽에 남는다 — 잘못 옮겨도 도로 옮기면 된다. 오히려 꺼 두면
+        // 새 자리에 파일이 생기지 않아 동기화가 조용히 반쪽이 된다.
         dlg.items = Some(acts.into_iter().map(|a| { let del = matches!(a, SyncAction::Delete(_)); (a, !del) }).collect());
     }
 
@@ -121,11 +126,18 @@ impl NabiApp {
                                 SyncAction::Copy(_) => ("\u{2795}", crate::theme_ui::OK),
                                 SyncAction::Update(_) => ("\u{21bb}", crate::theme_ui::BROADCAST),
                                 SyncAction::Delete(_) => ("\u{2715}", crate::theme_ui::ERR),
+                                SyncAction::Move { .. } => ("\u{2192}", crate::theme_ui::ACCENT),
+                            };
+                            // 이동은 **어디서 어디로**를 다 보여 준다 — 새 자리만 적으면
+                            // 왜 올리지 않는지 알 수 없고, 잘못 짝지은 것도 눈에 안 띈다.
+                            let text = match a {
+                                SyncAction::Move { from, to } => format!("{from}  \u{2192}  {to}"),
+                                other => other.path().to_string(),
                             };
                             ui.horizontal(|ui| {
                                 ui.checkbox(checked, "");
                                 ui.colored_label(color, mark);
-                                ui.label(a.path());
+                                ui.label(text);
                             });
                         }
                         if items.is_empty() { ui.weak(tr(lang, "sync.insync")); }
@@ -191,7 +203,8 @@ impl NabiApp {
         // 업로드 전 원격 부모 폴더를 얕은→깊은 순으로 만들어 둔다(리뷰 #6 — 없으면 개별 실패).
         if dlg.dir == SyncDir::Up {
             let mut dirs: Vec<String> = Vec::new();
-            for a in items.iter().filter(|a| matches!(a, SyncAction::Copy(_) | SyncAction::Update(_))) {
+            // 이동도 부모가 있어야 한다 — 옮겨 갈 자리의 폴더가 없으면 이름 바꾸기가 실패한다.
+            for a in items.iter().filter(|a| !matches!(a, SyncAction::Delete(_))) {
                 let mut acc = String::new();
                 for seg in a.path().split('/').collect::<Vec<_>>().split_last().map(|(_, init)| init).unwrap_or(&[]) {
                     acc = if acc.is_empty() { (*seg).to_string() } else { format!("{acc}/{seg}") };
@@ -204,7 +217,7 @@ impl NabiApp {
                 self.orch.send(Command::SftpMkdir { id, path: format!("{rroot}/{d}") });
             }
         }
-        let mut n = 0usize;
+        let (mut n, mut movefail) = (0usize, 0usize);
         for a in items {
             let rel = a.path().to_string();
             let lpath = std::path::Path::new(&lroot).join(rel.replace('/', "\\"));
@@ -222,9 +235,22 @@ impl NabiApp {
                 }
                 (SyncAction::Delete(_), SyncDir::Up) => self.orch.send(Command::SftpRemove { id, path: rpath }),
                 (SyncAction::Delete(_), SyncDir::Down) => { let _ = std::fs::remove_file(&lpath); }
+                // 이동 — 바이트를 보내지 않는다. 실패해도 잃는 것은 없다: 옛 자리에 그대로
+                // 남아 있고 다음 동기화가 다시 계획한다(그때는 올리기로 잡힐 수도 있다).
+                (SyncAction::Move { from, .. }, SyncDir::Up) => {
+                    self.orch.send(Command::SftpRename { id, from: format!("{rroot}/{from}"), to: rpath });
+                }
+                (SyncAction::Move { from, .. }, SyncDir::Down) => {
+                    if let Some(dir) = lpath.parent() { let _ = std::fs::create_dir_all(dir); }
+                    let old = std::path::Path::new(&lroot).join(from.replace('/', "\\"));
+                    if std::fs::rename(&old, &lpath).is_err() {
+                        movefail += 1; // 조용히 넘기면 새 자리에 파일이 없는 채로 "끝났다"가 된다.
+                    }
+                }
             }
             n += 1;
         }
-        self.notify = Some((format!("{} {n}", tr(self.lang, "sync.started")), std::time::Instant::now()));
+        let tail = if movefail > 0 { format!(" \u{00b7} {} {movefail}", tr(self.lang, "sync.movefail")) } else { String::new() };
+        self.notify = Some((format!("{} {n}{tail}", tr(self.lang, "sync.started")), std::time::Instant::now()));
     }
 }

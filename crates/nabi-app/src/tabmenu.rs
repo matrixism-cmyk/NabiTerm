@@ -185,55 +185,9 @@ pub(crate) fn tab_context_menu(
         }
         ui.close();
     }
-    // 터미널→AI 동선(팔레트와 동일 기능 — 표면 정합): 마지막 명령을 AI에/클립보드로.
-    if ui.button(tr(lang, "handoff.last")).clicked() {
-        *ai_handoff = Some((*tab, false));
-        ui.close();
-    }
-    if ui.button(tr(lang, "handoff.copymd")).clicked() {
-        *ai_handoff = Some((*tab, true));
-        ui.close();
-    }
-    // 출력(히스토리+화면)을 파일로 저장(세션 로그).
-    let dump = || orch.panes.read().ok().and_then(|m| m.get(tab).cloned()).and_then(|v| v.model.lock().ok().map(|md| md.dump_text(1_000_000)));
-    if ui.button(tr(lang, "menu.saveoutput")).clicked() {
-        // 저장은 대개 **남겨 두려고** 한다. 실패했는데 아무 말이 없으면 파일이 생긴 줄 알고,
-        // 필요할 때가 되어서야 없다는 것을 안다(내보내기에서 겪은 것과 같은 결함).
-        if let Some(text) = dump() {
-            if let Some(path) = rfd::FileDialog::new().set_file_name("terminal-output.txt").save_file() {
-                *save_msg = Some(match std::fs::write(&path, text) {
-                    Ok(()) => format!("\u{2713} {}", path.display()),
-                    Err(e) => format!("\u{2715} {}: {e}", path.display()),
-                });
-            }
-        }
-        ui.close();
-    }
-    // 출력을 클립보드로 복사(파일 저장 없이) + AI용 마크다운 코드블록 복사(바이브코딩).
-    if ui.button(tr(lang, "term.copyoutput")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(t); }
-        ui.close();
-    }
-    if ui.button(tr(lang, "term.copyoutputmd")).clicked() {
-        if let Some(t) = dump() { ui.ctx().copy_text(format!("```\n{}\n```", t.trim_end())); }
-        ui.close();
-    }
-    // 출력에서 URL/IP/이메일/숫자만 추출해 클립보드로 — 4종을 "추출" 서브메뉴로 묶어
-    // 컨텍스트 평면 비대화를 막는다(T3-1; 에디터 추출 메뉴와 같은 라벨).
-    ui.menu_button(tr(lang, "editor.extractmenu"), |ui| {
-        type Ext = fn(&str) -> String;
-        for (key, f) in [
-            ("term.exturls", crate::editorextract::extract_urls as Ext),
-            ("term.extips", crate::editorextract::extract_ips as Ext),
-            ("term.extemails", crate::editorextract::extract_emails as Ext),
-            ("term.extnumbers", crate::editorextract::extract_numbers as Ext),
-        ] {
-            if ui.button(tr(lang, key)).clicked() {
-                if let Some(t) = dump() { ui.ctx().copy_text(f(&t)); }
-                ui.close();
-            }
-        }
-    });
+    // 출력을 어디론가 보내는 여섯 가지는 한 묶음이다(taboutputmenu) — 평평하게 늘어놓으면
+    // 다른 항목 열셋 사이에 흩어져 찾는 사람이 열아홉 개를 다 읽어야 한다.
+    crate::taboutputmenu::output_menu(ui, tab, orch, lang, ai_handoff, save_msg);
     // 스크롤백 맨 위/아래로 이동(긴 출력 빠른 탐색).
     let scroll = |top: bool| { if let Some(v) = orch.panes.read().ok().and_then(|m| m.get(tab).cloned()) { if let Ok(mut md) = v.model.lock() { if top { md.scroll_to_top(); } else { md.scroll_to_bottom(); } } } };
     if ui.button(tr(lang, "term.scrolltop")).clicked() { scroll(true); ui.close(); }

@@ -30,12 +30,19 @@ pub enum SyncAction {
     Update(String),
     /// 대상에만 있음 → Mirror 모드에서만 삭제 후보.
     Delete(String),
+    /// **같은 파일이 자리만 옮겼음** — 다시 보내지 않고 대상 쪽에서 이름을 바꾼다.
+    ///
+    /// `Copy`+`Delete` 짝을 [`crate::syncmove::detect_moves`] 가 이것으로 합친다.
+    /// 언제 합쳐도 되는지(그리고 왜 그렇게 깐깐한지)는 그쪽 문서에 있다.
+    Move { from: String, to: String },
 }
 
 impl SyncAction {
+    /// 이 판정이 가리키는 **대상 쪽 경로**. 이동은 옮겨 갈 자리(`to`)다.
     pub fn path(&self) -> &str {
         match self {
             SyncAction::Copy(p) | SyncAction::Update(p) | SyncAction::Delete(p) => p,
+            SyncAction::Move { to, .. } => to,
         }
     }
 }

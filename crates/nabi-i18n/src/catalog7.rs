@@ -162,6 +162,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("sftp.grep.toggle", "Search file contents", "파일 내용으로 찾기", "ファイル内容で検索"),
     ("sftp.grep.hint", "Reads the first 256KB of each file — matches further in are not found, and the result says so", "파일마다 앞 256KB만 읽습니다 — 그보다 뒤의 일치는 못 찾으며, 결과에 그 사실을 적습니다", "各ファイルの先頭256KBのみ読みます"),
     ("sftp.grep.done", "Matches found:", "찾은 줄:", "見つかった行:"),
+    ("sync.movefail", "Could not move:", "옮기지 못함:", "移動できません:"),
     ("sync.unwritable", "Skipped — Windows cannot create these names:", "건너뜀 — 윈도우가 만들 수 없는 이름:", "スキップ — Windows で作成できない名前:"),
     ("sftp.unsafename", "Refused — the server sent a name that points outside the folder:", "거부 — 서버가 폴더 밖을 가리키는 이름을 보냈습니다:", "拒否 — サーバーがフォルダ外を指す名前を返しました:"),
     ("sftp.verify.skipped", "This server has no hash command — transfers were not verified (size was still checked)", "이 서버에는 해시 명령이 없어 전송을 검증하지 못했습니다(크기 비교는 했습니다)", "このサーバーにはハッシュコマンドがなく検証できませんでした"),
