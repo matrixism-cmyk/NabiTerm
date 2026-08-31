@@ -323,6 +323,37 @@ pub(crate) fn needs_wheel_hint(mouse_on: bool, alt_screen: bool, wheel: f32) -> 
     mouse_on && !alt_screen && wheel != 0.0
 }
 
+/// 위로 올렸는데 **꿈쩍도 안 했다** — 올라갈 것이 없다는 뜻이다.
+///
+/// 화면을 덮어 그리는 프로그램은 지나간 화면을 스크롤백으로 흘려보내지 않는다.
+/// 2026-08-31에 재 봤더니 40프레임 x 20줄 = 800줄을 찍고도 스크롤백에 **0줄**이 남았다.
+/// 사용자에게는 "나비텀이 기록을 잃어버렸다"로 보인다 — 실제로 그렇게 보고받았다.
+///
+/// 기록 자체는 세션 로그에 다 있다. 그리로 가는 길을 알려 주는 것이 이 안내의 몫이다.
+/// 대체 화면(vim·less)은 뺀다 — 거기서 스크롤백이 없는 것은 당연하고, 그 프로그램이
+/// 자기 방식으로 스크롤한다.
+pub(crate) fn needs_empty_hint(alt_screen: bool, stuck: bool, history: usize) -> bool {
+    stuck && !alt_screen && history == 0
+}
+
+#[cfg(test)]
+mod emptyhint {
+    use super::needs_empty_hint;
+
+    #[test]
+    fn only_when_there_is_truly_nothing_above() {
+        assert!(needs_empty_hint(false, true, 0), "덮어 그리는 프로그램 — 알려야 한다");
+        assert!(!needs_empty_hint(false, false, 0), "올리지도 않았는데 알리지 않는다");
+        assert!(!needs_empty_hint(true, true, 0), "대체 화면은 원래 스크롤백이 없다");
+    }
+
+    /// 기록이 있는데 맨 위에 닿은 것뿐이면 알리지 않는다 — 그건 정상이고, 매번 뜨면 성가시다.
+    #[test]
+    fn reaching_the_top_of_a_real_scrollback_is_not_an_error() {
+        assert!(!needs_empty_hint(false, true, 500));
+    }
+}
+
 #[cfg(test)]
 mod hinttests {
     use super::needs_wheel_hint;

@@ -146,6 +146,8 @@ impl NabiApp {
 
     fn apply_settings(&mut self, ctx: &egui::Context) {
         self.save_config();
+        // 앱이 스크롤백을 지우지 못하게 할 것인가 — 이미 열려 있는 pane 에도 곧바로 걸린다.
+        nabi_vt::wipeguard::set_default_protect(self.config.terminal.protect_scrollback);
         // SSH keepalive 간격을 라이브 반영(다음 연결부터 적용).
         nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
         nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);

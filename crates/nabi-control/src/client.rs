@@ -188,7 +188,7 @@ pub fn run_cli(args: &[String]) -> i32 {
         // 진단 출력은 사람이 읽는 것이 목적이다 — 한 줄에 하나씩, 이름 그대로.
         Ok(ControlResponse::Modes {
             pane, alt_screen, mouse_on, alt_scroll, bracketed_paste, app_cursor, kitty_keys,
-            scrollback_lines, scroll_offset,
+            scrollback_lines, scroll_offset, scrollback_wipes,
         }) => {
             println!("pane            {pane}");
             println!("alt_screen      {alt_screen}   (대체 화면 — 스크롤백 없음)");
@@ -198,6 +198,8 @@ pub fn run_cli(args: &[String]) -> i32 {
             println!("app_cursor      {app_cursor}");
             println!("kitty_keys      {kitty_keys}");
             println!("scrollback      {scrollback_lines}줄 (지금 {scroll_offset}줄 거슬러 봄)");
+            // 0 이면 지우기 탓이 아니다 — 그 프로그램이 애초에 흘려보내지 않은 것이다.
+            println!("wipes           {scrollback_wipes}회 (앱이 스크롤백을 지우려 한 횟수)");
             0
         }
         Ok(ControlResponse::Captured { text, .. }) => {

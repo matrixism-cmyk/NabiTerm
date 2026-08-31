@@ -229,6 +229,12 @@ pub enum ControlResponse {
         kitty_keys: u8,
         scrollback_lines: usize,
         scroll_offset: usize,
+        /// 앱이 "지나간 내용을 지워라"(CSI 3 J)를 보낸 횟수.
+        ///
+        /// "왜 기록이 사라지느냐"는 물음에 추측 없이 답하려면 이 숫자가 필요하다. 0 이면
+        /// 지우기 탓이 아니라 **그 프로그램이 애초에 흘려보내지 않은 것**이다(덮어 그리기).
+        #[serde(default)]
+        scrollback_wipes: u32,
     },
     Err { message: String },
 }

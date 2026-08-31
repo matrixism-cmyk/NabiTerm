@@ -170,6 +170,8 @@ impl TermTabViewer<'_> {
         // 동기 스크롤로 남에게 옮겨 줄 양. 자물쇠를 쥔 채 남의 자물쇠를 잡지 않으려고
         // 여기서 값만 받아 두고 **블록을 벗어난 뒤** 적용한다(교착 회피).
         let mut sync = 0i32;
+        // 위로 올리려 했지만 올라갈 것이 없었는가.
+        let mut stuck = false;
         let pane_model = self.orch.panes.read().ok().and_then(|m| m.get(&pane).map(|v| v.model.clone()));
         if let Some(pane_model) = pane_model {
             if let Ok(mut model) = pane_model.lock() {
@@ -178,8 +180,22 @@ impl TermTabViewer<'_> {
                 } else if to_top {
                     model.scroll_to_top();
                 } else if scroll != 0 && !alt_screen {
+                    // 위로 올리려 했는데 **꿈쩍도 안 하면** 올라갈 것이 없다는 뜻이다.
+                    // 화면을 덮어 그리는 프로그램에서 그렇게 된다 — 그 사실을 알려 줘야
+                    // 사용자가 "기록이 사라졌다"고 오해하지 않는다(보고 2026-08-31).
+                    let before = model.scrollback_offset();
                     model.scroll_by(scroll);
+                    if scroll > 0 && model.scrollback_offset() == before {
+                        stuck = true;
+                    }
                     sync = scroll; // 같은 그룹을 같은 만큼 옮긴다(아래, 자물쇠를 놓은 뒤).
+                }
+                // 올라갈 것이 없었다면 **왜 없는지** 한 번 알린다. 말해 주지 않으면
+                // "나비텀이 기록을 잃어버렸다"로 보인다(사용자 보고 2026-08-31).
+                if crate::panewheel::needs_empty_hint(model.alt_screen(), stuck, model.history_size())
+                    && self.wheel_hinted.insert(pane)
+                {
+                    *self.wheel_hint = Some(nabi_i18n::tr(self.lang, "wheel.nohistory").to_string());
                 }
                 // 텍스트 선택 추적(track_selection 내부에서 시각열→render 인덱스 변환=와이드 보정).
                 // 링크 메뉴가 열려 있으면 드래그로 덮어쓰지 않고 현재 선택(링크 전체)을 유지한다.

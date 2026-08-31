@@ -44,6 +44,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.visualbell", 0),
     ("settings.warnpaste", 0),
     ("settings.warnpasteunicode", 0),
+    ("settings.protectscrollback", 0),
     ("settings.bgcolor", 1),
     ("settings.blinkms", 1),
     ("settings.colordefault", 1),

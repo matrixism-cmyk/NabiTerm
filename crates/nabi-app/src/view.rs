@@ -63,6 +63,8 @@ impl NabiApp {
         // 기본 8px 여백은 콘텐츠 둘레 띠가 두꺼워 보임 — 2px로 축소.
         let cframe = egui::Frame::central_panel(&ctx.global_style())
             .inner_margin(egui::Margin::same(2));
+        // 휠 안내는 클로저 **밖**에서 읽는다 — 안에서 선언하면 그대로 버려진다.
+        let mut wheel_hint: Option<String> = None;
         egui::CentralPanel::default().frame(cframe).show(ui, |ui| {
             if self.dock.iter_all_tabs().next().is_none() {
                 ui.vertical_centered(|ui| {
@@ -118,7 +120,7 @@ impl NabiApp {
             let risky: std::collections::HashSet<nabi_types::PaneId> =
                 window_panes.iter().copied().filter(|p| self.pane_tag(*p).is_risky()).collect();
             let guard_on = self.config.terminal.guard_dangerous;
-            let mut wheel_hint: Option<String> = None;
+
             let mut viewer = crate::tabs::TermTabViewer {
                 pane_rects: &mut self.pane_rects,
                 web_tabs: &mut self.web_tabs,
@@ -218,6 +220,12 @@ impl NabiApp {
                     .show_inside(ui, &mut viewer);
             }
         });
+        // **휠 안내를 실제로 띄운다.** 이 값은 사용자 보고를 두 번 받고 만든 것인데, 여기서
+        // 받아 놓고 아무도 읽지 않아 **한 번도 화면에 뜬 적이 없었다**(2026-09-01에 발견).
+        // 만들어 놓고 부르지 않는 것은 없는 것과 같다.
+        if let Some(h) = wheel_hint {
+            self.notify = Some((h, std::time::Instant::now()));
+        }
         // Ctrl+휠 확대/축소 적용: 포인터가 올라간 pane이 있으면 그 pane(+활성화), 없으면 전역.
         if let Some((p, wheel)) = zoom_req {
             let cur = self.pane_font.get(&p).copied().unwrap_or(self.font_size);

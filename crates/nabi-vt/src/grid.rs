@@ -35,6 +35,10 @@ pub struct TermModel {
     detect_sample: Vec<u8>,
     /// DEC 1007(alternate scroll) 추적 — 코어가 모르는 모드라 따로 관찰한다(altscroll.rs).
     alt_scroll: crate::altscroll::AltScroll,
+    /// 앱이 보내는 "스크롤백을 지워라"(CSI 3 J)를 세고, 원하면 막는다(wipeguard.rs).
+    wipe_guard: crate::wipeguard::WipeGuard,
+    /// pane 하나만 다르게 하고 싶을 때의 덮어쓰기. `None` 이면 전역 설정을 따른다.
+    protect_override: Option<bool>,
     /// 오간 바이트를 그대로 보낼 곳(세션 기록). 없으면 아무 일도 하지 않는다.
     raw_tap: Option<std::sync::mpsc::Sender<Vec<u8>>>,
 }
@@ -63,6 +67,8 @@ impl TermModel {
             ul_cache: std::cell::RefCell::default(),
             detect_sample: Vec::new(),
             alt_scroll: crate::altscroll::AltScroll::default(),
+            wipe_guard: crate::wipeguard::WipeGuard::default(),
+            protect_override: None,
             raw_tap: None,
         }
     }
@@ -119,7 +125,11 @@ impl TermModel {
                 self.raw_tap = None;
             }
         }
-        for &b in bytes {
+        // 기록(raw_tap)은 **원본**을 받는다 — 위에서 이미 보냈다. 파서에 넣기 전에만 거른다.
+        // 앱이 "스크롤백을 지워라"(CSI 3 J)를 보내면 파서에 닿는 순간 이미 지워진 뒤다.
+        let protect = self.protect_override.unwrap_or_else(crate::wipeguard::default_protect);
+        let filtered = self.wipe_guard.filter(bytes, protect);
+        for &b in &filtered {
             self.parser.advance(&mut self.term, b);
             self.esc_observe(b); // 인라인 이미지(Sixel/iTerm/Kitty) 병렬 관찰.
             self.alt_scroll.observe(b); // DEC 1007(휠→커서 키) 요청 관찰.
@@ -138,8 +148,27 @@ impl TermModel {
     }
 
     /// 스크롤백(히스토리)만 비운다 — 현재 화면은 유지(xterm ED 3, "Clear Buffer").
+    ///
+    /// **사람이 시킨 것은 막지 않는다.** 막는 것은 앱이 몰래 보내는 경우뿐이므로, 여기서는
+    /// 보호를 잠깐 내렸다가 되돌린다. 안 그러면 메뉴의 "스크롤백 비우기"가 먹통이 된다.
     pub fn clear_scrollback(&mut self) {
+        let was = self.protect_override;
+        self.protect_override = Some(false);
         self.process(b"\x1b[3J");
+        self.protect_override = was;
+    }
+
+    /// 앱이 스크롤백을 지우지 못하게 할 것인가(설정에서 온다).
+    pub fn set_protect_scrollback(&mut self, on: bool) {
+        self.protect_override = Some(on);
+    }
+
+    /// 앱이 스크롤백을 지우려 한 횟수 — 진단(`pane-modes`)에 쓴다.
+    ///
+    /// 막았는지와 무관하게 센다. "왜 기록이 사라지나"를 추측하지 않고 답하려면 이 숫자가
+    /// 있어야 한다(2026-08-31 사용자 보고에서 이것이 없어 반나절 헤맸다).
+    pub fn scrollback_wipes(&self) -> u32 {
+        self.wipe_guard.wipes()
     }
 
     /// 보이는 row번째 줄이 다음 줄로 소프트랩(자동 줄바꿈)되었는지(복사 시 개행 생략용).

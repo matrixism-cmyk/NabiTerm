@@ -174,6 +174,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("status.recstop", "Click to stop recording", "누르면 기록을 멈춥니다", "クリックで記録を停止"),
     ("env.desc.webview2", "Lets the built-in web browser render pages. Windows 11 usually has it already.", "내장 웹 브라우저가 화면을 그리는 데 씁니다. 윈도우 11에는 대개 이미 들어 있습니다.", "内蔵 Web ブラウザーの描画に使います。Windows 11 には通常同梱されています。"),
     ("wheel.apptook", "This program redraws lines in place, so the terminal scrollback keeps only fragments. Everything is still recorded: right-click the tab and choose \u{201c}Open full history\u{201d} to read it all.", "이 프로그램은 줄을 제자리에 덮어 그려서 터미널 스크롤백에는 조각만 남습니다. 지나간 것은 기록에 다 있습니다 \u{2014} 탭을 오른쪽 클릭해 \u{201c}전체 기록 열기\u{201d}를 고르면 전부 볼 수 있습니다.", "このプログラムは行を上書きするため、端末のスクロールバックには断片しか残りません。内容は記録に残っています \u{2014} タブを右クリックして「全履歴を開く」を選ぶとすべて読めます。"),
+    ("wheel.nohistory", "Nothing above \u{2014} this program redraws the screen in place, so what scrolled past never reached the scrollback. It is all still recorded: right-click the tab and choose \u{201c}Open full history\u{201d}.", "위로 올릴 것이 없습니다 \u{2014} 이 프로그램은 화면을 덮어 그려서 지나간 내용이 스크롤백에 닿지 않습니다. 기록에는 다 있습니다: 탭을 오른쪽 클릭해 \u{201c}전체 기록 열기\u{201d}를 고르세요.", "上に戻る内容がありません \u{2014} このプログラムは画面を上書きするため、流れた内容はスクロールバックに入りません。記録には残っています: タブを右クリックして「全履歴を開く」を選んでください。"),
     ("web.back", "Back", "뒤로", "戻る"),
     ("web.fwd", "Forward", "앞으로", "進む"),
     ("web.reload", "Reload", "새로고침", "再読み込み"),

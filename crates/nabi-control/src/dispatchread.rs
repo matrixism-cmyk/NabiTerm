@@ -121,5 +121,6 @@ pub(crate) fn pane_modes(panes: &SharedPanes, pane: u64) -> ControlResponse {
         kitty_keys: m.kitty_keys(),
         scrollback_lines: m.history_size(),
         scroll_offset: m.scrollback_offset(),
+        scrollback_wipes: m.scrollback_wipes(),
     }
 }

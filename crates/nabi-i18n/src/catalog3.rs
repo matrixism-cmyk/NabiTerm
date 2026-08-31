@@ -238,6 +238,12 @@ pub(crate) const CATALOG3: &[(&str, &str, &str, &str)] = &[
         "셸 통합을 설치하면 nabiTerm이 실행 중인 명령과 디렉터리를 알 수 있어, 종료 시 실행 중이던 명령(예: claude)을 재시작 때 복원하고 종료코드·프롬프트 점프·작업 디렉터리 추적이 동작합니다. PowerShell 프로필에 작은 스니펫을 추가합니다(새 셸부터 적용).",
         "シェル統合を入れると nabiTerm が実行中コマンドとディレクトリを把握でき、終了時の実行中コマンド(例: claude)を再起動時に復元し、終了コード・プロンプトジャンプ・cwd 追跡が有効になります。PowerShell プロファイルに小さなスニペットを追加します(新しいシェルから適用)。",
     ),
+    (
+        "settings.protectscrollback",
+        "Don't let programs erase scrollback",
+        "프로그램이 지나간 내용을 지우지 못하게",
+        "プログラムによるスクロールバック消去を防ぐ",
+    ),
     ("shellinteg.install", "Install", "설치", "インストール"),
     ("shellinteg.later", "Later", "나중에", "後で"),
     ("shellinteg.never", "Don't show again", "다시 보지 않기", "今後表示しない"),

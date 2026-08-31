@@ -140,6 +140,14 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         &mut cfg.terminal.warn_paste_unicode,
     );
 
+    // 화면을 덮어 그리는 TUI 가 다시 그리기 전에 "스크롤백을 지워라"를 보내는 일이 잦다.
+    // 그러면 사람이 올려 보려던 것이 그 순간 사라진다(사용자 보고 2026-08-31).
+    chk(
+        ui,
+        tr(lang, "settings.protectscrollback"),
+        &mut cfg.terminal.protect_scrollback,
+    );
+
     // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
     ui.label(tr(lang, "settings.shellinteg"));
     ui.horizontal(|ui| {

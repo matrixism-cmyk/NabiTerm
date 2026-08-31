@@ -321,6 +321,13 @@ pub struct TerminalCfg {
     /// OSC 7771 in-band 제어 허용(기본 false — 원격 출력 위장 방지). 로컬 pane만 처리.
     #[serde(default)]
     pub control_allow_osc: bool,
+    /// 앱이 스크롤백을 지우지 못하게 한다(`CSI 3 J`). 기본 **켬**.
+    ///
+    /// 화면을 덮어 그리는 TUI 가 다시 그리기 전에 이 시퀀스를 보내는 일이 잦은데, 그러면
+    /// 사람이 위로 올려 보려던 것이 그 순간 없어진다. 지운 것은 되돌릴 수 없고, 안 지운
+    /// 것은 언제든 지울 수 있다(메뉴의 "스크롤백 비우기") — 그래서 막는 쪽이 기본이다.
+    #[serde(default = "default_true")]
+    pub protect_scrollback: bool,
     /// 시작 시 자동 업데이트 확인(GitHub 릴리스). 기본 true.
     #[serde(default = "default_true")]
     pub auto_check_update: bool,
@@ -493,6 +500,7 @@ impl Default for TerminalCfg {
             browser_view: 0,
             control_mode: "ask".into(),
             control_allow_osc: false,
+            protect_scrollback: true,
             auto_check_update: true,
             update_remind_after: 0,
         }
