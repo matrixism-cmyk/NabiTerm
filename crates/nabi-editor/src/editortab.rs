@@ -130,6 +130,13 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
     // 미니맵과 고정 스크롤이 **둘 다** 이 값을 본다 — 미니맵일 때만 저장하면 고정 줄이 안 따라온다.
     if doc.minimap || doc.sticky { ui.data_mut(|d| d.insert_temp(scroll_id, (out.state.offset.y, out.content_size.y, out.inner_rect.height()))); }
     ui.data_mut(|d| d.insert_temp(cur_id, out.inner));
+    // 메뉴바 변환·모두 바꾸기가 "아무것도 안 바뀌었다"고 남긴 것을 여기서 걷어 올린다.
+    // **한 프레임짜리라 반드시 비운다** — 안 비우면 그 알림이 계속 다시 뜬다.
+    if let Some(k) = doc.note.take() {
+        // 우클릭 메뉴가 이미 할 말을 남겼으면 그쪽이 더 구체적이다 — 덮어쓰지 않는다.
+        // 그래도 `take()` 는 했다: 안 비우면 다음 프레임에 또 뜬다.
+        act.note.get_or_insert_with(|| nabi_i18n::tr(lang, k).to_string());
+    }
     act
 }
 

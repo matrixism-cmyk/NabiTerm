@@ -16,6 +16,12 @@ pub struct BufMenuAct {
     pub paste: bool,
     /// 찾기 막대 열기.
     pub find: bool,
+    /// **아무 일도 안 일어났을 때 할 말**(i18n 키).
+    ///
+    /// 이 메뉴의 명령 여럿은 "할 것이 없으면 아무것도 안 한다"를 `false` 로 알려 주는데,
+    /// 부르는 쪽이 그 답을 버리고 있었다(2026-09-01, `#[must_use]` 를 붙여 열 곳을 찾았다).
+    /// 누른 사람에게는 그것이 **고장**으로 보인다 — 눌렀는데 아무 일도 없으니까.
+    pub note: Option<&'static str>,
 }
 
 /// AI 에게 넘길 글의 상한(문자). 이보다 크면 어느 AI 의 문맥에도 안 들어가고,
@@ -101,13 +107,13 @@ pub fn context_menu(
     ui.add_enabled_ui(!readonly, |ui| {
         ui.menu_button(tr(lang, "editor.mdmenu"), |ui| {
             if let Some(m) = crate::editormd::emphasis_menu(ui, lang) {
-                eb.toggle_emphasis(m);
+                if !eb.toggle_emphasis(m) { act.note = Some("edit.nochange"); }
             }
         });
     });
     // 다중 커서 — 팔레트·메뉴에도 있어야 단축키를 모르는 사람이 만난다.
     if ui.button(tr(lang, "edit.addnextmatch")).clicked() {
-        eb.add_next_match();
+        if !eb.add_next_match() { act.note = Some("edit.nomorematch"); }
         ui.close();
     }
     if ui.button(tr(lang, "edit.selectallmatches")).clicked() {
@@ -119,11 +125,11 @@ pub fn context_menu(
         ui.close();
     }
     if ui.button(tr(lang, "edit.addcursorup")).clicked() {
-        eb.add_cursor_vertical(-1);
+        if !eb.add_cursor_vertical(-1) { act.note = Some("edit.nomoreline"); }
         ui.close();
     }
     if ui.button(tr(lang, "edit.addcursordown")).clicked() {
-        eb.add_cursor_vertical(1);
+        if !eb.add_cursor_vertical(1) { act.note = Some("edit.nomoreline"); }
         ui.close();
     }
     if ui.button(tr(lang, "menu.selectall")).clicked() {
@@ -183,7 +189,7 @@ pub fn context_menu(
     ui.add_enabled_ui(!readonly && !blocked, |ui| {
         ui.menu_button(tr(lang, "ctx.transform"), |ui| {
             if let Some(f) = crate::editorxform::transform_menu(ui, lang) {
-                eb.apply_transform(f);
+                if !eb.apply_transform(f) { act.note = Some("edit.nochange"); }
                 ui.close();
             }
         })

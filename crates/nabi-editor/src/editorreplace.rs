@@ -33,7 +33,11 @@ pub fn replace_all(doc: &mut EditorDoc) {
     if let Some(e) = doc.edit.as_mut() {
         // 선택이 있으면 그 구간만 — 변환 명령과 같은 규칙(되돌리기도 한 단위).
         let f = doc.find.search_only();
-        e.apply_transform(|s| replaced(s, &f));
+        // 하나도 안 바뀌면 그렇게 말한다 — "모두 바꾸기"를 누르고 아무 일도 없으면
+        // 사람은 찾기 글이 틀린 건지 기능이 고장 난 건지 알 수 없다.
+        if !e.apply_transform(|s| replaced(s, &f)) {
+            doc.note = Some("edit.nochange");
+        }
         doc.dirty = e.dirty;
         return;
     }

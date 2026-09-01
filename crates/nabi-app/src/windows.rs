@@ -82,6 +82,11 @@ impl NabiApp {
                     if self.pending_paste.as_ref().is_some_and(|(p, _)| *p == pane) {
                         self.show_paste_confirm(vctx);
                     }
+                    // 위험 명령 확인도 같은 이유로 이 창에 그린다. 붙잡아 놓고 물어보는
+                    // 창이 뒤에 있으면, 사용자에게는 엔터가 먹히지 않는 것으로 보인다.
+                    if self.pending_send.as_ref().is_some_and(|p| p.pane == pane) {
+                        self.show_guard(vctx);
+                    }
                 },
             );
         }
@@ -133,6 +138,9 @@ impl NabiApp {
             self.config.terminal.ai_last_model.clone(),
             self.config.terminal.ai_last_effort.clone(),
         );
+        // 이 창의 위험 표식(운영/스테이징) — 표식은 창이 아니라 세션에 붙는다.
+        let risky = self.risky_set(pane);
+        let guard_on = self.config.terminal.guard_dangerous;
         crate::floatterm::render_floating(
             ui,
             &self.orch.panes,
@@ -169,6 +177,15 @@ impl NabiApp {
             },
             self.lang,
             &self.trzsz,
+            &mut crate::floatparity::FloatParity {
+                sel: &mut self.selection,
+                pathline: &mut self.pending_pathline,
+                keywords: &self.config.terminal.highlight_keywords,
+                copy_on_select: self.config.appearance.copy_on_select,
+                guard_on,
+                risky: &risky,
+                pending_send: &mut self.pending_send,
+            },
         );
         if let Some((p, d)) = zoom {
             self.zoom_pane(p, d);
@@ -210,6 +227,8 @@ impl NabiApp {
                 self.config.terminal.ai_last_model.clone(),
                 self.config.terminal.ai_last_effort.clone(),
             );
+            let risky = self.risky_set(pane);
+            let guard_on = self.config.terminal.guard_dangerous;
             egui::Window::new(format!("\u{2750} {title}"))
                 .id(egui::Id::new(("nabi_docked_float", pane.get())))
                 .open(&mut open)
@@ -255,6 +274,15 @@ impl NabiApp {
                         },
                         self.lang,
                         &self.trzsz,
+                        &mut crate::floatparity::FloatParity {
+                            sel: &mut self.selection,
+                            pathline: &mut self.pending_pathline,
+                            keywords: &self.config.terminal.highlight_keywords,
+                            copy_on_select: self.config.appearance.copy_on_select,
+                            guard_on,
+                            risky: &risky,
+                            pending_send: &mut self.pending_send,
+                        },
                     );
                 });
             if let Some((p, d)) = zoom {

@@ -187,6 +187,8 @@ impl NabiApp {
             if ctx.input_mut(|i| i.consume_key(egui::Modifiers::COMMAND, egui::Key::A)) { self.browser.multi = entries.iter().map(|r| r.name.clone()).collect(); } // Ctrl+A 전체선택.
             if ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::F5)) { nav = nav.or_else(|| Some(path.clone())); } // F5=현재 폴더 새로고침(재탐색).
         }
+        // 메뉴의 새로고침도 F5와 **같은 길**로 간다(같은 자리로 다시 이동=재탐색).
+        if a.refresh { nav = nav.or_else(|| Some(path.clone())); }
         // 오름→내림(같은 키)→다음 키 오름… 순환 — 컬럼 헤더 없는 보기에서도 방향 전환 가능.
         if a.cycle_sort { if self.browser.sort_desc { self.browser.sort = self.browser.sort.next(); self.browser.sort_desc = false; } else { self.browser.sort_desc = true; } }
         if let Some(s) = a.set_sort {

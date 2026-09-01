@@ -238,9 +238,14 @@ impl NabiApp {
                 params.env = nabi_ssh::envvars::parse(
                     self.config.terminal.session_env.get(&sess_name).map(String::as_str).unwrap_or(""),
                 );
-                let params = match jump.as_deref().and_then(|j| crate::sshjump::build_jumps(j, &params.auth, &user)) {
-                    Some(chain) => params.with_jump(chain),
-                    None => params,
+                let jstr = jump.as_deref().unwrap_or("");
+                let params = match crate::sshjump::build_jumps(jstr, &params.auth, &user) {
+                    crate::sshjump::Jumps::Chain(chain) => params.with_jump(*chain),
+                    crate::sshjump::Jumps::None => params,
+                    crate::sshjump::Jumps::Invalid(bad) => {
+                        self.notify_jump_error(&bad);
+                        return;
+                    }
                 };
                 let origin = SessionKind::Ssh { host, port, user, credential_ref: cred, key_path: kp, jump, agent_forward: fwd };
                 let seq = self.register_spawn(origin, oncmd);

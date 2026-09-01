@@ -63,7 +63,7 @@ pub(crate) struct BrowserAct {
     /// 파일 내용 검색 패턴(Find in Files).
     pub content_search: Option<String>,
     /// 빈 공간 메뉴 ▸ 전체 선택 / 선택 반전 / 폴더 트리 / 확장자 통계 / 선택 경로 복사.
-    pub select_all: bool, pub invert_sel: bool, pub dir_tree: bool, pub dir_stats: bool, pub copy_paths: bool,
+    pub refresh: bool, pub select_all: bool, pub invert_sel: bool, pub dir_tree: bool, pub dir_stats: bool, pub copy_paths: bool,
     /// 선택한 파일들의 **일괄 이름변경** 창을 연다(배치 AJ).
     pub batch_rename: bool,
     /// 이 브라우저 패널의 화면 rect(OS 파일 드롭 위치 판정용).

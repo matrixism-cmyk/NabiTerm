@@ -47,6 +47,7 @@ impl EditBuf {
     ///
     /// 더 잡을 것이 없으면 아무것도 하지 않고 false. (처음으로 되돌아가 감싸지 않는다 —
     /// 끝에서 계속 누르면 이미 잡은 것을 다시 잡아 개수가 줄어든 것처럼 보인다.)
+    #[must_use = "더 잡을 것이 없으면(false) 사용자에게 말해 줘야 한다 — 눌렀는데 아무 일도 없으면 고장으로 보인다"]
     pub fn add_next_match(&mut self) -> bool {
         let p = self.sel.primary();
         if p.is_caret() {

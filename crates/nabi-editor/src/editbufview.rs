@@ -66,6 +66,11 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
     if m.find {
         doc.find.open = true;
     }
+    // 메뉴가 "할 것이 없었다"고 알려 준 것을 사람 말로 옮겨 위로 넘긴다.
+    // 여기서 버리면 다시 조용해진다 — `#[must_use]` 가 잡아 준 자리가 이것이다.
+    if let Some(k) = m.note {
+        act.note = Some(nabi_i18n::tr(lang, k).to_string());
+    }
     act
 }
 

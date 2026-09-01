@@ -113,7 +113,7 @@ pub fn menu_bar(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, act: &mut Ed
                     match doc.edit.as_mut() {
                         // rope 문서: 선택이 있으면 그 구간만, 없으면 문서 전체(크기 한도 안에서).
                         Some(e) => {
-                            e.apply_transform(f);
+                            if !e.apply_transform(f) { doc.note = Some("edit.nochange"); }
                             doc.dirty = e.dirty;
                         }
                         None => {

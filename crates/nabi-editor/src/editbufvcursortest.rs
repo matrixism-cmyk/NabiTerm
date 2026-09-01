@@ -85,8 +85,8 @@ fn it_refuses_to_add_where_a_cursor_already_is() {
 fn typing_reaches_every_added_cursor() {
     let mut b = buf("aaa\nbbb\nccc");
     b.set_cursor(0);
-    b.add_cursor_vertical(1);
-    b.add_cursor_vertical(1);
+    let _ = b.add_cursor_vertical(1);
+    let _ = b.add_cursor_vertical(1);
     b.insert_multi("X");
     assert_eq!(b.rope.to_string(), "Xaaa\nXbbb\nXccc");
 }

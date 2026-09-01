@@ -188,18 +188,39 @@ impl NabiApp {
                 let find = self.sftp.batch_find.clone();
                 let repl = self.sftp.batch_replace.clone();
                 let path = self.sftp.path.clone();
-                let mut idx = 1; // {n} 순번(바뀌는 파일마다 1씩 증가).
-                for e in &self.sftp.entries {
-                    if let Some(new) = crate::sftpentries::batch_new_name(&e.name, &find, &repl, idx) {
-                        self.orch.send(Command::SftpRename {
-                            id,
-                            from: join_path(&path, &e.name),
-                            to: join_path(&path, &new),
-                        });
-                        idx += 1;
+                // **로컬과 같은 계획 함수를 쓴다.** 예전에는 여기서 한 개씩 바로 보내고
+                // 있어서 **이름 충돌을 아무도 안 봤다** — 둘이 같은 이름이 되면 서버가
+                // `posix-rename` 을 지원하는 경우 조용히 덮어쓴다. 이름 바꾸기는 되돌리기가
+                // 없으니, 로컬에서 막는 것을 원격에서만 통과시키면 안 된다.
+                //
+                // **`.` 과 `..` 은 뺀다.** 서버 목록에는 이 둘이 그대로 들어 있고
+                // (`nabi-sftp` 의 재귀 코드가 따로 거르고 있는 것이 그 증거다), 규칙이
+                // 거기에 걸리면 **상위 폴더를 이름 바꾸려 든다.** 로컬 쪽은 고른 파일만
+                // 다루므로 이 위험이 없었다 — 목록 전체를 다루는 이쪽만의 함정이다.
+                //
+                // 남은 차이 하나: 로컬은 **고른 것만**, 원격은 **폴더 전체**를 바꾼다.
+                // 고치려면 원격에도 "고른 것만" 뜻을 정해야 해서 이번에는 두었다.
+                let names: Vec<String> = self
+                    .sftp
+                    .entries
+                    .iter()
+                    .filter(|e| e.name != "." && e.name != "..")
+                    .map(|e| e.name.clone())
+                    .collect();
+                match crate::renamerule::plan_batch(&names, &find, &repl, self.lang) {
+                    Ok(plan) => {
+                        for (from, to) in plan {
+                            self.orch.send(Command::SftpRename {
+                                id,
+                                from: join_path(&path, &from),
+                                to: join_path(&path, &to),
+                            });
+                        }
+                        self.orch.send(Command::SftpList { id, path });
                     }
+                    // 거절 사유를 그대로 보여 준다 — "안 됩니다"만으로는 무엇을 고칠지 모른다.
+                    Err(e) => self.notify = Some((e, std::time::Instant::now())),
                 }
-                self.orch.send(Command::SftpList { id, path });
             }
         }
         self.apply_queue_act(a.queue);

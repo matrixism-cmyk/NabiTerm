@@ -40,21 +40,37 @@ pub fn batch_new_name(name: &str, find: &str, replace: &str, idx: usize) -> Opti
 ///
 /// 둘 다 조용히 파일을 잃는 길이라 **계획 단계에서 통째로 거절한다.** 하나만 빼고 하면
 /// 사용자는 무엇이 빠졌는지 모른 채 "됐다"고 믿는다.
-pub fn plan_batch(names: &[String], find: &str, replace: &str) -> Result<Vec<(String, String)>, String> {
+/// **순번 `{n}` 은 실제로 바뀌는 파일에만 붙는다.**
+///
+/// 예전에는 목록에서의 자리(`i + 1`)를 그대로 썼다. 그래서 스무 개 중 셋만 규칙에 걸리면
+/// 번호가 `1, 7, 15` 처럼 **구멍 난 채로** 나왔다. 원격(SFTP) 쪽은 처음부터 바뀌는 것만
+/// 세고 있어서, 같은 규칙을 같은 파일에 걸어도 두 창이 다른 이름을 내놓았다.
+/// 사람이 기대하는 것은 `1, 2, 3` 이므로 그쪽으로 맞춘다.
+///
+/// `lang` 은 거절 사유를 사람 말로 적기 위한 것이다 — 예전에는 한국어가 박혀 있어
+/// 영어·일본어로 쓰는 사람에게도 한국어가 나왔다.
+pub fn plan_batch(
+    names: &[String],
+    find: &str,
+    replace: &str,
+    lang: nabi_i18n::Lang,
+) -> Result<Vec<(String, String)>, String> {
     let mut out: Vec<(String, String)> = Vec::new();
-    for (i, name) in names.iter().enumerate() {
-        if let Some(new) = batch_new_name(name, find, replace, i + 1) {
+    let mut n = 1usize;
+    for name in names {
+        if let Some(new) = batch_new_name(name, find, replace, n) {
             out.push((name.clone(), new));
+            n += 1;
         }
     }
     let mut seen: Vec<&str> = Vec::new();
     for (from, to) in &out {
         if seen.contains(&to.as_str()) {
-            return Err(format!("{to} \u{2190} 두 파일이 같은 이름이 됩니다"));
+            return Err(format!("{to} \u{2190} {}", nabi_i18n::tr(lang, "rename.dup")));
         }
         // 바꾸지 않는 파일과 부딪히는가(바뀌는 것끼리는 위에서 이미 봤다).
         if names.iter().any(|n| n == to) && !out.iter().any(|(f, _)| f == to) {
-            return Err(format!("{to} \u{2190} 이미 있는 파일과 겹칩니다"));
+            return Err(format!("{to} \u{2190} {}", nabi_i18n::tr(lang, "rename.exists")));
         }
         let _ = from;
         seen.push(to);
@@ -89,13 +105,13 @@ mod tests {
 
     #[test]
     fn a_plain_batch_is_planned_in_order() {
-        let p = plan_batch(&v(&["a.txt", "b.txt"]), ".txt", ".bak").unwrap();
+        let p = plan_batch(&v(&["a.txt", "b.txt"]), ".txt", ".bak", nabi_i18n::Lang::Ko).unwrap();
         assert_eq!(p, vec![("a.txt".into(), "a.bak".into()), ("b.txt".into(), "b.bak".into())]);
     }
 
     #[test]
     fn files_that_do_not_match_are_left_alone() {
-        let p = plan_batch(&v(&["a.txt", "keep.log"]), ".txt", ".bak").unwrap();
+        let p = plan_batch(&v(&["a.txt", "keep.log"]), ".txt", ".bak", nabi_i18n::Lang::Ko).unwrap();
         assert_eq!(p.len(), 1, "안 걸린 파일은 계획에 없다");
     }
 
@@ -106,13 +122,13 @@ mod tests {
         // 시험을 세 번 고쳤다. 처음엔 둘째가 아예 안 걸렸고, 다음엔 둘이 서로 다른 이름이
         // 됐고, 빈 질의는 규칙이 애초에 거절한다. **글자를 지워 길이가 같아질 때**만 둘이
         // 같은 곳으로 모인다 — 짐작을 멈추고 규칙을 손으로 돌려 본 뒤에 알았다.
-        let e = plan_batch(&v(&["aa.txt", "aaa.txt"]), "a", "").unwrap_err();
+        let e = plan_batch(&v(&["aa.txt", "aaa.txt"]), "a", "", nabi_i18n::Lang::Ko).unwrap_err();
         assert!(e.contains("같은 이름"), "{e}");
     }
 
     #[test]
     fn colliding_with_a_file_we_are_not_renaming_is_refused() {
-        let e = plan_batch(&v(&["a.txt", "a.bak"]), ".txt", ".bak").unwrap_err();
+        let e = plan_batch(&v(&["a.txt", "a.bak"]), ".txt", ".bak", nabi_i18n::Lang::Ko).unwrap_err();
         assert!(e.contains("이미 있는"), "{e}");
     }
 
@@ -120,14 +136,29 @@ mod tests {
     fn a_swap_is_allowed_because_both_names_move() {
         // a.txt→a.bak 이면서 a.bak 도 함께 바뀌면 겹치지 않는다. 통째로 거절하면
         // 정상적인 일괄 변경까지 막는다.
-        let p = plan_batch(&v(&["a.bak", "a.txt"]), ".txt", ".bak2");
+        let p = plan_batch(&v(&["a.bak", "a.txt"]), ".txt", ".bak2", nabi_i18n::Lang::Ko);
         assert!(p.is_ok(), "{p:?}");
     }
 
     #[test]
     fn the_numbering_counts_from_one() {
-        let p = plan_batch(&v(&["x.txt", "y.txt"]), ".txt", "-{n}.txt").unwrap();
+        let p = plan_batch(&v(&["x.txt", "y.txt"]), ".txt", "-{n}.txt", nabi_i18n::Lang::Ko).unwrap();
         assert_eq!(p[0].1, "x-1.txt");
         assert_eq!(p[1].1, "y-2.txt");
+    }
+
+    /// **번호에 구멍이 나면 안 된다.**
+    ///
+    /// 예전에는 목록에서의 자리를 그대로 썼다. 그래서 규칙에 안 걸리는 파일이 사이에 있으면
+    /// `1, 3` 처럼 건너뛴 번호가 나왔다. 원격(SFTP) 쪽은 바뀌는 것만 세고 있어서, 같은 규칙을
+    /// 같은 파일에 걸어도 두 창이 다른 이름을 내놓았다.
+    #[test]
+    fn skipped_files_do_not_eat_a_number() {
+        // 가운데 `skip.log` 는 규칙에 안 걸린다 — 번호를 먹으면 안 된다.
+        let names = v(&["a.txt", "skip.log", "b.txt"]);
+        let p = plan_batch(&names, ".txt", "-{n}.txt", nabi_i18n::Lang::Ko).unwrap();
+        assert_eq!(p.len(), 2, "걸리는 것은 둘뿐이다");
+        assert_eq!(p[0].1, "a-1.txt");
+        assert_eq!(p[1].1, "b-2.txt", "예전에는 여기가 b-3.txt 였다");
     }
 }

@@ -12,6 +12,9 @@ pub(crate) fn empty_space_menu(ui: &mut egui::Ui, a: &mut BrowserAct, lang: Lang
     if ui.button(format!("\u{1f4c4}+ {}", tr("sftp.newfile"))).clicked() { a.new_file = true; ui.close(); }
     if ui.button(format!("\u{1f4cb}\u{2193} {}", tr("browser.paste"))).clicked() { a.paste = true; ui.close(); }
     ui.separator();
+    // 새로고침은 **F5로만** 있었다(2026-09-01 쌍둥이 비교). 원격 SFTP 빈 영역에는 메뉴에도
+    // 있는데 로컬에는 없어서, 단축키를 모르면 폴더를 다시 읽을 길이 아예 없었다.
+    if ui.button(format!("\u{27f3} {}", tr("sftp.refresh"))).clicked() { a.refresh = true; ui.close(); }
     if ui.button(format!("\u{1f4bb} {}", tr("browser.termhere"))).clicked() { a.term_here = true; ui.close(); }
     if ui.button(format!("\u{1f441} {}", tr("sftp.hidden"))).clicked() { a.toggle_hidden = true; ui.close(); }
     if ui.button(format!("\u{1f4cb} {}", tr("browser.copycurpath"))).clicked() { ui.ctx().copy_text(path.to_string_lossy().into_owned()); ui.close(); }

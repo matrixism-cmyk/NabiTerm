@@ -54,8 +54,8 @@ mod tests {
     fn running_out_of_matches_stops_instead_of_wrapping() {
         let mut b = buf("alpha beta alpha");
         b.set_cursor(0);
-        b.add_next_match();
-        b.add_next_match();
+        let _ = b.add_next_match();
+        let _ = b.add_next_match();
         assert_eq!(b.sel.len(), 2);
         assert!(!b.add_next_match(), "더 없는데 true를 냈다");
         assert_eq!(b.sel.len(), 2, "감싸 돌며 개수가 흔들렸다");
@@ -95,7 +95,7 @@ mod tests {
         let mut b = buf("가나다 target 라마바 target");
         let at = b.rope.to_string().chars().position(|_| false).unwrap_or(4);
         b.set_cursor(at);
-        b.add_next_match();
+        let _ = b.add_next_match();
         assert_eq!(b.selected_text(), "target", "바이트로 셌다면 여기가 깨진다");
         assert!(b.add_next_match());
         let starts: Vec<usize> = b.sel.ranges().iter().map(|r| r.start()).collect();

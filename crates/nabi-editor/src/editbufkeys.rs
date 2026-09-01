@@ -65,17 +65,19 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
             // Ctrl+D / Ctrl+Shift+L — VS Code·Sublime과 같은 조합. 새로 발명한 키가 아니라
             // 이 기능을 아는 사람의 손가락에 이미 들어 있는 키라 그대로 따른다.
             Key::D if !m.shift => {
-                eb.add_next_match();
+                // 단축키는 눌러 둔 채 반복되므로 알림을 띄우면 글자마다 깜박인다.
+                // 메뉴로 누른 경우에만 말해 준다(`editbufmenu`) — 그쪽은 한 번의 뜻이다.
+                let _ = eb.add_next_match();
             }
             Key::L if m.shift => {
                 eb.select_all_matches();
             }
             // Ctrl+Alt+↑/↓ — 같은 열의 위아래로 커서를 늘린다(VS Code·Sublime과 같은 조합).
             Key::ArrowUp if m.alt => {
-                eb.add_cursor_vertical(-1);
+                let _ = eb.add_cursor_vertical(-1); // 위와 같은 이유로 조용히.
             }
             Key::ArrowDown if m.alt => {
-                eb.add_cursor_vertical(1);
+                let _ = eb.add_cursor_vertical(1); // 위와 같은 이유로 조용히.
             }
             Key::Z if !readonly && !m.shift => eb.undo(),
             Key::Z if !readonly && m.shift => eb.redo(),

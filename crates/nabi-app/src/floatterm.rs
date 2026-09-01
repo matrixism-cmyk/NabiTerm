@@ -38,6 +38,8 @@ pub(crate) fn paint_floating_term(
     tip: &mut crate::tipoverlay::TipState,
     lang: nabi_i18n::Lang,
     trzsz: &crate::trzszui::TrzszUi,
+    // 끌어서 선택·복사·낱말 강조 — 분리 창에는 이것이 통째로 없었다(2026-09-01 쌍둥이 비교).
+    fs: &mut crate::floatparity::FloatParity<'_>,
 ) {
     // AI 명령 바를 먼저 그린다(그만큼 터미널 영역이 줄어든다 — 탭과 같은 순서).
     if let Some(data) = crate::aicmdbar::draw_ai_bar(ui, panes, pane, lang, ai) {
@@ -114,7 +116,12 @@ pub(crate) fn paint_floating_term(
     let bytes = nabi_render::events_to_bytes_kitty(&events, app_cursor, bracketed, composing, kitty);
     // 이 분리 창의 터미널이 입력 대상 — 포커스 싱크를 잡아 Tab/화살표/Esc가 PTY로 가게 한다.
     crate::paneio::grab_term_focus(ui, true);
-    let typed = !bytes.is_empty() && !crate::paneio::term_input_blocked(ui.ctx());
+    let mut typed = !bytes.is_empty() && !crate::paneio::term_input_blocked(ui.ctx());
+    // 되돌릴 수 없는 명령은 여기서도 붙잡는다 — 탭에서만 물어보면, 창으로 뗀 운영 세션이
+    // 보호 없는 창이 된다(2026-09-01).
+    if typed && fs.hold_risky(panes, pane, &bytes) {
+        typed = false;
+    }
     if typed {
         // 분리 창은 자기 pane만 보여준다 — 브로드캐스트라도 보이지 않는 pane에 쓰지 않는다.
         let cmd = if broadcast {
@@ -177,8 +184,17 @@ pub(crate) fn paint_floating_term(
                 model.scroll_by(scroll);
             }
             let focused = ui.ctx().input(|i| i.focused);
-            nabi_render::paint(ui, rect, font.clone(), &model, theme, find, &[], None, false, focused, blink_on, "");
+            // 선택은 **그리기 전에** 좇는다 — 이번 프레임에 끈 것이 이번 프레임에 칠해져야 한다.
+            let cells = crate::floatparity::Cells { rect, cw, ch };
+            let sp = fs.track(ui, cells, pane, &model, mouse_on);
+            let pre = crate::floatparity::preedit_text(&events);
+            nabi_render::paint(
+                ui, rect, font.clone(), &model, theme, find, fs.keywords, sp.span, sp.rect,
+                focused, blink_on, &pre,
+            );
             crate::tipoverlay::draw_tip_overlay(ui, rect, ch, &font, theme.bg, pane, &model, tip);
+            crate::scrollbar::draw(ui, rect, pane, &mut model); // 탭과 같은 우측 막대.
+            fs.copy(ui, cells, pane, &model, theme, &sp, mouse_on);
             if crate::paneio::draw_scroll_badge(ui, rect, model.scrollback_offset()) {
                 model.scroll_to_bottom();
             }
@@ -228,11 +244,12 @@ pub(crate) fn render_floating(
     tip: &mut crate::tipoverlay::TipState,
     lang: nabi_i18n::Lang,
     trzsz: &crate::trzszui::TrzszUi,
+    fs: &mut crate::floatparity::FloatParity<'_>,
 ) {
     egui::CentralPanel::default().show(ui, |ui| {
         paint_floating_term(
             ui, panes, cmd_tx, grids, pane, font_size, theme, broadcast, find, blink_on, link, zoom,
-            link_click, paste_req, warn_paste, force_keys, tui_overlay, ai, tip, lang, trzsz,
+            link_click, paste_req, warn_paste, force_keys, tui_overlay, ai, tip, lang, trzsz, fs,
         );
     });
     // 재그리기 예약은 호출측(floating_body)이 메인 창과 같은 규칙으로 한다.

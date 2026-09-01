@@ -21,6 +21,23 @@ fn set_range(ctx: &egui::Context, id: egui::Id, a: usize, b: usize) {
 }
 
 /// 편집창 응답에 우클릭 메뉴를 붙인다. 선택 유무에 따라 항목 활성화.
+///
+/// ## 대용량 편집기(`editbufmenu`)에 있고 여기에는 **일부러 없는 것**
+///
+/// 두 우클릭 메뉴를 나란히 세어 보면 이쪽에만 구멍이 있어 보인다. 옮길 것이 아니라
+/// 못 옮기는 것이라, 다음 회차가 또 세어 보고 또 알아보지 않도록 이유를 적어 둔다
+/// (2026-09-01 확인).
+///
+/// * **다중 커서**(`edit.addnextmatch`·`edit.addcursorup` 등) — 이 창은 egui `TextEdit`
+///   위젯이다. 위젯이 커서를 하나만 들고 있어서, 여러 개를 두려면 위젯을 갈아야 한다.
+///   대용량 쪽은 우리가 직접 그리는 `EditBuf` 라 가능한 것이다.
+/// * **코드 폴딩**(`fold.*`) — 접힌 줄을 감추려면 줄을 우리가 그려야 한다. `TextEdit` 는
+///   글 전체를 자기가 배치하므로 끼어들 자리가 없다.
+/// * **되돌리기·다시 하기 항목** — 기능은 있다(`TextEdit` 자체의 Ctrl+Z·Ctrl+Y). 다만
+///   그 되돌리기는 위젯 안에 있어서 메뉴에서 부를 손잡이가 없다.
+///
+/// 셋 다 "이 위젯을 쓰는 한" 이라는 같은 이유다. 언젠가 작은 문서도 `EditBuf` 로 열게
+/// 되면 셋이 한꺼번에 따라온다 — 그때 이 주석을 지운다.
 pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang, readonly: bool, act: &mut crate::editor::EditorAct) {
     let id = out.response.id;
     let range = out.cursor_range.map(|cr| {

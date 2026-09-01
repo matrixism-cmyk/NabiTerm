@@ -175,6 +175,8 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("browser.batchrename", "Batch rename…", "일괄 이름 변경…", "一括名前変更…"),
     ("browser.batchrename.none", "Select the files to rename first", "이름을 바꿀 파일을 먼저 고르세요", "名前を変更するファイルを先に選んでください"),
     ("browser.batchrename.nomatch", "No file matches — nothing will change", "걸리는 파일이 없습니다 — 아무것도 바뀌지 않습니다", "該当するファイルがありません"),
+    ("rename.dup", "two files would get this same name", "두 파일이 같은 이름이 됩니다", "2つのファイルが同じ名前になります"),
+    ("rename.exists", "a file with this name is already there", "이미 있는 파일과 겹칩니다", "同名のファイルが既にあります"),
     ("status.recstop", "Click to stop recording", "누르면 기록을 멈춥니다", "クリックで記録を停止"),
     ("env.desc.webview2", "Lets the built-in web browser render pages. Windows 11 usually has it already.", "내장 웹 브라우저가 화면을 그리는 데 씁니다. 윈도우 11에는 대개 이미 들어 있습니다.", "内蔵 Web ブラウザーの描画に使います。Windows 11 には通常同梱されています。"),
     ("wheel.apptook", "This program redraws lines in place, so the terminal scrollback keeps only fragments. Everything is still recorded: right-click the tab and choose \u{201c}Open full history\u{201d} to read it all.", "이 프로그램은 줄을 제자리에 덮어 그려서 터미널 스크롤백에는 조각만 남습니다. 지나간 것은 기록에 다 있습니다 \u{2014} 탭을 오른쪽 클릭해 \u{201c}전체 기록 열기\u{201d}를 고르면 전부 볼 수 있습니다.", "このプログラムは行を上書きするため、端末のスクロールバックには断片しか残りません。内容は記録に残っています \u{2014} タブを右クリックして「全履歴を開く」を選ぶとすべて読めます。"),

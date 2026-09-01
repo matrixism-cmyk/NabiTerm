@@ -216,13 +216,20 @@ impl eframe::App for NabiApp {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         self.prompt_raised = pending;
-        self.show_paste_confirm(ctx);
+        // 분리 창에서 시작된 확인은 **그 창이** 그린다(windows.rs). 여기서 또 그리면
+        // 같은 물음이 창 둘에 뜬다 — 어느 쪽을 눌러야 하는지 알 수 없다.
+        if !self.pending_paste.as_ref().is_some_and(|(p, _)| self.floating.contains(p)) {
+            self.show_paste_confirm(ctx);
+        }
         self.show_bulk_confirm(ctx); // 세션 일괄 연결 확인(자격증명 필요 개수 안내).
         self.show_reconnect(ctx);
         self.render_note_dialog(ctx);
         self.show_hostkey_prompt(ctx);
         // 위험 명령 확인 — 호스트키와 같은 층(입력을 붙잡아 둔 상태라 최상위여야 한다).
-        self.show_guard(ctx);
+        // 붙여넣기 확인과 같은 규칙: 분리 창에서 붙잡힌 것은 그 창이 그린다.
+        if !self.pending_send.as_ref().is_some_and(|p| self.floating.contains(&p.pane)) {
+            self.show_guard(ctx);
+        }
         self.show_editor_conflict(ctx);
         self.show_trzsz_ask(ctx);
         self.show_control_approval(ctx);

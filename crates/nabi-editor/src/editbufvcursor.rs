@@ -18,6 +18,7 @@ impl EditBuf {
     ///
     /// 더 갈 줄이 없으면 아무것도 하지 않고 false. 이미 그 줄에 커서가 있으면 그대로 둔다
     /// (선택 모델이 병합하므로 개수가 줄어든 것처럼 보이는 것을 막는다).
+    #[must_use = "더 갈 줄이 없으면(false) 사용자에게 말해 줘야 한다"]
     pub fn add_cursor_vertical(&mut self, dy: i64) -> bool {
         let p = self.sel.primary();
         let col = self.display_col_at(p.head);

@@ -71,17 +71,23 @@ pub(crate) fn to_ssh_config(sessions: &[SavedSession]) -> String {
         if s.is_ftp {
             continue;
         }
+        // **값에 줄바꿈이 있으면 그 줄이 갈라져 없던 지시어가 생긴다.** 이름은 손으로도
+        // 적지만 PuTTY·MobaXterm·FileZilla 파일에서 가져오기도 하므로, 남이 만든 파일이
+        // 이 사람의 ssh 설정을 바꾸는 길이 되면 안 된다. 쓰기 직전에 한 번 더 거른다.
+        if !crate::sshsafe::cfg_safe(&s.name) || !crate::sshsafe::cfg_safe(host) {
+            continue; // 별칭이나 호스트가 성하지 않으면 이 세션은 통째로 내보내지 않는다.
+        }
         out.push_str(&format!("Host {}\n    HostName {host}\n", s.name));
-        if !user.is_empty() {
+        if !user.is_empty() && crate::sshsafe::cfg_safe(user) {
             out.push_str(&format!("    User {user}\n"));
         }
         if *port != 22 {
             out.push_str(&format!("    Port {port}\n"));
         }
-        if let Some(k) = key_path.as_deref().filter(|k| !k.is_empty()) {
+        if let Some(k) = key_path.as_deref().filter(|k| crate::sshsafe::cfg_safe(k)) {
             out.push_str(&format!("    IdentityFile {k}\n"));
         }
-        if let Some(j) = jump.as_deref().filter(|j| !j.is_empty()) {
+        if let Some(j) = jump.as_deref().filter(|j| crate::sshsafe::cfg_safe(j)) {
             out.push_str(&format!("    ProxyJump {j}\n")); // 점프 호스트 보존(가져오기와 라운드트립).
         }
         out.push('\n');
@@ -164,6 +170,25 @@ mod tests {
             }
             _ => panic!("expected ssh"),
         }
+    }
+
+    /// **내보낸 설정에 없던 지시어가 생기면 안 된다.**
+    ///
+    /// 세션 이름은 손으로도 적지만 PuTTY·MobaXterm·FileZilla 파일에서 가져오기도 한다.
+    /// 호스트 이름 안에 줄바꿈이 하나 있으면 그 뒤가 새 줄이 되어, 남이 만든 파일 하나가
+    /// 이 사람의 `~/.ssh/config` 에 `ProxyCommand` 를 심을 수 있었다.
+    #[test]
+    fn a_newline_in_a_name_cannot_forge_a_directive() {
+        let cfg = "Host web\n  HostName ok.example.com\n";
+        let mut parsed = parse_ssh_config(cfg);
+        // 가져오기 단계에서 이런 값이 들어왔다고 치고 내보내 본다.
+        if let SessionKind::Ssh { host, .. } = &mut parsed[0].kind {
+            *host = "evil.example.com\n    ProxyCommand calc".to_string();
+        }
+        let out = super::to_ssh_config(&parsed);
+        assert!(!out.contains("ProxyCommand"), "내보낸 글에 심어진 지시어가 남았다:\n{out}");
+        // 성하지 않은 세션은 통째로 빠진다 — 반만 쓰면 그것도 엉뚱한 설정이 된다.
+        assert!(!out.contains("evil.example.com"), "{out}");
     }
 
     #[test]

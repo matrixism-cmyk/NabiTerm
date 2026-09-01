@@ -15,6 +15,17 @@ use crate::app::NabiApp;
 use nabi_i18n::tr;
 
 impl NabiApp {
+    /// 창 하나짜리 위험 표식 집합 — 분리 창은 자기 pane 하나만 보여 준다.
+    ///
+    /// `guard_input`은 여러 창(브로드캐스트)을 함께 볼 수 있게 집합을 받는다. 분리 창에는
+    /// 볼 창이 하나뿐이라 여기서 한 칸짜리 집합을 만든다(표식이 없으면 빈 집합).
+    pub(crate) fn risky_set(
+        &self,
+        pane: nabi_types::PaneId,
+    ) -> std::collections::HashSet<nabi_types::PaneId> {
+        std::iter::once(pane).filter(|p| self.pane_tag(*p).is_risky()).collect()
+    }
+
     /// 붙잡힌 입력이 있으면 확인창을 그린다.
     pub(crate) fn show_guard(&mut self, ctx: &egui::Context) {
         let Some(p) = self.pending_send.clone() else { return };

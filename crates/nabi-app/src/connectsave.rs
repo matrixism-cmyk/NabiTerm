@@ -55,9 +55,16 @@ impl NabiApp {
             return;
         };
         // ProxyJump(D2): 콤마 구분 멀티홉 지원(같은 인증 가정). SFTP도 점프 경유.
-        let params = match jump.as_deref().and_then(|j| crate::sshjump::build_jumps(j, &params.auth, &user)) {
-            Some(chain) => params.with_jump(chain),
-            None => params,
+        let j = jump.as_deref().unwrap_or("");
+        let params = match crate::sshjump::build_jumps(j, &params.auth, &user) {
+            crate::sshjump::Jumps::Chain(chain) => params.with_jump(*chain),
+            crate::sshjump::Jumps::None => params,
+            // 적었는데 틀렸으면 **붙지 않는다.** 점프만 빼고 붙이면 사용자가 적은 것과
+            // 다른 길로 나가는데, 그걸 알 방법이 없다.
+            crate::sshjump::Jumps::Invalid(bad) => {
+                self.notify_jump_error(&bad);
+                return;
+            }
         };
         self.start_sftp(params, ftp, org);
     }
@@ -204,8 +211,12 @@ impl NabiApp {
         // ProxyJump(B4): 콤마 구분 멀티홉 지원, 같은 인증으로 경유(베스천 동일 자격 가정).
         let jump_str = self.quick_connect.jump.trim().to_string();
         let params = match crate::sshjump::build_jumps(&jump_str, &params.auth, &user) {
-            Some(chain) => params.with_jump(chain),
-            None => params,
+            crate::sshjump::Jumps::Chain(chain) => params.with_jump(*chain),
+            crate::sshjump::Jumps::None => params,
+            crate::sshjump::Jumps::Invalid(bad) => {
+                self.notify_jump_error(&bad);
+                return;
+            }
         };
         let origin = nabi_session::SessionKind::Ssh {
             host,

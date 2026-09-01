@@ -43,6 +43,7 @@ impl EditBuf {
         self.sync_dirty();
     }
 
+    #[must_use = "바뀐 것이 없으면(false) 사용자에게 말해 줘야 한다"]
     pub fn apply_transform(&mut self, f: impl Fn(&str) -> String) -> bool {
         let Some((a, b)) = target_range(self.selection(), self.rope.len_chars()) else {
             return false;
@@ -111,7 +112,7 @@ mod tests {
     #[test]
     fn one_transform_is_one_undo() {
         let mut b = buf("hello");
-        b.apply_transform(|s| s.to_uppercase());
+        let _ = b.apply_transform(|s| s.to_uppercase());
         b.undo();
         assert_eq!(b.rope.to_string(), "hello");
     }
@@ -128,7 +129,7 @@ mod tests {
     #[test]
     fn selects_result_after_transform() {
         let mut b = buf("ab");
-        b.apply_transform(|_| "xyz".to_string());
+        let _ = b.apply_transform(|_| "xyz".to_string());
         assert_eq!(b.selection(), Some((0, 3)));
     }
 
@@ -171,7 +172,7 @@ mod replace_on_rope {
         b.set_cursor(0);
         b.move_head(7); // 앞의 두 개만.
         let f = FindState { query: "cat".into(), replace: "fox".into(), ..Default::default() };
-        b.apply_transform(|s| replaced(s, &f));
+        let _ = b.apply_transform(|s| replaced(s, &f));
         assert_eq!(b.rope.to_string(), "fox fox cat");
     }
 }

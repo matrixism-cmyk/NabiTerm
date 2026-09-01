@@ -70,6 +70,7 @@ impl crate::editbuf::EditBuf {
     ///
     /// **문서 전체로 번지지 않는다.** 다른 변환 명령(`apply_transform`)은 선택이 없으면
     /// 문서 전체에 걸리는데, 강조에서 그러면 파일 하나가 통째로 굵어진다.
+    #[must_use = "걸 곳이 없으면(false) 사용자에게 말해 줘야 한다"]
     pub fn toggle_emphasis(&mut self, marker: &str) -> bool {
         let (a, b) = match self.selection() {
             Some((a, b)) if a < b => (a, b),

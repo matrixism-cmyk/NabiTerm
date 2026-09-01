@@ -65,6 +65,11 @@ impl NabiApp {
                 let msg = format!("{} — {e}", nabi_i18n::tr(self.lang, "editor.writefailed"));
                 self.notify = Some((msg, std::time::Instant::now()));
             }
+            // **아무 일도 안 일어났다**는 알림 — 실패가 아니라서 앞머리를 붙이지 않는다.
+            // "쓰기 실패 — 더 잡을 낱말이 없습니다"는 말이 안 된다.
+            if let Some(n) = &a.note {
+                self.notify = Some((n.clone(), std::time::Instant::now()));
+            }
             if a.toggle_menu_bar { self.toggle_editor_menu_bar(); }
             if a.toggle_hex { self.toggle_editor_hex(p); }
             if a.reload { self.reload_editor_doc(p); }

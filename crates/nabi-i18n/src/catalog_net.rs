@@ -19,6 +19,7 @@ pub(crate) const CATALOG_NET: &[(&str, &str, &str, &str)] = &[
     ("net.fwd.pwonly", "Forwarding: only password auth is supported", "포워딩: 비밀번호 인증만 지원", "フォワーディング: パスワード認証のみ対応"),
     ("net.jump.authfail", "ProxyJump target authentication failed", "ProxyJump 타겟 인증 실패", "ProxyJump先の認証に失敗しました"),
     ("net.jump.pwonly", "ProxyJump: only password auth is supported", "ProxyJump: 비밀번호 인증만 지원", "ProxyJump: パスワード認証のみ対応"),
+    ("net.jump.bad", "Not connected — this jump host is not a valid name:", "연결하지 않았습니다 — 점프 호스트 이름이 올바르지 않습니다:", "接続していません — ジャンプホスト名が正しくありません:"),
     ("net.socks.atyp", "SOCKS5: unsupported address type", "SOCKS5 atyp 미지원", "SOCKS5: 未対応のアドレス種別"),
     ("net.x11.pwonly", "X11: only password auth is supported", "X11: 비밀번호 인증만 지원", "X11: パスワード認証のみ対応"),
     ("net.sftp.rename", "posix-rename: unexpected response", "posix-rename: 예기치 않은 응답", "posix-rename: 予期しない応答"),

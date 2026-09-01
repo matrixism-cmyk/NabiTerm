@@ -55,7 +55,7 @@ impl NabiApp {
                 ui.end_row();
             });
             ui.add_space(4.0);
-            let plan = crate::renamerule::plan_batch(&st.names, &next.find, &next.replace);
+            let plan = crate::renamerule::plan_batch(&st.names, &next.find, &next.replace, lang);
             match &plan {
                 Err(e) => {
                     // 왜 거절됐는지 말한다 — "안 됩니다"만으로는 무엇을 고칠지 모른다.
@@ -97,7 +97,7 @@ impl NabiApp {
 
     /// 계획대로 바꾼다. **실패한 것은 세지 않고 이름을 알린다.**
     fn run_batch_rename(&mut self, names: &[String], find: &str, replace: &str) {
-        let Ok(plan) = crate::renamerule::plan_batch(names, find, replace) else { return };
+        let Ok(plan) = crate::renamerule::plan_batch(names, find, replace, self.lang) else { return };
         let dir = self.browser.path.clone();
         let (mut done, mut failed) = (0usize, Vec::new());
         for (from, to) in plan {

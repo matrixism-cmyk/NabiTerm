@@ -10,6 +10,11 @@ pub struct EditorDoc {
     pub path: PathBuf,
     /// Some((id, 원격경로))면 저장 시 그 경로로 업로드.
     pub remote: Option<(nabi_proto::SftpId, String)>,
+    /// **이번 프레임에 "아무 일도 안 일어났다"고 할 말**(i18n 키, 쓰고 나면 비운다).
+    ///
+    /// 메뉴바 변환·모두 바꾸기처럼 `EditorAct` 를 손에 못 쥐는 자리에서 결과를 남긴다.
+    /// 여기로 모으지 않으면 그 자리들은 계속 조용히 실패한다(2026-09-01).
+    pub note: Option<&'static str>,
     pub text: String,
     pub dirty: bool,
     /// 내용 적재 완료(원격은 다운로드 후 true).
@@ -129,7 +134,7 @@ impl EditorDoc {
         // 각자 세게 하면 어느 하나는 반드시 빠진다.
         let text_for_eols = crate::eolmix::count_eols(&text);
         EditorDoc {
-            title, path, remote, text, dirty: false, loaded, font_size, encoding, eol,
+            title, path, remote, text, dirty: false, loaded, font_size, encoding, eol, note: None,
             highlight: true, wrap: true, show_ws: false, readonly: false, big: None, edit: None, huge: None,
             find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0), minimap: false,
             wrap_col: 0, rulers: String::new(), guides: false, eols: text_for_eols, outline: false, sticky: false, show_lineno: true, bookmarks: Vec::new(), cur_line: 0, syntax_ext: None,
@@ -195,6 +200,11 @@ pub struct EditorAct {
     /// 선택 내보내기)가 실패를 삼키고 있었다 — 사용자는 대화상자에서 이름까지 골랐으니
     /// 파일이 생긴 줄 안다(`xtask err-swallow` 가 찾았다, 2026-08-30).
     pub failed: Option<String>,
+    /// **아무 일도 안 일어났다**는 알림(실패가 아니다). 이미 사람 말로 옮긴 글이다.
+    ///
+    /// 명령을 눌렀는데 할 것이 없으면 조용히 지나가는 것이 여러 곳에 있었다
+    /// (2026-09-01 `#[must_use]` 로 열 곳 확인). 누른 사람에게는 고장으로 보인다.
+    pub note: Option<String>,
 }
 
 /// 경로의 파일명(표시용).

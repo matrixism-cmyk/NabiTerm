@@ -109,6 +109,7 @@ impl NabiApp {
             let (title, encoding) = (file_name(&path), big.encoding().to_string());
             self.add_editor_tab(EditorDoc {
                 title, path, remote: None, text: String::new(), dirty: false, loaded: true,
+                note: None,
                 font_size: self.font_size, encoding, eol: "-", highlight: false,
                 wrap: false, show_ws: false, readonly: true, big: Some(big), edit: None, huge: None,
                 find: Default::default(), show_menu: false, hex: None, stats_cache: (usize::MAX, 0, 0),
