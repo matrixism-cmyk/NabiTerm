@@ -61,6 +61,8 @@ impl NabiApp {
             .collect();
         let path = self.workspace_path.with_extension("btabs");
         if saves.is_empty() {
+            // 삼킴: 남길 탭이 없어 옛 파일을 치우는 자리다. 못 치워도 다음에 켤 때
+            // 그 파일이 다시 읽히고, 그때 탭이 없으면 또 여기로 온다(손해가 없다).
             let _ = std::fs::remove_file(path);
         } else if let Ok(s) = ron::to_string(&saves) {
             // 삼킴: 탐색기 탭 상태다. 못 남기면 다음에 켤 때 기본 자리로 열린다.
@@ -260,8 +262,20 @@ impl NabiApp {
             self.browser.show_hidden = !self.browser.show_hidden;
         }
         if let Some(name) = a.delete {
+            // 휴지통으로 보낸다(복구 가능) — 그래서 원격과 달리 미리 묻지 않는다.
+            // 윈도우 탐색기도 휴지통 삭제는 묻지 않는다. 다만 **실패는 반드시 알린다.**
+            // 휴지통이 없는 자리(네트워크 드라이브·일부 이동식)에서는 아무 일도 안
+            // 일어나는데, 목록에서 사라지지 않는 것만으로는 왜 그런지 알 수 없다.
+            let mut failed: Vec<String> = Vec::new();
             for n in bulk(&name, &self.browser.multi) {
-                let _ = trash::delete(path.join(&n)); // 휴지통(복구 가능).
+                if trash::delete(path.join(&n)).is_err() {
+                    failed.push(n);
+                }
+            }
+            if !failed.is_empty() {
+                let msg =
+                    format!("{} \u{00b7} {}", nabi_i18n::tr(self.lang, "browser.delfail"), failed.join(", "));
+                self.notify = Some((msg, std::time::Instant::now()));
             }
             self.browser.multi.clear();
         }

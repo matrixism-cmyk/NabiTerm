@@ -4,6 +4,7 @@
 //! ⚠️ 평문 FTP는 비밀번호를 평문 전송하므로 FTPS(tokio-rustls-ring) 사용을 권장한다(후속).
 
 pub mod fs;
+pub mod ftpsafe;
 
 pub use fs::{connect_ftp, FtpFs};
 

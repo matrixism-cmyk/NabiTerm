@@ -18,6 +18,10 @@ pub async fn connect_ftp(host: &str, port: u16, user: &str, pass: &str) -> Resul
         .await
         .map_err(|_| nabi_i18n::trc("net.ftp.timeout").to_string())?
         .map_err(|e| e.to_string())?;
+    // 계정·비밀번호에 줄바꿈이 있으면 로그인 줄이 갈라져 **두 번째 명령**이 된다
+    // (RUSTSEC-2026-0271). 보내기 전에 막는다.
+    crate::ftpsafe::check(user)?;
+    crate::ftpsafe::check(pass)?;
     ftp.login(user, pass).await.map_err(|e| e.to_string())?;
     Ok(FtpFs { ftp })
 }
@@ -25,11 +29,13 @@ pub async fn connect_ftp(host: &str, port: u16, user: &str, pass: &str) -> Resul
 #[async_trait]
 impl RemoteFs for FtpFs {
     async fn list_dir(&mut self, path: &str) -> Result<Vec<FileEntry>, String> {
+        crate::ftpsafe::check(path)?;
         let lines = self.ftp.list(Some(path)).await.map_err(|e| e.to_string())?;
         Ok(lines.iter().map(|l| parse_ls_line(l)).collect())
     }
 
     async fn read_file(&mut self, path: &str) -> Result<Vec<u8>, String> {
+        crate::ftpsafe::check(path)?;
         let mut stream = self.ftp.retr_as_stream(path).await.map_err(|e| e.to_string())?;
         let mut buf = Vec::new();
         stream
@@ -44,6 +50,7 @@ impl RemoteFs for FtpFs {
     }
 
     async fn write_file(&mut self, path: &str, data: &[u8]) -> Result<(), String> {
+        crate::ftpsafe::check(path)?;
         let mut reader: &[u8] = data;
         self.ftp
             .put_file(path, &mut reader)
@@ -53,6 +60,7 @@ impl RemoteFs for FtpFs {
     }
 
     async fn remove(&mut self, path: &str) -> Result<(), String> {
+        crate::ftpsafe::check(path)?;
         match self.ftp.rm(path).await {
             Ok(()) => Ok(()),
             Err(_) => self.ftp.rmdir(path).await.map_err(|e| e.to_string()),
@@ -60,10 +68,13 @@ impl RemoteFs for FtpFs {
     }
 
     async fn rename(&mut self, from: &str, to: &str) -> Result<(), String> {
+        crate::ftpsafe::check(from)?;
+        crate::ftpsafe::check(to)?;
         self.ftp.rename(from, to).await.map_err(|e| e.to_string())
     }
 
     async fn mkdir(&mut self, path: &str) -> Result<(), String> {
+        crate::ftpsafe::check(path)?;
         self.ftp.mkdir(path).await.map_err(|e| e.to_string())
     }
 }

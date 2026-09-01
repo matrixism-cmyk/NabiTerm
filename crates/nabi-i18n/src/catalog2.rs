@@ -21,6 +21,7 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
     ("fwd.active", "Active tunnels:", "활성 터널:", "アクティブなトンネル:"),
     ("fwd.copyaddr", "Copy address", "주소 복사", "アドレスをコピー"),
     ("browser.delete", "Delete (Recycle Bin)", "삭제(휴지통)", "削除(ゴミ箱)"),
+    ("browser.delfail", "Could not move to the Recycle Bin", "휴지통으로 보내지 못했습니다", "ゴミ箱へ移動できませんでした"),
     ("browser.reveal", "Reveal in Explorer", "탐색기에서 보기", "エクスプローラーで表示"),
     ("browser.calcsize", "Calculate size", "크기 계산", "サイズを計算"),
     ("browser.duplicate", "Duplicate", "복제", "複製"),

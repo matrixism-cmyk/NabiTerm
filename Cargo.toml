@@ -118,7 +118,7 @@ async-trait = "0.1"
 # SSH 연결 시 잘못된 명령어로 즉사하는 사례 → 런타임 CPU 감지로 어디서나 도는 ring으로 교체.
 russh = { version = "0.62.6", default-features = false, features = ["flate2", "rsa", "ring"] }  # 0.62.4~6: 원격 패킷 유발 클라이언트 패닉 수정(보안)
 russh-sftp = "2"           # SFTP 서브시스템 클라이언트
-suppaftp = { version = "8", features = ["tokio"] }  # FTP 비동기(tokio). FTPS는 tokio-rustls-ring
+suppaftp = { version = "10.0.2", features = ["tokio"] }  # FTP 비동기(tokio). FTPS는 tokio-rustls-ring
 
 # --- security (vault) ---
 argon2 = "0.5"
