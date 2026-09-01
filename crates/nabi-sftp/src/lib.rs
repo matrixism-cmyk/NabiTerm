@@ -64,6 +64,12 @@ pub fn set_name_charset(label: &str) {
 /// auto 모드에서 감지된 서버 파일명 인코딩 라벨(UI 배지용). 미감지면 None.
 pub use russh_sftp::charset::detected_label as detected_name_charset;
 
+/// 파일명 원본 바이트 기억을 비운다 — **새 서버에 붙을 때** 부른다.
+///
+/// 그 기억("이 글자는 저 바이트였다")은 붙어 있던 그 서버에서만 참이다. A(CP949)에서
+/// 본 이름을 들고 B(UTF-8)에 붙으면 같은 이름을 CP949 로 내보내 못 찾는다.
+pub use russh_sftp::charset::forget_all as forget_name_bytes;
+
 #[cfg(test)]
 mod charset_test;
 #[cfg(test)]

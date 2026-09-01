@@ -224,6 +224,9 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
     ),
     ("sftp.batchapply", "Rename all", "모두 변경", "すべて変更"),
     ("sftp.chmodcustom", "octal e.g. 640", "8진수 예: 640", "8進数 例: 640"),
+    ("sftp.chownuid", "uid", "uid", "uid"),
+    ("sftp.chowngid", "gid", "gid", "gid"),
+    ("sftp.chownhint", "Change owner/group by number. An empty box is left as it is — usually needs root.", "소유자·그룹을 번호로 바꿉니다. 빈 칸은 그대로 둡니다 — 보통 root 권한이 필요합니다.", "所有者・グループを番号で変更します。空欄はそのままです — 通常 root 権限が必要です。"),
     (
         "settings.speedlimit",
         "SFTP speed limit (0=unlimited)",

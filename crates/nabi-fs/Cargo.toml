@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 async-trait = { workspace = true }
+nabi-i18n = { workspace = true }  # 에러 문구 3어화(trc, T8-1) — nabi-ftp 와 같은 방식.
 
 [dev-dependencies]
 tokio = { workspace = true }

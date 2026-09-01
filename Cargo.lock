@@ -3193,6 +3193,7 @@ name = "nabi-fs"
 version = "0.1.505"
 dependencies = [
  "async-trait",
+ "nabi-i18n",
  "tokio",
 ]
 

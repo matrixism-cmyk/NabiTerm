@@ -141,6 +141,8 @@ pub(crate) enum EClick {
     /// 앞부분만 받아 미리보기(내려받지 않는다).
     Preview(String),
     Chmod(String, u32),
+    /// 소유자·그룹 변경(uid, gid). `None` 인 쪽은 그대로 둔다.
+    Chown(String, Option<u32>, Option<u32>),
     /// 권한 재귀 적용(하위 전부).
     ChmodRecursive(String, u32),
     /// 이 파일에 원격 명령을 돌린다(remotecmd의 목록에서 고른 것).

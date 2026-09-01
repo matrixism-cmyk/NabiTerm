@@ -47,7 +47,22 @@ pub trait RemoteFs: Send {
     async fn mkdir(&mut self, path: &str) -> Result<(), String>;
     /// 권한 변경(POSIX mode). 기본 미지원 — SFTP만 구현.
     async fn chmod(&mut self, _path: &str, _mode: u32) -> Result<(), String> {
-        Err("권한 변경 미지원".into())
+        Err(nabi_i18n::trc("net.fs.nochmod").to_string())
+    }
+    /// **소유자·그룹 변경**(POSIX uid/gid). 기본 미지원 — SFTP만 구현.
+    ///
+    /// WinSCP 에는 있고 우리에게는 없던 것이다. 목록에 소유자·그룹을 보여 주기 시작하면
+    /// (2026-09-01 배치 M) 바꾸고 싶어지는 것이 당연한 순서다.
+    ///
+    /// `None` 인 쪽은 **건드리지 않는다** — 그룹만 바꾸려는데 소유자까지 덮어쓰면 안 된다.
+    /// 대개 root 권한이 있어야 성공하므로, 실패는 반드시 사람에게 전한다.
+    async fn chown(
+        &mut self,
+        _path: &str,
+        _uid: Option<u32>,
+        _gid: Option<u32>,
+    ) -> Result<(), String> {
+        Err(nabi_i18n::trc("net.fs.nochown").to_string())
     }
     /// **서버 안에서 파일 복사.** 기본 미지원 — SFTP만 구현한다.
     ///

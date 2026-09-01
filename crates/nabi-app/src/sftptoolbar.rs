@@ -32,6 +32,15 @@ pub(crate) fn render_toolbar(
         if let Some(l) = crate::freespace::label(sftp.free_space) {
             ui.weak(l).on_hover_text(tr(lang, "sftp.freespace"));
         }
+        // **감지된 파일명 인코딩**을 여기에 적는다. 만들어 놓고 화면에 한 번도 안 띄우고
+        // 있었다 — 자동 감지가 걸렸는지 사용자가 알 길이 없으니, 한글 이름이 이상할 때
+        // 무엇을 고쳐야 하는지도 알 수 없었다(2026-09-01).
+        //
+        // UTF-8(현대 서버)일 때는 아무것도 적지 않는다 — 늘 뜨면 잡음이 되고, 여기 뜬다는
+        // 것 자체가 "이 서버는 레거시 인코딩을 쓴다"는 뜻이 되어야 신호가 된다.
+        if let Some(cs) = nabi_sftp::detected_name_charset() {
+            ui.weak(format!("\u{1f524} {cs}")).on_hover_text(tr(lang, "sftp.charsetdetected"));
+        }
         // ── 이동 ──
         if icon(ui, "\u{1f3e0}", lang, "sftp.home") {
             a.go = Some(".".to_string());

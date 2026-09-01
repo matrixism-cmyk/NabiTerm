@@ -80,6 +80,22 @@ impl NabiApp {
                 self.orch.send(Command::SftpList { id, path: self.sftp.path.clone() });
             }
         }
+        if let Some((name, uid, gid)) = a.chown.take() {
+            if let Some(id) = self.sftp.id {
+                // 권한과 같은 규칙: 고른 것에 속하면 고른 것 전체에 적용(FileZilla 식).
+                let targets: Vec<String> =
+                    if self.sftp.multi.len() > 1 && self.sftp.multi.contains(&name) {
+                        self.sftp.multi.iter().cloned().collect()
+                    } else {
+                        vec![name]
+                    };
+                for n in &targets {
+                    let path = join_path(&self.sftp.path, n);
+                    self.orch.send(Command::SftpChown { id, path, uid, gid });
+                }
+                self.orch.send(Command::SftpList { id, path: self.sftp.path.clone() });
+            }
+        }
         if let Some((name, mode)) = a.chmod_rec.take() {
             if let Some(id) = self.sftp.id {
                 self.orch.send(Command::SftpChmodRecursive { id, path: join_path(&self.sftp.path, &name), mode });

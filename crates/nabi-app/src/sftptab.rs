@@ -28,6 +28,8 @@ pub(crate) struct SftpAct {
     /// 원격 파일 앞부분 미리보기.
     pub preview: Option<String>,
     pub chmod: Option<(String, u32)>,
+    /// 소유자·그룹 변경(이름, uid, gid). `None` 인 쪽은 그대로 둔다.
+    pub chown: Option<(String, Option<u32>, Option<u32>)>,
     /// 권한 재귀 적용(하위 전부).
     pub chmod_rec: Option<(String, u32)>,
     pub rename: Option<String>,

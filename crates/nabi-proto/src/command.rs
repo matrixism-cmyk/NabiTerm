@@ -120,6 +120,13 @@ pub enum Command {
         path: String,
         mode: u32,
     },
+    /// 원격 파일 소유자·그룹 변경. `None` 인 쪽은 그대로 둔다.
+    SftpChown {
+        id: SftpId,
+        path: String,
+        uid: Option<u32>,
+        gid: Option<u32>,
+    },
     /// 원격 재귀 검색(root 아래 이름에 needle 포함).
     SftpSearch {
         id: SftpId,

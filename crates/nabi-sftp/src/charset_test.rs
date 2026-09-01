@@ -39,3 +39,41 @@ fn name_charset_roundtrip_and_modes() {
     crate::set_name_charset("nonsense");
     assert_eq!(crate::detected_name_charset(), None);
 }
+
+/// **큰 폴더를 훑어도 방금 본 이름을 잊으면 안 된다**(2026-09-01).
+///
+/// 원본 바이트 기억은 상한이 있고, 예전에는 차면 **통째로 비웠다.** 주석에는 "비어도
+/// 규약 인코딩으로 폴백할 뿐이라 안전"하다고 적혀 있었지만, EUC-KR 로 감지된 서버에
+/// UTF-8 이름이 섞여 있으면(바로 위 시험이 지키는 그 경우) 기억이 사라지는 순간
+/// 그 이름이 CP949 로 재인코딩되어 **서버에서 못 찾는다** — v0.1.448 결함이 폴더가
+/// 클 때만 되살아나는 셈이다. 8192 는 메일 큐·로그 폴더에서 예사로 넘는 수다.
+///
+/// 그래서 세대를 둘로 나눴다. 이 시험은 상한을 넘겨 훑은 뒤에도 **처음 본 이름**이
+/// 원본 바이트로 나가는지 본다.
+#[test]
+fn a_big_listing_does_not_forget_what_it_just_saw() {
+    crate::set_name_charset("auto");
+    charset::forget_all();
+
+    // 서버가 CP949 로 보낸 이름 하나(이것이 잊히면 안 된다).
+    let first_wire = cp949("첫파일.txt");
+    let first = charset::decode(&first_wire);
+    assert_eq!(first, "첫파일.txt");
+    charset::promote_candidate();
+    // 같은 서버에 섞여 있는 UTF-8 이름 — 기억이 있어야 UTF-8 로 나간다.
+    let utf8_name = charset::decode("계약서.pdf".as_bytes());
+
+    // 상한(8192)을 넉넉히 넘겨 훑는다 — 큰 폴더 하나면 이만큼 나온다.
+    for i in 0..9000 {
+        let _ = charset::decode(&cp949(&format!("파일{i}.txt")));
+    }
+
+    // 처음 본 둘이 **여전히 원본 바이트로** 나가야 한다.
+    assert_eq!(charset::encode_path(&first), first_wire, "CP949 이름을 잊었다");
+    assert_eq!(
+        charset::encode_path(&utf8_name),
+        "계약서.pdf".as_bytes().to_vec(),
+        "UTF-8 이름이 CP949 로 재인코딩됐다 — 서버에서 못 찾는다"
+    );
+    crate::set_name_charset("auto"); // 다른 시험에 영향 주지 않게 되돌린다.
+}

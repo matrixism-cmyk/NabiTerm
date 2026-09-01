@@ -99,6 +99,7 @@ pub(crate) fn list_zone(
         Some(EClick::EditHex(n)) => a.edit_hex = Some(n),
         Some(EClick::Preview(n)) => a.preview = Some(n),
         Some(EClick::Chmod(n, m)) => a.chmod = Some((n, m)),
+        Some(EClick::Chown(n, u, g)) => a.chown = Some((n, u, g)),
         Some(EClick::ChmodRecursive(n, m)) => a.chmod_rec = Some((n, m)),
         Some(EClick::RunCmd(n, op)) => a.run_cmd = Some((n, op)),
         Some(EClick::CopyHere(n, s, d)) => a.copy_here = Some((n, s, d)),

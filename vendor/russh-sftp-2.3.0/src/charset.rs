@@ -43,10 +43,27 @@ static DETECTED: AtomicU8 = AtomicU8::new(0);
 /// 가장 최근 디코드가 제안한 인코딩(파일명 지점에서만 DETECTED로 승격).
 static CANDIDATE: AtomicU8 = AtomicU8::new(0);
 
-/// 디코드한 문자열 → 서버가 보낸 원본 바이트. 비UTF-8 문자열만 담는다(유효 UTF-8은
-/// 그대로 재생되므로 기억할 필요가 없다). 상한을 넘으면 통째로 비운다 — 비면 규약
-/// 인코딩으로 폴백할 뿐이라 안전하고, 실사용에서 도달하기 어려운 크기다.
+/// 디코드한 문자열 → 서버가 보낸 원본 바이트. 아스키가 아닌 이름만 담는다(아스키는
+/// 그대로 재생되므로 기억할 필요가 없다).
+///
+/// ## 왜 두 세대인가 (2026-09-01)
+///
+/// 처음에는 한 칸이었고 가득 차면 **통째로 비웠다.** 주석에는 "비면 규약 인코딩으로
+/// 폴백할 뿐이라 안전"하다고 적혀 있었는데, **그 말이 틀렸다.**
+///
+/// EUC-KR 로 감지된 서버에 UTF-8 이름이 섞여 있는 경우(실제로 흔하다 — 바로 아래
+/// 시험이 그것을 지킨다), 그 이름은 **기억 덕분에만** UTF-8 로 나간다. 기억이 비면
+/// 감지된 CP949 로 재인코딩되어 서버에서 못 찾는다 — v0.1.448 에서 고쳤던 그 결함이
+/// 폴더가 클 때만 되살아나는 셈이다. 8192 는 "도달하기 어려운" 수가 아니다(메일 큐·
+/// 로그 폴더·사진 폴더는 예사로 넘고, 여러 폴더를 오가면 합산된다).
+///
+/// 그래서 절벽 대신 **세대**를 둔다. 새것이 차면 헌것 자리로 밀고 새 칸을 연다.
+/// 찾을 때는 새것 → 헌것 순으로 본다. 메모리는 여전히 상한의 두 배로 묶이지만,
+/// 한 이름이 잊히려면 **두 세대가 다 지나야** 한다 — 화면에 보이는 이름이 갑자기
+/// 사라지는 일이 없어진다.
 static ORIGINAL: Mutex<Option<HashMap<String, Vec<u8>>>> = Mutex::new(None);
+/// 직전 세대. 새 세대가 차면 여기로 밀린다(두 세대가 지나야 잊는다).
+static ORIGINAL_OLD: Mutex<Option<HashMap<String, Vec<u8>>>> = Mutex::new(None);
 const ORIGINAL_CAP: usize = 8192;
 
 fn to_u8(c: Charset) -> u8 {
@@ -152,15 +169,49 @@ fn remember(text: &str, bytes: &[u8]) {
     let mut g = ORIGINAL.lock().unwrap_or_else(|e| e.into_inner());
     let map = g.get_or_insert_with(HashMap::new);
     if map.len() >= ORIGINAL_CAP {
-        map.clear();
+        // 비우지 않고 **헌 세대로 민다** — 방금 본 이름이 곧바로 잊히면 안 된다.
+        let full = std::mem::take(map);
+        *ORIGINAL_OLD.lock().unwrap_or_else(|e| e.into_inner()) = Some(full);
     }
     map.insert(text.to_owned(), bytes.to_vec());
 }
 
-/// 기억한 원본 바이트를 찾는다.
+/// 기억한 원본 바이트를 찾는다. 새 세대에 없으면 헌 세대까지 본다.
 fn recall(text: &str) -> Option<Vec<u8>> {
-    let g = ORIGINAL.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(b) = ORIGINAL.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(text).cloned()) {
+        return Some(b);
+    }
+    let g = ORIGINAL_OLD.lock().unwrap_or_else(|e| e.into_inner());
     g.as_ref()?.get(text).cloned()
+}
+
+/// 바이트를 16진으로(진단용). 긴 이름은 앞 64바이트만 — 로그가 목적이지 덤프가 아니다.
+fn hex(b: &[u8]) -> String {
+    let mut s: String = b.iter().take(64).map(|x| format!("{x:02x}")).collect();
+    if b.len() > 64 {
+        s.push('\u{2026}');
+    }
+    s
+}
+
+/// **왕복이 깨졌는지 로그로 보는 길**(`NABI_LOG=russh_sftp=trace`).
+///
+/// 파일명 왕복 문제는 "목록에는 보이는데 다운로드만 안 된다"로 나타나고, 그 원인은
+/// 눈으로 볼 수 없다 — 받은 바이트와 보내는 바이트가 다른지가 전부인데 둘 다 화면에
+/// 안 나오기 때문이다. 그래서 두 지점을 같은 형식으로 남긴다: 받을 때(`decode`)와
+/// 보낼 때(`encode`). 두 줄의 hex 가 같으면 왕복은 성립한 것이고, 다르면 그 자리가 범인이다.
+fn trace_bytes(dir: &str, text: &str, bytes: &[u8]) {
+    log::trace!("filename {dir}: {:?} <-> {}", text, hex(bytes));
+}
+
+/// 기억한 원본 바이트를 통째로 잊는다 — **새 서버에 붙을 때 부른다.**
+///
+/// 기억은 "이 문자열은 저 바이트였다"인데, 그 짝은 **그 서버에서만** 참이다. A 서버의
+/// CP949 이름을 기억한 채 B 서버(UTF-8)에 붙으면, 같은 이름을 CP949 로 내보내 못 찾는다.
+/// 연결마다 백지에서 시작해야 감지도 다시 제대로 돈다.
+pub fn forget_all() {
+    *ORIGINAL.lock().unwrap_or_else(|e| e.into_inner()) = None;
+    *ORIGINAL_OLD.lock().unwrap_or_else(|e| e.into_inner()) = None;
 }
 
 /// 와이어 바이트 → 문자열. 유효 UTF-8은 그대로, 아니면 모드에 따라 레거시 인코딩으로
@@ -200,6 +251,7 @@ pub fn decode(bytes: &[u8]) -> String {
     };
     let text = decoded.unwrap_or_else(|| String::from_utf8_lossy(bytes).into_owned());
     remember(&text, bytes);
+    trace_bytes("recv", &text, bytes);
     text
 }
 
@@ -210,7 +262,8 @@ pub fn encode(s: &str) -> std::borrow::Cow<'_, [u8]> {
         return std::borrow::Cow::Borrowed(s.as_bytes());
     }
     if let Some(orig) = recall(s) {
-        return std::borrow::Cow::Owned(orig); // 서버가 보낸 그 바이트 그대로.
+        trace_bytes("send", s, &orig); // 받은 그 바이트를 그대로 돌려보낸다.
+        return std::borrow::Cow::Owned(orig);
     }
     match effective() {
         None => std::borrow::Cow::Borrowed(s.as_bytes()),

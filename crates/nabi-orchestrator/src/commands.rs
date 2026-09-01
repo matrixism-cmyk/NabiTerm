@@ -143,6 +143,9 @@ pub fn handle_command(
         Command::SftpChmod { id, path, mode } => {
             sftp_request(id, SftpReq::Chmod { path, mode }, sftp)
         }
+        Command::SftpChown { id, path, uid, gid } => {
+            sftp_request(id, SftpReq::Chown { path, uid, gid }, sftp)
+        }
         Command::SftpSearch { id, root, needle } => {
             sftp_request(id, SftpReq::Search { root, needle }, sftp)
         }

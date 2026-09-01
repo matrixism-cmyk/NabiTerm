@@ -33,6 +33,7 @@ pub enum SftpReq {
     /// 서버 안에서 복사(큐 항목 xfer 로 진행률·완료를 짝짓는다).
     Copy { xfer: u64, from: String, to: String, dir: bool },
     Chmod { path: String, mode: u32 },
+    Chown { path: String, uid: Option<u32>, gid: Option<u32> },
     ChmodRec { path: String, mode: u32 },
     Search { root: String, needle: String },
     /// 동기화 계획용 파일 트리 수집(상대경로·크기·mtime) — seq 상관 회신.
@@ -105,6 +106,13 @@ pub fn spawn_sftp(
         });
         let mut fs = match conn {
             Ok(c) => {
+                // 새 서버에 붙었으니 **파일명 바이트 기억을 비운다.** 그 기억("이 글자는
+                // 저 바이트였다")은 그 서버에서만 참이다 — A(CP949)의 이름을 들고
+                // B(UTF-8)에 붙으면 같은 이름을 CP949 로 내보내 못 찾는다.
+                // 연결을 물려받은 경우(reused)에는 같은 서버이므로 그대로 둔다.
+                if !reused {
+                    nabi_sftp::forget_name_bytes();
+                }
                 let _ = ev.send(Event::SftpConnected { id, reused });
                 c
             }
@@ -217,6 +225,11 @@ pub fn spawn_sftp(
                 }
                 SftpReq::Chmod { path, mode } => {
                     let res = fs.chmod(&path, mode).await;
+                    let _ = ev.send(op_done(id, &path, res));
+                }
+                SftpReq::Chown { path, uid, gid } => {
+                    // 대개 root 여야 성공한다 — 실패를 삼키면 "바뀐 줄" 알게 된다.
+                    let res = fs.chown(&path, uid, gid).await;
                     let _ = ev.send(op_done(id, &path, res));
                 }
                 SftpReq::ChmodRec { path, mode } => {

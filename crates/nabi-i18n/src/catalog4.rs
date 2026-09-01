@@ -86,6 +86,7 @@ pub(crate) const CATALOG4: &[(&str, &str, &str, &str)] = &[
     ("handoff.nocmd", "No finished command in this pane yet", "이 분할 칸에 완료된 명령이 아직 없습니다", "このペインに完了したコマンドがまだありません"),
     ("settings.sftpcharset", "SFTP filename encoding", "SFTP 파일명 인코딩", "SFTPファイル名エンコーディング"),
     ("settings.sftpcharset.auto", "Auto detect", "자동 감지", "自動検出"),
+    ("sftp.charsetdetected", "This server sends file names in a legacy encoding — detected automatically. Change it in Settings ▸ Transfer if names look wrong.", "이 서버는 파일 이름을 옛 인코딩으로 보냅니다 — 자동으로 알아냈습니다. 이름이 이상하면 설정 ▸ 전송에서 바꾸세요.", "このサーバーはファイル名を旧エンコーディングで送ります — 自動検出しました。名前がおかしい場合は設定 ▸ 転送で変更してください。"),
     ("settings.sftpcharsethint", "SFTP v3 servers send filenames in the server's local encoding (e.g. EUC-KR on Korean hosts). Auto detects it losslessly and re-encodes paths on send.", "SFTP v3 서버는 파일명을 서버 로컬 인코딩으로 보냅니다(한국 서버 EUC-KR 등). 자동은 무손실로 감지하고 전송 경로도 같은 인코딩으로 복원합니다.", "SFTP v3サーバーはファイル名をサーバーのローカルエンコーディングで送ります(韓国サーバーのEUC-KRなど)。自動は無損失で検出し、送信経路も同じエンコーディングに復元します。"),
     ("menu.newai", "New AI terminal", "새 AI 터미널", "新しいAIターミナル"),
     ("settings.sec.aiprof", "AI terminal", "AI 터미널", "AIターミナル"),

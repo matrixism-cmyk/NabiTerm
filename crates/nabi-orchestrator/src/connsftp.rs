@@ -141,6 +141,19 @@ impl Conn {
             Conn::Ftp(f) => f.chmod(path, mode).await,
         }
     }
+    /// 소유자·그룹 변경. FTP 는 기본 구현(미지원 안내)이 그대로 온다 —
+    /// FTP 규약에는 소유자를 바꾸는 표준 명령이 없다(`SITE CHOWN` 은 서버마다 다르다).
+    pub(crate) async fn chown(
+        &mut self,
+        path: &str,
+        uid: Option<u32>,
+        gid: Option<u32>,
+    ) -> Result<(), String> {
+        match self {
+            Conn::Sftp(f) => f.chown(path, uid, gid).await,
+            Conn::Ftp(f) => f.chown(path, uid, gid).await,
+        }
+    }
     pub(crate) async fn search(&mut self, root: &str, needle: &str, max: usize) -> Vec<String> {
         match self {
             Conn::Sftp(f) => f.search(root, needle, max).await,

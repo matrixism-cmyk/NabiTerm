@@ -34,4 +34,6 @@ pub(crate) const CATALOG_NET: &[(&str, &str, &str, &str)] = &[
     ("net.xfer.nospace", "Not enough free space on remote: {free} < {need} bytes", "원격 여유 공간 부족: {free} < {need} 바이트", "リモートの空き容量不足: {free} < {need} バイト"),
     ("net.ftp.timeout", "Connection timed out", "연결 시간 초과", "接続タイムアウト"),
     ("net.ftp.badarg", "A line break is not allowed here — it would split the FTP command", "여기에는 줄바꿈을 쓸 수 없습니다 — FTP 명령이 갈라집니다", "ここに改行は使えません — FTPコマンドが分割されます"),
+    ("net.fs.nochmod", "This connection cannot change permissions", "이 연결에서는 권한을 바꿀 수 없습니다", "この接続では権限を変更できません"),
+    ("net.fs.nochown", "This connection cannot change the owner", "이 연결에서는 소유자를 바꿀 수 없습니다", "この接続では所有者を変更できません"),
 ];

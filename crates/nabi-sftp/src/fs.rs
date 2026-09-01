@@ -362,6 +362,27 @@ impl RemoteFs for SftpFs {
         let attrs = FileAttributes { permissions: Some(mode), ..Default::default() };
         self.raw.setstat(path, attrs).await
     }
+
+    /// 소유자·그룹을 바꾼다(SFTP `SETSTAT` 의 uid/gid).
+    ///
+    /// **`None` 인 쪽은 넘기지 않는다.** SFTP 속성은 "무엇을 담았는지"를 깃발로 알리므로,
+    /// 안 담으면 서버가 그 값을 건드리지 않는다. 그룹만 바꾸려는데 소유자까지 0(root)으로
+    /// 덮어쓰는 일이 없어야 한다 — 0 은 모름이 아니라 root 다.
+    ///
+    /// 둘 다 `None` 이면 보낼 것이 없으니 서버를 부르지 않는다(빈 SETSTAT 을 거부하는
+    /// 서버가 있고, 성공으로 답하는 서버는 "바꿨다"는 거짓 인상을 준다).
+    async fn chown(
+        &mut self,
+        path: &str,
+        uid: Option<u32>,
+        gid: Option<u32>,
+    ) -> Result<(), String> {
+        if uid.is_none() && gid.is_none() {
+            return Ok(());
+        }
+        let attrs = FileAttributes { uid, gid, ..Default::default() };
+        self.raw.setstat(path, attrs).await
+    }
 }
 
 #[cfg(test)]
