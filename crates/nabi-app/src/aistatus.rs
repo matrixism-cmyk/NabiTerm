@@ -14,18 +14,13 @@ pub(crate) struct AiDisplay {
 
 /// 알려진 AI CLI 명령인가(run_cmd 자동 감지용). 첫 토큰 기준.
 pub(crate) fn is_ai_command(cmd: &str) -> bool {
-    let first = cmd.split_whitespace().next().unwrap_or("");
-    // 경로/확장자 제거(C:\..\claude.exe → claude).
-    let base = first
-        .rsplit(['/', '\\'])
-        .next()
-        .unwrap_or(first)
-        .trim_end_matches(".exe")
-        .to_ascii_lowercase();
+    // 껍데기(`npx`·`sudo`·`wsl`…)를 벗기는 일은 `cmdbase` 한 곳에만 있다 — 예전에는
+    // 여기와 `aihandoff` 가 각자 첫 토막만 잘라 보다가 **둘 다** 감싼 실행을 놓쳤다.
+    let Some(base) = crate::cmdbase::real_command_base(cmd) else { return false };
     matches!(
         base.as_str(),
-        "claude" | "aider" | "codex" | "agy" | "gemini" | "llm" | "goose" | "cursor"
-            | "opencode" | "crush" | "ollama" | "sgpt" | "cody"
+        "claude" | "claude-code" | "aider" | "codex" | "agy" | "gemini" | "llm" | "goose"
+            | "cursor" | "warp" | "opencode" | "crush" | "ollama" | "sgpt" | "cody"
     ) || cmd.contains("claude ")
 }
 

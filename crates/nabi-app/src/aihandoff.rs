@@ -15,10 +15,26 @@ use nabi_types::PaneId;
 /// 붙일지 정하는 것이라 넓게 본다(ollama·sgpt 처럼 대화형이 아닌 것도 포함). 이쪽은
 /// **글자를 밀어 넣을 상대**를 고르는 것이라 좁게 본다 — 잘못 고르면 남의 셸에
 /// 프롬프트가 찍힌다.
+///
+/// ## 감싸서 띄운 것도 알아본다
+///
+/// 예전에는 **첫 토막만** 봤다. 그래서 `npx claude`·`sudo codex`·`wsl agy`·`pwsh -c claude`
+/// 처럼 흔한 방법으로 띄우면 AI CLI 로 안 보였고, 명령 바도 인계도 조용히 안 됐다
+/// (2026-09-01 탐침으로 확인 — 여섯 가지가 전부 걸렸다).
+///
+/// 이제 **껍데기(launcher)와 플래그·환경변수를 건너뛰고 처음 만나는 진짜 명령**을 본다.
+/// 다만 거기서 멈춘다 — `sudo apt install claude` 처럼 뒤쪽에 이름이 섞여 있는 것까지
+/// 훑으면 남의 셸에 프롬프트를 밀어 넣게 된다.
 pub(crate) fn ai_command_name(cmd: &str) -> Option<&'static str> {
-    let base = cmd.split_whitespace().next().unwrap_or("");
-    let name = base.rsplit(['\\', '/']).next().unwrap_or(base).trim_end_matches(".exe").to_ascii_lowercase();
-    ["claude", "aider", "codex", "agy", "gemini", "llm", "goose", "cursor"]
+    // 껍데기를 벗기는 일은 `cmdbase` 한 곳에만 있다 — 상태바 배지도 같은 함수를 쓴다.
+    let name = crate::cmdbase::real_command_base(cmd)?;
+    // npm 패키지로 띄우면 실행 이름이 `claude-code` 다(`npx @anthropic-ai/claude-code`).
+    if name == "claude-code" {
+        return Some("claude");
+    }
+    // `warp` 는 Warp 의 독립 에이전트 CLI 다 — 2026-08 부터 어느 터미널에서나 돌고,
+    // 설치 뒤 명령 이름이 `warp` 다(docs.warp.dev/agents/cli/quickstart, 2026-09-01 확인).
+    ["claude", "aider", "codex", "agy", "gemini", "llm", "goose", "cursor", "warp"]
         .iter()
         .find(|n| **n == name)
         .copied()
@@ -202,5 +218,50 @@ mod tests {
         assert!(p.contains("E0308"));
         assert!(p.ends_with("```"), "code fence closed: {p}");
         assert!(p.is_ascii(), "주입 프롬프트는 ASCII 전용(Don't Input HANGUL): {p}");
+    }
+}
+
+#[cfg(test)]
+mod nametests {
+    use super::ai_command_name;
+
+    /// 그대로 띄운 것.
+    #[test]
+    fn a_plain_command_is_recognised() {
+        assert_eq!(ai_command_name("claude"), Some("claude"));
+        assert_eq!(ai_command_name("codex --yolo"), Some("codex"));
+        assert_eq!(ai_command_name(r"C:\bin\agy.exe"), Some("agy"));
+    }
+
+    /// **감싸서 띄운 것도 알아본다** — 여섯 가지 전부 예전에는 안 걸렸다.
+    #[test]
+    fn wrapped_launches_are_recognised() {
+        for (cmd, want) in [
+            ("npx claude", "claude"),
+            ("sudo codex", "codex"),
+            ("wsl agy", "agy"),
+            ("pwsh -c claude", "claude"),
+            ("uvx aider", "aider"),
+            ("env FOO=1 codex", "codex"),
+            ("cmd /c claude", "claude"),
+            ("npx -y @anthropic-ai/claude-code", "claude"),
+        ] {
+            assert_eq!(ai_command_name(cmd), Some(want), "{cmd:?}");
+        }
+    }
+
+    /// **비슷한 이름은 아니다.** 잘못 고르면 남의 셸에 프롬프트가 찍힌다.
+    #[test]
+    fn lookalikes_are_refused() {
+        for c in ["claudette", "my-claude-wrapper", "claude-x", "grep claude", "git commit -m claude"] {
+            assert_eq!(ai_command_name(c), None, "{c:?}");
+        }
+    }
+
+    /// **껍데기 뒤 첫 명령에서 멈춘다** — 뒤쪽에 이름이 섞였다고 따라가면 안 된다.
+    #[test]
+    fn it_stops_at_the_first_real_command() {
+        assert_eq!(ai_command_name("sudo apt install claude"), None);
+        assert_eq!(ai_command_name("npx eslint --fix claude.js"), None);
     }
 }
