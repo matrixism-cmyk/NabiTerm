@@ -23,7 +23,7 @@ mod editortab { pub use nabi_editor::editortab::*; }
 mod encodings { pub use nabi_editor::encodings::*; }
 mod humanfmt { pub use nabi_editor::humanfmt::*; }
 mod appicon; mod gpu; mod softgl; mod arrange; mod bell; mod browser; mod browserfilter; mod browserfs; mod browsergrid; mod browserinput; mod browserapply;
-mod browserattr; mod browserrowact; mod colset; mod browsercache; mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserplaces; mod browserrows; mod browsercell; mod controlui; mod controlapp; mod filetype;
+mod browserattr; mod browserrowact; mod colset; mod passwdmap; mod passwdfetch; mod browsercache; mod browserclip; mod browsercols; mod browserops; mod browsermenu; mod browserpanel; mod browserplaces; mod browserrows; mod browsercell; mod controlui; mod controlapp; mod filetype;
 
 mod clicks; mod closeconfirm; mod connect; mod connhist; mod connhistui; mod connectsave; mod editsftp; mod forwardui; mod dnd; mod events; mod find; mod fonts; mod fontinstall; mod netinfo; mod drives; mod editorsave;
 mod editoropen; mod editorclose; mod editorlsp; mod editorlsp2; mod editorlspreq;
@@ -50,7 +50,7 @@ mod editorconflict; mod guard; mod guardui; mod inputline; mod lastfail; mod log
 #[cfg(test)] mod autoreplytest;
 #[cfg(test)] mod settingscan;
 #[cfg(test)] mod i18nlint; mod envwsl; mod envprobe; mod envstate; mod envrun; mod envmgr; mod envmgrui;
-mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdcmds; mod aicmdclaude; mod aicmdgemini; mod aicmdother; mod aicmdmore; mod aimode;
+mod aiclirun; mod aicliupd; mod aicliver; mod wsairesume; mod aiprof; mod aiprofileui; mod aicmdbar; mod aicmdpick; mod aicmdcmds; mod aicmdclaude; mod aicmdgemini; mod aicmdother; mod aicmdmore; mod aimode;
 mod trzszui; mod xferbar; mod gpupick; mod tiptrans; mod tipai; mod tipoverlay; mod aistatus; mod agentwatch; mod aidash;
 
 mod sshkey; mod sshauth; mod snippetsend; mod dirjump; mod quickselect; mod cmdhist; mod modal; mod onboarding; mod editorapp; mod encsuggest; mod sftpgrid; mod browsersort; mod keyscan;

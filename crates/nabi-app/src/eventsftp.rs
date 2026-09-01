@@ -71,7 +71,8 @@ impl NabiApp {
                 if self.sftp.id == Some(id) {
                     // 내용 찾기와 미리보기 창이 **같은 명령**을 쓴다. 내용 찾기가 기다리던
                     // 경로면 그쪽이 가져가고, 아니면 원래 주인(미리보기)이 처리한다.
-                    if !self.grep_on_preview(&path, &data, more) {
+                    // 계정 파일 → 내용 찾기 → 미리보기 창 순으로 임자를 찾는다.
+                    if !self.ids_on_preview(&path, &data) && !self.grep_on_preview(&path, &data, more) {
                         self.preview_arrived(path, data, more, err);
                     }
                 }
@@ -129,6 +130,8 @@ impl NabiApp {
     /// 주는 이유는, 비밀번호를 안 물어본 것이 **건너뛴 것이 아니라 의도된 일**임을
     /// 보이기 위해서다. 아무 말도 없으면 인증을 건너뛴 것처럼 보일 수 있다.
     fn on_sftp_connected(&mut self, id: SftpId, reused: bool, ctx: &egui::Context) {
+        // 서버가 바뀌었을 수 있다 — 앞 서버의 계정 이름을 그대로 쓰면 엉뚱한 이름이 나온다.
+        self.forget_ids();
         let key = if reused { "sftp.connected.reused" } else { "sftp.connected" };
         let connected = nabi_i18n::tr(self.lang, key).to_string();
         // 워크스페이스 복원이면 저장된 경로로 바로 들어간다(없으면 서버 기본 ".").

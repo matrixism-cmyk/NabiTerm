@@ -40,10 +40,8 @@ pub(crate) const REMOTE: [Col; 3] = [
     ("group", "browser.col.group"),
 ];
 
-/// 소유자·그룹 번호를 화면 글로. **모르면 빈칸이다** — `0` 은 root 라서 자리채움으로 쓸 수 없다.
-pub(crate) fn id_text(id: Option<u32>) -> String {
-    id.map(|n| n.to_string()).unwrap_or_default()
-}
+// 번호를 글로 바꾸는 일은 [`crate::passwdmap::name_of`] 가 한다 — 이름을 알면 이름을
+// 쓰기 때문에 번호만 아는 함수를 따로 두면 두 벌이 된다.
 
 /// 이 열이 켜져 있나.
 pub(crate) fn on(list: &[String], key: &str) -> bool {
@@ -112,14 +110,6 @@ mod tests {
         for (k, _) in LOCAL {
             assert!(!REMOTE.iter().any(|(r, _)| *r == k), "{k} 가 양쪽에 있다");
         }
-    }
-
-    /// **`0` 은 모름이 아니라 root 다.** 자리채움으로 0 을 쓰면 남의 파일이 전부 root 가 된다.
-    #[test]
-    fn zero_is_root_not_unknown() {
-        assert_eq!(id_text(Some(0)), "0");
-        assert_eq!(id_text(None), "", "모르는 것은 빈칸이다");
-        assert_eq!(id_text(Some(1000)), "1000");
     }
 
     /// 머리글 키는 전부 `browser.col.` 로 시작한다 — i18n 검사기가 짝을 찾는 규칙이다.

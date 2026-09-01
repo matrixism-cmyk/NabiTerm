@@ -65,6 +65,12 @@ pub(crate) struct SftpPanel {
     /// 켠 선택 열의 이름들(`colset::REMOTE`). 머리글 오른쪽 클릭으로 바뀌고,
     /// `persist_view_prefs` 가 설정(`sftp_cols`)에 저장한다.
     pub cols: Vec<String>,
+    /// uid/gid → 이름(`/etc/passwd`·`/etc/group` 에서). 비어 있으면 번호로 보여 준다.
+    pub users: crate::passwdmap::IdMap,
+    pub groups: crate::passwdmap::IdMap,
+    /// 이번 접속에서 그 두 파일을 이미 물어봤는가. **소유자·그룹 열을 켰을 때만** 묻고,
+    /// 접속이 바뀌면 다시 묻는다(다른 서버의 계정 목록을 그대로 쓰면 엉뚱한 이름이 나온다).
+    pub ids_asked: bool,
     /// 항목 보기 모드(자세히/목록/아이콘/타일).
     pub view_mode: crate::sftpview::ViewMode,
     /// 단일 클릭으로 선택된 항목(하이라이트·범위 기준점). 폴더 진입 시 해제.

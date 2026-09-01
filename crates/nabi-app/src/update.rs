@@ -140,6 +140,8 @@ impl eframe::App for NabiApp {
         self.tick_telegram(); // 텔레그램 브리지: 설정 동기화 + 수신 메시지→pane 주입.
         self.update_compare_map(); // 디렉터리 비교 색칠용 로컬 맵.
         self.persist_view_prefs(); // 정렬/보기/숨김 변경 시 설정 저장.
+        // 소유자·그룹 열을 켠 뒤 처음 한 번만 계정 파일을 청한다(끄고 쓰면 아무것도 안 읽는다).
+        self.fetch_ids_if_needed();
         self.handle_shortcuts(ctx);
         self.menu_bar(ui);
         self.show_quickconnect_bar(ui);

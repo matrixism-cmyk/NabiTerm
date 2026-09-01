@@ -61,7 +61,7 @@ pub struct NabiApp {
     pub tip_ai: crate::tipai::TipAi,
     /// 명령 바에서 방금 고른 값 신호 ("model"|"effort", 값) — view가 설정에 저장한다
     /// (뷰어가 config를 가변 차용할 수 없어 out-param으로 넘긴다).
-    pub ai_pick_out: Option<(String, String)>,
+    pub ai_pick_out: Option<(String, String, String)>,
     /// 인코딩 제안 메모이즈 (pane, render_gen, 현재 인코딩, 결과) — 매 프레임 화면 60줄
     /// 덤프를 피한다(성능 리뷰 2026-08-19, encsuggest.rs).
     pub enc_cache: Option<(PaneId, u64, String, Option<&'static str>)>,

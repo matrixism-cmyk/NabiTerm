@@ -71,9 +71,9 @@ pub(crate) struct AiBarState<'a> {
     pub pane_status: &'a std::collections::HashMap<nabi_types::PaneId, std::collections::BTreeMap<String, String>>,
     pub picks: &'a mut std::collections::HashMap<nabi_types::PaneId, AiPicks>,
     pub screen: &'a mut std::collections::HashMap<nabi_types::PaneId, crate::aimode::AiScreen>,
-    pub last_model: &'a str,
-    pub last_effort: &'a str,
-    pub pick_out: &'a mut Option<(String, String)>,
+    pub last_model: &'a std::collections::BTreeMap<String, String>,
+    pub last_effort: &'a std::collections::BTreeMap<String, String>,
+    pub pick_out: &'a mut Option<(String, String, String)>,
 }
 
 /// 명령 바를 그리고 pane에 보낼 바이트를 돌려준다(없으면 None).
@@ -95,19 +95,19 @@ pub(crate) fn draw_ai_bar(
     // CLI 종류: 셸 통합이 있으면 실행 명령으로, 없으면(=SSH pane) 창 제목·화면 문구로 판정한다.
     let kind = st.run_cmd.get(&pane).and_then(|c| bar_kind(c)).or(scr.title_kind)?;
     let picks = st.picks.get(&pane).cloned().unwrap_or_default();
-    // 모델 우선순위: CLI 상태줄(pane_status) → 화면 판독 → 이 pane에서 고른 값 → 설정의 마지막 값.
-    let model = st
-        .pane_status
-        .get(&pane)
-        .and_then(|m| m.get("model"))
-        .cloned()
-        .or(scr.model)
-        .or(picks.model)
-        .or_else(|| Some(st.last_model.to_owned()).filter(|s| !s.is_empty()));
-    let effort = scr
-        .effort
-        .or(picks.effort)
-        .or_else(|| Some(st.last_effort.to_owned()).filter(|s| !s.is_empty()));
+    // 모델 우선순위: CLI 상태줄 → **이 pane 에서 고른 값** → 화면 판독 → 그 CLI 의 마지막 값.
+    //
+    // 고른 값이 화면 판독보다 **앞선다**(2026-09-01 수정). 화면 판독은 스크롤백에서
+    // "Using …" 같은 줄을 찾는 짐작이라, 시작할 때 찍힌 줄이 **영원히 걸린다** — 모델을
+    // 바꿔도 표기가 그대로였던 까닭이다. 우리가 방금 `/model X` 를 보냈다는 사실이
+    // 스크롤백 어딘가의 옛 줄보다 확실하다.
+    //
+    // 마지막 값은 **그 CLI 것만** 쓴다. 예전에는 종류와 무관하게 하나만 기억해서,
+    // Claude 로 opus 를 고른 뒤 안티그래비티를 띄우면 있지도 않은 opus 가 적혔다.
+    let remembered = |m: &std::collections::BTreeMap<String, String>| m.get(kind).cloned().filter(|s| !s.is_empty());
+    let status = st.pane_status.get(&pane).and_then(|m| m.get("model")).cloned();
+    let model = crate::aicmdpick::resolve(status, picks.model, scr.model, remembered(st.last_model));
+    let effort = crate::aicmdpick::resolve(None, picks.effort, scr.effort, remembered(st.last_effort));
     let view = BarView {
         kind,
         mode: scr.mode,
@@ -120,12 +120,13 @@ pub(crate) fn draw_ai_bar(
         BarAction::Cmd(cmd, opens_ui) => {
             let entry = st.picks.entry(pane).or_default();
             // 값 선택(예: "/model opus")은 즉시 적용 → 기억하고 설정에도 남긴다.
+            // 어느 CLI 것인지 함께 넘긴다 — 종류별로 따로 기억해야 하기 때문이다.
             if let Some(v) = cmd.strip_prefix("/model ") {
                 entry.model = Some(v.to_owned());
-                *st.pick_out = Some(("model".into(), v.to_owned()));
+                *st.pick_out = Some((kind.to_owned(), "model".into(), v.to_owned()));
             } else if let Some(v) = cmd.strip_prefix("/effort ") {
                 entry.effort = Some(v.to_owned());
-                *st.pick_out = Some(("effort".into(), v.to_owned()));
+                *st.pick_out = Some((kind.to_owned(), "effort".into(), v.to_owned()));
             }
             // 화면을 여는 명령이면 활성으로 표시(다시 누르면 ESC로 닫는다).
             entry.active = opens_ui.then(|| cmd.clone());
@@ -140,6 +141,7 @@ pub(crate) fn draw_ai_bar(
         BarAction::ShiftTab => crate::aimode::SHIFT_TAB.to_vec(),
     })
 }
+
 
 /// pane 화면 판독 결과 — 세대가 같으면 캐시를 그대로 쓴다(내용 변경 프레임에만 스캔).
 fn screen_state(
@@ -297,3 +299,4 @@ mod bar_size_tests {
         set_bar_size(12.0);
     }
 }
+

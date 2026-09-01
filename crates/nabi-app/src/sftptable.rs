@@ -176,9 +176,11 @@ pub(crate) fn table(
     scroll_to: bool,
     sort: (crate::browserfs::Sort, bool),
     cols: &[String],
+    ids: (&crate::passwdmap::IdMap, &crate::passwdmap::IdMap),
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     use crate::browserfs::Sort;
+    let (users, groups) = ids;
     use egui_extras::{Column, TableBuilder};
     let mut click: Option<EClick> = None;
     let mut set_sort: Option<Sort> = None;
@@ -270,8 +272,10 @@ pub(crate) fn table(
                             // `---------` 로 적으면 "권한이 없다"로 읽힌다.
                             "perms" if e.mode == 0 => String::new(),
                             "perms" => crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link),
-                            "owner" => crate::colset::id_text(e.uid),
-                            "group" => crate::colset::id_text(e.gid),
+                            // 이름을 알면 이름, 모르면 번호(`/etc/passwd` 를 못 읽었거나
+                            // 그 번호가 없는 경우). 지도는 접속당 한 번만 받아 둔다.
+                            "owner" => crate::passwdmap::name_of(users, e.uid),
+                            "group" => crate::passwdmap::name_of(groups, e.gid),
                             _ => String::new(),
                         };
                         ui.monospace(t);

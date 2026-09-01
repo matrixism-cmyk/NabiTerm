@@ -76,6 +76,7 @@ pub(crate) fn list_zone(
             sftp.scroll,
             sort,
             &sftp.cols,
+            (&sftp.users, &sftp.groups),
             &mut ren,
         )
     });

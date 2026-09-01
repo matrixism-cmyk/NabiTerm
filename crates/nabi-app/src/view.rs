@@ -239,12 +239,13 @@ impl NabiApp {
             self.set_font_size(self.font_size + ctrl_wheel.signum());
         }
         // 명령 바에서 고른 모델·노력을 설정에 남긴다(재시작 후에도 버튼에 그대로 — 사용자 요청).
-        if let Some((kind, val)) = self.ai_pick_out.take() {
-            if kind == "model" {
-                self.config.terminal.ai_last_model = val;
-            } else {
-                self.config.terminal.ai_last_effort = val;
-            }
+        // CLI 종류별로 기억한다 — 하나로 뭉치면 다른 CLI 를 띄웠을 때 남의 모델이 적힌다.
+        if let Some((cli, what, val)) = self.ai_pick_out.take() {
+            let map = match what.as_str() {
+                "model" => &mut self.config.terminal.ai_last_model,
+                _ => &mut self.config.terminal.ai_last_effort,
+            };
+            map.insert(cli, val);
             self.save_config();
         }
         // 포커스 pane 리사이즈 시 크기 배지를 잠시 띄운다(현대 터미널 관례).

@@ -79,10 +79,10 @@ pub struct TermTabViewer<'a> {
     /// pane별 AI 화면 판독 캐시(모드·모델·노력·제목).
     pub ai_screen: &'a mut HashMap<PaneId, crate::aimode::AiScreen>,
     /// 설정에 저장된 마지막 선택(재시작 후 초기 표시값).
-    pub ai_last_model: &'a str,
-    pub ai_last_effort: &'a str,
+    pub ai_last_model: &'a std::collections::BTreeMap<String, String>,
+    pub ai_last_effort: &'a std::collections::BTreeMap<String, String>,
     /// 이번 프레임에 고른 값 신호 — app이 설정에 저장한다.
-    pub ai_pick_out: &'a mut Option<(String, String)>,
+    pub ai_pick_out: &'a mut Option<(String, String, String)>,
     /// 영문 팁 한글 오버레이 설정 + 캐시(tipoverlay.rs).
     pub tip_overlay: bool,
     pub tip_ai_on: bool,

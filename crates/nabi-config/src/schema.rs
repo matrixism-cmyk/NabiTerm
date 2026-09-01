@@ -208,10 +208,14 @@ pub struct TerminalCfg {
     #[serde(default)] pub ai_profiles: Vec<AiProfileCfg>,
     /// AI 명령 바: AI CLI 실행 pane 상단에 슬래시 명령 버튼 줄 표시(aicmdbar.rs).
     #[serde(default = "default_true")] pub ai_cmd_bar: bool,
-    /// 명령 바에서 마지막으로 고른 모델·노력 수준(재시작 후에도 버튼에 그대로 보이게).
-    /// CLI가 상태줄로 실제 값을 알려주면 그쪽이 우선한다.
-    #[serde(default)] pub ai_last_model: String,
-    #[serde(default)] pub ai_last_effort: String,
+    /// 명령 바에서 마지막으로 고른 모델·노력 — **CLI 종류별로** 따로 기억한다
+    /// (`claude`·`codex`·`agy`·`gemini`·`aider`).
+    ///
+    /// 예전에는 종류와 무관하게 값 하나만 기억했다. 그래서 Claude 로 `opus` 를 고른 뒤
+    /// 안티그래비티를 띄우면 **명령 바에 `opus` 가 적혀 있었다** — 그 CLI 에는 있지도 않은
+    /// 모델이다(2026-09-01 사용자 보고). 기억은 종류마다 다른 이야기다.
+    #[serde(default)] pub ai_last_model: std::collections::BTreeMap<String, String>,
+    #[serde(default)] pub ai_last_effort: std::collections::BTreeMap<String, String>,
     /// 영문 팁 한글 오버레이(사전 기반) — 터미널의 `Tip:`/`Note:` 줄 위에 번역을 덧그린다.
     #[serde(default = "default_true")] pub tip_overlay: bool,
     /// 사전에 없는 팁을 AI(claude -p)로 번역(기본 꺼짐 — 요금·프라이버시·폐쇄망 고려).
@@ -479,8 +483,8 @@ impl Default for TerminalCfg {
             sftp_name_charset: default_sftp_charset(),
             ai_profiles: Vec::new(),
             ai_cmd_bar: true,
-            ai_last_model: String::new(),
-            ai_last_effort: String::new(),
+            ai_last_model: std::collections::BTreeMap::new(),
+            ai_last_effort: std::collections::BTreeMap::new(),
             tip_overlay: true,
             tip_translate_ai: false,
             tip_cache_path: String::new(),
