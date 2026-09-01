@@ -117,7 +117,7 @@ pub fn context_menu(
         ui.close();
     }
     if ui.button(tr(lang, "edit.selectallmatches")).clicked() {
-        eb.select_all_matches();
+        if eb.select_all_matches() == 0 { act.note = Some("edit.nomorematch"); }
         ui.close();
     }
     if eb.sel.len() > 1 && ui.button(tr(lang, "edit.clearcursors")).clicked() {

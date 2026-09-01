@@ -40,13 +40,17 @@ pub(crate) fn cfg_safe(v: &str) -> bool {
 /// `-` 로 시작하는 것을 막는 이유: 명령줄에 넘어가면 이름이 아니라 **옵션**으로 읽힌다
 /// (`-oProxyCommand=...`). 우리는 러스트 라이브러리로 붙으니 셸을 거치지 않지만,
 /// 같은 값이 설정 파일과 화면 안내로도 나가므로 애초에 받지 않는 편이 낫다.
+/// **한글·비ASCII 이름은 막지 않는다.** 처음에 "ASCII 글자와 숫자만"으로 좁게 짰다가
+/// 곧바로 물렸다 — `내서버.한국` 같은 이름을 쓰는 사람을 우리가 막게 된다. 여기서 걸러야
+/// 하는 것은 글자의 국적이 아니라 **뜻이 달라지는 기호**다. 그래서 규칙을 뒤집었다:
+/// 아스키 기호는 아래 목록만 통과시키고, 그 밖의 글자는 어느 나라 것이든 통과시킨다.
 pub(crate) fn valid_host(h: &str) -> bool {
     const OK: &str = ".-_:[]%";
     cfg_safe(h)
         && h.len() <= 253
         && !h.starts_with('-')
         && !h.contains(char::is_whitespace)
-        && h.chars().all(|c| c.is_ascii_alphanumeric() || OK.contains(c))
+        && h.chars().all(|c| !c.is_ascii_punctuation() || OK.contains(c))
 }
 
 /// 로그인 사용자 이름으로 쓸 수 있는 모양인가.
@@ -68,7 +72,17 @@ mod tests {
     /// ① 당연히 통과해야 하는 것 — 여기서 막으면 멀쩡한 사람이 못 붙는다.
     #[test]
     fn ordinary_names_pass() {
-        for h in ["bastion", "srv-01.example.com", "10.0.0.5", "[fe80::1%eth0]", "a_b.local"] {
+        for h in [
+            "bastion",
+            "srv-01.example.com",
+            "10.0.0.5",
+            "[fe80::1%eth0]",
+            "a_b.local",
+            // **한글 이름을 막으면 안 된다.** 우리가 지키려는 것은 줄을 가르거나 옵션으로
+            // 읽히는 기호이지, 글자의 국적이 아니다.
+            "내서버.한국",
+            "サーバ.jp",
+        ] {
             assert!(valid_host(h), "{h:?} 는 통과해야 한다");
         }
         for u in ["root", "kim", "deploy.bot", "u-1", "svc_account"] {

@@ -23,7 +23,7 @@ pub(crate) fn list_zone(
         if ui.button(format!("\u{1f4c4}+ {}", t("sftp.newfile"))).clicked() { a.new_file = true; ui.close(); }
         if ui.button(format!("\u{1f4cb}\u{2193} {}", t("browser.paste"))).clicked() { a.paste = true; ui.close(); } // OS 파일 붙여넣기=업로드.
         if ui.button(format!("\u{2b07} {}", t("sftp.downloaddir"))).clicked() { a.dl_cur = true; ui.close(); }
-        if ui.button(format!("\u{21bb} {}", t("sftp.refresh"))).clicked() { a.go = Some(sftp.path.clone()); ui.close(); }
+        if ui.button(format!("\u{27f3} {}", t("sftp.refresh"))).clicked() { a.go = Some(sftp.path.clone()); ui.close(); }
         ui.separator();
         if ui.button(format!("\u{1f50d} {}", t("sftp.search"))).clicked() { a.search = true; ui.close(); }
         if ui.button(format!("\u{1f441} {}", t("sftp.hidden"))).clicked() { sftp.show_hidden = !sftp.show_hidden; ui.close(); }

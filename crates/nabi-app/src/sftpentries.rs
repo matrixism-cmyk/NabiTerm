@@ -4,9 +4,40 @@ use crate::sftppanel::SftpPanel;
 use nabi_i18n::{tr, Lang};
 use nabi_proto::SftpEntry;
 
-/// 일괄 이름변경 규칙은 [`crate::renamerule`] 한 곳에만 있다 — 로컬 창과 원격 창이 같은
-/// 규칙으로 이름을 만들어야 사용자가 두 화면을 같은 것으로 믿을 수 있다(배치 AJ).
-pub(crate) use crate::renamerule::batch_new_name;
+// 일괄 이름변경 규칙은 [`crate::renamerule`] 한 곳에만 있다 — 로컬 창과 원격 창이 같은
+// 규칙으로 이름을 만들어야 사용자가 두 화면을 같은 것으로 믿을 수 있다(배치 AJ).
+//
+// 예전에는 여기서 `batch_new_name` 을 그대로 내보내 원격이 **한 개씩** 이름을 만들었다.
+// 그러면 이름 충돌 검사를 아무도 못 한다(그 검사는 목록 전체를 봐야 한다). 이제 원격도
+// `renamerule::plan_batch` 를 지나가므로, 이 재수출은 쓰이지 않는다 — 지웠다(2026-09-01).
+
+/// 일괄 이름 바꾸기가 **손댈 것들** — 고른 것이 있으면 그것만, 없으면 이 폴더 전체.
+///
+/// ## 왜 한 곳에 모으나
+///
+/// 미리보기의 개수 `(n)` 과 실제로 바꾸는 목록이 **따로 세고 있었다.** 둘이 다른 것을 세면
+/// "3개 바뀝니다"라고 보여 주고 스무 개를 바꾸게 된다. 같은 함수가 답하게 한다.
+///
+/// ## 왜 고른 것을 먼저 보나
+///
+/// 로컬 창은 **고른 파일만** 바꾼다. 원격만 폴더 전체를 바꾸고 있어서, 같은 규칙을 같은
+/// 마음으로 걸어도 결과가 달랐다 — 셋을 고르고 눌렀는데 이백 개가 바뀌는 쪽이 원격이었다
+/// (2026-09-01). 이름 바꾸기는 되돌리기가 없으니 좁은 쪽이 옳다.
+///
+/// `.` 과 `..` 은 언제나 뺀다. 서버 목록에는 이 둘이 그대로 들어 있어서, 규칙이 걸리면
+/// 상위 폴더를 이름 바꾸려 든다.
+pub(crate) fn batch_targets(
+    entries: &[SftpEntry],
+    multi: &std::collections::HashSet<String>,
+) -> Vec<String> {
+    entries
+        .iter()
+        .map(|e| e.name.as_str())
+        .filter(|n| *n != "." && *n != "..")
+        .filter(|n| multi.is_empty() || multi.contains(*n))
+        .map(str::to_string)
+        .collect()
+}
 
 
 
@@ -179,5 +210,49 @@ pub(crate) fn show_entries(
 
 #[cfg(test)]
 mod tests {
+    use super::batch_targets;
+    use nabi_proto::SftpEntry;
+    use std::collections::HashSet;
 
+    fn e(name: &str) -> SftpEntry {
+        SftpEntry {
+            name: name.to_string(),
+            is_dir: false,
+            is_link: false,
+            size: 0,
+            mode: 0,
+            mtime: 0,
+            uid: None,
+            gid: None,
+        }
+    }
+
+    fn sel(names: &[&str]) -> HashSet<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
+
+    /// **고른 것이 있으면 그것만.** 로컬 창이 그렇게 하는데 원격만 폴더 전체를 바꾸고 있었다.
+    #[test]
+    fn a_selection_narrows_the_target() {
+        let list = [e("a.txt"), e("b.txt"), e("c.txt")];
+        let got = batch_targets(&list, &sel(&["a.txt", "c.txt"]));
+        assert_eq!(got, vec!["a.txt", "c.txt"]);
+    }
+
+    /// 아무것도 안 골랐으면 이 폴더 전체가 대상이다(예전 동작 유지).
+    #[test]
+    fn no_selection_means_the_whole_folder() {
+        let list = [e("a.txt"), e("b.txt")];
+        assert_eq!(batch_targets(&list, &HashSet::new()), vec!["a.txt", "b.txt"]);
+    }
+
+    /// **`.` 과 `..` 은 언제나 뺀다.** 서버 목록에 그대로 들어 있어서, 규칙이 걸리면
+    /// 상위 폴더를 이름 바꾸려 든다.
+    #[test]
+    fn the_dot_entries_are_never_a_target() {
+        let list = [e("."), e(".."), e("real")];
+        assert_eq!(batch_targets(&list, &HashSet::new()), vec!["real"]);
+        // 골라 놨더라도 마찬가지다(전체 선택으로 들어올 수 있다).
+        assert_eq!(batch_targets(&list, &sel(&[".", "..", "real"])), vec!["real"]);
+    }
 }

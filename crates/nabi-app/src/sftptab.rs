@@ -156,15 +156,13 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
             .desired_width(f32::INFINITY),
     );
     if sftp.batch_mode {
-        // 적용 전 미리보기: 바뀔 항목 수.
-        let n = sftp
-            .entries
-            .iter()
-            .filter(|e| {
-                crate::sftpentries::batch_new_name(&e.name, &sftp.batch_find, &sftp.batch_replace, 1)
-                    .is_some()
-            })
-            .count();
+        // 적용 전 미리보기 — **실행과 같은 함수로 센다.** 따로 세면 "3개"라고 보여 주고
+        // 스무 개를 바꾸게 된다. 이름이 겹쳐 통째로 거절될 계획이면 개수가 0 이 되고,
+        // 그 이유를 옆에 적어 준다(누를 수 없는 이유를 모르면 고장으로 보인다).
+        let targets = crate::sftpentries::batch_targets(&sftp.entries, &sftp.multi);
+        let plan =
+            crate::renamerule::plan_batch(&targets, &sftp.batch_find, &sftp.batch_replace, lang);
+        let n = plan.as_ref().map(Vec::len).unwrap_or(0);
         ui.horizontal(|ui| {
             ui.text_edit_singleline(&mut sftp.batch_find);
             ui.label("\u{2192}");
@@ -174,6 +172,14 @@ pub(crate) fn render_sftp_tab(ui: &mut egui::Ui, sftp: &mut SftpPanel, lang: Lan
                 a.batch_apply = true;
             }
             ui.weak(format!("({n})"));
+            // 고른 것이 있으면 그것만 손댄다는 사실을 여기서 보여 준다 — 누르고 나서
+            // 알면 늦다(이름 바꾸기는 되돌리기가 없다).
+            if !sftp.multi.is_empty() {
+                ui.weak(format!("\u{2611} {}", sftp.multi.len()));
+            }
+            if let Err(e) = &plan {
+                ui.colored_label(crate::theme_ui::ERR, e);
+            }
         });
     }
     ui.separator();

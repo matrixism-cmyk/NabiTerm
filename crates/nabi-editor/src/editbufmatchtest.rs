@@ -141,7 +141,7 @@ mod edit_tests {
         let before = "cat dog cat";
         let mut b = buf(before);
         b.set_cursor(0);
-        b.select_all_matches();
+        let _ = b.select_all_matches();
         b.insert_multi("X");
         assert_ne!(b.rope.to_string(), before);
         b.undo();
@@ -153,7 +153,7 @@ mod edit_tests {
     fn deleting_removes_every_selected_occurrence() {
         let mut b = buf("a1 a2 a3");
         b.sel = crate::editsel::Selection::single(0, 1); // "a"
-        b.select_all_matches();
+        let _ = b.select_all_matches();
         b.delete_multi(true);
         assert_eq!(b.rope.to_string(), "1 2 3");
     }
@@ -164,7 +164,7 @@ mod edit_tests {
     fn replacing_with_a_longer_word_keeps_later_positions_right() {
         let mut b = buf("x y x y x");
         b.set_cursor(0);
-        b.select_all_matches();
+        let _ = b.select_all_matches();
         b.insert_multi("LONG");
         assert_eq!(b.rope.to_string(), "LONG y LONG y LONG");
     }
@@ -184,7 +184,7 @@ mod edit_tests {
     fn collapsing_leaves_a_single_caret() {
         let mut b = buf("z z z");
         b.set_cursor(0);
-        b.select_all_matches();
+        let _ = b.select_all_matches();
         b.sel.collapse_to_primary();
         assert_eq!(b.sel.len(), 1);
         b.insert_multi("Q");

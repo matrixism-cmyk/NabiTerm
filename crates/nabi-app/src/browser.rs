@@ -174,6 +174,11 @@ fn render_inner(
             // 드라이브 루트에서 위로 가면 부모가 없으니 "내 컴퓨터"로.
             a.nav = Some(path.parent().map(|p| p.to_path_buf()).unwrap_or_default());
         }
+        // 새로고침은 원격 도구모음에는 있고 여기에는 없었다 — 같은 자리(위로 다음)에 둔다.
+        // 글리프도 원격과 같은 것을 쓴다(2026-09-01 쌍둥이 비교).
+        if ui.button("\u{27f3}").on_hover_text(nabi_i18n::tr(lang, "sftp.refresh")).clicked() {
+            a.refresh = true;
+        }
         // 편집 가능한 경로 주소창(SFTP와 일관 — 입력/붙여넣기 후 Enter로 이동). 비편집 시 현재 경로 표시.
         let r = ui.add(egui::TextEdit::singleline(&mut b.addr).desired_width(180.0).hint_text(nabi_i18n::tr(lang, "sftp.gotopath")));
         // Enter를 누른 프레임엔 포커스를 잃으므로 확정 여부를 **먼저** 본다(sftptoolbar와 같은 이유).

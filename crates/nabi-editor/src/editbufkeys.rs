@@ -70,7 +70,7 @@ fn key_press(eb: &mut EditBuf, key: Key, m: egui::Modifiers, page: i64, readonly
                 let _ = eb.add_next_match();
             }
             Key::L if m.shift => {
-                eb.select_all_matches();
+                let _ = eb.select_all_matches(); // 단축키는 반복되므로 조용히(editbufmenu 참고).
             }
             // Ctrl+Alt+↑/↓ — 같은 열의 위아래로 커서를 늘린다(VS Code·Sublime과 같은 조합).
             Key::ArrowUp if m.alt => {

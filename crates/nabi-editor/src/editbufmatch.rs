@@ -82,6 +82,7 @@ impl EditBuf {
     /// **모든 일치 선택** — 문서 전체에서 같은 것을 한 번에 잡는다.
     ///
     /// 캐럿뿐이면 낱말을 먼저 정한다. 잡은 개수를 돌려준다(0이면 아무 일도 없었다).
+    #[must_use = "0 이면 아무 일도 없었다 — 사용자에게 말해 줘야 한다"]
     pub fn select_all_matches(&mut self) -> usize {
         let p = self.sel.primary();
         let base = match p.is_caret() {
