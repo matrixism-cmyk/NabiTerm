@@ -110,6 +110,17 @@ pub(crate) enum PaletteAction {
     HandoffLast, CopyLastMd,
     /// SFTP 전송 히스토리 창(S6-60).
     XferHistory,
+    /// 메뉴에만 있고 팔레트에 없던 전역 동작들 — 전부 [`crate::palconv`] 로 메뉴 구현을
+    /// 그대로 쓴다(같은 일을 두 벌로 두면 한쪽만 낡는다).
+    ///
+    /// 팔레트는 손을 키보드에 둔 채 쓰는 길이라, **어디서나 되는 동작**은 여기 있어야 한다.
+    /// 창을 나누거나 전체화면으로 가는 일은 특히 그렇다.
+    Fullscreen,
+    TileTabs,
+    MergeTabs,
+    ToggleQcBar,
+    ToggleAiCmdBar,
+    About,
 }
 
 impl NabiApp {

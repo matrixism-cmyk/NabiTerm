@@ -211,7 +211,10 @@ mod tests {
 ///
 /// 터미널 화면이므로 CRLF로 끊는다. 원문은 **지우지 않고** 맨 아래에 남긴다 — 남에게
 /// 물어볼 때 필요한 것은 우리가 번역한 문장이 아니라 그 원문이다.
-pub fn render(raw: &str, auth: AuthKind) -> String {
+/// `keys` 는 `~/.ssh` 에서 찾은 후보들([`crate::authorder`]). **인증 실패일 때만** 쓴다 —
+/// 이름을 못 찾은 것과 키를 못 쓴 것은 다른 문제라, 다른 실패에 키 목록을 붙이면 엉뚱한
+/// 곳을 파게 만든다.
+pub fn render(raw: &str, auth: AuthKind, keys: &[crate::authorder::Candidate]) -> String {
     let d = diagnose(raw, auth);
     let t = |k: &str| nabi_i18n::trc(k).to_string();
     let mut out = String::new();
@@ -220,6 +223,17 @@ pub fn render(raw: &str, auth: AuthKind) -> String {
     out.push_str(&format!("  {}:\r\n", t("ssh.diag.try")));
     for h in &d.hints {
         out.push_str(&format!("   - {}\r\n", t(h)));
+    }
+    if d.cause == Cause::AuthFailed && !keys.is_empty() {
+        out.push_str(&format!("  {}:\r\n", t("ssh.diag.keys")));
+        for (i, c) in keys.iter().enumerate() {
+            let tag = match c.source {
+                crate::authorder::Source::Chosen => t("ssh.diag.keys.used"),
+                crate::authorder::Source::Default => t("ssh.diag.keys.untried"),
+            };
+            let nopub = if c.has_pub { String::new() } else { format!(" \u{00b7} {}", t("ssh.diag.keys.nopub")) };
+            out.push_str(&format!("   {}. {} ({tag}{nopub})\r\n", i + 1, c.name));
+        }
     }
     out.push_str(&format!("  {}: {raw}\r\n", t("ssh.diag.raw")));
     out
@@ -240,14 +254,14 @@ mod render_tests {
     #[test]
     fn the_original_message_is_always_kept() {
         let raw = "IO error: Connection refused (os error 10061)";
-        let out = render(raw, AuthKind::Agent);
+        let out = render(raw, AuthKind::Agent, &[]);
         assert!(out.contains(raw), "{out}");
     }
 
     /// 터미널에 찍히므로 줄바꿈은 CRLF여야 한다 — LF만 쓰면 계단처럼 밀린다.
     #[test]
     fn lines_end_with_crlf_for_the_terminal() {
-        let out = render("refused", AuthKind::Agent);
+        let out = render("refused", AuthKind::Agent, &[]);
         assert!(out.contains("\r\n"));
         assert!(!out.replace("\r\n", "").contains('\n'), "맨 LF가 섞였다: {out:?}");
     }
@@ -255,8 +269,32 @@ mod render_tests {
     /// 실마리가 한 줄도 안 나오면 진단이 아니라 그냥 오류 메시지다.
     #[test]
     fn at_least_one_hint_is_shown() {
-        let out = render("Not authenticated", AuthKind::Password);
+        let out = render("Not authenticated", AuthKind::Password, &[]);
         assert!(out.matches(" - ").count() >= 2, "{out}");
+    }
+
+    fn cand(name: &str, source: crate::authorder::Source, has_pub: bool) -> crate::authorder::Candidate {
+        crate::authorder::Candidate { name: name.to_string(), source, has_pub }
+    }
+
+    /// **목록을 만들어 놓고 안 보여 주면 아무 일도 안 한 것이다.** 화면 글에 실제로 실린다.
+    #[test]
+    fn the_key_list_actually_reaches_the_screen() {
+        use crate::authorder::Source;
+        let keys = [cand("mykey", Source::Chosen, true), cand("id_rsa", Source::Default, false)];
+        let out = render("Not authenticated", AuthKind::KeyFile, &keys);
+        assert!(out.contains("mykey"), "쓴 키가 안 보인다: {out}");
+        assert!(out.contains("id_rsa"), "다른 키가 안 보인다: {out}");
+        assert!(out.contains("1.") && out.contains("2."), "순서 번호가 없다: {out}");
+    }
+
+    /// **인증 실패가 아니면 키 목록을 붙이지 않는다.** 이름을 못 찾은 사람에게 키를
+    /// 들이밀면 엉뚱한 곳을 파게 된다.
+    #[test]
+    fn other_failures_do_not_get_a_key_list() {
+        let keys = [cand("id_rsa", crate::authorder::Source::Default, true)];
+        let out = render("No such host is known.", AuthKind::KeyFile, &keys);
+        assert!(!out.contains("id_rsa"), "DNS 실패에 키 목록이 붙었다: {out}");
     }
 }
 

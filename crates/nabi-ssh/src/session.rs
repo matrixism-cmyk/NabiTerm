@@ -49,6 +49,13 @@ pub fn connect(
     // 실패 진단에 쓸 인증 **갈래만** 미리 뽑는다. params는 곧 run으로 넘어가고, 비밀번호
     // 사본을 실패 경로까지 들고 갈 이유는 없다.
     let auth_kind = crate::diagnose::AuthKind::from(&params.auth);
+    // 실패했을 때 "쓸 수 있었던 키"를 함께 보여 준다(OpenSSH 10.5 의 `ssh -Z` 와 같은 질문).
+    // 고른 키 경로도 params 가 넘어가기 전에 여기서 떼어 둔다 — 비밀번호와 달리 경로는
+    // 비밀이 아니고, 화면에 적어야 사용자가 무엇이 쓰였는지 안다.
+    let chosen = match &params.auth {
+        nabi_proto::SshAuth::KeyFile { path, .. } => Some(path.clone()),
+        _ => None,
+    };
     rt.spawn(async move {
         let res = run(pane, params, size, out.clone(), in_rx, known_hosts, verifier, stats).await;
         crate::kexinfo::clear(pane); // 배지 잔상 방지.
@@ -58,7 +65,12 @@ pub fn connect(
         if let Some(e) = &err {
             // 원문 한 줄만 던지면 대부분의 사용자에게 아무 도움이 안 된다 — 갈래를 짚고
             // 해 볼 것을 함께 준다(diagnose.rs). 원문은 그 아래에 그대로 남는다.
-            let _ = out.send((pane, Bytes::from(crate::diagnose::render(e, auth_kind))));
+            // 폴더는 실패한 뒤에 읽는다 — 붙는 흔한 경우에 디스크를 건드리지 않는다.
+            let keys = crate::authorder::order(
+                chosen.as_deref(),
+                &crate::authorder::scan(&crate::authorder::default_dir()),
+            );
+            let _ = out.send((pane, Bytes::from(crate::diagnose::render(e, auth_kind, &keys))));
         }
         on_close(err);
     });

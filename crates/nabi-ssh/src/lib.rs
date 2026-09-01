@@ -13,6 +13,7 @@ pub mod keychange;
 pub mod knownhosts;
 pub mod agent;
 pub mod agentfwd;
+pub mod authorder;
 pub mod diagnose;
 pub mod envvars;
 #[cfg(test)]

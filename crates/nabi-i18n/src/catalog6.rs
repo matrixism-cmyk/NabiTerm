@@ -72,6 +72,10 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ),
     ("ssh.diag.title", "Could not connect", "연결하지 못했습니다", "接続できませんでした"),
     ("ssh.diag.try", "Things to try", "해 볼 것", "試すこと"),
+    ("ssh.diag.keys", "Keys in ~/.ssh", "~/.ssh 에 있는 키", "~/.ssh にある鍵"),
+    ("ssh.diag.keys.used", "used", "이번에 쓴 키", "今回使用"),
+    ("ssh.diag.keys.untried", "not tried \u{2014} switch in connection settings", "안 씀 \u{2014} 연결 설정에서 바꿔 볼 것", "未使用 \u{2014} 接続設定で変更可"),
+    ("ssh.diag.keys.nopub", "no .pub beside it", ".pub 이 없음", ".pub がない"),
     ("ssh.diag.raw", "Original message", "원문 메시지", "元のメッセージ"),
     (
         "ssh.diag.dns",
