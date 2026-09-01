@@ -30,9 +30,10 @@ pub(crate) fn scan(model: &nabi_vt::TermModel, gen: u64) -> AiScreen {
         mode: detect_mode(&text),
         model: detect_model(&text),
         effort: detect_effort(&text),
-        // 제목(OSC 0/2)이 1순위, 없으면 화면 문구로 판정한다 — CLI가 제목을 바꾸지 않는
-        // 환경(일부 원격 셸·TERM 설정)에서도 SSH pane에서 바가 떠야 한다.
-        title_kind: kind_from_title(model.title()).or_else(|| kind_from_screen(&text)),
+        // **화면 문구가 먼저**, 없으면 제목으로 판정한다(2026-09-01 순서 교정).
+        // 화면 문구는 `"openai codex"`·`"claude code v"` 처럼 그 CLI 밖에서는 안 나오는
+        // 말이라 확실하고, 제목은 파일 이름이 섞이기 쉬워 짐작에 가깝다. 확실한 것부터 본다.
+        title_kind: kind_from_screen(&text).or_else(|| kind_from_title(model.title())),
     }
 }
 
@@ -57,9 +58,23 @@ pub(crate) fn kind_from_screen(screen: &str) -> Option<&'static str> {
 
 /// 창 제목에서 AI CLI 종류를 판정한다(claude는 제목을 "Claude Code"로 바꾼다).
 /// 제목은 OSC 0/2라 SSH를 그대로 통과하므로, 원격 pane 판정의 핵심 단서다.
+///
+/// **낱말 하나가 통째로 그 이름일 때만** 인정한다. 예전에는 어디에 있든 글자만 맞으면
+/// 인정해서 `vim aider.py` 나 `codex.md - vim` 같은 제목에 **엉뚱한 CLI 의 명령 바가 떴다**
+/// (2026-09-01 재현). 파일 이름은 제목에 들어가기 마련이라 흔한 일이다.
+///
+/// 첫머리만 보는 것으로는 부족하다 — `~/proj — codex` 처럼 이름을 뒤에 붙이는 제목이
+/// 흔하기 때문이다. 그래서 자리를 따지지 않고 **토막이 정확히 그 이름인지**만 본다.
+/// `aider.py` 는 토막이 통째로 `aider` 가 아니므로 걸리지 않는다.
+///
+/// 엉뚱한 CLI 의 명령이 뜨는 것은 불편이 아니라 **눌렀을 때 사고**다(셸에 그대로 찍힌다).
+/// 그래서 애매하면 안 뜨는 쪽을 고른다. 이 판정은 셋째 폴백이기도 하다
+/// (실행 명령 → 화면 문구 → 제목).
 pub(crate) fn kind_from_title(title: &str) -> Option<&'static str> {
     let t = title.to_ascii_lowercase();
-    ["claude", "codex", "agy", "aider", "gemini"].into_iter().find(|k| t.contains(k))
+    // 제목에는 경로·구분자가 섞인다 — 공백 말고도 흔한 구분자에서 끊는다.
+    let words: Vec<&str> = t.split(|c: char| c.is_whitespace() || "—-–|:()[]".contains(c)).collect();
+    ["claude", "codex", "agy", "aider", "gemini"].into_iter().find(|k| words.contains(k))
 }
 
 /// 감지된 모드의 i18n 키. 못 찾으면 `aimode.unknown`(버튼은 여전히 순환 가능).
@@ -90,21 +105,50 @@ pub(crate) fn detect_mode(screen: &str) -> &'static str {
 /// `"Using Fable 5 (from …)"`, `"Kept model as Fable 5"`, `"Set model to Opus 5 (1M context)"`
 /// 같은 줄에서 현재 모델명을 뽑는다(가장 아래=최신).
 pub(crate) fn detect_model(screen: &str) -> Option<String> {
-    const KEYS: [&str; 4] = ["set model to ", "kept model as ", "switched to ", "using "];
+    // 앞의 둘은 **모델 이야기밖에 안 되는** 말이라 어디에 있든 믿는다.
+    // 뒤의 둘은 흔한 말이라(`git` 도 `npm` 도 쓴다) **줄 첫머리**에서만 본다.
+    const EXACT: [&str; 2] = ["set model to ", "kept model as "];
+    const LOOSE: [&str; 2] = ["switched to ", "using "];
     for line in screen.lines().rev() {
         let l = line.trim();
         let low = l.to_ascii_lowercase();
-        for k in KEYS {
-            let Some(at) = low.find(k) else { continue };
-            let rest = l[at + k.len()..].trim();
-            let v = trim_value(rest);
-            // "using the following"처럼 모델명이 아닌 문장은 배제(길이·단어 수 제한).
-            if !v.is_empty() && v.chars().count() <= 24 && v.split_whitespace().count() <= 4 {
-                return Some(v.to_owned());
-            }
+        let found = EXACT
+            .iter()
+            .find_map(|k| low.find(k).map(|at| at + k.len()))
+            .or_else(|| LOOSE.iter().find(|k| low.starts_with(**k)).map(|k| k.len()));
+        let Some(at) = found else { continue };
+        let v = trim_value(l[at..].trim());
+        if looks_like_model(v) {
+            return Some(v.to_owned());
         }
     }
     None
+}
+
+/// 이 글자가 모델 이름처럼 보이는가 — **화면 판독은 짐작이라 문지기가 필요하다.**
+///
+/// 2026-09-01에 재현해 보니 예전 규칙은 이런 것들을 모델로 읽었다:
+/// `"Using cached credentials"` → `cached credentials`,
+/// `"using node v22.3.0"` → `node v22.3.0`,
+/// `"Switched to branch 'main'"` → `branch 'main'`.
+/// 그 글자가 그대로 명령 바에 모델 이름으로 적혔다(사용자 보고의 한 갈래).
+///
+/// 그래서 넷을 건다. 하나하나가 위의 오탐 하나씩을 막는다.
+///
+/// 1. **길이·낱말 수** — 문장이 아니라 이름이어야 한다.
+/// 2. **숫자가 있어야 한다** — 모델 이름에는 거의 언제나 판 번호가 붙는다
+///    (`Opus 5`·`Haiku 4.5`·`gpt-5-codex`). `cached credentials` 가 여기서 걸린다.
+/// 3. **따옴표·빗금이 없어야 한다** — `branch 'main'` 이나 경로가 걸린다.
+/// 4. **대문자로 시작하거나 붙임표를 품어야 한다** — 제품 이름은 대문자로 쓰고
+///    모델 아이디는 붙임표를 쓴다. 소문자로 시작하는 `node v22.3.0` 이 여기서 걸린다.
+fn looks_like_model(v: &str) -> bool {
+    let n = v.chars().count();
+    let shaped = v.starts_with(|c: char| c.is_ascii_uppercase()) || v.contains('-');
+    (1..=24).contains(&n)
+        && v.split_whitespace().count() <= 4
+        && v.chars().any(|c| c.is_ascii_digit())
+        && !v.contains(['\'', '"', '/', '\\'])
+        && shaped
 }
 
 /// `"Set effort level to high (saved as …)"` 같은 줄에서 노력 수준을 뽑는다.
@@ -199,5 +243,74 @@ mod tests {
         assert_eq!(kind_from_title("codex \u{2014} ~/proj"), Some("codex"));
         assert_eq!(kind_from_title("ssh nabi@server"), None);
         assert_eq!(kind_from_title(""), None);
+    }
+
+    /// **모델이 아닌 줄을 모델로 읽으면 안 된다.**
+    ///
+    /// 아래는 전부 2026-09-01에 실제로 통과하던 것들이다 — 그 글자가 그대로 명령 바에
+    /// 모델 이름으로 적혔다. 흔한 도구가 찍는 줄이라 어느 화면에나 있다.
+    #[test]
+    fn ordinary_lines_are_not_model_names() {
+        for s in [
+            "Using cached credentials",
+            "using node v22.3.0",
+            "Switched to branch 'main'",
+            "Using default profile",
+            "npm warn using --force",
+            "Using the following settings",
+            "using /usr/bin/env",
+        ] {
+            assert_eq!(detect_model(s), None, "{s:?} 를 모델로 읽었다");
+        }
+    }
+
+    /// 진짜 모델 이름은 계속 읽어야 한다 — 문지기가 세면 기능이 죽는다.
+    #[test]
+    fn real_model_names_still_get_through() {
+        for (line, want) in [
+            ("Using Fable 5 (from .claude/settings.json)", "Fable 5"),
+            ("  Kept model as Haiku 4.5", "Haiku 4.5"),
+            ("Set model to Opus 5 (1M context)", "Opus 5"),
+            ("using gpt-5-codex", "gpt-5-codex"),
+            ("Switched to Gemini 3 Pro", "Gemini 3 Pro"),
+        ] {
+            assert_eq!(detect_model(line).as_deref(), Some(want), "{line:?}");
+        }
+    }
+
+    /// 흔한 말(`using`·`switched to`)은 **줄 첫머리**에서만 본다 — 문장 한가운데의
+    /// 그 말까지 믿으면 로그 한 줄이 모델 이름을 바꿔 버린다.
+    #[test]
+    fn loose_words_only_count_at_the_start_of_a_line() {
+        assert_eq!(detect_model("build finished using Opus 5"), None);
+        // 반면 확실한 말은 어디에 있든 믿는다(들여쓰기·접두가 흔하다).
+        assert_eq!(detect_model("[info] Set model to Opus 5").as_deref(), Some("Opus 5"));
+    }
+
+    /// **파일 이름이 제목에 들어갔다고 그 CLI 의 명령 바가 뜨면 안 된다.**
+    ///
+    /// 눌렀을 때 엉뚱한 슬래시 명령이 셸에 찍힌다 — 불편이 아니라 사고다.
+    #[test]
+    fn a_filename_in_the_title_is_not_a_running_cli() {
+        for t in ["vim aider.py", "codex.md - vim", "pagy", "nano claude.json", "agyptian"] {
+            assert_eq!(kind_from_title(t), None, "{t:?} 를 실행 중인 CLI 로 봤다");
+        }
+    }
+
+    /// 진짜 CLI 제목은 그대로 알아본다.
+    #[test]
+    fn real_cli_titles_are_recognised() {
+        assert_eq!(kind_from_title("Claude Code"), Some("claude"));
+        assert_eq!(kind_from_title("codex"), Some("codex"));
+        assert_eq!(kind_from_title("  agy  "), Some("agy"));
+        assert_eq!(kind_from_title("gemini cli"), Some("gemini"));
+    }
+
+    /// 이름을 **뒤에** 붙이는 제목도 알아본다 — 셸 프롬프트가 흔히 그렇게 쓴다.
+    #[test]
+    fn the_name_can_sit_anywhere_as_a_whole_word() {
+        assert_eq!(kind_from_title("~/proj \u{2014} codex"), Some("codex"));
+        assert_eq!(kind_from_title("kim@srv: ~/work (claude)"), Some("claude"));
+        assert_eq!(kind_from_title("agy | main"), Some("agy"));
     }
 }
