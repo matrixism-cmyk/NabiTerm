@@ -289,6 +289,8 @@ mod tests {
             size: 0,
             mode: 0o755,
             mtime: 0,
+            uid: None,
+            gid: None,
         });
         assert!(d.is_dir && d.name == "docs" && d.mode == 0o755);
         let f = to_entry(FileEntry {
@@ -297,10 +299,15 @@ mod tests {
             size: 7,
             mode: 0o644,
             mtime: 1700,
+            // **0 은 모름이 아니라 root 다.** 그대로 건너와야 화면에 root 로 나온다.
+            uid: Some(0),
+            gid: Some(0),
         });
         assert!(!f.is_dir && f.size == 7 && f.mode == 0o644 && f.mtime == 1700);
+        assert_eq!((f.uid, f.gid), (Some(0), Some(0)), "root(0) 를 모름으로 뭉개면 안 된다");
         assert!(!f.is_link); // 일반 파일은 링크 아님.
-        let l = to_entry(FileEntry { name: "ln".into(), kind: FileKind::Symlink, size: 0, mode: 0o777, mtime: 0 });
+        let l = to_entry(FileEntry { name: "ln".into(), kind: FileKind::Symlink, size: 0, mode: 0o777, mtime: 0, uid: None, gid: None });
         assert!(l.is_link && !l.is_dir); // 심볼릭 링크 표시.
+        assert_eq!(l.uid, None, "모르는 것은 모름으로 남아야 한다");
     }
 }

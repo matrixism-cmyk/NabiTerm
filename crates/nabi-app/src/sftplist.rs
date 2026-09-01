@@ -95,6 +95,7 @@ pub(crate) fn list_zone(
         Some(EClick::DirSize(n)) => a.dirsize = Some(n),
         Some(EClick::OpenTermHere(n)) => a.open_term = Some(n),
         Some(EClick::Edit(n)) => a.edit = Some(n),
+        Some(EClick::EditHex(n)) => a.edit_hex = Some(n),
         Some(EClick::Preview(n)) => a.preview = Some(n),
         Some(EClick::Chmod(n, m)) => a.chmod = Some((n, m)),
         Some(EClick::ChmodRecursive(n, m)) => a.chmod_rec = Some((n, m)),

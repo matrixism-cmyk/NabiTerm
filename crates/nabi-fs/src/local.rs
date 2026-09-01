@@ -28,6 +28,9 @@ impl RemoteFs for LocalFs {
                 kind,
                 size: meta.len(),
                 mode: 0, // 로컬(Windows)은 POSIX 권한 없음.
+                // 윈도우에는 uid/gid 라는 개념이 없다(SID 는 숫자 하나가 아니다).
+                uid: None,
+                gid: None,
                 mtime: meta
                     .modified()
                     .ok()

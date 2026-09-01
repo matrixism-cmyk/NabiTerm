@@ -184,6 +184,9 @@ impl RemoteFs for SftpFs {
                 size: a.len(),
                 mode: a.permissions.unwrap_or(0),
                 mtime: a.mtime.unwrap_or(0) as u64,
+                // 목록 응답에 이미 들어 있다 — 소유자를 보려고 따로 물어보지 않는다.
+                uid: a.uid,
+                gid: a.gid,
             })
             .collect();
         self.resolve_links(path, &mut out).await;

@@ -33,7 +33,7 @@ pub use keymap::key_label;
 pub use mouse::{mouse_report, MouseBtn};
 pub use painter::{cell_size, paint};
 pub use paste::sanitize_paste;
-pub use fileref::parse_file_ref;
+pub use fileref::{parse_file_ref, strip_diff_prefix};
 pub use screenurls::{screen_urls, with_screen_urls, ScreenUrl};
 pub use title::{clean_title, ellipsize_middle};
 pub use urls::{row_urls, UrlSpan};

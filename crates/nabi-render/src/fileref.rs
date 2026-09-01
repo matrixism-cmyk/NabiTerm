@@ -83,6 +83,33 @@ fn paren_end(chars: &[char], p: usize) -> usize {
     }
 }
 
+/// **git diff 가 붙인 접두를 뗀다** — `a/src/main.rs` → `src/main.rs`. 접두가 없으면 `None`.
+///
+/// ## 왜 필요한가
+///
+/// diff 를 읽다가 `b/src/main.rs:42` 를 Ctrl+클릭하면, 그런 경로는 디스크에 없어서 아무
+/// 일도 일어나지 않는다. 그런데 AI 와 함께 일하는 화면에는 diff 가 가장 많이 흐른다 —
+/// 열고 싶은 자리가 하필 못 여는 모양으로 적혀 있는 셈이다(VS Code 도 2026-08 에 같은
+/// 자리를 손봤다 — `i/`·`w/` 를 알아보게 했다).
+///
+/// ## 어떤 글자를 접두로 보는가
+///
+/// 기본은 `a/`(원본)·`b/`(수정본)이고, `diff.mnemonicPrefix` 를 켜면 뜻이 담긴 글자가
+/// 온다 — `i/`(index) `w/`(worktree) `c/`(commit) `o/`(object).
+///
+/// **역빗금은 접두로 보지 않는다.** git 은 언제나 빗금을 쓰고, 윈도우의 상대경로
+/// `a\file.rs` 를 접두로 오해하면 멀쩡한 경로를 망친다.
+///
+/// 이 함수는 "떼면 이렇게 된다"만 말한다. 실제로 뗄지는 **원래 경로로 못 찾았을 때만**
+/// 부르는 쪽이 정한다 — 진짜로 `a` 라는 폴더가 있는 사람을 방해하지 않으려는 것이다.
+pub fn strip_diff_prefix(path: &str) -> Option<&str> {
+    let b = path.as_bytes();
+    if b.len() < 3 || b[1] != b'/' || !matches!(b[0], b'a' | b'b' | b'i' | b'w' | b'c' | b'o') {
+        return None;
+    }
+    Some(&path[2..])
+}
+
 /// 파일 참조 문자열을 (경로, 줄, 열)로 분해한다 — 오른쪽 숫자 세그먼트를 최대 2개(줄·열) 떼어낸다.
 /// Windows 드라이브 콜론(`C:\...`)은 경로에 남는다. 줄이 없으면 (경로, None, None).
 pub fn parse_file_ref(s: &str) -> (String, Option<u32>, Option<u32>) {
@@ -187,5 +214,45 @@ mod tests {
         assert_eq!(parse_file_ref("a.c(7)"), ("a.c".into(), Some(7), None));
         assert_eq!(end("a.c(x)"), None); // 괄호 안이 숫자가 아니면 제외.
         assert_eq!(end("a.c(7"), None); // 닫는 괄호 없으면 제외.
+    }
+}
+
+#[cfg(test)]
+mod difftests {
+    use super::strip_diff_prefix;
+
+    /// git 이 실제로 내보내는 접두들.
+    #[test]
+    fn the_prefixes_git_actually_emits_are_stripped() {
+        assert_eq!(strip_diff_prefix("a/src/main.rs"), Some("src/main.rs"));
+        assert_eq!(strip_diff_prefix("b/src/main.rs"), Some("src/main.rs"));
+        // diff.mnemonicPrefix — index·worktree·commit·object.
+        for p in ["i/x.rs", "w/x.rs", "c/x.rs", "o/x.rs"] {
+            assert_eq!(strip_diff_prefix(p), Some("x.rs"), "{p}");
+        }
+    }
+
+    /// 접두가 아닌 것을 떼면 멀쩡한 경로가 망가진다.
+    #[test]
+    fn ordinary_paths_are_left_alone() {
+        assert_eq!(strip_diff_prefix("src/main.rs"), None, "두 글자 폴더는 접두가 아니다");
+        assert_eq!(strip_diff_prefix("ab/x.rs"), None);
+        assert_eq!(strip_diff_prefix("z/x.rs"), None, "쓰지 않는 글자");
+        assert_eq!(strip_diff_prefix("/etc/passwd"), None);
+        assert_eq!(strip_diff_prefix(""), None);
+        assert_eq!(strip_diff_prefix("a/"), None, "떼고 나면 아무것도 안 남는다");
+    }
+
+    /// **역빗금은 접두로 보지 않는다** — 윈도우 상대경로 `a\file.rs` 를 망치면 안 된다.
+    #[test]
+    fn a_windows_relative_path_is_not_a_diff_prefix() {
+        assert_eq!(strip_diff_prefix(r"a\file.rs"), None);
+        assert_eq!(strip_diff_prefix(r"C:\a\b.rs"), None);
+    }
+
+    /// 접두는 **한 겹만** 뗀다. `a/b/x.rs` 의 `b/` 는 진짜 폴더일 수 있다.
+    #[test]
+    fn only_one_layer_comes_off() {
+        assert_eq!(strip_diff_prefix("a/b/x.rs"), Some("b/x.rs"));
     }
 }

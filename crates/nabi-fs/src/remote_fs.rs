@@ -26,6 +26,14 @@ pub struct FileEntry {
     pub mode: u32,
     /// 수정 시각(unix 초). 0 = 알 수 없음.
     pub mtime: u64,
+    /// 소유자·그룹 번호. **`None` 이 "모름"이다** — 0 을 모름으로 쓰면 안 된다(0 은 root다).
+    ///
+    /// 이름이 아니라 번호인 까닭: SFTP v3 의 `longname`(ls -l 흉내 줄)에는 이름이 들어
+    /// 있지만 **믿을 수 없다.** OpenSSH 자신도 상황에 따라 이름 대신 숫자를 내보내고,
+    /// 줄 모양은 서버 구현마다 다르다(2026-09-01 조사). 구조화된 uid/gid 는 그런 흔들림이
+    /// 없다. 이름으로 바꾸는 일은 `/etc/passwd` 를 읽어야 하므로 따로 한다.
+    pub uid: Option<u32>,
+    pub gid: Option<u32>,
 }
 
 /// 백엔드 무관 비동기 파일시스템. `Box<dyn RemoteFs>`로 쓰이므로 async_trait를 사용한다.

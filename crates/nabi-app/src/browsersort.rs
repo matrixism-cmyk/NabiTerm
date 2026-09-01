@@ -85,7 +85,7 @@ mod tests {
         let ents: Vec<SftpEntry> = raw
             .iter()
             .map(|(n, d, sz, mt)| SftpEntry {
-                name: (*n).into(), is_dir: *d, is_link: false, size: *sz, mode: 0, mtime: *mt,
+                name: (*n).into(), is_dir: *d, is_link: false, size: *sz, mode: 0, mtime: *mt, uid: None, gid: None,
             })
             .collect();
 

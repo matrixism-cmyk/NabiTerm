@@ -36,5 +36,7 @@ pub(crate) fn to_entry(e: nabi_fs::FileEntry) -> SftpEntry {
         size: e.size,
         mode: e.mode,
         mtime: e.mtime,
+        uid: e.uid,
+        gid: e.gid,
     }
 }

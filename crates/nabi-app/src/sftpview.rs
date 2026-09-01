@@ -102,6 +102,12 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
             click = Some(EClick::Edit(e.name.clone()));
             ui.close();
         }
+        // HEX 로 열기는 로컬 탐색기에만 있었다 — 원격 이진 파일을 볼 길이 없었다는 뜻이다.
+        // 라벨은 로컬과 **같은 키**를 쓴다(다른 낱말로 부르면 같은 기능이 두 이름을 갖는다).
+        if !e.is_dir && ui.button(tr(lang, "nabipad.openhex")).clicked() {
+            click = Some(EClick::EditHex(e.name.clone()));
+            ui.close();
+        }
         ui.menu_button(tr(lang, "sftp.perms"), |ui| {
             if let Some(a) = crate::sftpperms::perms_menu(ui, &e.name, e.is_dir, lang) {
                 click = Some(a);

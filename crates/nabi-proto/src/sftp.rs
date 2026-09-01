@@ -18,4 +18,11 @@ pub struct SftpEntry {
     pub mode: u32,
     /// 수정 시각(unix 초, 0=알 수 없음).
     pub mtime: u64,
+    /// 소유자·그룹 번호(`None`=모름). **0 을 모름으로 쓰지 않는다** — 0 은 root다.
+    ///
+    /// 옛 판이 보낸 목록에는 이 자리가 없으므로 `default` 로 받는다.
+    #[serde(default)]
+    pub uid: Option<u32>,
+    #[serde(default)]
+    pub gid: Option<u32>,
 }

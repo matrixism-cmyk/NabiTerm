@@ -65,6 +65,11 @@ impl NabiApp {
         if let Some(name) = a.edit.take() {
             self.edit_remote_dispatch(name); // 내장(기본)/외부 에디터.
         }
+        if let Some(name) = a.edit_hex.take() {
+            // HEX 편집기는 파일이 있어야 하므로(큰 파일을 통째로 안 읽으려고 파일에 기댄다)
+            // 임시로 받아서 연다. 고치면 감시가 그대로 서버에 올려 준다.
+            self.fetch_remote_as(name, crate::editsftp::OpenAs::Hex);
+        }
         if let Some((name, mode)) = a.chmod.take() {
             if let Some(id) = self.sftp.id {
                 // 대상이 다중 선택에 속하면 선택 전체에 같은 권한 적용(FileZilla식).

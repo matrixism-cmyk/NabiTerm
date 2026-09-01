@@ -200,8 +200,12 @@ pub(crate) fn table(
     // 켠 선택 열만. 권한(`mode`)은 목록 응답에 이미 들어 있어 따로 물어보지 않는다 —
     // 열 하나 켜는 데 왕복이 늘지 않는다(WinSCP 는 기본으로 보여 준다).
     let extra = crate::colset::enabled(&crate::colset::REMOTE, cols);
-    for _ in &extra {
-        tb = tb.column(Column::initial(90.0).at_least(70.0));
+    for (key, _) in &extra {
+        // 권한은 아홉 글자라 넓고, 번호는 대개 네댓 자리라 좁다.
+        tb = match *key {
+            "perms" => tb.column(Column::initial(90.0).at_least(70.0)),
+            _ => tb.column(Column::initial(60.0).at_least(40.0)),
+        };
     }
     tb = tb.column(Column::remainder()); // 빈 필러
     if scroll_to {
@@ -261,9 +265,13 @@ pub(crate) fn table(
                     r.col(|ui| {
                         // 서버가 mode 를 안 준 경우(0)는 빈칸으로 둔다 — 모르는 것을
                         // `---------` 로 적으면 "권한이 없다"로 읽힌다.
-                        let t = match (*key, e.mode) {
-                            ("perms", 0) => String::new(),
-                            ("perms", m) => crate::sftpentryfmt::mode_to_rwx(m, e.is_dir, e.is_link),
+                        let t = match *key {
+                            // 서버가 mode 를 안 준 경우(0)는 빈칸으로 둔다 — 모르는 것을
+                            // `---------` 로 적으면 "권한이 없다"로 읽힌다.
+                            "perms" if e.mode == 0 => String::new(),
+                            "perms" => crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link),
+                            "owner" => crate::colset::id_text(e.uid),
+                            "group" => crate::colset::id_text(e.gid),
                             _ => String::new(),
                         };
                         ui.monospace(t);

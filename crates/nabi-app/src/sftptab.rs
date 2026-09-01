@@ -23,6 +23,8 @@ pub(crate) struct SftpAct {
     pub reconnect: bool,
     pub dl_cur: bool,
     pub edit: Option<String>,
+    /// HEX 로 열 원격 파일 이름.
+    pub edit_hex: Option<String>,
     /// 원격 파일 앞부분 미리보기.
     pub preview: Option<String>,
     pub chmod: Option<(String, u32)>,

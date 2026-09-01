@@ -105,6 +105,8 @@ pub(crate) enum EClick {
     /// 이 폴더에서 SSH 터미널 열기(빠른연결 프리필).
     OpenTermHere(String),
     Edit(String),
+    /// HEX(이진) 편집기로 열기 — 임시로 받아 연다.
+    EditHex(String),
     /// 앞부분만 받아 미리보기(내려받지 않는다).
     Preview(String),
     Chmod(String, u32),

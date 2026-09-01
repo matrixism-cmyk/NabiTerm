@@ -31,7 +31,19 @@ pub(crate) const LOCAL: [Col; 3] = [
 ];
 
 /// 원격 SFTP 가 더 보여 줄 수 있는 열(차례 고정).
-pub(crate) const REMOTE: [Col; 1] = [("perms", "browser.col.perms")];
+///
+/// 차례는 `ls -l` 을 따른다 — 권한·소유자·그룹. 서버를 다루는 사람의 눈이 이미 그 순서에
+/// 익어 있어서, 다르게 놓으면 매번 다시 읽게 된다.
+pub(crate) const REMOTE: [Col; 3] = [
+    ("perms", "browser.col.perms"),
+    ("owner", "browser.col.owner"),
+    ("group", "browser.col.group"),
+];
+
+/// 소유자·그룹 번호를 화면 글로. **모르면 빈칸이다** — `0` 은 root 라서 자리채움으로 쓸 수 없다.
+pub(crate) fn id_text(id: Option<u32>) -> String {
+    id.map(|n| n.to_string()).unwrap_or_default()
+}
 
 /// 이 열이 켜져 있나.
 pub(crate) fn on(list: &[String], key: &str) -> bool {
@@ -100,6 +112,14 @@ mod tests {
         for (k, _) in LOCAL {
             assert!(!REMOTE.iter().any(|(r, _)| *r == k), "{k} 가 양쪽에 있다");
         }
+    }
+
+    /// **`0` 은 모름이 아니라 root 다.** 자리채움으로 0 을 쓰면 남의 파일이 전부 root 가 된다.
+    #[test]
+    fn zero_is_root_not_unknown() {
+        assert_eq!(id_text(Some(0)), "0");
+        assert_eq!(id_text(None), "", "모르는 것은 빈칸이다");
+        assert_eq!(id_text(Some(1000)), "1000");
     }
 
     /// 머리글 키는 전부 `browser.col.` 로 시작한다 — i18n 검사기가 짝을 찾는 규칙이다.

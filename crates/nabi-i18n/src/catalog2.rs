@@ -32,6 +32,8 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
     ("browser.col.created", "Created", "만든 날짜", "作成日時"),
     ("browser.col.ext", "Extension", "확장자", "拡張子"),
     ("browser.col.pick", "Columns to show", "보여 줄 열", "表示する列"),
+    ("browser.col.owner", "Owner", "소유자", "所有者"),
+    ("browser.col.group", "Group", "그룹", "グループ"),
     ("browser.col.perms", "Permissions", "권한", "パーミッション"),
     ("browser.type.folder", "Folder", "파일 폴더", "フォルダー"),
     ("browser.empty", "This folder is empty", "빈 폴더입니다", "空のフォルダーです"),

@@ -22,6 +22,20 @@ pub(crate) struct EditWatch {
     pub mtime: u64,
     /// 다운로드 완료 + 편집기 오픈됨.
     pub started: bool,
+    /// 다 받은 뒤 무엇으로 열 것인가.
+    pub open_as: OpenAs,
+}
+
+/// 원격 파일을 임시로 받아 놓고 **무엇으로 열지**.
+///
+/// `bool` 하나로 두지 않는 까닭은, 여는 방법이 셋째로 늘어날 때(그럴 만한 것이 이미 있다 —
+/// 이미지 미리보기·차이 비교) 조건문이 아니라 `match` 가 빠진 자리를 짚어 주기 때문이다.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OpenAs {
+    /// 바깥 프로그램(설정한 편집기, 없으면 OS 기본 앱).
+    External,
+    /// 우리 HEX 편집기. 원격 이진 파일을 볼 길이 로컬에만 있었다(2026-09-01 쌍둥이 비대칭).
+    Hex,
 }
 
 /// 파일 수정 시각(unix 초, 없으면 0).
@@ -50,6 +64,11 @@ impl NabiApp {
 
     /// 원격 파일 편집 시작 — 임시 파일로 다운로드(완료 시 편집기 오픈은 open_edit).
     pub(crate) fn edit_remote(&mut self, name: String) {
+        self.fetch_remote_as(name, OpenAs::External);
+    }
+
+    /// 원격 파일을 임시로 받아 두고, 다 받으면 `how` 대로 연다.
+    pub(crate) fn fetch_remote_as(&mut self, name: String, how: OpenAs) {
         let Some(id) = self.sftp.id else { return };
         let remote = crate::sftppath::join_path(&self.sftp.path, &name);
         let temp = std::env::temp_dir().join(format!("nabi-edit-{name}"));
@@ -70,6 +89,7 @@ impl NabiApp {
             temp,
             mtime: 0,
             started: false,
+            open_as: how,
         });
     }
 
@@ -80,6 +100,15 @@ impl NabiApp {
             .iter_mut()
             .find(|e| !e.started && e.temp.to_string_lossy() == local)
         {
+            // HEX 로 연 파일도 감시 목록에 남긴다 — 고치면 그대로 서버에 올라간다
+            // (바깥 편집기로 연 것과 같은 규칙이라 따로 외울 것이 없다).
+            if e.open_as == OpenAs::Hex {
+                let temp = e.temp.clone();
+                e.started = true;
+                e.mtime = file_mtime(&temp);
+                self.open_local_as_hex(temp);
+                return;
+            }
             // 지정한 편집기가 있으면 그것으로, 없으면 OS 기본 앱으로(기존 동작).
             // WinSCP가 오래 갖고 있는 기능인데 우리는 기본 앱으로만 열 수 있었다.
             let ed = self.config.terminal.external_editor.trim().to_string();

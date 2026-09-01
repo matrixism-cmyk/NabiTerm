@@ -35,19 +35,27 @@ impl NabiApp {
     fn open_file_ref(&mut self, pane: PaneId, url: &str) -> bool {
         let (path, line, col) = nabi_render::parse_file_ref(url);
         let Some(line) = line else { return false };
-        let pb = Path::new(&path);
-        let resolved: PathBuf = if pb.is_absolute() {
-            pb.to_path_buf()
-        } else if let Some(cwd) = self.cwds.get(&pane).map(|c| crate::workspace::strip_uri_slash(c)) {
-            Path::new(&cwd).join(pb)
-        } else {
-            return false; // 상대경로인데 cwd를 모르면 해석 불가.
-        };
-        if !resolved.is_file() {
-            return false;
+        // 적힌 그대로 먼저 찾고, 없으면 **git diff 접두를 뗀 것**으로 한 번 더 찾는다.
+        // diff 를 읽다가 `b/src/main.rs:42` 를 눌렀을 때 아무 일도 안 일어나던 자리다.
+        // 순서가 중요하다 — 진짜로 `a` 라는 폴더를 쓰는 사람이 방해받으면 안 된다.
+        for p in [path.as_str()].into_iter().chain(nabi_render::strip_diff_prefix(&path)) {
+            let Some(resolved) = self.resolve_local(pane, p) else { continue };
+            if resolved.is_file() {
+                self.open_editor_at_line(resolved, Some(line), col);
+                return true;
+            }
         }
-        self.open_editor_at_line(resolved, Some(line), col);
-        true
+        false
+    }
+
+    /// 터미널에 적힌 경로를 이 pane 기준 로컬 경로로. 상대경로인데 cwd 를 모르면 `None`.
+    fn resolve_local(&self, pane: PaneId, path: &str) -> Option<PathBuf> {
+        let pb = Path::new(path);
+        if pb.is_absolute() {
+            return Some(pb.to_path_buf());
+        }
+        let cwd = self.cwds.get(&pane).map(|c| crate::workspace::strip_uri_slash(c))?;
+        Some(Path::new(&cwd).join(pb))
     }
 
     /// 로컬 파일을 열고(이미 열려 있으면 포커스) 지정 줄(1-based)로 스크롤한다. col(1-based) 있으면 그 열에 커서.

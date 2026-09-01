@@ -83,6 +83,11 @@ fn parse_ls_line(line: &str) -> FileEntry {
         size: parts.get(4).and_then(|s| s.parse().ok()).unwrap_or(0),
         mode: parse_perms(parts.first().copied().unwrap_or("")),
         mtime: 0, // ls 날짜 파싱은 형식이 다양해 생략.
+        // FTP 의 `ls -l` 줄에는 소유자·그룹이 **이름으로** 들어 있지만(3·4번째 칸),
+        // 번호가 아니라 이름이라 uid/gid 자리에 넣을 수 없다. 서버마다 칸 수도 다르다.
+        // 모르는 것을 아는 척하지 않는다.
+        uid: None,
+        gid: None,
     }
 }
 
