@@ -248,7 +248,7 @@ fn render_inner(
     let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::NONE, |ui| {
         let acts = crate::browserrows::browser_rows(
             ui, &entries, &path, &filt, remote_map, can_upload, lang, b.sort, b.sort_desc,
-            a.view, b.selected.as_deref(), &b.multi, b.scroll, &mut ren,
+            a.view, b.selected.as_deref(), &b.multi, b.scroll, b.extra_col, &mut ren,
         );
         if acts.nav.is_some() {
             a.nav = acts.nav; // 더블클릭 진입(툴바 nav를 덮지 않음).

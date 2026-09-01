@@ -46,6 +46,27 @@ pub fn editor_context_menu(out: &TextEditOutput, doc: &mut EditorDoc, lang: Lang
             }
             ui.close();
         }
+        // 마크다운 강조 — 선택이 있으면 그 구간, 없으면 **커서 밑 낱말**에 건다.
+        // 다른 변환 명령처럼 문서 전체에 걸면 파일 하나가 통째로 굵어진다.
+        ui.add_enabled_ui(!readonly, |ui| {
+            ui.menu_button(tr(lang, "editor.mdmenu"), |ui| {
+                let Some(m) = crate::editormd::emphasis_menu(ui, lang) else { return };
+                let (a, b) = match range {
+                    Some((a, b)) if b > a => (a, b),
+                    Some((c, _)) => crate::editorextra::word_range_at(&doc.text, c),
+                    None => (0, 0),
+                };
+                if b <= a {
+                    return; // 낱말 위가 아니면 감쌀 것이 없다.
+                }
+                let (ba, bb) = (byte_at(&doc.text, a), byte_at(&doc.text, b));
+                let out = crate::editormd::toggle_wrap(&doc.text[ba..bb], m);
+                let end = a + out.chars().count();
+                doc.text.replace_range(ba..bb, &out);
+                doc.dirty = true;
+                set_range(&ctx, id, a, end); // 바꾼 자리를 선택해 둔다(강조를 이어 걸기 쉽게).
+            });
+        });
         // AI 복사(바이브코딩): 선택/파일 전체를 마크다운 코드블록으로, 또는 현재 위치를 경로:줄로 — 한 서브메뉴로 정리.
         ui.menu_button(tr(lang, "ctx.aicopy"), |ui| {
             let hdr = if doc.path.as_os_str().is_empty() { String::new() } else { format!("`{}`\n", doc.path.display()) }; // 출처 경로 헤더(AI 식별).

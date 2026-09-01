@@ -182,6 +182,7 @@ pub(crate) fn browser_rows(
     selected: Option<&str>,
     multi: &std::collections::HashSet<String>,
     scroll_to_selected: bool,
+    extra: bool,
     ren: &mut crate::renameui::RenameUi,
 ) -> RowActs {
     let mut acts = RowActs::default();
@@ -222,6 +223,10 @@ pub(crate) fn browser_rows(
         .column(Column::initial(72.0).at_least(50.0)) // 크기
         // 수정일은 clip 을 안 건다 — 구분선 더블클릭 자동맞춤이 내용 폭을 재야 한다(#11).
         .column(Column::initial(150.0).at_least(120.0)); // 수정일
+    // 속성 열은 켠 사람에게만 나온다. 글자 넷(RHSA)이 최대라 좁게 잡는다.
+    if extra {
+        tb = tb.column(Column::initial(56.0).at_least(36.0));
+    }
     // 키보드 이동 시 선택 행이 보이도록 스크롤.
     if scroll_to_selected {
         if let Some(idx) = selected.and_then(|s| visible.iter().position(|r| r.name == s)) {
@@ -233,6 +238,11 @@ pub(crate) fn browser_rows(
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.type"), Some(Sort::Type), act(Sort::Type), desc, &mut set_sort));
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.size"), Some(Sort::Size), act(Sort::Size), desc, &mut set_sort));
             h.col(|ui| header_cell(ui, tr(lang, "browser.col.modified"), Some(Sort::Date), act(Sort::Date), desc, &mut set_sort));
+            // 속성으로는 정렬하지 않는다 — 정렬 기준(`Sort`)에 없고, 넣어 봐야 "R" 끼리
+            // 모으는 일이라 쓸 데가 거의 없다. 헤더는 이름표로만 둔다.
+            if extra {
+                h.col(|ui| header_cell(ui, tr(lang, "browser.col.attrs"), None, false, desc, &mut set_sort));
+            }
         })
         .body(|body| {
             // body.rows()는 보이는 행만 그린다. row()를 항목마다 부르면 화면 밖 수천 행까지
@@ -243,13 +253,14 @@ pub(crate) fn browser_rows(
             body.rows(rh, total, |mut r| {
                 let idx = r.index();
                 if let (true, 0) = (up, idx) {
-                    r.col(|ui| {
-                        if crate::browsergrid::up_row(ui) {
-                            acts.nav = parent.clone();
-                        }
-                    });
-                    for _ in 0..3 {
-                        r.col(|_| {});
+                    // **어느 칸을 두 번 눌러도 올라간다.** 예전에는 이름 칸만 반응해서,
+                    // 크기나 날짜 쪽을 눌러 본 사람에게는 고장으로 보였다(2026-09-01 보고).
+                    for c in 0..4 + usize::from(extra) {
+                        r.col(|ui| {
+                            if crate::browsergrid::up_cell(ui, c == 0) {
+                                acts.nav = parent.clone();
+                            }
+                        });
                     }
                     return;
                 }
@@ -269,6 +280,11 @@ pub(crate) fn browser_rows(
                 r.col(|ui| {
                     ui.label(human_datetime(row.mtime));
                 });
+                if extra {
+                    r.col(|ui| {
+                        ui.label(crate::browserattr::attr_flags(row.attrs));
+                    });
+                }
             });
         });
     acts.set_sort = set_sort;

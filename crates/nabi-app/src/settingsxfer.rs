@@ -47,6 +47,11 @@ fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.verifyhash"));
     ui.checkbox(&mut cfg.terminal.sftp_verify_hash, "").on_hover_text(tr(lang, "settings.verifyhashhint"));
     ui.end_row();
+    // 열 하나를 더 보여 준다 — 로컬은 속성(RHSA), 원격은 권한(rwxr-xr-x). 한 스위치로
+    // 둘 다 켜는 이유는 같은 질문이기 때문이다("이 파일에 무엇을 할 수 있나").
+    ui.label(tr(lang, "settings.extracol"));
+    ui.checkbox(&mut cfg.terminal.browser_extra_col, "").on_hover_text(tr(lang, "settings.extracolhint"));
+    ui.end_row();
     // SFTP 파일명 인코딩 — v3 서버가 로컬 인코딩 raw 바이트로 보낼 때(한국 서버 CP949 등).
     ui.label(tr(lang, "settings.sftpcharset"));
     egui::ComboBox::from_id_salt("sftp_name_charset")

@@ -80,6 +80,7 @@ pub mod editorindent;
 pub mod editorlineops;
 pub mod editorlines;
 pub mod editorlist;
+pub mod editormd;
 pub mod editorloc;
 pub mod editormd5;
 pub mod editormenu;

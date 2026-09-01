@@ -79,7 +79,7 @@ mod tests {
         let rows: Vec<Row> = raw
             .iter()
             .map(|(n, d, sz, mt)| Row {
-                name: (*n).into(), is_dir: *d, is_link: false, size: *sz, mtime: *mt,
+                name: (*n).into(), is_dir: *d, is_link: false, size: *sz, mtime: *mt, attrs: 0,
             })
             .collect();
         let ents: Vec<SftpEntry> = raw
@@ -107,8 +107,8 @@ mod tests {
         use crate::browserfs::{sort_rows, Row, Sort};
         // 내림차순이라고 폴더가 아래로 가면 목록을 훑는 방식 자체가 달라진다.
         let mut rows = vec![
-            Row { name: "file".into(), is_dir: false, is_link: false, size: 1, mtime: 1 },
-            Row { name: "dir".into(), is_dir: true, is_link: false, size: 0, mtime: 2 },
+            Row { name: "file".into(), is_dir: false, is_link: false, size: 1, mtime: 1, attrs: 0 },
+            Row { name: "dir".into(), is_dir: true, is_link: false, size: 0, mtime: 2, attrs: 0 },
         ];
         sort_rows(&mut rows, Sort::Name, true);
         assert!(rows[0].is_dir, "내림차순에서도 폴더가 먼저다");

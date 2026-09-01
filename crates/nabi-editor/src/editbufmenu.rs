@@ -51,6 +51,14 @@ pub fn context_menu(
             ui.close();
         }
     });
+    // 마크다운 강조 — 선택이 없으면 커서 밑 낱말에 건다(문서 전체로 번지지 않는다).
+    ui.add_enabled_ui(!readonly, |ui| {
+        ui.menu_button(tr(lang, "editor.mdmenu"), |ui| {
+            if let Some(m) = crate::editormd::emphasis_menu(ui, lang) {
+                eb.toggle_emphasis(m);
+            }
+        });
+    });
     // 다중 커서 — 팔레트·메뉴에도 있어야 단축키를 모르는 사람이 만난다.
     if ui.button(tr(lang, "edit.addnextmatch")).clicked() {
         eb.add_next_match();

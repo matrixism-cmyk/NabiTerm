@@ -62,6 +62,9 @@ pub(crate) struct SftpPanel {
     pub search_results: Vec<String>,
     /// 숨김 파일(.으로 시작) 표시 여부(기본 false=숨김, ls 관례).
     pub show_hidden: bool,
+    /// 권한(rwxr-xr-x) 열을 함께 보여 줄지. 설정(`browser_extra_col`)에서 흘러온다
+    /// (`persist_view_prefs`) — 여기서 바꾸지 말 것. 로컬 탐색기의 속성 열과 같은 스위치다.
+    pub extra_col: bool,
     /// 항목 보기 모드(자세히/목록/아이콘/타일).
     pub view_mode: crate::sftpview::ViewMode,
     /// 단일 클릭으로 선택된 항목(하이라이트·범위 기준점). 폴더 진입 시 해제.

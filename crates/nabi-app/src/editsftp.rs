@@ -104,6 +104,11 @@ impl NabiApp {
 
     /// 정렬/보기/숨김 설정이 바뀌었으면 config에 저장(재시작 후 유지).
     pub(crate) fn persist_view_prefs(&mut self) {
+        // 속성/권한 열은 **설정에서만** 바뀐다(목록에서 토글하는 길이 없다). 그래서 이쪽은
+        // 한 방향으로만 흐른다 — 설정 → 패널. 거울을 시작할 때 한 번만 맞추면 설정을
+        // 고쳐도 다시 켤 때까지 안 바뀐다.
+        self.browser.extra_col = self.config.terminal.browser_extra_col;
+        self.sftp.extra_col = self.config.terminal.browser_extra_col;
         let s = self.browser.sort.to_u8();
         let h = self.browser.show_hidden;
         let v = if self.sftp.open {

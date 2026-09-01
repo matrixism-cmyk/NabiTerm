@@ -9,11 +9,38 @@ use std::path::Path;
 
 /// 전폭 '..'(상위 이동) 행을 그리고 더블클릭됐는지 돌려준다(로컬·SFTP 공용).
 pub(crate) fn up_row(ui: &mut egui::Ui) -> bool {
-    ui.add_sized(
-        [ui.available_width(), 18.0],
-        egui::Label::new("\u{2b06} ..").selectable(false).sense(egui::Sense::click()),
-    )
-    .double_clicked()
+    up_cell(ui, true)
+}
+
+/// 맨 위 ".." 행의 **한 칸**. 두 번 누르면 true(상위 폴더로 간다).
+///
+/// `label` 이면 화살표와 `..` 를 그리고, 아니면 글자 없이 자리만 차지한다. 글자가 없어도
+/// **누르는 넓이는 같다** — 그것이 이 함수가 나뉜 이유다.
+///
+/// ## 왜 손으로 그리는가
+///
+/// 예전에는 `add_sized` 를 썼는데, 그 함수는 위젯을 **가운데에 놓는다**
+/// (`centered_and_justified` 를 강제한다). 그래서 `..` 만 파일 목록 한가운데에 떠 있어
+/// 어색했다 — 아래 줄들은 전부 왼쪽에서 시작하는데 이 줄만 달랐다(2026-09-01 사용자 보고).
+///
+/// 다른 칸들과 같은 자리에서 시작하려면 자리를 직접 잡고 왼쪽에 그리는 수밖에 없다
+/// (이름 칸 `browsercell::name_cell` 도 같은 이유로 그렇게 한다).
+pub(crate) fn up_cell(ui: &mut egui::Ui, label: bool) -> bool {
+    let (rect, resp) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width().max(16.0), ui.available_height().max(16.0)),
+        egui::Sense::click(),
+    );
+    if label {
+        let font = egui::TextStyle::Body.resolve(ui.style());
+        ui.painter().text(
+            rect.left_center() + egui::vec2(4.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            "\u{2b06} ..",
+            font,
+            ui.visuals().text_color(),
+        );
+    }
+    resp.double_clicked()
 }
 
 /// 빈 폴더/검색 결과 없음 안내(로컬·SFTP 공용).

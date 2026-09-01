@@ -123,20 +123,26 @@ fn name_cell(
         }
     }
     // 칸 너비 전체를 클릭 영역으로 — 라벨은 좌측 정렬로 그림.
+    //
+    // 단, **자동맞춤(sizing pass) 때는 자연 너비를 보고한다.** 그러지 않으면 칸 너비를
+    // 그대로 되돌려 주므로, 구분선을 두 번 눌러도 이름 칸이 넓어지지 않는다. 로컬 탐색기
+    // (`browsercell::name_cell`)는 처음부터 그렇게 하고 있었는데 원격만 빠져 있었다
+    // (2026-09-01 사용자가 자동맞춤을 물어보다 드러났다).
+    let label = format!("{} {}", icon(e), e.name);
+    let font = egui::TextStyle::Body.resolve(ui.style());
+    let w = if ui.is_sizing_pass() {
+        ui.painter().layout_no_wrap(label.clone(), font.clone(), color).size().x + 6.0
+    } else {
+        ui.available_width().max(40.0)
+    };
     let (rect, resp) = ui.allocate_exact_size(
-        egui::vec2(ui.available_width().max(40.0), ui.available_height().max(16.0)),
+        egui::vec2(w, ui.available_height().max(16.0)),
         egui::Sense::click_and_drag(),
     );
     if ren.try_edit(ui, rect, &e.name) {
         return None; // 인라인 편집 중 — 라벨/상호작용 생략.
     }
-    ui.painter().text(
-        rect.left_center(),
-        egui::Align2::LEFT_CENTER,
-        format!("{} {}", icon(e), e.name),
-        egui::TextStyle::Body.resolve(ui.style()),
-        color,
-    );
+    ui.painter().text(rect.left_center(), egui::Align2::LEFT_CENTER, label, font, color);
     if resp.dragged() {
         resp.dnd_set_drag_payload(RemoteName {
             name: e.name.clone(),
@@ -169,6 +175,7 @@ pub(crate) fn table(
     multi: &std::collections::HashSet<String>,
     scroll_to: bool,
     sort: (crate::browserfs::Sort, bool),
+    extra: bool,
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     use crate::browserfs::Sort;
@@ -188,8 +195,14 @@ pub(crate) fn table(
         .column(Column::initial(150.0).at_least(80.0).clip(true)) // 이름
         .column(Column::initial(56.0).at_least(40.0)) // 유형
         .column(Column::initial(72.0).at_least(50.0)) // 크기
-        .column(Column::initial(150.0).at_least(120.0)) // 수정일 — 리사이즈/자동맞춤 가능(브라우저와 동일 구조, #11)
-        .column(Column::remainder()); // 빈 필러
+        .column(Column::initial(150.0).at_least(120.0)); // 수정일 — 리사이즈/자동맞춤 가능(브라우저와 동일 구조, #11)
+    // 권한 열은 켠 사람에게만. 서버를 다루는 사람에게는 이것이 크기보다 중요한 정보다
+    // (FileZilla·WinSCP 도 기본으로 보여 준다). `mode` 는 목록 응답에 이미 들어 있어
+    // 따로 물어보지 않는다 — 열 하나 켜는 데 왕복이 늘지 않는다.
+    if extra {
+        tb = tb.column(Column::initial(90.0).at_least(70.0));
+    }
+    tb = tb.column(Column::remainder()); // 빈 필러
     if scroll_to {
         if let Some(idx) = selected.and_then(|s| entries.iter().position(|e| e.name == s)) {
             tb = tb.scroll_to_row(idx, Some(egui::Align::Center));
@@ -200,6 +213,12 @@ pub(crate) fn table(
             h.col(|ui| hdr(ui, tr(lang, "browser.col.type"), Sort::Type, &mut set_sort));
             h.col(|ui| hdr(ui, tr(lang, "browser.col.size"), Sort::Size, &mut set_sort));
             h.col(|ui| hdr(ui, tr(lang, "browser.col.modified"), Sort::Date, &mut set_sort));
+            if extra {
+                // 권한으로 정렬하지 않는다 — `Sort` 에 없고, 정렬해 봐야 쓸 데가 없다.
+                h.col(|ui| {
+                    crate::browsercols::header_cell(ui, tr(lang, "browser.col.perms"), None, false, sort.1, &mut set_sort);
+                });
+            }
         })
         .body(|body| {
             // body.rows()는 보이는 행만 그린다. row()를 항목마다 부르면 화면 밖 수천 행까지
@@ -209,14 +228,14 @@ pub(crate) fn table(
             body.rows(rh, total, |mut r| {
                 let idx = r.index();
                 if up && idx == 0 {
-                    r.col(|ui| {
-                        if crate::browsergrid::up_row(ui) {
-                            click = Some(EClick::Nav(crate::sftppath::parent_dir(cur)));
-                        }
-                    });
-                    r.col(|_| {});
-                    r.col(|_| {});
-                    r.col(|_| {});
+                    // 어느 칸을 두 번 눌러도 올라간다(로컬 탐색기와 같은 규칙).
+                    for c in 0..4 {
+                        r.col(|ui| {
+                            if crate::browsergrid::up_cell(ui, c == 0) {
+                                click = Some(EClick::Nav(crate::sftppath::parent_dir(cur)));
+                            }
+                        });
+                    }
                     return;
                 }
                 let e = entries[idx - usize::from(up)];
@@ -237,6 +256,18 @@ pub(crate) fn table(
                 r.col(|ui| {
                     ui.label(crate::browserfs::human_datetime(e.mtime));
                 });
+                if extra {
+                    r.col(|ui| {
+                        // 서버가 mode 를 안 준 경우(0)는 빈칸으로 둔다 — 모르는 것을
+                        // `---------` 로 적으면 "권한이 없다"로 읽힌다.
+                        let t = if e.mode == 0 {
+                            String::new()
+                        } else {
+                            crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link)
+                        };
+                        ui.monospace(t);
+                    });
+                }
             });
         });
     click.or(set_sort.map(EClick::SetSort))

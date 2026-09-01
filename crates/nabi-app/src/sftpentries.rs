@@ -142,6 +142,7 @@ pub(crate) fn show_entries(
     scroll_to: bool,
     // 현재 정렬 기준·방향 — 표 헤더에 활성 표시(▴/▾)를 그리는 데 쓴다.
     sort: (crate::browserfs::Sort, bool),
+    extra: bool,
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     let now = std::time::UNIX_EPOCH.elapsed().map(|d| d.as_secs()).unwrap_or(0);
@@ -163,7 +164,7 @@ pub(crate) fn show_entries(
     }
     // 자세히(Details)는 탐색기식 컬럼 테이블(자체 스크롤). 그 외 모드는 격자/내용을 스크롤 영역에.
     if matches!(mode, crate::sftpview::ViewMode::Details) {
-        crate::sftptable::table(ui, &visible, cur_path, lang, compare, selected, multi, scroll_to, sort, ren)
+        crate::sftptable::table(ui, &visible, cur_path, lang, compare, selected, multi, scroll_to, sort, extra, ren)
     } else {
         // 스크롤은 **보기 모드가 직접** 만든다. 격자는 보이는 줄만 그리려고 `show_rows` 를
         // 써야 하는데, 여기서 한 겹 더 감싸면 스크롤이 둘이 되어 안쪽이 늘 다 그린다.

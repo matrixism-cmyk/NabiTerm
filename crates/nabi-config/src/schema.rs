@@ -309,6 +309,12 @@ pub struct TerminalCfg {
     /// 로컬 브라우저 보기 모드(0=자세히,1=목록,2=큰,3=작은,4=타일).
     #[serde(default)]
     pub browser_view: u8,
+    /// **열을 하나 더 보여 준다** — 로컬은 속성(RHSA), 원격은 권한(rwxr-xr-x).
+    ///
+    /// 기본은 꺼짐이다. 대부분의 사람에게 이름·유형·크기·날짜면 충분하고, 열이 늘면
+    /// 이름 칸이 그만큼 좁아진다. 필요한 사람(서버를 다루는 쪽)이 켠다.
+    #[serde(default)]
+    pub browser_extra_col: bool,
     /// 양자내성 연결 정책: "auto"(기본) | "warn" | "require".
     ///
     /// 기본이 "auto" 인 까닭은, 막는 것을 기본으로 두면 어제까지 되던 접속이 오늘
@@ -498,6 +504,7 @@ impl Default for TerminalCfg {
             ssh_keepalive_secs: default_keepalive(),
             browser_sort_desc: false,
             browser_view: 0,
+            browser_extra_col: false,
             control_mode: "ask".into(),
             control_allow_osc: false,
             protect_scrollback: true,

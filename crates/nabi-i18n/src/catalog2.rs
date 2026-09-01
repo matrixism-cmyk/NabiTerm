@@ -28,6 +28,8 @@ pub(crate) const CATALOG2: &[(&str, &str, &str, &str)] = &[
     ("browser.col.type", "Type", "유형", "種類"),
     ("browser.col.size", "Size", "크기", "サイズ"),
     ("browser.col.modified", "Modified", "수정한 날짜", "更新日時"),
+    ("browser.col.attrs", "Attributes", "속성", "属性"),
+    ("browser.col.perms", "Permissions", "권한", "パーミッション"),
     ("browser.type.folder", "Folder", "파일 폴더", "フォルダー"),
     ("browser.empty", "This folder is empty", "빈 폴더입니다", "空のフォルダーです"),
     ("menu.sessionspanel", "Sessions sidebar", "세션 사이드바", "セッションサイドバー"),
