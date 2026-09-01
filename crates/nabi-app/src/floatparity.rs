@@ -35,6 +35,10 @@ pub(crate) struct FloatParity<'a> {
     pub risky: &'a std::collections::HashSet<PaneId>,
     /// 붙잡힌 입력 — 확인창이 이것을 보고 뜬다.
     pub pending_send: &'a mut Option<crate::guard::PendingSend>,
+    /// 알림 자리(휠 안내 등) — 앱이 띄운다.
+    pub notify: &'a mut Option<(String, std::time::Instant)>,
+    /// 안내를 이미 본 창들 — 같은 말을 휠 굴릴 때마다 하면 잔소리가 된다.
+    pub hinted: &'a mut std::collections::HashSet<PaneId>,
 }
 
 /// 터미널이 그려지는 자리와 글자 한 칸의 크기 — 선택 계산에 늘 셋이 함께 간다.
@@ -134,6 +138,28 @@ impl FloatParity<'_> {
                 true
             }
             None => false,
+        }
+    }
+}
+
+impl FloatParity<'_> {
+    /// 위로 올렸는데 **꿈쩍도 안 했으면** 왜 그런지 한 번 말해 준다.
+    ///
+    /// 화면을 덮어 그리는 프로그램은 지나간 화면을 스크롤백으로 흘려보내지 않는다.
+    /// 그걸 모르면 "나비텀이 기록을 잃어버렸다"로 보인다 — 사용자가 실제로 그렇게 보고했다.
+    /// 그래서 만든 안내인데, **분리 창에서는 한 번도 뜬 적이 없었다**(2026-09-01).
+    pub(crate) fn wheel_hint(
+        &mut self,
+        pane: PaneId,
+        lang: nabi_i18n::Lang,
+        alt_screen: bool,
+        stuck: bool,
+        history: usize,
+    ) {
+        if crate::panewheel::needs_empty_hint(alt_screen, stuck, history) && self.hinted.insert(pane)
+        {
+            let msg = nabi_i18n::tr(lang, "wheel.nohistory").to_string();
+            *self.notify = Some((msg, std::time::Instant::now()));
         }
     }
 }

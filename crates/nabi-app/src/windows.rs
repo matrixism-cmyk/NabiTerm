@@ -87,6 +87,10 @@ impl NabiApp {
                     if self.pending_send.as_ref().is_some_and(|p| p.pane == pane) {
                         self.show_guard(vctx);
                     }
+                    // 알림(토스트)도 이 창에 그린다. **메인 창에만 그리고 있었다** — 분리
+                    // 창을 보고 있는 사람에게 "스크롤백이 비어 있습니다" 같은 안내를 띄워도
+                    // 그 사람은 아무것도 못 봤다. 알림은 보고 있는 창에 떠야 뜻이 있다.
+                    self.show_toast(vctx);
                 },
             );
         }
@@ -185,6 +189,8 @@ impl NabiApp {
                 guard_on,
                 risky: &risky,
                 pending_send: &mut self.pending_send,
+                notify: &mut self.notify,
+                hinted: &mut self.wheel_hinted,
             },
         );
         if let Some((p, d)) = zoom {
@@ -282,6 +288,8 @@ impl NabiApp {
                             guard_on,
                             risky: &risky,
                             pending_send: &mut self.pending_send,
+                            notify: &mut self.notify,
+                            hinted: &mut self.wheel_hinted,
                         },
                     );
                 });

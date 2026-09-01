@@ -28,6 +28,23 @@ pub fn linespec(start_line: usize, end_line: usize) -> String {
     }
 }
 
+/// 바이트 오프셋 둘을 스펙 글자로 — HEX 편집기의 "여기를 보라"다.
+///
+/// 글에 줄이 있듯 바이트에는 오프셋이 있다. 형식은 화면 상태바와 같은 `0x` + 여덟 자리
+/// 대문자 16진이다(`edithexview` 가 `0x{cur:08X}` 로 적는다) — 화면에서 본 숫자와 복사한
+/// 숫자가 다르면 사람이 둘을 잇지 못한다.
+///
+/// 한 바이트면 하나만, 범위면 `시작-끝`. **`linespec` 과 나란히 둔 이유**는 같다:
+/// 위치를 적는 방법이 두 곳에 흩어지면 한쪽만 고쳐지는 날이 온다.
+pub fn offsetspec(start: usize, end: usize) -> String {
+    let (a, b) = (start.min(end), start.max(end));
+    if a == b {
+        format!("0x{a:08X}")
+    } else {
+        format!("0x{a:08X}-0x{b:08X}")
+    }
+}
+
 /// 줄 이동 입력 "줄[:열]"(1-base)을 (줄0, 열?)로 파싱(VS Code식 Go to Line:Col). 잘못되면 None.
 pub fn parse_goto(s: &str) -> Option<(usize, Option<u32>)> {
     let t = s.trim();
@@ -69,6 +86,19 @@ mod tests {
         assert_eq!(linespec(3, 9), "3-9");
         // 거꾸로 골라도 같은 답이다(아래에서 위로 드래그).
         assert_eq!(linespec(9, 3), "3-9");
+    }
+
+    /// **HEX 위치도 화면에 적힌 것과 같은 모양이어야 한다.**
+    ///
+    /// 상태바는 `0x0000001A` 로 적는다. 복사한 것이 `26` 이나 `0x1a` 면, 받아 본 사람도
+    /// 적은 사람도 그것이 같은 자리인지 알 수 없다.
+    #[test]
+    fn the_hex_offset_looks_like_the_status_bar() {
+        use super::offsetspec;
+        assert_eq!(offsetspec(0x1A, 0x1A), "0x0000001A", "한 바이트면 하나만");
+        assert_eq!(offsetspec(0x1A, 0x2F), "0x0000001A-0x0000002F");
+        // 거꾸로 골라도 같은 답(아래에서 위로 끌었을 때).
+        assert_eq!(offsetspec(0x2F, 0x1A), "0x0000001A-0x0000002F");
     }
 
     /// 글로 세는 쪽(`loc_linespec`)도 같은 형식을 쓴다.

@@ -107,6 +107,9 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Option<String
     let scale = content_scale(rows, row_h);
     // 메뉴가 파일을 쓰다 실패한 것을 닫힘 상자 밖으로 꺼낸다 — `act` 는 여기 있다.
     let mut menu_failed: Option<String> = None;
+    // 우클릭에서 온 "찾기 열기"·AI 위치 복사에 필요한 것 — `h` 를 빌리기 **전에** 꺼낸다.
+    let mut open_find = false;
+    let path = doc.path.clone();
     let mut sa = egui::ScrollArea::both().auto_shrink([false, false]).id_salt(("hx_body", doc_salt));
     if let Some(o) = scroll_off { sa = sa.vertical_scroll_offset(o / scale); }
     sa.show_viewport(ui, |ui, vp| {
@@ -126,7 +129,15 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Option<String
         // 우클릭 컨텍스트 메뉴(복사/잘라내기/삭제/붙여넣기-삽입/바이트 삽입/전체 선택).
         // 메뉴가 파일을 쓰다 실패하면 여기 담기고, 앱이 알림으로 보여 준다.
         resp.context_menu(|ui| {
-            crate::edithexmenu::context_menu(ui, h, readonly, lang, &mut menu_failed)
+            crate::edithexmenu::context_menu(
+                ui,
+                h,
+                readonly,
+                lang,
+                &mut menu_failed,
+                &path,
+                &mut open_find,
+            )
         });
         // 마우스 → 커서/블록 선택(드래그=선택 확장, Shift+클릭=확장, 클릭=해제).
         if let Some(p) = resp.interact_pointer_pos() {
@@ -177,6 +188,11 @@ fn hex_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> Option<String
             }
         }
     });
+    // 우클릭의 "찾기"는 텍스트 편집기와 같은 자리를 켠다 — 바이트 검색 바가 이 값을 본다.
+    // 기능은 있었는데 우클릭에만 길이 없었다(2026-09-01 쌍둥이 비교).
+    if open_find {
+        doc.find.open = true;
+    }
     menu_failed
 }
 

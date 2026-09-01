@@ -6,13 +6,36 @@ use crate::edithexedit::{parse_hex, to_hex_string};
 use nabi_i18n::{tr, Lang};
 
 /// 우클릭 메뉴 본문. 선택 여부·읽기 전용에 따라 항목을 노출한다.
+///
+/// `path` 는 AI 위치 복사에 쓰고, `open_find` 는 찾기 바를 켜 달라는 신호다(둘 다
+/// 호출부가 `doc` 을 빌리기 전에 꺼내 둔 것 — 여기서는 `h` 만 빌리고 있다).
+#[allow(clippy::too_many_arguments)]
 pub fn context_menu(
     ui: &mut egui::Ui,
     h: &mut HexBuf,
     readonly: bool,
     lang: Lang,
     failed: &mut Option<String>,
+    path: &std::path::Path,
+    open_find: &mut bool,
 ) {
+    // **AI 위치 복사** — 글 편집기 둘에는 있고 여기에만 없었다. 바이너리야말로 "여기를
+    // 보라"고 짚어 줘야 하는 것인데(바이트를 통째로 붙여 넣을 수는 없다), 정작 그 길이
+    // 없었다. 형식은 상태바에 적힌 것과 같은 `0x` 여덟 자리다(`editorloc::offsetspec`).
+    if !path.as_os_str().is_empty() && ui.button(tr(lang, "ctx.copyloc")).clicked() {
+        let spec = match h.selection() {
+            Some((a, b)) => crate::editorloc::offsetspec(a, b),
+            None => crate::editorloc::offsetspec(h.cursor, h.cursor),
+        };
+        ui.ctx().copy_text(format!("{}@{spec}", path.display()));
+        ui.close();
+    }
+    // 찾기 — 기능은 있는데(바이트 검색 바) 우클릭에만 길이 없었다.
+    if ui.button(tr(lang, "menu.find")).clicked() {
+        *open_find = true;
+        ui.close();
+    }
+    ui.separator();
     if !readonly {
         ui.add_enabled_ui(!h.undo.is_empty(), |ui| {
             if ui.button(tr(lang, "editor.undo")).clicked() { h.undo(); ui.close(); }

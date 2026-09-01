@@ -181,7 +181,11 @@ pub(crate) fn paint_floating_term(
             if typed {
                 model.scroll_to_bottom();
             } else if scroll != 0 && !alt_screen {
+                // 올린 뒤에도 자리가 그대로면 올라갈 것이 없었다는 뜻이다 — 탭과 같은 판정.
+                let before = model.scrollback_offset();
                 model.scroll_by(scroll);
+                let stuck = scroll > 0 && model.scrollback_offset() == before;
+                fs.wheel_hint(pane, lang, model.alt_screen(), stuck, model.history_size());
             }
             let focused = ui.ctx().input(|i| i.focused);
             // 선택은 **그리기 전에** 좇는다 — 이번 프레임에 끈 것이 이번 프레임에 칠해져야 한다.
