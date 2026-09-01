@@ -18,12 +18,29 @@ pub struct BufMenuAct {
     pub find: bool,
 }
 
+/// AI 에게 넘길 글의 상한(문자). 이보다 크면 어느 AI 의 문맥에도 안 들어가고,
+/// 클립보드에 담는 것만으로도 화면이 멈춘다. 상한을 넘으면 **왜 안 되는지 말해 준다.**
+const MAX_AI_COPY: usize = 200_000;
+
+/// 출처 경로 머리글 — AI 가 어느 파일 이야기인지 알게 한다. 경로가 없으면 빈 글.
+fn path_header(path: &std::path::Path) -> String {
+    match path.as_os_str().is_empty() {
+        true => String::new(),
+        false => format!("`{}`\n", path.display()),
+    }
+}
+
 /// 우클릭 메뉴를 그린다. 즉시 적용 가능한 편집은 여기서 처리하고, 나머지는 act로 돌려준다.
+///
+/// `path`·`hint` 는 AI 복사에 쓴다(출처 경로 머리글과 코드펜스 언어).
+#[allow(clippy::too_many_arguments)]
 pub fn context_menu(
     ui: &mut egui::Ui,
     eb: &mut EditBuf,
     lang: Lang,
     readonly: bool,
+    path: &std::path::Path,
+    hint: &str,
 ) -> BufMenuAct {
     let mut act = BufMenuAct::default();
     let has_sel = eb.selection().is_some();
@@ -48,6 +65,35 @@ pub fn context_menu(
     ui.add_enabled_ui(!readonly, |ui| {
         if ui.button(tr(lang, "menu.paste")).clicked() {
             act.paste = true;
+            ui.close();
+        }
+    });
+    // **AI 복사** — 작은 문서(`editorctx`)에만 있던 것을 여기에도 붙인다. 큰 로그야말로
+    // AI 에게 넘길 일이 잦은데 정작 그 창에는 길이 없었다(2026-09-01 쌍둥이 비대칭).
+    ui.menu_button(tr(lang, "ctx.aicopy"), |ui| {
+        // **"파일 전체"는 일부러 없다.** 이 편집기는 파일이 2MB 를 넘어서 열린 창이다 —
+        // 그만한 글은 어느 AI 의 문맥에도 안 들어간다. 대신 아래 둘이 그 자리를 대신한다:
+        // 필요한 데만 골라 보내거나, **어디를 보라고 알려 준다**(경로:줄).
+        let sel_len = eb.selection().map(|(a, b)| b - a).unwrap_or(0);
+        let ok = (1..=MAX_AI_COPY).contains(&sel_len);
+        if ui.add_enabled(ok, egui::Button::new(tr(lang, "ctx.copymd"))).clicked() {
+            let body = eb.selected_text();
+            act.copy = Some(format!("{}```{hint}\n{}\n```", path_header(path), body.trim_end()));
+            ui.close();
+        }
+        // 골라 놓은 것이 너무 크면 왜 안 되는지 말해 준다(눌러도 아무 일 없는 것보다 낫다).
+        if sel_len > MAX_AI_COPY {
+            ui.label(tr(lang, "editor.xform.toobig"));
+        }
+        let has_path = !path.as_os_str().is_empty();
+        if ui.add_enabled(has_path, egui::Button::new(tr(lang, "ctx.copyloc"))).clicked() {
+            // 줄 번호는 rope 에 직접 묻는다 — 글로 펼치면 이 편집기를 쓰는 뜻이 사라진다.
+            let line = |c: usize| eb.rope.char_to_line(c.min(eb.rope.len_chars())) + 1;
+            let spec = match eb.selection() {
+                Some((a, b)) if a != b => crate::editorloc::linespec(line(a), line(b)),
+                _ => line(eb.cursor()).to_string(),
+            };
+            act.copy = Some(format!("{}:{spec}", path.display()));
             ui.close();
         }
     });

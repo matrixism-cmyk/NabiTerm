@@ -9,9 +9,22 @@ pub fn loc_linespec(text: &str, range: Option<(usize, usize)>, cur_line: usize) 
             let (lo, hi) = (a.min(b), a.max(b));
             let sl = text[..byte(lo)].matches('\n').count() + 1;
             let el = text[..byte(hi)].matches('\n').count() + 1;
-            if sl == el { sl.to_string() } else { format!("{sl}-{el}") }
+            linespec(sl, el)
         }
         None => (cur_line + 1).to_string(),
+    }
+}
+
+/// 줄 번호 둘(1-base)을 스펙 글자로. 같은 줄이면 하나만 적는다.
+///
+/// 작은 문서와 대용량 rope 편집기가 **이 함수를 함께 쓴다.** 형식을 두 벌로 두면
+/// 한쪽만 고쳐지는 날 같은 파일이 창마다 다르게 적힌다.
+pub fn linespec(start_line: usize, end_line: usize) -> String {
+    let (a, b) = (start_line.min(end_line), start_line.max(end_line));
+    if a == b {
+        a.to_string()
+    } else {
+        format!("{a}-{b}")
     }
 }
 
@@ -42,5 +55,29 @@ mod tests {
         assert_eq!(parse_goto(" 42 : 5 "), Some((41, Some(5)))); // 줄:열 + 공백.
         assert_eq!(parse_goto("7:"), Some((6, None))); // 열 비면 줄만.
         assert_eq!(parse_goto("x"), None); // 줄 아님.
+    }
+
+    /// **작은 문서와 대용량 편집기가 같은 답을 내야 한다.**
+    ///
+    /// 두 창이 같은 파일의 같은 자리를 다르게 적으면, AI 에게 넘긴 위치가 어느 쪽 것인지
+    /// 알 수 없다. 형식을 한 함수에 모은 이유가 이것이다.
+    #[test]
+    fn both_editors_write_the_same_location() {
+        use super::linespec;
+        // 한 줄이면 번호 하나, 여러 줄이면 범위.
+        assert_eq!(linespec(7, 7), "7");
+        assert_eq!(linespec(3, 9), "3-9");
+        // 거꾸로 골라도 같은 답이다(아래에서 위로 드래그).
+        assert_eq!(linespec(9, 3), "3-9");
+    }
+
+    /// 글로 세는 쪽(`loc_linespec`)도 같은 형식을 쓴다.
+    #[test]
+    fn the_string_path_uses_the_same_format() {
+        let text = "a\nb\nc\nd\n";
+        // "b\nc" 를 고른 것 — 2~3 줄.
+        assert_eq!(loc_linespec(text, Some((2, 5)), 0), "2-3");
+        assert_eq!(loc_linespec(text, Some((2, 3)), 0), "2", "한 줄이면 번호 하나");
+        assert_eq!(loc_linespec(text, None, 4), "5", "선택이 없으면 커서 줄");
     }
 }

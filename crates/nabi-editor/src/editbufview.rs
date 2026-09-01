@@ -77,6 +77,8 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
     let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
     let char_w = ui.fonts_mut(|f| f.glyph_width(&mono, '0')).max(6.0);
     let scroll_line = doc.find.scroll_to.take();
+    // AI 복사에 쓸 출처 정보 — 아래에서 `doc.edit` 를 빌리기 전에 떼어 둔다.
+    let (mpath, mhint) = (doc.path.clone(), doc.lang_ext().to_string());
     let mut menu_act = crate::editbufmenu::BufMenuAct::default();
     let Some(eb) = doc.edit.as_mut() else { return menu_act };
     let lc = eb.rope.len_lines();
@@ -117,7 +119,7 @@ fn edit_body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, mm_target: Opti
         let resp = ui.interact(ui.clip_rect(), ui.id().with("eb_area"), egui::Sense::click_and_drag());
         // 우클릭 메뉴 — 대용량 문서에서도 표준 편집 명령을 쓸 수 있게(단축키 전용이 아니라).
         resp.context_menu(|ui| {
-            menu_act = crate::editbufmenu::context_menu(ui, eb, lang, readonly);
+            menu_act = crate::editbufmenu::context_menu(ui, eb, lang, readonly, &mpath, &mhint);
         });
         if resp.clicked() || resp.drag_started() {
             resp.request_focus();
