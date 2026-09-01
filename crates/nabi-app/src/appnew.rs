@@ -152,7 +152,10 @@ impl NabiApp {
             enc_cache: None,
             compare_at: None,
             forward: crate::forwardui::ForwardForm::default(),
-            sftp: crate::sftppanel::SftpPanel::default(),
+            sftp: crate::sftppanel::SftpPanel {
+                cols: config.terminal.sftp_cols.clone(),
+                ..Default::default()
+            },
             sftp_pane: None,
             sftp_bg: std::collections::HashMap::new(),
             sftp_seq: 0,
@@ -169,6 +172,7 @@ impl NabiApp {
                 sort_desc: config.terminal.browser_sort_desc,
                 view: crate::sftpview::ViewMode::from_u8(config.terminal.browser_view),
                 show_hidden: config.terminal.browser_show_hidden,
+                cols: config.terminal.browser_cols.clone(),
                 ..Default::default()
             },
             browser_tabs: HashMap::new(),

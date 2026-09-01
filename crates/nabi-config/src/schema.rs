@@ -309,12 +309,16 @@ pub struct TerminalCfg {
     /// 로컬 브라우저 보기 모드(0=자세히,1=목록,2=큰,3=작은,4=타일).
     #[serde(default)]
     pub browser_view: u8,
-    /// **열을 하나 더 보여 준다** — 로컬은 속성(RHSA), 원격은 권한(rwxr-xr-x).
+    /// 로컬 탐색기에서 **더 보여 줄 열**의 이름들(`colset::LOCAL` 참고 — 속성·만든 날짜·확장자).
     ///
-    /// 기본은 꺼짐이다. 대부분의 사람에게 이름·유형·크기·날짜면 충분하고, 열이 늘면
-    /// 이름 칸이 그만큼 좁아진다. 필요한 사람(서버를 다루는 쪽)이 켠다.
+    /// 비어 있는 것이 기본이다. 대부분의 사람에게 이름·유형·크기·날짜면 충분하고, 열이
+    /// 늘면 이름 칸이 그만큼 좁아진다. 목록의 **차례는 무시한다** — 보여 줄 차례는
+    /// 카탈로그가 정한다(그래야 사람마다 열 순서가 달라지지 않는다).
     #[serde(default)]
-    pub browser_extra_col: bool,
+    pub browser_cols: Vec<String>,
+    /// 원격 SFTP 목록에서 더 보여 줄 열의 이름들(`colset::REMOTE` — 권한).
+    #[serde(default)]
+    pub sftp_cols: Vec<String>,
     /// 양자내성 연결 정책: "auto"(기본) | "warn" | "require".
     ///
     /// 기본이 "auto" 인 까닭은, 막는 것을 기본으로 두면 어제까지 되던 접속이 오늘
@@ -504,7 +508,8 @@ impl Default for TerminalCfg {
             ssh_keepalive_secs: default_keepalive(),
             browser_sort_desc: false,
             browser_view: 0,
-            browser_extra_col: false,
+            browser_cols: Vec::new(),
+            sftp_cols: Vec::new(),
             control_mode: "ask".into(),
             control_allow_osc: false,
             protect_scrollback: true,

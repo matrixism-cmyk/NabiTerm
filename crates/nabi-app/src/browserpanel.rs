@@ -35,9 +35,9 @@ pub(crate) struct BrowserPanel {
     pub cache_at: Option<std::time::Instant>,
     /// 우리가 방금 뭔가를 바꿨다 — 기다리지 말고 곧바로 다시 읽는다.
     pub cache_dirty: bool,
-    /// 속성(RHSA) 열을 함께 보여 줄지. 설정(`browser_extra_col`)에서 매 프레임 흘러온다
-    /// (`persist_view_prefs`) — 여기서 바꾸지 말 것.
-    pub extra_col: bool,
+    /// 켠 선택 열의 이름들(`colset::LOCAL`). 머리글 오른쪽 클릭으로 바뀌고,
+    /// `persist_view_prefs` 가 설정(`browser_cols`)에 저장한다.
+    pub cols: Vec<String>,
 }
 
 impl Default for BrowserPanel {
@@ -48,7 +48,7 @@ impl Default for BrowserPanel {
             sort: Sort::Name,
             sort_desc: false,
             show_hidden: false,
-            extra_col: false,
+            cols: Vec::new(),
             filter: String::new(),
             mkdir: None,
             new_is_file: false,

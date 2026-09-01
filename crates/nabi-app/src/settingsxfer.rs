@@ -47,10 +47,11 @@ fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.verifyhash"));
     ui.checkbox(&mut cfg.terminal.sftp_verify_hash, "").on_hover_text(tr(lang, "settings.verifyhashhint"));
     ui.end_row();
-    // 열 하나를 더 보여 준다 — 로컬은 속성(RHSA), 원격은 권한(rwxr-xr-x). 한 스위치로
-    // 둘 다 켜는 이유는 같은 질문이기 때문이다("이 파일에 무엇을 할 수 있나").
+    // 선택 열은 **설정이 아니라 목록에서** 고른다(머리글 오른쪽 클릭 — 탐색기와 같다).
+    // 여기서는 그런 길이 있다는 것만 알린다. 설정 화면까지 와서 찾은 사람이 헛걸음하지
+    // 않도록, 그리고 목록에서 오른쪽 클릭을 해 볼 생각을 못 한 사람에게 알리려고 둔다.
     ui.label(tr(lang, "settings.extracol"));
-    ui.checkbox(&mut cfg.terminal.browser_extra_col, "").on_hover_text(tr(lang, "settings.extracolhint"));
+    ui.label(tr(lang, "settings.extracolhint"));
     ui.end_row();
     // SFTP 파일명 인코딩 — v3 서버가 로컬 인코딩 raw 바이트로 보낼 때(한국 서버 CP949 등).
     ui.label(tr(lang, "settings.sftpcharset"));

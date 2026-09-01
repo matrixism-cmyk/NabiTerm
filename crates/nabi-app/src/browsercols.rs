@@ -34,6 +34,7 @@ pub(crate) fn type_label(row: &Row, lang: Lang) -> String {
 
 /// 정렬 가능한 헤더 셀: 텍스트는 가운데 정렬, 칸 전체가 클릭 영역(텍스트만 노리지 않아도 됨).
 /// 우측 여백을 비워 컬럼 리사이즈 핸들(더블클릭=자동맞춤) 입력을 가리지 않는다.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn header_cell(
     ui: &mut egui::Ui,
     label: &str,
@@ -41,6 +42,8 @@ pub(crate) fn header_cell(
     active: bool,
     desc: bool,
     set_sort: &mut Option<Sort>,
+    lang: Lang,
+    cols: &mut ColMenu<'_>,
 ) {
     let arrow = if active {
         if desc { " \u{25be}" } else { " \u{25b4}" }
@@ -70,5 +73,42 @@ pub(crate) fn header_cell(
     );
     if let (Some(s), true) = (sort, resp.clicked()) {
         *set_sort = Some(s);
+    }
+    cols.attach(&resp, lang);
+}
+
+/// 머리글 오른쪽 클릭에 붙는 **열 고르기**.
+///
+/// 윈도우 탐색기가 스무 해 넘게 그렇게 해 왔다 — 보고 있는 자리에서 켜고 끈다.
+/// 설정 화면까지 가야 한다면 열이 있다는 사실조차 모른 채 지나간다.
+///
+/// 고른 것을 곧바로 바꾸지 않고 `toggled` 에 담아 돌려주는 까닭은, 이 함수가 표의 머리글
+/// 칸마다 불리기 때문이다. 그리는 도중에 열 목록을 바꾸면 그 프레임의 칸 수와 실제 목록이
+/// 어긋난다 — 표를 다 그린 뒤에 적용해야 한다(`set_sort` 와 같은 방식).
+pub(crate) struct ColMenu<'a> {
+    /// 이 표가 더 보여 줄 수 있는 열들.
+    pub cat: &'a [crate::colset::Col],
+    /// 지금 켜져 있는 이름들.
+    pub on: &'a [String],
+    /// 사용자가 누른 열 이름(표를 다 그린 뒤 적용한다).
+    pub toggled: Option<&'static str>,
+}
+
+impl ColMenu<'_> {
+    fn attach(&mut self, resp: &egui::Response, lang: Lang) {
+        if self.cat.is_empty() {
+            return;
+        }
+        resp.context_menu(|ui| {
+            ui.label(nabi_i18n::tr(lang, "browser.col.pick"));
+            ui.separator();
+            for (key, label) in self.cat {
+                let mut chk = crate::colset::on(self.on, key);
+                if ui.checkbox(&mut chk, nabi_i18n::tr(lang, label)).changed() {
+                    self.toggled = Some(key);
+                    ui.close();
+                }
+            }
+        });
     }
 }

@@ -248,10 +248,14 @@ fn render_inner(
     let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::NONE, |ui| {
         let acts = crate::browserrows::browser_rows(
             ui, &entries, &path, &filt, remote_map, can_upload, lang, b.sort, b.sort_desc,
-            a.view, b.selected.as_deref(), &b.multi, b.scroll, b.extra_col, &mut ren,
+            a.view, b.selected.as_deref(), &b.multi, b.scroll, &b.cols, &mut ren,
         );
         if acts.nav.is_some() {
             a.nav = acts.nav; // 더블클릭 진입(툴바 nav를 덮지 않음).
+        }
+        // 열 고르기는 표를 다 그린 뒤에 적용한다 — 그리는 도중에 열 수가 바뀌면 어긋난다.
+        if let Some(k) = acts.toggle_col {
+            crate::colset::toggle(&mut b.cols, k);
         }
         a.delete = acts.delete;
         a.rename_start = acts.rename;

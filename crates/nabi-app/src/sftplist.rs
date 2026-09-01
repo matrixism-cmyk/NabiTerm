@@ -75,7 +75,7 @@ pub(crate) fn list_zone(
             &sftp.multi,
             sftp.scroll,
             sort,
-            sftp.extra_col,
+            &sftp.cols,
             &mut ren,
         )
     });
@@ -106,6 +106,8 @@ pub(crate) fn list_zone(
         Some(EClick::SetSort(s)) => a.set_sort = Some(s),
         Some(EClick::Select(n, c, s)) => a.select = Some((n, c, s)),
         Some(EClick::OsDrag(n, s, d)) => a.os_drag = Some((n, s, d)),
+        // 표를 다 그린 뒤에 켜고 끈다 — 그리는 도중에 열 수가 바뀌면 어긋난다.
+        Some(EClick::ToggleCol(k)) => crate::colset::toggle(&mut sftp.cols, k),
         None => {}
     }
     let _ = dropped; // 드롭 응답에는 메뉴를 붙이지 않는다(행 영역을 덮으면 클릭 가로챔). 빈공간 메뉴는 상단 bg에.

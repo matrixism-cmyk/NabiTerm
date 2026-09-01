@@ -40,132 +40,12 @@ pub(crate) struct RowActs {
     pub edit_hex: Option<String>,
     /// 빠른 미리보기 요청 파일 이름(E9).
     pub preview: Option<String>,
+    /// 머리글 오른쪽 클릭으로 켜고 끈 선택 열 이름(`colset`). 표를 다 그린 뒤 적용한다.
+    pub toggle_col: Option<&'static str>,
 }
 
 use crate::browsercols::{header_cell, type_label};
 
-/// 유형/비교 색(비교 모드면 비교색 우선, 아니면 폴더=금색·파일=카테고리색).
-pub(crate) fn row_color(row: &Row, remote_map: &HashMap<String, (bool, u64)>) -> egui::Color32 {
-    if !remote_map.is_empty() {
-        let st = crate::sftpentryfmt::cmp_status(&row.name, row.size, row.is_dir, remote_map);
-        if let Some(c) = crate::sftpentryfmt::cmp_color(st) {
-            return c;
-        }
-    }
-    if row.is_dir {
-        crate::filetype::FOLDER_COLOR
-    } else {
-        crate::filetype::file_color(&row.name)
-    }
-}
-
-/// 항목 위젯 상호작용: 드래그(업로드 페이로드)·폴더 드롭·더블클릭(열기/진입)·우클릭 메뉴.
-/// 테이블/격자 양쪽 셀이 공유한다(click_and_drag 센스 위젯의 응답을 넘긴다).
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn row_interact(
-    ui: &egui::Ui,
-    resp: &egui::Response,
-    row: &Row,
-    path: &Path,
-    can_upload: bool,
-    lang: Lang,
-    is_selected: bool,
-    acts: &mut RowActs,
-) {
-    // 드래그 시작 → OS 드래그-아웃(탐색기로 복사). 앱 내 SFTP 패널 드롭도 OS 경로로 처리.
-    if resp.drag_started() {
-        acts.os_drag = Some(row.name.clone());
-    }
-    if row.is_dir {
-        // 드롭 가능한 폴더에 드래그가 올라오면 테두리로 강조(드롭 대상 안내).
-        if resp.dnd_hover_payload::<RemoteName>().is_some() {
-            let c = ui.visuals().selection.stroke.color;
-            ui.painter().rect_stroke(resp.rect, 3.0, egui::Stroke::new(2.0, c), egui::StrokeKind::Inside);
-        }
-        if let Some(rn) = resp.dnd_release_payload::<RemoteName>() {
-            acts.dl_into = Some((row.name.clone(), (*rn).clone()));
-        }
-    }
-    if resp.clicked() {
-        let m = ui.input(|i| i.modifiers);
-        acts.select = Some((row.name.clone(), m.command, m.shift)); // 선택(Ctrl=토글, Shift=범위).
-    }
-    if resp.double_clicked() {
-        if row.is_dir {
-            acts.nav = Some(path.join(&row.name));
-        } else {
-            crate::paneurl::os_open(&path.join(&row.name).to_string_lossy());
-        }
-    }
-    // 우클릭: 아직 선택 안 된 항목이면 그 항목만 선택. 이미 선택(다중 포함)돼 있으면
-    // 기존 선택을 유지한다(여러 개 선택 후 우클릭으로 일괄 동작하도록).
-    if resp.secondary_clicked() && !is_selected {
-        acts.select = Some((row.name.clone(), false, false));
-    }
-    resp.context_menu(|ui| {
-        let full = path.join(&row.name);
-        // 파일이면 편집(내장 에디터 — 설정에 따라 외부도). 폴더는 제외.
-        if !row.is_dir && ui.button(tr(lang, "sftp.edit")).clicked() {
-            acts.edit = Some(row.name.clone());
-            ui.close();
-        }
-        if !row.is_dir && ui.button(tr(lang, "nabipad.openhex")).clicked() { acts.edit_hex = Some(row.name.clone()); ui.close(); }
-        if !row.is_dir && ui.button(tr(lang, "browser.preview")).clicked() { acts.preview = Some(row.name.clone()); ui.close(); } // E9
-        // CF_HDROP 복사 — 탐색기에서 Ctrl+V로 실제 파일 붙여넣기.
-        if ui.button(tr(lang, "browser.copy")).clicked() {
-            acts.copy = Some(row.name.clone());
-            ui.close();
-        }
-        if ui.button(tr(lang, "browser.copypath")).clicked() {
-            ui.ctx().copy_text(full.to_string_lossy().into_owned());
-            ui.close();
-        }
-        if ui.button(tr(lang, "browser.reveal")).clicked() {
-            let _ = std::process::Command::new("explorer")
-                .arg(format!("/select,{}", full.display()))
-                .spawn();
-            ui.close();
-        }
-        if ui.button(tr(lang, "browser.props")).clicked() {
-            acts.props = Some(row.name.clone());
-            ui.close();
-        }
-        if row.is_dir && ui.button(tr(lang, "browser.calcsize")).clicked() {
-            acts.calc_size = Some(row.name.clone());
-            ui.close();
-        }
-        if ui.button(tr(lang, "browser.duplicate")).clicked() {
-            acts.duplicate = Some(row.name.clone());
-            ui.close();
-        }
-        // 압축은 한 묶음으로 — 항목 둘을 최상위에 늘어놓으면 이 메뉴가 또 길어진다.
-        ui.menu_button(tr(lang, "browser.zipmenu"), |ui| {
-            if ui.button(tr(lang, "browser.zipmake")).clicked() {
-                acts.zip_make = Some(row.name.clone());
-                ui.close();
-            }
-            // 푸는 것은 zip일 때만 보인다 — 아닌 파일에 보이면 눌러 놓고 왜 안 되는지 묻는다.
-            if row.name.to_ascii_lowercase().ends_with(".zip") && ui.button(tr(lang, "browser.zipextract")).clicked() {
-                acts.zip_extract = Some(row.name.clone());
-                ui.close();
-            }
-        });
-        if ui.button(tr(lang, "sftp.rename")).clicked() {
-            acts.rename = Some(row.name.clone());
-            ui.close();
-        }
-        if ui.button(tr(lang, "browser.delete")).clicked() {
-            acts.delete = Some(row.name.clone());
-            ui.close();
-        }
-        if can_upload && !row.is_dir && ui.button(tr(lang, "browser.upload")).clicked() {
-            acts.upload = Some(row.name.clone());
-            ui.close();
-        }
-    });
-}
-
-/// 이름 컬럼 셀(테이블): 색칠된 아이콘+이름 + 공유 상호작용.
 /// 탐색기식 컬럼 테이블로 항목을 그린다.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn browser_rows(
@@ -182,7 +62,7 @@ pub(crate) fn browser_rows(
     selected: Option<&str>,
     multi: &std::collections::HashSet<String>,
     scroll_to_selected: bool,
-    extra: bool,
+    cols: &[String],
     ren: &mut crate::renameui::RenameUi,
 ) -> RowActs {
     let mut acts = RowActs::default();
@@ -223,9 +103,13 @@ pub(crate) fn browser_rows(
         .column(Column::initial(72.0).at_least(50.0)) // 크기
         // 수정일은 clip 을 안 건다 — 구분선 더블클릭 자동맞춤이 내용 폭을 재야 한다(#11).
         .column(Column::initial(150.0).at_least(120.0)); // 수정일
-    // 속성 열은 켠 사람에게만 나온다. 글자 넷(RHSA)이 최대라 좁게 잡는다.
-    if extra {
-        tb = tb.column(Column::initial(56.0).at_least(36.0));
+    // 켠 선택 열만, 카탈로그 차례대로. 날짜는 넓고 나머지는 좁다.
+    let extra = crate::colset::enabled(&crate::colset::LOCAL, cols);
+    for (key, _) in &extra {
+        tb = match *key {
+            "created" => tb.column(Column::initial(150.0).at_least(120.0)),
+            _ => tb.column(Column::initial(64.0).at_least(36.0)),
+        };
     }
     // 키보드 이동 시 선택 행이 보이도록 스크롤.
     if scroll_to_selected {
@@ -233,15 +117,17 @@ pub(crate) fn browser_rows(
             tb = tb.scroll_to_row(idx, Some(egui::Align::Center));
         }
     }
+    // 머리글 어디를 오른쪽 클릭해도 열 고르기가 뜬다(탐색기와 같다).
+    let mut menu = crate::browsercols::ColMenu { cat: &crate::colset::LOCAL, on: cols, toggled: None };
     tb.header(rh, |mut h| {
-            h.col(|ui| header_cell(ui, tr(lang, "browser.col.name"), Some(Sort::Name), act(Sort::Name), desc, &mut set_sort));
-            h.col(|ui| header_cell(ui, tr(lang, "browser.col.type"), Some(Sort::Type), act(Sort::Type), desc, &mut set_sort));
-            h.col(|ui| header_cell(ui, tr(lang, "browser.col.size"), Some(Sort::Size), act(Sort::Size), desc, &mut set_sort));
-            h.col(|ui| header_cell(ui, tr(lang, "browser.col.modified"), Some(Sort::Date), act(Sort::Date), desc, &mut set_sort));
-            // 속성으로는 정렬하지 않는다 — 정렬 기준(`Sort`)에 없고, 넣어 봐야 "R" 끼리
-            // 모으는 일이라 쓸 데가 거의 없다. 헤더는 이름표로만 둔다.
-            if extra {
-                h.col(|ui| header_cell(ui, tr(lang, "browser.col.attrs"), None, false, desc, &mut set_sort));
+            h.col(|ui| header_cell(ui, tr(lang, "browser.col.name"), Some(Sort::Name), act(Sort::Name), desc, &mut set_sort, lang, &mut menu));
+            h.col(|ui| header_cell(ui, tr(lang, "browser.col.type"), Some(Sort::Type), act(Sort::Type), desc, &mut set_sort, lang, &mut menu));
+            h.col(|ui| header_cell(ui, tr(lang, "browser.col.size"), Some(Sort::Size), act(Sort::Size), desc, &mut set_sort, lang, &mut menu));
+            h.col(|ui| header_cell(ui, tr(lang, "browser.col.modified"), Some(Sort::Date), act(Sort::Date), desc, &mut set_sort, lang, &mut menu));
+            // 선택 열로는 정렬하지 않는다 — 정렬 기준(`Sort`)에 없고, 넣어 봐야 "R" 끼리
+            // 모으는 일이라 쓸 데가 거의 없다. 머리글은 이름표로만 둔다.
+            for (_, label) in &extra {
+                h.col(|ui| header_cell(ui, tr(lang, label), None, false, desc, &mut set_sort, lang, &mut menu));
             }
         })
         .body(|body| {
@@ -255,7 +141,7 @@ pub(crate) fn browser_rows(
                 if let (true, 0) = (up, idx) {
                     // **어느 칸을 두 번 눌러도 올라간다.** 예전에는 이름 칸만 반응해서,
                     // 크기나 날짜 쪽을 눌러 본 사람에게는 고장으로 보였다(2026-09-01 보고).
-                    for c in 0..4 + usize::from(extra) {
+                    for c in 0..4 + extra.len() {
                         r.col(|ui| {
                             if crate::browsergrid::up_cell(ui, c == 0) {
                                 acts.nav = parent.clone();
@@ -280,13 +166,22 @@ pub(crate) fn browser_rows(
                 r.col(|ui| {
                     ui.label(human_datetime(row.mtime));
                 });
-                if extra {
+                // 선택 열 — 카탈로그 차례대로, 켠 것만.
+                for (key, _) in &extra {
                     r.col(|ui| {
-                        ui.label(crate::browserattr::attr_flags(row.attrs));
+                        ui.label(match *key {
+                            "attrs" => crate::browserattr::attr_flags(row.attrs),
+                            "created" => human_datetime(row.created),
+                            // 확장자는 정렬이 쓰는 그 함수를 그대로 쓴다(소문자·점 없음).
+                            // 두 벌로 두면 목록의 확장자와 정렬 기준이 언젠가 갈린다.
+                            "ext" => crate::browsersort::ext_of(&row.name),
+                            _ => String::new(),
+                        });
                     });
                 }
             });
         });
+    acts.toggle_col = menu.toggled;
     acts.set_sort = set_sort;
     acts
 }

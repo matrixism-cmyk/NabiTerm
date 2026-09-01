@@ -175,7 +175,7 @@ pub(crate) fn table(
     multi: &std::collections::HashSet<String>,
     scroll_to: bool,
     sort: (crate::browserfs::Sort, bool),
-    extra: bool,
+    cols: &[String],
     ren: &mut crate::renameui::RenameUi,
 ) -> Option<EClick> {
     use crate::browserfs::Sort;
@@ -184,8 +184,9 @@ pub(crate) fn table(
     let mut set_sort: Option<Sort> = None;
     // 헤더 셀은 로컬 브라우저와 같은 구현을 쓴다(DRY) — 그래야 정렬 방향 화살표와
     // 활성 컬럼 표시가 두 목록에서 똑같이 보인다(원격만 표시가 없던 문제 수정).
-    let hdr = |ui: &mut egui::Ui, label: &str, s: Sort, set: &mut Option<Sort>| {
-        crate::browsercols::header_cell(ui, label, Some(s), sort.0 == s, sort.1, set);
+    let mut menu = crate::browsercols::ColMenu { cat: &crate::colset::REMOTE, on: cols, toggled: None };
+    let hdr = |ui: &mut egui::Ui, label: &str, s: Sort, set: &mut Option<Sort>, m: &mut crate::browsercols::ColMenu<'_>| {
+        crate::browsercols::header_cell(ui, label, Some(s), sort.0 == s, sort.1, set, lang, m);
     };
     let rh = crate::browsercols::row_h(ui); // 글꼴 크기에 따른 행 높이(Ctrl+휠 줌).
     let mut tb = TableBuilder::new(ui)
@@ -196,10 +197,10 @@ pub(crate) fn table(
         .column(Column::initial(56.0).at_least(40.0)) // 유형
         .column(Column::initial(72.0).at_least(50.0)) // 크기
         .column(Column::initial(150.0).at_least(120.0)); // 수정일 — 리사이즈/자동맞춤 가능(브라우저와 동일 구조, #11)
-    // 권한 열은 켠 사람에게만. 서버를 다루는 사람에게는 이것이 크기보다 중요한 정보다
-    // (FileZilla·WinSCP 도 기본으로 보여 준다). `mode` 는 목록 응답에 이미 들어 있어
-    // 따로 물어보지 않는다 — 열 하나 켜는 데 왕복이 늘지 않는다.
-    if extra {
+    // 켠 선택 열만. 권한(`mode`)은 목록 응답에 이미 들어 있어 따로 물어보지 않는다 —
+    // 열 하나 켜는 데 왕복이 늘지 않는다(WinSCP 는 기본으로 보여 준다).
+    let extra = crate::colset::enabled(&crate::colset::REMOTE, cols);
+    for _ in &extra {
         tb = tb.column(Column::initial(90.0).at_least(70.0));
     }
     tb = tb.column(Column::remainder()); // 빈 필러
@@ -209,14 +210,14 @@ pub(crate) fn table(
         }
     }
     tb.header(rh, |mut h| {
-            h.col(|ui| hdr(ui, tr(lang, "browser.col.name"), Sort::Name, &mut set_sort));
-            h.col(|ui| hdr(ui, tr(lang, "browser.col.type"), Sort::Type, &mut set_sort));
-            h.col(|ui| hdr(ui, tr(lang, "browser.col.size"), Sort::Size, &mut set_sort));
-            h.col(|ui| hdr(ui, tr(lang, "browser.col.modified"), Sort::Date, &mut set_sort));
-            if extra {
-                // 권한으로 정렬하지 않는다 — `Sort` 에 없고, 정렬해 봐야 쓸 데가 없다.
+            h.col(|ui| hdr(ui, tr(lang, "browser.col.name"), Sort::Name, &mut set_sort, &mut menu));
+            h.col(|ui| hdr(ui, tr(lang, "browser.col.type"), Sort::Type, &mut set_sort, &mut menu));
+            h.col(|ui| hdr(ui, tr(lang, "browser.col.size"), Sort::Size, &mut set_sort, &mut menu));
+            h.col(|ui| hdr(ui, tr(lang, "browser.col.modified"), Sort::Date, &mut set_sort, &mut menu));
+            // 선택 열로는 정렬하지 않는다 — `Sort` 에 없고, 정렬해 봐야 쓸 데가 없다.
+            for (_, label) in &extra {
                 h.col(|ui| {
-                    crate::browsercols::header_cell(ui, tr(lang, "browser.col.perms"), None, false, sort.1, &mut set_sort);
+                    crate::browsercols::header_cell(ui, tr(lang, label), None, false, sort.1, &mut set_sort, lang, &mut menu);
                 });
             }
         })
@@ -229,7 +230,7 @@ pub(crate) fn table(
                 let idx = r.index();
                 if up && idx == 0 {
                     // 어느 칸을 두 번 눌러도 올라간다(로컬 탐색기와 같은 규칙).
-                    for c in 0..4 {
+                    for c in 0..4 + extra.len() {
                         r.col(|ui| {
                             if crate::browsergrid::up_cell(ui, c == 0) {
                                 click = Some(EClick::Nav(crate::sftppath::parent_dir(cur)));
@@ -256,19 +257,23 @@ pub(crate) fn table(
                 r.col(|ui| {
                     ui.label(crate::browserfs::human_datetime(e.mtime));
                 });
-                if extra {
+                for (key, _) in &extra {
                     r.col(|ui| {
                         // 서버가 mode 를 안 준 경우(0)는 빈칸으로 둔다 — 모르는 것을
                         // `---------` 로 적으면 "권한이 없다"로 읽힌다.
-                        let t = if e.mode == 0 {
-                            String::new()
-                        } else {
-                            crate::sftpentryfmt::mode_to_rwx(e.mode, e.is_dir, e.is_link)
+                        let t = match (*key, e.mode) {
+                            ("perms", 0) => String::new(),
+                            ("perms", m) => crate::sftpentryfmt::mode_to_rwx(m, e.is_dir, e.is_link),
+                            _ => String::new(),
                         };
                         ui.monospace(t);
                     });
                 }
             });
         });
+    // 열 고르기는 표를 다 그린 뒤에 알린다 — 그리는 도중에 열 수가 바뀌면 어긋난다.
+    if let Some(k) = menu.toggled {
+        return Some(EClick::ToggleCol(k));
+    }
     click.or(set_sort.map(EClick::SetSort))
 }

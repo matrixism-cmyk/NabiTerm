@@ -1,7 +1,8 @@
 //! 브라우저 목록의 이름 칸 그리기(아이콘·이름 편집·드래그). 행 상호작용은 browserrows.
 
 use crate::browserfs::Row;
-use crate::browserrows::{row_color, row_interact, RowActs};
+use crate::browserrowact::{row_color, row_interact};
+use crate::browserrows::RowActs;
 use nabi_i18n::Lang;
 use std::collections::HashMap;
 use std::path::Path;

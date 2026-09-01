@@ -1,7 +1,8 @@
 //! 로컬 브라우저 아이콘 격자(목록/큰·작은 아이콘/타일) — 자세히(테이블) 외 보기 모드.
 
 use crate::browserfs::{human, Row};
-use crate::browserrows::{row_color, row_interact, RowActs};
+use crate::browserrowact::{row_color, row_interact};
+use crate::browserrows::RowActs;
 use crate::sftpview::ViewMode;
 use nabi_i18n::Lang;
 use std::collections::HashMap;

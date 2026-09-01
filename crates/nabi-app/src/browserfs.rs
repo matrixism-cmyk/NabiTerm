@@ -18,6 +18,8 @@ pub(crate) struct Row {
     /// 윈도우 파일 속성 비트(읽기전용·숨김·시스템·보관 등). 윈도우가 아니면 0.
     /// 글자로 바꾸는 일은 [`crate::browserattr`] 가 한다.
     pub attrs: u32,
+    /// 만든 시각(unix 초, 0=알 수 없음). 파일시스템이 안 주면 0이다(리눅스 ext4 등).
+    pub created: u64,
 }
 
 /// SystemTime → unix 초(실패 시 0).
@@ -156,8 +158,9 @@ pub(crate) fn read_entries(path: &Path, sort: Sort, desc: bool, show_hidden: boo
             let is_dir = md.as_ref().map(|m| m.is_dir()).unwrap_or(false);
             // 속성은 이미 읽어 둔 metadata 에서 그대로 꺼낸다 — 파일을 다시 만지지 않는다.
             let attrs = md.as_ref().map(crate::browserattr::file_attrs).unwrap_or(0);
+            let created = md.as_ref().map(|m| to_unix(m.created())).unwrap_or(0);
             let (size, mtime) = (md.as_ref().map(|m| m.len()).unwrap_or(0), md.map(|m| to_unix(m.modified())).unwrap_or(0));
-            out.push(Row { name, is_dir, is_link, size, mtime, attrs });
+            out.push(Row { name, is_dir, is_link, size, mtime, attrs, created });
         }
     }
     sort_rows(&mut out, sort, desc);
@@ -261,6 +264,7 @@ mod tests {
             size,
             mtime,
             attrs: 0,
+            created: 0,
         };
         let mut v = vec![
             mk("b.txt", false, 10, 100),
