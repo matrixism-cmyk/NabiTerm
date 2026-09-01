@@ -255,4 +255,6 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
         "아직 블록이 없습니다 - 셸이 프롬프트 시작을 알려 줘야 기록됩니다(셸 통합).",
         "まだブロックがありません - シェルがプロンプト開始を通知する必要があります(シェル統合)。"),
     ("prompt.nofail", "No failed commands here", "실패한 명령이 없습니다", "失敗したコマンドはありません"),
+    ("prompt.nomore", "No more prompts this way", "이쪽에는 프롬프트가 더 없습니다", "この方向にプロンプトはもうありません"),
+    ("blocks.gone", "That block has scrolled out of the buffer", "그 블록은 스크롤백에서 밀려났습니다", "そのブロックはスクロールバックから外れました"),
 ];

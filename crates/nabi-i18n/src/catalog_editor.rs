@@ -234,6 +234,8 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("editor.toobig", "File too large to edit in-app", "앱에서 편집하기엔 파일이 너무 큽니다", "アプリで編集するには大きすぎます"),
     // 찾기/바꾸기 바.
     ("find.placeholder", "Find…", "찾기…", "検索…"),
+    ("find.nomatch", "Not found in the scrollback", "스크롤백에 없습니다", "スクロールバックにありません"),
+    ("find.limithit", "Search limit reached \u{2014} raise it in Settings to look further", "찾기 상한에 걸렸습니다 \u{2014} 설정에서 상한을 올리면 더 찾습니다", "検索上限に達しました \u{2014} 設定で上限を上げるとさらに検索します"),
     ("find.next", "Next match", "다음 찾기", "次を検索"),
     ("find.prev", "Previous match", "이전 찾기", "前を検索"),
     ("find.ci", "Ignore case", "대소문자 무시", "大文字小文字を無視"),

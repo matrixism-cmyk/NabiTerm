@@ -117,6 +117,7 @@ impl TermModel {
         self.prompts.iter().filter(|p| p.exit.is_some_and(|c| c != 0)).count()
     }
 
+    #[must_use = "못 갔으면 사용자에게 말해 줘야 한다 -- 조용하면 고장으로 읽힌다"]
     pub fn jump_prev_prompt(&mut self) -> bool {
         let cur = self.scrollback_offset() as i32;
         let target = self
@@ -135,6 +136,7 @@ impl TermModel {
     }
 
     /// 더 최신(아래쪽) 프롬프트로 점프(없으면 하단 복귀). 이동했으면 true.
+    #[must_use = "못 갔으면 사용자에게 말해 줘야 한다 -- 조용하면 고장으로 읽힌다"]
     pub fn jump_next_prompt(&mut self) -> bool {
         let cur = self.scrollback_offset() as i32;
         let target = self

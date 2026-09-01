@@ -27,6 +27,7 @@ impl NabiApp {
                 }
             }
             PaletteAction::ZoomPane => self.toggle_pane_zoom(),
+            PaletteAction::FindInPane => self.toggle_find(),
             PaletteAction::PrevPrompt => self.jump_prompt(false),
             PaletteAction::NextPrompt => self.jump_prompt(true),
             PaletteAction::PrevFailed => self.jump_failed(false),

@@ -131,8 +131,17 @@ impl NabiApp {
             }
         }
         if let Some(abs) = goto {
-            if let Some(mut m) = view.as_ref().and_then(|v| v.model.lock().ok()) {
-                m.scroll_to_prompt(abs);
+            // 그 블록이 스크롤백에서 밀려났으면 못 간다. 조용히 넘기면 목록에는 있는데
+            // 눌러도 아무 일이 없어 고장으로 읽힌다(2026-09-01 수정).
+            let went = view
+                .as_ref()
+                .and_then(|v| v.model.lock().ok().map(|mut m| m.scroll_to_prompt(abs)))
+                .unwrap_or(false);
+            if !went {
+                self.notify = Some((
+                    nabi_i18n::tr(self.lang, "blocks.gone").to_string(),
+                    std::time::Instant::now(),
+                ));
             }
         }
         if !open {

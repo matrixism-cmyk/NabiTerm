@@ -216,19 +216,28 @@ impl NabiApp {
         }
     }
 
+    /// 못 찾았으면 **말해 준다.** 예전에는 결과를 버려서, 없는 낱말을 찾으면 화면만
+    /// 엉뚱한 데로 튀고 아무 말이 없었다(2026-09-01 수정). 되돌리는 일은 nabi-vt 가 한다.
     fn scroll_focused_match(&mut self, forward: bool) {
+        use nabi_vt::search::MatchScan;
         let Some(m) = build_matcher(&self.find_query, self.find_regex, self.find_whole) else { return };
         let limit = self.config.terminal.search_limit;
         let Some(p) = self.focused_pane() else { return };
-        if let Some(view) = self.orch.panes.read().ok().and_then(|mp| mp.get(&p).cloned()) {
-            if let Ok(mut model) = view.model.lock() {
-                if forward {
-                    model.scroll_to_next_match(|line| m.is_match(line), limit);
-                } else {
-                    model.scroll_to_prev_match(|line| m.is_match(line), limit);
-                }
-            }
-        }
+        let Some(view) = self.orch.panes.read().ok().and_then(|mp| mp.get(&p).cloned()) else { return };
+        let Ok(mut model) = view.model.lock() else { return };
+        let got = if forward {
+            model.scroll_to_next_match(|line| m.is_match(line), limit)
+        } else {
+            model.scroll_to_prev_match(|line| m.is_match(line), limit)
+        };
+        drop(model); // 알림을 만들기 전에 잠금을 놓는다.
+        let key = match got {
+            MatchScan::Found => return,
+            MatchScan::NotFound => "find.nomatch",
+            // 상한에 걸린 것은 "없다"와 다른 말이다 — 설정에서 상한을 올리면 나온다.
+            MatchScan::HitLimit => "find.limithit",
+        };
+        self.notify = Some((tr(self.lang, key).to_string(), std::time::Instant::now()));
     }
 
     /// 스크롤백 전체(검색 상한)의 일치 총수 — 쿼리별 캐시(매 프레임 재스캔 방지, F5).

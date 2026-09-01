@@ -21,7 +21,7 @@ mod images;
 mod links;
 mod prompts;
 mod render;
-mod search;
+pub mod search;
 
 pub use blocklist::BlockInfo;
 pub use durfmt::human_ms;

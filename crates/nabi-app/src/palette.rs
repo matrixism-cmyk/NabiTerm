@@ -120,6 +120,9 @@ pub(crate) enum PaletteAction {
     MergeTabs,
     ToggleQcBar,
     ToggleAiCmdBar,
+    /// 터미널 찾기 바 열기/닫기. 지금까지 Ctrl+F 하나뿐이라, 그 단축키를 모르면
+    /// 스크롤백을 찾는 길이 없었다(가장 많이 쓰는 동작인데 발견할 길이 하나였다).
+    FindInPane,
     About,
 }
 

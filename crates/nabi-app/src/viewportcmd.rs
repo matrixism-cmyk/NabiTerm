@@ -38,16 +38,28 @@ impl NabiApp {
         }
     }
 
+    /// 이전/다음 프롬프트로. **못 가면 말해 준다** — 위의 `jump_failed` 는 그렇게 하고
+    /// 있었는데 이쪽만 결과를 버리고 있었다(2026-09-01 수정). 같은 동작이 한쪽에서는
+    /// 답하고 다른 쪽에서는 침묵하면, 사용자는 어느 쪽이 고장인지 알 수 없다.
     pub(crate) fn jump_prompt(&mut self, next: bool) {
         let Some(p) = self.focused_pane() else { return };
-        if let Some(v) = self.orch.panes.read().ok().and_then(|m| m.get(&p).cloned()) {
-            if let Ok(mut md) = v.model.lock() {
-                if next {
-                    md.jump_next_prompt();
-                } else {
-                    md.jump_prev_prompt();
-                }
-            }
+        let moved = self
+            .orch
+            .panes
+            .read()
+            .ok()
+            .and_then(|m| m.get(&p).cloned())
+            .and_then(|v| {
+                v.model.lock().ok().map(|mut md| {
+                    if next { md.jump_next_prompt() } else { md.jump_prev_prompt() }
+                })
+            })
+            .unwrap_or(false);
+        if !moved {
+            self.notify = Some((
+                nabi_i18n::tr(self.lang, "prompt.nomore").to_string(),
+                std::time::Instant::now(),
+            ));
         }
     }
 

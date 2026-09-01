@@ -26,6 +26,10 @@ fn help_key(a: &A) -> Option<&'static str> {
         A::ToggleStatusBar => "help.key.statusbar",
         A::QuickConnect => "help.key.connect",
         A::OpenBrowserTab => "help.key.browser",
+        // 이 둘은 팔레트에 새로 올린 것이다. 팔레트에서 한두 번 쓰다 단축키를 익히는 것이
+        // 이 자리의 목적이므로, 올렸으면 조합도 같이 보여 준다.
+        A::FindInPane => "help.key.find",
+        A::Fullscreen => "help.key.fullscreen",
         _ => return None,
     })
 }

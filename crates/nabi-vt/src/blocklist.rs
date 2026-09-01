@@ -77,6 +77,7 @@ impl TermModel {
     }
 
     /// 그 블록이 **화면 맨 위**에 오게 스크롤한다. 이미 거기면 false.
+    #[must_use = "그 블록이 스크롤백에 없으면 말해 줘야 한다"]
     pub fn scroll_to_prompt(&mut self, abs: i64) -> bool {
         let cur = self.scrollback_offset() as i32;
         let d = self.prompt_offset(abs);

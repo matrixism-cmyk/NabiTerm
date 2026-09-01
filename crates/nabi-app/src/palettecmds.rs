@@ -41,6 +41,8 @@ pub(crate) fn palette_commands(
         (tr(lang, "findall.title").to_string(), PaletteAction::FindAll),
         (tr(lang, "menu.sessionspanel").to_string(), PaletteAction::ToggleSessionsPanel),
         (tr(lang, "settings.statusbar").to_string(), PaletteAction::ToggleStatusBar),
+        // 찾기는 Ctrl+F 하나뿐이었다 — 그 단축키를 모르면 스크롤백을 찾을 길이 없었다.
+        (tr(lang, "find.title").to_string(), PaletteAction::FindInPane),
         // 메뉴에만 있던 전역 동작(§메뉴/IA 정리) — 라벨은 메뉴와 **같은 키**를 쓴다.
         // 다른 낱말로 부르면 같은 기능이 두 이름을 갖게 되고, 그것이 곧 드리프트다.
         (tr(lang, "menu.fullscreen").to_string(), PaletteAction::Fullscreen),
