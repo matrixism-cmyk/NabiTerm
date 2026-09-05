@@ -27,6 +27,8 @@ impl NabiApp {
     pub(crate) fn toggle_session_log(&mut self) {
         let Some(pane) = self.focused_pane() else { return };
         if let Some(log) = self.session_logs.remove(&pane) {
+            // 껐다는 사실을 적어 둔다 — 안 적으면 "모든 세션 기록"이 다음 프레임에 되켠다.
+            self.rec_off.insert(pane);
             // 바이트 통로를 끊는다. 안 끊으면 기록을 멈춘 뒤에도 계속 복사본을 만든다.
             if log.raw.is_some() {
                 if let Ok(m) = self.orch.panes.read() {
@@ -191,6 +193,7 @@ impl NabiApp {
         if self.session_logs.contains_key(&pane) {
             return;
         }
+        self.rec_off.remove(&pane); // 다시 켰으니 "껐다"는 기억을 지운다.
         let host = match self.pane_origins.get(&pane) {
             Some(nabi_session::SessionKind::Ssh { host, .. }) => host.clone(),
             _ => "local".to_string(),

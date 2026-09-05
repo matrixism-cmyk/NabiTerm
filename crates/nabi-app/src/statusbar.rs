@@ -74,6 +74,15 @@ impl NabiApp {
         let mut stop_watch = false;
         let mut toggle_rec = false; // REC 배지를 눌렀는가 — 켜고 끄는 하나의 스위치다.
         let mut want_dims: Option<(u16, u16)> = None; // 크기 칩에서 고른 격자.
+        let mut clip_pick: Option<String> = None; // 클립보드 목록에서 고른 글.
+        let mut clip_windows = false; // 윈도우 클립보드 기록을 열어 달라.
+        // 목록은 가변 차용 전에 미리 모은다(탭 목록과 같은 꼴).
+        let clip_items: Vec<(String, String)> = self
+            .clip_history
+            .iter()
+            .take(12)
+            .map(|t| (crate::statusclip::one_line(t, 44), t.clone()))
+            .collect();
         let mut goto_tab: Option<nabi_types::PaneId> = None; // 탭 목록에서 고른 탭.
         let tab_list = self.all_tab_names(); // 가변 차용 전에 미리 모은다.
         let sel_info = self.selection.filter(|s| !s.is_empty()).map(|s| {
@@ -332,6 +341,17 @@ impl NabiApp {
                 } else if !local_ip.is_empty() {
                     folded.push((plain, local_ip.clone()));
                 }
+                // 무엇으로 그리는지 — 화면이 이상할 때 가장 먼저 묻게 되는 것이다.
+                // 시계와 같은 등급으로 접는다(가장 먼저 접히는 쪽).
+                if !self.gpu.short.is_empty() {
+                    let g = format!("\u{1f5b5} {}", self.gpu.short);
+                    if fit.shows(crate::statusfit::Tier::Full) {
+                        ui.separator();
+                        ui.label(&g).on_hover_text(&self.gpu.detail);
+                    } else {
+                        folded.push((plain, g));
+                    }
+                }
                 if let Some(c) = &clock {
                     let cl = format!("\u{1f550} {c}");
                     if fit.shows(crate::statusfit::Tier::Full) {
@@ -341,16 +361,32 @@ impl NabiApp {
                         folded.push((plain, cl));
                     }
                 }
-                // 클립보드 기록(Win+V) — 맨 오른쪽에 늘 둔다. 접지 않는 까닭은,
-                // 좁을수록 붙여넣을 것을 고르는 일이 더 잦기 때문이다.
+                // 복사한 것들 — 맨 오른쪽에 늘 둔다. 접지 않는 까닭은, 좁을수록
+                // 붙여넣을 것을 고르는 일이 더 잦기 때문이다.
+                //
+                // 윈도우의 Win+V 를 대신 눌러 주려 했으나 **주입으로는 열리지 않았다**
+                // (실측 2026-09-05). 우리는 이미 복사한 것들을 기억하고 있으니
+                // (clip_history) 그것을 보여 준다. 자세한 사정은 statusclip.rs.
                 ui.separator();
-                if ui
-                    .add(egui::Label::new("\u{1f4cb}").sense(egui::Sense::click()))
-                    .on_hover_text(tr(lang, "status.clipboard"))
-                    .clicked()
-                {
-                    crate::statusclip::open_clipboard_history();
-                }
+                ui.menu_button("\u{1f4cb}", |ui| {
+                    ui.set_min_width(260.0);
+                    if clip_items.is_empty() {
+                        ui.weak(tr(lang, "clip.empty"));
+                    }
+                    for (label, full) in &clip_items {
+                        if ui.button(label).clicked() {
+                            clip_pick = Some(full.clone());
+                            ui.close();
+                        }
+                    }
+                    ui.separator();
+                    if ui.button(tr(lang, "clip.windows")).clicked() {
+                        clip_windows = true;
+                        ui.close();
+                    }
+                })
+                .response
+                .on_hover_text(tr(lang, "status.clipboard"));
                 // 접힌 것을 버리지 않는다 — 한 번 눌러 볼 수 있어야 접은 것이다.
                 if !folded.is_empty() {
                     ui.separator();
@@ -399,22 +435,9 @@ impl NabiApp {
                 false => self.start_rec_here(),
             }
         }
-        if let Some(want) = want_dims {
-            self.resize_window_for_grid(ctx, want);
-        }
-        if let Some(p) = goto_tab {
-            self.focus_tab(p);
-        }
-        if jump_fail {
-            self.jump_failed(true); // 칩을 누르면 다음 실패한 명령으로.
-        }
-        if focus_sftp {
-            if let Some(p) = self.sftp_pane {
-                if let Some(loc) = self.dock.find_tab(&p) {
-                    let _ = self.dock.set_active_tab(loc);
-                }
-            }
-        }
+        self.apply_status_clicks(ctx, crate::statusclicks::StatusClicks {
+            want_dims, goto_tab, clip_pick, clip_windows, jump_fail, focus_sftp,
+        });
     }
 
     /// 선택한 인코딩을 설정에 저장하고 열린 모든 pane에 즉시 적용한다.

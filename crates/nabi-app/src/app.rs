@@ -348,6 +348,10 @@ pub struct NabiApp {
     /// 삭제 확인 대기 중인 저장 세션 이름(sessiondel).
     pub session_delete_ask: Option<String>,
     pub file_preview: Option<(String, String)>, pub clip_history: Vec<String>,
+    /// 지금 무엇으로 화면을 그리고 있나(상태바 표시). 시작할 때 한 번 물어 둔다.
+    pub gpu: crate::gpuinfo::GpuInfo,
+    /// 사용자가 **직접 끈** 기록 pane 들. "모든 세션 기록"이 다시 켜지 못하게 막는다.
+    pub rec_off: std::collections::HashSet<nabi_types::PaneId>,
     /// 스크롤백 일치 개수 캐시 — **열쇠는 `FindKey`**(배치 AI).
     ///
     /// 예전에는 `(질의, 정규식, 개수)` 였는데 개수는 **단어 단위(`whole`)에도 의존**한다.

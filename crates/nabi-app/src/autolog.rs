@@ -107,6 +107,14 @@ impl NabiApp {
             Err(_) => return,
         };
         for pane in panes {
+            // 사용자가 이 pane 의 기록을 직접 껐으면 다시 켜지 않는다.
+            //
+            // 이게 없으면 상태바 REC 를 눌러 꺼도 **다음 프레임에 되살아난다** — 여기가
+            // 매 프레임 "기록 안 하는 pane 전부"를 훑기 때문이다. 눌러도 안 꺼지는 것처럼
+            // 보였다(사용자 보고 2026-09-05).
+            if self.rec_off.contains(&pane) {
+                continue;
+            }
             if self.session_logs.contains_key(&pane) {
                 continue;
             }

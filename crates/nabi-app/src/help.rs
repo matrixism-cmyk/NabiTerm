@@ -31,6 +31,7 @@ impl NabiApp {
             }
         }
         let (mut open, mut copy, mut save) = (true, false, false);
+        let mut copy_cmd: Option<String> = None; // 명령 한 줄만 복사(사용자 요청).
         // AI CLI 자동 업데이트 설정은 이 창에서 바꿀 수 있다 — 바뀌면 즉시 저장한다.
         let mut open_env = false; // 도움말에서 환경 관리자로 건너가기.
         let mut open_logs = false; // 도움말에서 '진단 로그'를 눌렀는가.
@@ -65,7 +66,7 @@ impl NabiApp {
                                 1 => crate::helppages::shortcut_page(ui, lang),
                                 2 => crate::helppages::features_page(ui, lang),
                                 3 => crate::helppages::agent_page(
-                                    ui, lang, &mut copy, &mut save, &mut open_env,
+                                    ui, lang, &mut copy, &mut save, &mut open_env, &mut copy_cmd,
                                 ),
                                 4 => crate::helppages::network_page(ui, lang, offline),
                                 _ => crate::helppages::licenses_page(ui, lang),
@@ -86,6 +87,12 @@ impl NabiApp {
         }
         if save {
             self.save_agent_guide();
+        }
+        // 명령 한 줄을 눌렀다 — 그 줄만 클립보드로. 전체 설명서는 위 단추가 따로 있다.
+        if let Some(c) = copy_cmd {
+            ctx.copy_text(c.clone());
+            self.record_clip(&c); // 우리 클립보드 목록에도 남긴다(상태바 클립보드 단추).
+            self.notify = Some((format!("\u{1f4cb} {c}"), std::time::Instant::now()));
         }
         self.about_open = open;
     }

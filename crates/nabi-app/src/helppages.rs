@@ -263,6 +263,19 @@ pub(crate) fn shortcut_page(ui: &mut egui::Ui, lang: Lang) {
 ///
 /// 왼쪽 낱말은 실제 동사여야 한다 — 아래 시험이 대조한다. 없는 명령을 적어 두면
 /// AI 가 그것을 부르고 실패하고, 실패한 AI 는 우리 프로그램이 고장 났다고 판단한다.
+/// 명령 한 칸 — 누르면 true. 눌러서 복사한다는 것을 알 수 있게 손 모양으로 바꾼다.
+fn cmd_button(ui: &mut egui::Ui, lang: Lang, cmd: &str) -> bool {
+    let r = ui.add(
+        egui::Label::new(egui::RichText::new(cmd).monospace())
+            .sense(egui::Sense::click()),
+    );
+    if r.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    r.on_hover_text(tr(lang, "help.agent.clickcopy"))
+        .clicked()
+}
+
 const CMDS: &[(&str, &str)] = &[
     // pane 을 다루는 기본 고리 — 열고, 보내고, 읽고, 기다린다.
     ("nabi cli list", "help.cmd.list"),
@@ -287,7 +300,14 @@ const CMDS: &[(&str, &str)] = &[
 /// **설치 기능은 여기 없다.** AI CLI를 깔고 지우는 일은 환경 관리자(도구 메뉴)로 옮겼다 —
 /// 도움말은 읽는 곳이라, 반년 뒤에 다시 깔려고 이곳을 뒤지는 사람은 없기 때문이다
 /// (사용자와 2026-08-25에 내린 결론). 대신 읽다가 바로 갈 수 있게 버튼 하나를 둔다.
-pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &mut bool, open_env: &mut bool) {
+pub(crate) fn agent_page(
+    ui: &mut egui::Ui,
+    lang: Lang,
+    copy: &mut bool,
+    save: &mut bool,
+    open_env: &mut bool,
+    copy_cmd: &mut Option<String>,
+) {
     ui.heading(tr(lang, "help.agent.title"));
     ui.label(tr(lang, "help.agent.intro")); // 폭 제한된 본문이라 자동 줄바꿈.
     ui.add_space(8.0);
@@ -299,18 +319,40 @@ pub(crate) fn agent_page(ui: &mut egui::Ui, lang: Lang, copy: &mut bool, save: &
     ui.add_space(8.0);
     ui.strong(tr(lang, "help.agent.examples"));
     ui.add_space(2.0);
-    // 명령 ↔ 설명 2열 표(가로로 뻗지 않게 짧은 표기 사용 — 전체 문법은 복사본 MD에).
+    // 명령 ↔ 설명 2열 표. **명령을 누르면 그 명령만 클립보드로 간다** — 읽고 나서
+    // 바로 쓰려면 옮겨 적어야 했다(사용자 요청 2026-09-05).
+    //
+    // 설명은 오른쪽 칸에 들어가는데, 길면 그 칸이 그만큼 넓어져 창이 늘어난다.
+    // 그래서 설명은 **한 줄로 끝나는 길이**만 적는다(자세한 것은 복사본 MD에).
     egui::Grid::new("help_agent_cmds")
         .num_columns(2)
         .spacing([14.0, 6.0])
         .striped(true)
         .show(ui, |ui| {
             for (cmd, key) in CMDS {
-                ui.monospace(*cmd);
+                if cmd_button(ui, lang, cmd) {
+                    *copy_cmd = Some(cmd.trim_end_matches(" \u{2026}").to_string());
+                }
                 ui.label(tr(lang, key));
                 ui.end_row();
             }
         });
+    ui.add_space(10.0);
+    // 전체 목록 — **설명서에서 뽑는다.** 여기에 또 손으로 적으면 그 순간부터 어긋난다
+    // (agentverbs). 누르면 그 명령이 클립보드로 간다.
+    egui::CollapsingHeader::new(tr(lang, "help.agent.allcmds")).show(ui, |ui| {
+        ui.weak(tr(lang, "help.agent.allcmds.hint"));
+        ui.add_space(4.0);
+        egui::Grid::new("help_agent_all").num_columns(2).spacing([10.0, 4.0]).striped(true).show(ui, |ui| {
+            for (kind, cmd) in crate::agentverbs::all_verbs() {
+                ui.label(egui::RichText::new(kind).weak().small());
+                if cmd_button(ui, lang, cmd) {
+                    *copy_cmd = Some(cmd.to_string());
+                }
+                ui.end_row();
+            }
+        });
+    });
     ui.add_space(8.0);
     ui.label(tr(lang, "help.agent.perm"));
     ui.add_space(12.0);

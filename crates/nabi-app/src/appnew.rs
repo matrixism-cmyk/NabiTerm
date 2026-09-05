@@ -10,6 +10,8 @@ use std::collections::HashMap;
 impl NabiApp {
     pub fn new(cc: &CreationContext<'_>) -> Self {
         let hwnd = crate::windnd::hwnd_of(cc); // OS 파일 드롭 위치 판정용 창 핸들.
+        // 어떤 어댑터로 그리는지 지금 물어 둔다 — 나중에는 물어볼 수 없다.
+        let gpu = crate::gpuinfo::probe(cc);
         let layout = nabi_config::StorageLayout::resolve();
         let first_run = !layout.config_file.exists(); // OOBE: 설정 파일이 없으면 첫 실행.
         // **버린 키를 함께 받는다.** 설정 한 줄이 어긋나면 그 키만 버리고 나머지는
@@ -278,7 +280,7 @@ impl NabiApp {
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),
             quick_select_open: false, editor_close_ask: None, session_delete_ask: None, file_preview: None,
-            clip_history: Vec::new(), find_count_cache: None, session_logs: HashMap::new(), replays: Default::default(), pending_replay: None,
+            clip_history: Vec::new(), rec_off: Default::default(), gpu, find_count_cache: None, session_logs: HashMap::new(), replays: Default::default(), pending_replay: None,
             agent_trail_open: false, denial_noticed: false, verify_skip_noticed: false, autolog_fail_noticed: false, rules_drop_noticed: false, batch_rename: None,
             editor_mtimes: HashMap::new(), editor_extcheck: std::time::Instant::now(),
             autosave_at: std::time::Instant::now(), note_edit: None,

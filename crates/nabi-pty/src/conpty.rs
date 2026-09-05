@@ -41,6 +41,7 @@ pub fn spawn_local(
     }
     // 제어 평면 자기 식별(파이프·토큰은 부모 프로세스 env로 상속됨).
     cmd.env("NABI_PANE_ID", pane.get().to_string());
+    crate::envclean::scrub(&mut cmd);
     let child = pair.slave.spawn_command(cmd).map_err(|e| explain(shell, e))?;
     drop(pair.slave);
     let reader = pair.master.try_clone_reader().map_err(other)?;

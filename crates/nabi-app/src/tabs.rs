@@ -167,6 +167,8 @@ pub struct TermTabViewer<'a> {
     pub ai_handoff: &'a mut Option<(PaneId, bool)>,
     /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 겹 화면으로 연다.
     pub open_history: &'a mut Option<PaneId>,
+    /// 탭 이름에 쓸 글자 수 — 탭이 늘면 줄어든다(크롬처럼). `tabwidth`.
+    pub name_budget: usize,
     /// 탭 메뉴가 낸 한 줄(저장 성공·실패 등) — 중앙이 알림으로 띄운다.
     pub tab_notice: &'a mut Option<String>,
 }
@@ -217,35 +219,11 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         } else if self.run_cmd.get(tab).is_some_and(|c| crate::aistatus::is_ai_command(c)) {
             id = format!("\u{1f916} {id}");
         }
-        if let Some(w) = self.web_tabs.get(tab) {
-            let name = crate::webtab::tab_name(&w.title, &w.url);
-            return format!("{pin}\u{1f310} {name}").into();
-        }
-        if let Some(b) = self.browser_tabs.get(tab) {
-            let name = b
-                .path
-                .file_name()
-                .map(|s| s.to_string_lossy().into_owned())
-                .unwrap_or_else(|| b.path.display().to_string());
-            return format!("{pin}\u{1f4c1} {name}").into();
-        }
-        if let Some(e) = self.editors.get(tab) {
-            let star = if e.dirty { " \u{25cf}" } else { "" }; // 미저장 ● — 본문 헤더·VS Code와 통일.
-            return format!("{pin}\u{270e} {}{star}", e.title).into();
-        }
-        if let Some(host) = self.remote_host(*tab) {
-            // 원격 패널도 브라우저 탭처럼 UI 전용이라 pane ID 배지를 붙이지 않는다.
-            // 붙이면 내부 채번(u64::MAX-n)이 그대로 새어 "#18446744073709551614"가 보인다.
-            let h = if host.is_empty() { "SFTP".to_string() } else { host };
-            return format!("{pin}\u{1f5a7} {h}").into();
-        }
-        let base =
-            crate::tabmenu::tab_title(self.orch, self.tab_names, self.activity, self.cwds, tab);
-        if self.broadcast && self.broadcast_group.contains(tab) {
-            format!("{pin}{id}\u{21c9} {base}").into()
-        } else {
-            format!("{pin}{id}{base}").into()
-        }
+        // 이름은 갈래마다 다르지만 **줄이는 것은 한 자리에서** 한다. 갈래마다 줄이면
+        // 언젠가 한 갈래를 빠뜨리고, 그 탭만 혼자 길어진다.
+        let (icon, name, arrow) = self.tab_name_parts(tab);
+        let name = crate::statusfmt::elide(&name, self.name_budget);
+        format!("{pin}{id}{icon}{arrow}{name}").into()
     }
 
     /// **고정한 탭에는 닫기 단추가 없다.** 고정의 뜻이 여기에 있다 — 실수로 누르는
@@ -387,5 +365,42 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             }
         }
         OnCloseResponse::Close
+    }
+}
+
+impl TermTabViewer<'_> {
+    /// 탭 이름을 (아이콘, 이름, 화살표)로 나눠 돌려준다.
+    ///
+    /// 아이콘과 화살표는 **줄이면 안 되는 것**이라 이름과 따로 돌려준다. 통째로 한 글자씩
+    /// 세어 자르면 좁은 탭에서 아이콘부터 사라져 무슨 탭인지 알 수 없게 된다.
+    fn tab_name_parts(&self, tab: &PaneId) -> (&'static str, String, &'static str) {
+        if let Some(w) = self.web_tabs.get(tab) {
+            return ("\u{1f310} ", crate::webtab::tab_name(&w.title, &w.url), "");
+        }
+        if let Some(b) = self.browser_tabs.get(tab) {
+            let name = b
+                .path
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+                .unwrap_or_else(|| b.path.display().to_string());
+            return ("\u{1f4c1} ", name, "");
+        }
+        if let Some(e) = self.editors.get(tab) {
+            let star = if e.dirty { " \u{25cf}" } else { "" }; // 미저장 ● — 본문 헤더·VS Code와 통일.
+            return ("\u{270e} ", format!("{}{star}", e.title), "");
+        }
+        if let Some(host) = self.remote_host(*tab) {
+            // 원격 패널도 브라우저 탭처럼 UI 전용이라 pane ID 배지를 붙이지 않는다.
+            // 붙이면 내부 채번(u64::MAX-n)이 그대로 새어 "#18446744073709551614"가 보인다.
+            let h = if host.is_empty() { "SFTP".to_string() } else { host };
+            return ("\u{1f5a7} ", h, "");
+        }
+        let base =
+            crate::tabmenu::tab_title(self.orch, self.tab_names, self.activity, self.cwds, tab);
+        let arrow = match self.broadcast && self.broadcast_group.contains(tab) {
+            true => "\u{21c9} ",
+            false => "",
+        };
+        ("", base, arrow)
     }
 }

@@ -150,6 +150,21 @@ pub(crate) fn grid_seg(ui: &mut egui::Ui, id: &str, rows: impl FnOnce(&mut egui:
     grid(ui, id, rows);
 }
 
+/// 표 왼쪽 칸의 라벨 — **폭을 정확히 고정한다.**
+///
+/// `min_col_width` 만으로는 부족했다. 그것은 최소일 뿐이라, 라벨이 긴 조각은 그만큼
+/// 넓어지고 짧은 조각은 안 넓어진다. 표를 조각내 놓으니 조각마다 칸 폭이 달라져
+/// **체크박스가 들쭉날쭉해 보였다**(사용자 보고 2026-09-05).
+///
+/// 폭을 못 박으면 어느 조각이든 같은 자리에서 시작한다. 라벨이 길면 줄이 접힌다 —
+/// 접히는 편이 어긋나는 것보다 낫다.
+pub(crate) fn label_cell(ui: &mut egui::Ui, text: &str) {
+    ui.scope(|ui| {
+        ui.set_width(LABEL_W);
+        ui.add(egui::Label::new(text).wrap());
+    });
+}
+
 /// **두 칸을 가로지르는 설명 한 줄.**
 ///
 /// 설명을 표의 칸 안에 넣었더니 그 칸이 설명 길이만큼 넓어져 설정 창 폭이 흐트러졌다

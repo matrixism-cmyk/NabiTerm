@@ -23,6 +23,9 @@ impl NabiApp {
         let mut dup_tab: Option<nabi_types::PaneId> = None;
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
         let mut open_history: Option<nabi_types::PaneId> = None;
+        // 탭이 늘면 이름을 줄인다(크롬처럼) — 굴려서 찾게 하지 않으려고.
+        let dock_w = ui.available_width(); // 도크가 실제로 쓰는 폭.
+        let tab_count = self.dock.iter_all_tabs().count();
         let mut tab_notice: Option<String> = None;
         // 브라우저 탭: 액션/닫힘 수집 + 렌더에 필요한 비교맵·업로드 가능 여부(차용 전 계산).
         let mut browser_act: Vec<(nabi_types::PaneId, crate::browser::BrowserAct)> = Vec::new();
@@ -194,6 +197,7 @@ impl NabiApp {
                 dup_tab: &mut dup_tab,
                 ai_handoff: &mut ai_handoff,
                 open_history: &mut open_history,
+                name_budget: crate::tabwidth::name_budget(dock_w, tab_count),
                 tab_notice: &mut tab_notice,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,

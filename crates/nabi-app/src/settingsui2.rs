@@ -1,6 +1,7 @@
 //! 설정 — 동작(언어·핫키·복원·셸통합·제어평면 등) 페이지. settingsui에서 분리(파일 크기 규율).
 
 use nabi_config::AppConfig;
+use crate::settingsui::label_cell;
 use nabi_i18n::{tr, Lang};
 
 /// 동작 페이지.
@@ -14,7 +15,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     use crate::settingsui::{grid_seg, help_line};
 
     grid_seg(ui, "beh_lang", |ui| {
-        ui.label(tr(lang, "settings.language"));
+        label_cell(ui, tr(lang, "settings.language"));
         egui::ComboBox::from_id_salt("set_lang")
             .selected_text(cfg.appearance.language.clone())
             .show_ui(ui, |ui| {
@@ -23,7 +24,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
                 }
             });
         ui.end_row();
-        ui.label(tr(lang, "settings.quakehotkey"));
+        label_cell(ui, tr(lang, "settings.quakehotkey"));
         ui.add(
             egui::TextEdit::singleline(&mut cfg.appearance.quake_hotkey)
                 .hint_text("Control+Backquote"),
@@ -41,7 +42,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         &mut cfg.terminal.restore_ssh_ai_command, restore);
     // 스위치가 아니라 안내다 — 라벨만 두고 설명은 아래 줄에.
     grid_seg(ui, "beh_rainfo", |ui| {
-        ui.label(tr(lang, "settings.restoreai"));
+        label_cell(ui, tr(lang, "settings.restoreai"));
         ui.label("");
         ui.end_row();
     });
@@ -59,7 +60,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
     grid_seg(ui, "beh_misc2", |ui| {
         chk(ui, tr(lang, "settings.autoreconnect"), &mut cfg.terminal.auto_reconnect);
         // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
-        ui.label(tr(lang, "settings.logkeep"));
+        label_cell(ui, tr(lang, "settings.logkeep"));
         ui.add(
             egui::DragValue::new(&mut cfg.terminal.log_keep_days)
                 .range(0..=365)
@@ -91,7 +92,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         chk(ui, tr(lang, "settings.protectscrollback"), &mut cfg.terminal.protect_scrollback);
 
         // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
-        ui.label(tr(lang, "settings.shellinteg"));
+        label_cell(ui, tr(lang, "settings.shellinteg"));
         ui.horizontal(|ui| {
             let id = egui::Id::new("shellinteg_msg");
             if ui.button(tr(lang, "settings.shellinteg.install")).clicked() {
@@ -108,7 +109,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
         ui.end_row();
 
         // 에이전트 제어 평면: pane 내 프로세스가 nabiTerm을 제어(off/ask/on).
-        ui.label(tr(lang, "settings.control"));
+        label_cell(ui, tr(lang, "settings.control"));
         ui.horizontal(|ui| {
             for (val, key) in [
                 ("off", "settings.control.off"),
@@ -119,7 +120,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
             }
         });
         ui.end_row();
-        ui.label("OSC 7771");
+        label_cell(ui, "OSC 7771");
         ui.checkbox(&mut cfg.terminal.control_allow_osc, "");
         ui.end_row();
     });
@@ -128,7 +129,7 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
 
 /// 표 한 줄짜리 스위치.
 fn chk(ui: &mut egui::Ui, label: &str, v: &mut bool) {
-    ui.label(label);
+    label_cell(ui, label);
     ui.checkbox(v, "");
     ui.end_row();
 }
@@ -146,7 +147,7 @@ fn chk_help(
     enabled: bool,
 ) {
     crate::settingsui::grid_seg(ui, id, |ui| {
-        ui.label(label);
+        label_cell(ui, label);
         ui.add_enabled(enabled, egui::Checkbox::without_text(value));
         ui.end_row();
     });
