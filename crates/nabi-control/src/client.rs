@@ -17,10 +17,20 @@ pub fn request(pipe: &str, token: &str, req: &ControlRequest) -> Result<ControlR
             Err(e) if i < 49 && matches!(e.raw_os_error(), Some(231) | Some(2) | Some(3)) => {
                 std::thread::sleep(std::time::Duration::from_millis(20));
             }
-            Err(e) => return Err(format!("파이프 접속 실패({pipe}): {e}")),
+            // 이 오류는 **AI 에이전트가 읽는다.** 그래서 화면 언어와 무관하게 영어로,
+            // 코드를 앞에 달아 적는다(`tr_error_machine`) — 에이전트는 문구를 사람처럼
+            // 읽지 않고 똑같은 글자를 찾는다(T8-1).
+            Err(e) => {
+                return Err(nabi_i18n::tr_error_machine(&nabi_error::Coded::with(
+                    "control.pipe",
+                    [pipe.to_string(), e.to_string()],
+                )))
+            }
         }
     }
-    let f = f.ok_or_else(|| format!("파이프 접속 실패({pipe}): 시간 초과"))?;
+    let f = f.ok_or_else(|| {
+        nabi_i18n::tr_error_machine(&nabi_error::Coded::one("control.timeout", pipe))
+    })?;
     let mut r = BufReader::new(f.try_clone().map_err(|e| e.to_string())?);
     let mut w = f;
     let from = std::env::var("NABI_PANE_ID").ok().and_then(|s| s.parse().ok());

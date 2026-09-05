@@ -90,9 +90,11 @@ pub fn finish_local_spawn(
         }
         Err(e) => {
             // seq를 실어 보내 제어 평면이 타임아웃 대신 즉시 원인을 회신하게 한다.
+            // 오류가 코드로 왔으면 여기서 사용자 말로 옮긴다 — 아래 크레이트는 화면
+            // 언어를 모르고, 알 이유도 없다(T8-1).
             let _ = event_tx.send(Event::SpawnFailed {
                 seq: d.reply_seq,
-                message: format!("셸 스폰 실패: {e}"),
+                message: nabi_i18n::tr_io_current(&e),
             });
         }
     }

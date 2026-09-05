@@ -148,6 +148,8 @@ impl NabiApp {
         self.save_config();
         // 앱이 스크롤백을 지우지 못하게 할 것인가 — 이미 열려 있는 pane 에도 곧바로 걸린다.
         nabi_vt::wipeguard::set_default_protect(self.config.terminal.protect_scrollback);
+        // 휠 한 눈금이 몇 줄인가 — 탭과 분리 창이 같은 값을 본다.
+        crate::panewheel::set_lines_per_notch(self.config.terminal.wheel_lines);
         // SSH keepalive 간격을 라이브 반영(다음 연결부터 적용).
         nabi_ssh::session::SSH_KEEPALIVE_SECS.store(self.config.terminal.ssh_keepalive_secs, std::sync::atomic::Ordering::Relaxed);
         nabi_ssh::conntimeout::CONNECT_TIMEOUT_SECS.store(self.config.terminal.ssh_connect_timeout_secs, std::sync::atomic::Ordering::Relaxed);

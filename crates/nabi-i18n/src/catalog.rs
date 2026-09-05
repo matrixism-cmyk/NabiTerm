@@ -211,6 +211,7 @@ pub(crate) fn all_entries() -> impl Iterator<Item = &'static (&'static str, &'st
         .chain(crate::catalog_net::CATALOG_NET)
         .chain(crate::catalog_ai::CATALOG_AI)
         .chain(crate::catalog_ai2::CATALOG_AI2)
+        .chain(crate::catalog_err::ENTRIES)
 }
 
 /// 키를 현재 언어 문자열로 변환한다(미상 키는 "?").

@@ -6,3 +6,4 @@ license.workspace = true
 publish = false
 
 [dependencies]
+nabi-error = { workspace = true } # 오류를 코드로 받아 사람 말로 바꾼다(T8-1).

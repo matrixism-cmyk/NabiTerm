@@ -27,10 +27,13 @@ pub fn spawn_local(
     on_exit: Box<dyn FnOnce(Option<i32>) + Send>,
 ) -> io::Result<LocalPty> {
     // 스폰 전에 셸 실행파일 존재를 확인 — 없으면 ConPTY 행(60초 타임아웃) 대신 즉시 명확한 에러.
+    //
+    // 오류는 **말이 아니라 코드**로 만든다(`Coded`). `io::Error` 안에 담아 나르므로 이
+    // 함수의 서명은 그대로다 — 보여 주는 쪽이 `downcast_ref` 로 꺼내 자기 말로 옮긴다.
     if crate::spawn::resolve_shell(shell).is_none() {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
-            format!("셸 실행파일을 찾을 수 없습니다: {} (설치되어 있지 않음)", crate::spawn::program_name(shell)),
+            nabi_error::Coded::one("shell.notfound", crate::spawn::program_name(shell)),
         ));
     }
     let sys = native_pty_system();
@@ -68,7 +71,11 @@ fn explain(shell: &ShellKind, e: impl std::fmt::Display) -> io::Error {
         return other(raw);
     }
     let name = crate::spawn::program_name(shell);
-    io::Error::other(format!("{name}은(는) Microsoft Store판으로 설치돼 있고, 이 계정에는 앱 라이선스가 없어 실행되지 않습니다.\n도구 > 환경 관리자에서 PowerShell 7을 설치하면 정식 설치본으로 열립니다.\n원문: {raw}"))
+    // 원문(raw)도 함께 나른다 — 무엇이 실제로 났는지 잃으면 진단할 수 없다.
+    io::Error::other(nabi_error::Coded::with(
+        "shell.storealias",
+        [name.to_string(), raw],
+    ))
 }
 
 impl ByteChannel for LocalPty {

@@ -325,6 +325,14 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
 
     ui.label(tr(lang, "settings.scrollback"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.scrollback).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
+    ui.label(tr(lang, "settings.wheellines"));
+    ui.add(
+        egui::DragValue::new(&mut cfg.terminal.wheel_lines)
+            .range(1..=10)
+            .suffix(tr(lang, "settings.lines")),
+    )
+    .on_hover_text(tr(lang, "settings.wheellines.hint"));
+    ui.end_row();
     ui.label(tr(lang, "settings.searchlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.search_limit).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
     crate::settingsui2::tip_rows(ui, cfg, lang); // 영문 팁 한글 오버레이.

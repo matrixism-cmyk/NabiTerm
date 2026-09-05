@@ -7,6 +7,8 @@ publish = false
 
 [dependencies]
 nabi-types = { workspace = true }
+nabi-error = { workspace = true } # 오류를 코드로 만든다(T8-1).
+nabi-i18n = { workspace = true }  # 그 코드를 **영어로** 적는다 — AI 가 읽는다.
 nabi-proto = { workspace = true }
 nabi-orchestrator = { workspace = true } # SharedPanes 읽기(질의 응답 출처)
 serde = { workspace = true }

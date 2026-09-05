@@ -164,6 +164,9 @@ impl Default for Appearance {
 #[serde(default)]
 pub struct TerminalCfg {
     pub scrollback: usize,
+    /// 휠 한 눈금에 몇 줄을 굴릴 것인가. 0이면 기본값(3)을 쓴다.
+    #[serde(default = "default_wheel_lines")]
+    pub wheel_lines: u8,
     /// 기본 셸: "pwsh" | "powershell" | "cmd" | "wsl" | "gitbash"
     pub default_shell: String,
     /// 새 로컬 터미널 기본 시작 디렉터리(비우면 포커스 셸 cwd 상속→없으면 시스템 기본).
@@ -431,6 +434,8 @@ fn default_alert_pct() -> u32 { 90 }
 /// 30초. 사람이 "자리를 뜰까" 망설이기 시작하는 지점이라 알림이 쓸모 있어지는 첫 구간이다.
 fn default_slow_command_secs() -> u64 { 30 }
 fn default_control_mode() -> String { "ask".into() }
+/// 휠 한 눈금 = 3줄(주류 에뮬레이터 관례).
+fn default_wheel_lines() -> u8 { 3 }
 fn default_kex_policy() -> String { "auto".into() }
 fn default_stats_secs() -> u64 { 3 }
 fn yes() -> bool { true }
@@ -439,7 +444,11 @@ fn default_keepalive() -> u64 { 30 }
 impl Default for TerminalCfg {
     fn default() -> Self {
         Self {
-            scrollback: 5000,
+            // AI 도구는 스크롤백을 훨씬 많이 쓴다(2026 조사). 5,000은 몇 분이면
+            // 넘어간다. 메모리는 쓴 만큼 늘지만 20,000이면 한 세션을 담는다.
+            // 이미 설정 파일이 있는 사람은 그대로다 — 새로 까는 사람에게만 걸린다.
+            scrollback: 20_000,
+            wheel_lines: default_wheel_lines(),
             default_shell: "powershell".into(),
             default_cwd: String::new(),
             encoding: "UTF-8".into(),

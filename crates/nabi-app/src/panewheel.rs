@@ -145,8 +145,23 @@ pub(crate) fn overlay_open(
 /// 휠 한 눈금 = 40점. egui 가 줄 단위 휠을 점으로 바꿀 때 쓰는 값이다.
 const POINTS_PER_NOTCH: f32 = 40.0;
 
-/// 한 눈금에 몇 줄을 움직일 것인가(주류 에뮬레이터 관례).
-const LINES_PER_NOTCH: f32 = 3.0;
+/// 한 눈금에 몇 줄을 움직일 것인가. 설정에서 바꾼다(기본 3 — 주류 에뮬레이터 관례).
+///
+/// 숫자 하나를 위해 네 개의 서명에 인자를 더하는 대신 여기 실어 둔다. 화면을 그리는
+/// 두 길(탭·분리 창)이 같은 값을 봐야 하고, 매 프레임 읽히는 값이라 잠금도 곤란하다.
+/// i18n 의 현재 언어(`nabi_i18n::current`)와 같은 방식이다.
+static LINES_PER_NOTCH: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(3);
+
+/// 설정이 바뀌면 부른다. 0은 무시한다 — 굴려도 안 움직이는 값을 허용할 이유가 없다.
+pub(crate) fn set_lines_per_notch(n: u8) {
+    if n > 0 {
+        LINES_PER_NOTCH.store(n, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn lines_per_notch() -> f32 {
+    LINES_PER_NOTCH.load(std::sync::atomic::Ordering::Relaxed) as f32
+}
 
 /// 이번 프레임에 들어온 휠(점)이 **몇 줄**인가.
 ///
@@ -165,7 +180,7 @@ pub(crate) fn wheel_lines(points: f32) -> i32 {
     if points == 0.0 {
         return 0;
     }
-    let n = (points / POINTS_PER_NOTCH * LINES_PER_NOTCH).round() as i32;
+    let n = (points / POINTS_PER_NOTCH * lines_per_notch()).round() as i32;
     match n {
         0 => points.signum() as i32,
         n => n,

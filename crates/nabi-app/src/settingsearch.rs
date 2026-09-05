@@ -66,6 +66,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.osc52", 2),
     ("settings.scrollback", 2),
     ("settings.searchlimit", 2),
+    ("settings.wheellines", 2),
     ("settings.shell", 2),
     ("settings.tipai", 2),
     ("settings.tipcachepath", 2),

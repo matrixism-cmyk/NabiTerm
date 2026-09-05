@@ -3131,6 +3131,8 @@ dependencies = [
  "crossbeam-channel",
  "nabi-agentdetect",
  "nabi-config",
+ "nabi-error",
+ "nabi-i18n",
  "nabi-orchestrator",
  "nabi-proto",
  "nabi-types",
@@ -3211,6 +3213,9 @@ dependencies = [
 [[package]]
 name = "nabi-i18n"
 version = "0.1.511"
+dependencies = [
+ "nabi-error",
+]
 
 [[package]]
 name = "nabi-image"
@@ -3240,6 +3245,7 @@ dependencies = [
  "nabi-config",
  "nabi-fs",
  "nabi-ftp",
+ "nabi-i18n",
  "nabi-log",
  "nabi-osc",
  "nabi-proto",
@@ -3273,6 +3279,7 @@ version = "0.1.511"
 dependencies = [
  "bytes",
  "crossbeam-channel",
+ "nabi-error",
  "nabi-proto",
  "nabi-types",
  "nabi-vt",

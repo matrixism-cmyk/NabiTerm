@@ -4,12 +4,14 @@
 //! 재평가하므로 전환이 자유롭다. (후속: 복수형/문법이 필요하면 fluent로 확장.)
 
 pub mod catalog;
+pub mod errtr;
 mod catalog2;
 mod catalog3;
 mod catalog4;
 mod catalog5;
 mod catalog6;
 mod catalog7;
+mod catalog_err;
 mod catalog_ai;
 mod catalog_ai2;
 mod catalog_agent;
@@ -23,6 +25,7 @@ mod catalog_term;
 mod catalog_queue;
 
 pub use catalog::tr;
+pub use errtr::{tr_error, tr_error_current, tr_error_machine, tr_io, tr_io_current};
 
 /// 전역 현재 언어 — UI 밖(네트워크 계층 등)에서 언어 인자 없이 번역할 때 쓴다(T8-1).
 /// 앱이 시작·언어 전환 시 갱신한다. UI 코드는 계속 `tr(lang, …)`를 쓴다(프레임 재평가).

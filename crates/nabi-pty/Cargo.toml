@@ -7,6 +7,7 @@ publish = false
 
 [dependencies]
 nabi-types = { workspace = true }
+nabi-error = { workspace = true } # 오류를 말이 아니라 코드로 나른다(T8-1).
 nabi-proto = { workspace = true }
 portable-pty = { workspace = true }
 crossbeam-channel = { workspace = true }

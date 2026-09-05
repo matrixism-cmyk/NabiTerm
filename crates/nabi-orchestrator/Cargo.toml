@@ -19,6 +19,7 @@ nabi-ftp = { workspace = true }
 nabi-fs = { workspace = true }
 nabi-config = { workspace = true }
 nabi-log = { workspace = true }
+nabi-i18n = { workspace = true } # 오류 코드를 사용자 말로 옮겨 보낸다(T8-1).
 crossbeam-channel = { workspace = true }
 encoding_rs = "0.8"
 bytes = { workspace = true }

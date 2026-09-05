@@ -168,7 +168,10 @@ pub struct TermTabViewer<'a> {
     /// 탭 메뉴의 '전체 기록 열기' 요청 — 중앙이 받아 겹 화면으로 연다.
     pub open_history: &'a mut Option<PaneId>,
     /// 탭 이름에 쓸 글자 수 — 탭이 늘면 줄어든다(크롬처럼). `tabwidth`.
-    pub name_budget: usize,
+    /// 앞이 **지금 보고 있는 탭**, 뒤가 나머지. 보고 있는 탭이 가장 자주 읽힌다.
+    pub name_budget: (usize, usize),
+    /// 지금 보고 있는 탭 — 그 탭에만 이름을 넉넉히 준다.
+    pub active_tab: Option<PaneId>,
     /// 탭 메뉴가 낸 한 줄(저장 성공·실패 등) — 중앙이 알림으로 띄운다.
     pub tab_notice: &'a mut Option<String>,
 }
@@ -222,7 +225,13 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         // 이름은 갈래마다 다르지만 **줄이는 것은 한 자리에서** 한다. 갈래마다 줄이면
         // 언젠가 한 갈래를 빠뜨리고, 그 탭만 혼자 길어진다.
         let (icon, name, arrow) = self.tab_name_parts(tab);
-        let name = crate::statusfmt::elide(&name, self.name_budget);
+        // 지금 보고 있는 탭이면 넉넉한 쪽을 쓴다.
+        let active = self.active_tab == Some(*tab);
+        let budget = match active {
+            true => self.name_budget.0,
+            false => self.name_budget.1,
+        };
+        let name = crate::statusfmt::elide(&name, budget);
         format!("{pin}{id}{icon}{arrow}{name}").into()
     }
 
