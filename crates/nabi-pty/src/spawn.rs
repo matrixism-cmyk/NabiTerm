@@ -39,7 +39,28 @@ pub fn resolve_program(program: &str) -> Option<PathBuf> {
             }
         }
     }
-    None
+    windows_builtin(program)
+}
+
+/// 윈도우가 **늘 갖고 있는** 것들은 PATH 에 없어도 그 자리에서 찾는다.
+///
+/// PATH 에 없다고 "설치되어 있지 않습니다"라고 말하면 안 되는 것들이 있다. `cmd.exe` 와
+/// `powershell.exe` 는 윈도우와 함께 오고 지울 수도 없다. 그런데 PATH 는 사용자가 손대는
+/// 값이고, 실제로 자주 망가진다 — 손으로 다듬다 지우거나, 길이 한도(2047자)에 걸려
+/// 뒤쪽이 잘리거나, 부모 프로세스가 좁은 PATH 로 우리를 띄우거나.
+///
+/// 그때 "없다"고 말하면 사용자는 있는 셸을 못 쓰고, 왜 그런지도 알 수 없다.
+/// 실제로 배포 검사에서 이 길로 막혔다(2026-09-05) — PATH 에서 한 줄이 빠져 있었다.
+fn windows_builtin(program: &str) -> Option<PathBuf> {
+    let sub = match program.to_ascii_lowercase().as_str() {
+        "cmd.exe" | "cmd" => "System32/cmd.exe",
+        "powershell.exe" | "powershell" => "System32/WindowsPowerShell/v1.0/powershell.exe",
+        "wsl.exe" | "wsl" => "System32/wsl.exe",
+        _ => return None,
+    };
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:/Windows".into());
+    let p = Path::new(&root).join(sub);
+    p.is_file().then_some(p)
 }
 
 /// 이 경로가 **Microsoft Store 앱 실행 별칭**인가.
@@ -129,6 +150,11 @@ pub fn resolve_shell(shell: &ShellKind) -> Option<PathBuf> {
     }
 }
 
+/// 찾은 절대 경로, 못 찾았으면 이름 그대로.
+fn exe_or_name(shell: &ShellKind, name: &str) -> String {
+    resolve_shell(shell).map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| name.into())
+}
+
 /// 셸 종류를 실행 가능한 CommandBuilder로 만든다.
 pub fn build_command(shell: &ShellKind) -> CommandBuilder {
     match shell {
@@ -142,11 +168,14 @@ pub fn build_command(shell: &ShellKind) -> CommandBuilder {
             c
         }
         ShellKind::WindowsPowerShell => {
-            let mut c = CommandBuilder::new("powershell.exe");
+            // 찾은 경로를 그대로 넘긴다 — 이름만 주면 PATH 를 다시 타서, PATH 가
+            // 망가진 PC 에서는 확인은 통과하고 실행만 실패한다.
+            let exe = exe_or_name(shell, "powershell.exe");
+            let mut c = CommandBuilder::new(exe);
             c.args(["-NoLogo", "-ExecutionPolicy", "Bypass"]);
             c
         }
-        ShellKind::Cmd => CommandBuilder::new("cmd.exe"),
+        ShellKind::Cmd => CommandBuilder::new(exe_or_name(shell, "cmd.exe")),
         ShellKind::GitBash => {
             // PATH에 없으면 기본 설치 경로의 절대 bash.exe를 쓴다(PATH 미등록 Git 지원).
             let bash = git_bash_path().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| "bash.exe".into());
@@ -230,5 +259,25 @@ mod tests {
     fn empty_on_blank() {
         assert!(parse_wsl_list(&[]).is_empty());
         assert!(parse_wsl_list(&utf16le("\r\n  \r\n")).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod builtin_tests {
+    /// PATH 에 없어도 윈도우 기본 셸은 찾아야 한다.
+    ///
+    /// 시험이 진짜인지 보려면 `windows_builtin` 이 `None` 을 돌려주게 고쳐 볼 것 —
+    /// 그러면 이 시험이 빨개진다.
+    #[test]
+    #[cfg(windows)]
+    fn 윈도우_기본_셸은_path_없이도_찾는다() {
+        for name in ["cmd.exe", "powershell.exe"] {
+            assert!(
+                super::windows_builtin(name).is_some(),
+                "{name} 을 시스템 폴더에서 못 찾았다"
+            );
+        }
+        // 아무 이름이나 찾아 주면 안 된다.
+        assert!(super::windows_builtin("nosuchshell.exe").is_none());
     }
 }
