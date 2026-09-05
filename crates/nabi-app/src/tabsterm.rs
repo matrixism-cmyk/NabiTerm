@@ -147,10 +147,13 @@ impl TermTabViewer<'_> {
                     if target == crate::panewheel::WheelTo::OpenTui { self.tui_overlay.insert(pane, std::time::Instant::now()); }
                     self.orch.send(Command::WriteInput { pane, data: Bytes::from(data) });
                 }
-                // 스크롤백은 한 눈금에 3줄(주류 에뮬레이터 관례).
+                // 스크롤백도 **같은 자**를 쓴다(panewheel::wheel_lines).
+                //
+                // 예전에는 글자 높이로 나눠 눈금당 6줄이 나왔다 — 주석은 3줄이라고 적혀
+                // 있었는데 코드는 두 배였다. 게다가 글꼴을 키우면 적게, 줄이면 많이
+                // 굴러서 같은 손짓이 다르게 느껴졌다. 한 눈금은 어디서나 3줄이다.
                 None if target == crate::panewheel::WheelTo::Scrollback => {
-                    let lines = (wheel / ch * 3.0).round() as i32;
-                    scroll += if lines == 0 { wheel.signum() as i32 } else { lines };
+                    scroll += crate::panewheel::wheel_lines(wheel);
                 }
                 None => {}
             }

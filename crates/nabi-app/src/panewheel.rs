@@ -142,12 +142,45 @@ pub(crate) fn overlay_open(
             .unwrap_or(false)
 }
 
+/// 휠 한 눈금 = 40점. egui 가 줄 단위 휠을 점으로 바꿀 때 쓰는 값이다.
+const POINTS_PER_NOTCH: f32 = 40.0;
+
+/// 한 눈금에 몇 줄을 움직일 것인가(주류 에뮬레이터 관례).
+const LINES_PER_NOTCH: f32 = 3.0;
+
+/// 이번 프레임에 들어온 휠(점)이 **몇 줄**인가.
+///
+/// ## 왜 크기에 비례해야 하는가
+///
+/// 한 프레임에 눈금 하나만 들어온다고 볼 수 없다. 화면이 느리면 굴린 눈금 여럿이 **한
+/// 프레임에 몰려서** 들어온다. 그때 고정된 줄 수를 쓰면 굴린 만큼 움직이지 않는다.
+///
+/// 실제로 그랬다 — 소프트웨어 렌더링(Mesa llvmpipe)에서만 휠이 이상하다는 보고를 받았고,
+/// alternate scroll 이 휠 크기와 무관하게 늘 커서 키 3개만 보내고 있었다. 빠른 화면에서는
+/// 눈금 하나가 한 프레임씩 들어와 맞아떨어져서 아무도 몰랐다(사용자 보고 2026-09-05).
+///
+/// 아주 작은 휠(정밀 터치패드)이라도 0줄로 만들지 않는다 — 굴렸는데 아무 일도 없으면
+/// 고장으로 보인다.
+pub(crate) fn wheel_lines(points: f32) -> i32 {
+    if points == 0.0 {
+        return 0;
+    }
+    let n = (points / POINTS_PER_NOTCH * LINES_PER_NOTCH).round() as i32;
+    match n {
+        0 => points.signum() as i32,
+        n => n,
+    }
+}
+
 /// alternate scroll(DEC 1007): 휠을 커서 위/아래 키로 바꾼다. 한 눈금에 3줄(xterm 관례).
 ///
 /// 앱 커서 키 모드(DECCKM)면 `ESC O A/B`, 아니면 `ESC [ A/B`다 — 모드를 무시하면 TUI가
 /// 키를 못 알아듣는다.
+///
+/// 보내는 개수는 **굴린 크기를 따른다**(`wheel_lines`). 예전에는 늘 3개였다.
 pub(crate) fn alt_scroll_bytes(wheel: f32, app_cursor: bool) -> Vec<u8> {
-    if wheel == 0.0 {
+    let n = wheel_lines(wheel).unsigned_abs() as usize;
+    if n == 0 {
         return Vec::new();
     }
     let key: &[u8] = match (wheel.is_sign_positive(), app_cursor) {
@@ -156,7 +189,8 @@ pub(crate) fn alt_scroll_bytes(wheel: f32, app_cursor: bool) -> Vec<u8> {
         (false, true) => b"\x1bOB",
         (false, false) => b"\x1b[B",
     };
-    key.repeat(3)
+    // 한 번에 너무 많이 보내면 느린 TUI 가 그 키를 다 소화하느라 더 밀린다.
+    key.repeat(n.min(30))
 }
 
 /// 목적지에 맞는 키 시퀀스(스크롤백으로 갈 때는 None — 보낼 바이트가 없다).
@@ -298,12 +332,19 @@ mod tests {
     }
 
     /// DEC 1007은 커서 키로 보낸다 — 앱 커서 모드(DECCKM)면 `ESC O`, 아니면 `ESC [`.
+    ///
+    /// 예전 이 시험은 `1.0` 을 "한 눈금"으로 봤다. 실제 한 눈금은 **40점**이다. 크기를
+    /// 무시하고 늘 세 개를 보내던 코드라 1.0 이든 200.0 이든 통과했다 — 통과했지만
+    /// 입력을 잘못 알고 있었다. 이제는 진짜 눈금 크기로 잰다.
     #[test]
     fn alt_scroll_uses_cursor_keys() {
-        assert_eq!(alt_scroll_bytes(1.0, false), b"\x1b[A\x1b[A\x1b[A".to_vec());
-        assert_eq!(alt_scroll_bytes(-1.0, false), b"\x1b[B\x1b[B\x1b[B".to_vec());
-        assert_eq!(alt_scroll_bytes(1.0, true), b"\x1bOA\x1bOA\x1bOA".to_vec());
+        let notch = 40.0;
+        assert_eq!(alt_scroll_bytes(notch, false), b"\x1b[A".repeat(3));
+        assert_eq!(alt_scroll_bytes(-notch, false), b"\x1b[B".repeat(3));
+        assert_eq!(alt_scroll_bytes(notch, true), b"\x1bOA".repeat(3));
         assert!(alt_scroll_bytes(0.0, false).is_empty());
+        // 아주 작은 휠(정밀 터치패드)은 한 줄만.
+        assert_eq!(alt_scroll_bytes(1.0, false), b"\x1b[A".to_vec());
     }
 }
 
@@ -373,5 +414,52 @@ mod hinttests {
     #[test]
     fn no_wheel_no_hint() {
         assert!(!needs_wheel_hint(true, false, 0.0));
+    }
+}
+
+#[cfg(test)]
+mod wheel_lines_tests {
+    use super::*;
+
+    /// 한 눈금(40점)은 어디서나 3줄이다.
+    #[test]
+    fn 한_눈금은_세_줄() {
+        assert_eq!(wheel_lines(40.0), 3);
+        assert_eq!(wheel_lines(-40.0), -3);
+        assert_eq!(wheel_lines(0.0), 0);
+    }
+
+    /// **이것이 이번 결함이다.** 화면이 느리면 눈금 여럿이 한 프레임에 몰려 온다.
+    /// 그때도 굴린 만큼 움직여야 한다.
+    #[test]
+    fn 여러_눈금이_한꺼번에_와도_그만큼_간다() {
+        assert_eq!(wheel_lines(40.0 * 5.0), 15);
+        assert_eq!(wheel_lines(-40.0 * 10.0), -30);
+    }
+
+    /// 아주 작은 휠(정밀 터치패드)도 최소 한 줄은 움직인다 — 아무 일도 없으면 고장으로 보인다.
+    #[test]
+    fn 아주_작아도_한_줄은_간다() {
+        assert_eq!(wheel_lines(1.0), 1);
+        assert_eq!(wheel_lines(-1.0), -1);
+    }
+
+    /// 커서 키도 크기를 따른다. 예전에는 늘 3개였다.
+    #[test]
+    fn 커서_키도_굴린_만큼_보낸다() {
+        // 한 눈금 = 위 화살표 셋.
+        assert_eq!(alt_scroll_bytes(40.0, false), b"\x1b[A".repeat(3));
+        // 다섯 눈금 = 열다섯.
+        assert_eq!(alt_scroll_bytes(200.0, false), b"\x1b[A".repeat(15));
+        // 아래로, 앱 커서 키 모드.
+        assert_eq!(alt_scroll_bytes(-40.0, true), b"\x1bOB".repeat(3));
+        // 굴리지 않았으면 아무것도 보내지 않는다.
+        assert!(alt_scroll_bytes(0.0, false).is_empty());
+    }
+
+    /// 한 번에 너무 많이 보내지는 않는다 — 느린 TUI 가 그 키를 소화하느라 더 밀린다.
+    #[test]
+    fn 아무리_굴려도_한도가_있다() {
+        assert_eq!(alt_scroll_bytes(40.0 * 100.0, false).len(), 3 * 30);
     }
 }
