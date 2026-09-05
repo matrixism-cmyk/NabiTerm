@@ -77,7 +77,9 @@ pub(crate) enum PaletteAction {
     OpenReplay,
     /// 에이전트 행동 기록 — 제어 평면이 무엇을 했는지 본다(배치 AB).
     OpenAgentTrail,
-    DuplicateConnection, ToggleSessionLog, NewTabHere, ClearBuffer,
+    DuplicateConnection,
+    /// 지금 pane 을 같은 출처로 다시 연결한다.
+    Reconnect, ToggleSessionLog, NewTabHere, ClearBuffer,
     SyncUpload, SyncDownload, CopyOutputMd, CompareFiles, FindDuplicates, FindLargeFiles,
     CopySshCmd, GenSshKey, InstallPubkey, SelToPad, CopyTabsMd, SaveAllDocs,
     NewPad, PadInWindow, OpenFileDialog, ScrollBottom, ScrollTop, ReplaceInFiles, DirTree, DirStats,

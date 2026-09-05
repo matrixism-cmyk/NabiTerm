@@ -97,7 +97,7 @@ fn real_cast() {
     let mid = lines.len() / 2;
     println!("--- 가운데 25줄 ---");
     for l in lines.iter().skip(mid).take(25) {
-        println!("{}", &l.chars().take(150).collect::<String>());
+        println!("{}", l.chars().take(150).collect::<String>());
     }
     assert!(lines.len() > 100, "펴 낸 줄이 너무 적다 — 무언가 잘못됐다");
     // 표식이 박힌 기록이면 **정확도를 숫자로** 잰다(scratchpad/precise.ps1 가 만든다).

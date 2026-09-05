@@ -232,6 +232,7 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("help.agent.allcmds.hint", "read = look only · act = changes something · inject = types into a pane · local = handled on this PC.", "read = 보기만 · act = 무언가를 바꿈 · inject = pane 에 입력을 넣음 · local = 이 PC 에서 처리.", "read = 参照のみ · act = 変更あり · inject = ペインへ入力 · local = この PC で処理。"),
     ("settings.wheellines", "Lines per wheel notch", "휠 한 눈금당 줄 수", "ホイール1ノッチの行数"),
     ("settings.wheellines.hint", "How far one notch of the mouse wheel scrolls. 3 is what most terminals use.", "마우스 휠을 한 눈금 굴렸을 때 몇 줄이 움직일지. 대부분의 터미널이 3을 씁니다.", "マウスホイール1ノッチで何行動くか。多くの端末は 3 です。"),
+    ("tab.reconnect", "Reconnect", "다시 연결", "再接続"),
     ("hist.open", "Open full history", "전체 기록 열기", "全履歴を開く"),
     ("hist.notrecording", "This pane is not being recorded, so there is no full history. Turn on 설정 ▸ 터미널 ▸ 모든 세션 기록 to keep one from now on.", "이 분할 칸은 기록 중이 아니라 전체 기록이 없습니다. 설정 ▸ 터미널 ▸ 모든 세션 기록을 켜면 이제부터 남습니다.", "このペインは記録中でないため全履歴がありません。設定 ▸ ターミナル ▸ すべてのセッションを記録 を有効にすると以後残ります。"),
     ("hist.empty", "The recording has nothing readable in it yet.", "기록에 아직 읽을 만한 것이 없습니다.", "記録にまだ読める内容がありません。"),

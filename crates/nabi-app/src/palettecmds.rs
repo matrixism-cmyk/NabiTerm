@@ -61,6 +61,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "settings.sec.telegram").to_string(), PaletteAction::OpenTelegram),
         (tr(lang, "menu.vault").to_string(), PaletteAction::OpenVault),
         (tr(lang, "menu.dupconn").to_string(), PaletteAction::DuplicateConnection),
+        (tr(lang, "tab.reconnect").to_string(), PaletteAction::Reconnect),
         (tr(lang, "menu.sessionlog").to_string(), PaletteAction::ToggleSessionLog),
         (tr(lang, "menu.newtabhere").to_string(), PaletteAction::NewTabHere),
         (tr(lang, "term.clearbuf").to_string(), PaletteAction::ClearBuffer),

@@ -23,6 +23,7 @@ impl NabiApp {
         let mut dup_tab: Option<nabi_types::PaneId> = None;
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
         let mut open_history: Option<nabi_types::PaneId> = None;
+        let mut reconnect_req: Option<nabi_types::PaneId> = None;
         // 탭이 늘면 이름을 줄인다(크롬처럼) — 굴려서 찾게 하지 않으려고.
         let dock_w = ui.available_width(); // 도크가 실제로 쓰는 폭.
         let tab_count = self.dock.iter_all_tabs().count();
@@ -197,6 +198,7 @@ impl NabiApp {
                 dup_tab: &mut dup_tab,
                 ai_handoff: &mut ai_handoff,
                 open_history: &mut open_history,
+                reconnect_req: &mut reconnect_req,
                 name_budget: crate::tabwidth::name_budgets(dock_w, tab_count),
                 active_tab: self.dock.find_active_focused().map(|(_, t)| *t),
                 tab_notice: &mut tab_notice,
@@ -287,6 +289,8 @@ impl NabiApp {
         }
         self.open_terminal_pathline(); // 터미널 `파일:줄` 더블클릭 → 에디터로 점프(pending 처리).
         if let Some(p) = sftp_open { self.open_sftp_from_pane(p); }
+        // 다시 연결 — 끊김 창과 같은 함수를 쓴다(터널·접속 후 명령까지 되살린다).
+        if let Some(p) = reconnect_req { self.do_reconnect(p); }
         if let Some(p) = dup_tab { self.duplicate_pane(p); } // 탭 우클릭 ▸ 탭 복제(팔레트와 같은 경로).
         if let Some(p) = web_closed {
             self.close_web_tab(p); // 자식 창까지 함께 닫는다 — 안 치우면 엣지 프로세스가 남는다.

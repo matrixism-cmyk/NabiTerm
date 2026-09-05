@@ -134,6 +134,12 @@ impl NabiApp {
             PaletteAction::OpenReplay => self.open_replay(),
             PaletteAction::OpenAgentTrail => self.agent_trail_open = true,
             PaletteAction::DuplicateConnection => self.duplicate_connection(),
+            // 탭 우클릭과 같은 함수 — 길이 둘이면 한쪽만 터널을 되살리게 된다.
+            PaletteAction::Reconnect => {
+                if let Some(p) = self.focused_pane() {
+                    self.do_reconnect(p);
+                }
+            }
             PaletteAction::ToggleSessionLog => self.toggle_session_log(),
             PaletteAction::NewTabHere => self.spawn_here(),
             PaletteAction::ClearBuffer => self.clear_focused_scrollback(),

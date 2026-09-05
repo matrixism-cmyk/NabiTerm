@@ -114,6 +114,8 @@ pub(crate) struct TabMenuOut {
     pub open_history: Option<PaneId>,
     /// 같은 출처로 탭을 하나 더 연다.
     pub duplicate: bool,
+    /// 이 pane 을 **같은 출처로 다시 연결한다**(끊기지 않았어도).
+    pub reconnect: Option<PaneId>,
     /// 사용자에게 보일 한 줄(저장 성공·실패 등). 있으면 중앙이 알림으로 띄운다.
     pub notice: Option<String>,
 }
@@ -132,6 +134,9 @@ pub(crate) struct TabMenuState<'a> {
     /// 이 pane 에서 도는 프로그램이 휠을 직접 받는가(자동 감지).
     pub wheel_auto: bool,
     pub is_ssh: bool,
+    /// 이 pane 에 **출처**가 있는가(어디서 띄운 것인지 안다). 없으면 다시 연결할 곳도 없다 —
+    /// 브라우저·편집기 탭이 그렇다.
+    pub has_origin: bool,
 }
 
 pub(crate) fn tab_context_menu(
@@ -144,7 +149,7 @@ pub(crate) fn tab_context_menu(
     dock_float: Option<&mut Option<PaneId>>,
 ) {
     // 자루 안의 것들을 옛 이름으로 받아 둔다 — 아래 본문을 그대로 두려는 것이다.
-    let TabMenuOut { tear_off, sftp_open, ai_handoff, open_history, duplicate, notice } = out;
+    let TabMenuOut { tear_off, sftp_open, ai_handoff, open_history, duplicate, reconnect, notice } = out;
     let save_msg = notice;
     let TabMenuState {
         tab_names,
@@ -154,8 +159,9 @@ pub(crate) fn tab_context_menu(
         tab_colors,
         wheel_auto,
         is_ssh,
+        has_origin,
     } = st;
-    let (wheel_auto, is_ssh) = (*wheel_auto, *is_ssh);
+    let (wheel_auto, is_ssh, has_origin) = (*wheel_auto, *is_ssh, *has_origin);
     ui.label(tr(lang, "tab.rename"));
     let name = tab_names.entry(*tab).or_default();
     // 포커스를 확실히 잡아 키 입력이 터미널로 새지 않게 한다.
@@ -242,6 +248,16 @@ pub(crate) fn tab_context_menu(
             *dock_float = Some(*tab);
             ui.close();
         }
+    }
+    // **다시 연결.** 지금까지는 연결이 끊겼을 때 뜨는 창에서만 할 수 있었다. 그런데
+    // 다시 붙고 싶은 때가 끊긴 뒤만은 아니다 — 응답이 없거나, 서버를 다시 띄웠거나,
+    // 터널이 어긋났을 때도 필요하다(사용자 지적 2026-09-06).
+    //
+    // 끊김 창과 **같은 함수**를 부른다(`do_reconnect`). 재접속은 저장 세션을 되찾아
+    // 터널과 접속 후 명령까지 살려 내는 일이라, 길이 둘이 되면 한쪽만 그렇게 된다.
+    if has_origin && ui.button(tr(lang, "tab.reconnect")).clicked() {
+        *reconnect = Some(*tab);
+        ui.close();
     }
     // 같은 셸/SSH 세션을 하나 더 열기 — 팔레트(DuplicateTab)와 같은 동작을 한다(SSOT).
     if ui.button(tr(lang, "tab.duplicate")).clicked() {

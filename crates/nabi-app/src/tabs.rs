@@ -129,6 +129,8 @@ pub struct TermTabViewer<'a> {
     pub resized: &'a mut Option<GridSize>,
     /// 탭을 창 바깥으로 끌어다 놓아 분리(tear-off)할 pane(central이 floating으로 이동).
     pub tear_off: &'a mut Option<PaneId>,
+    /// 탭 우클릭 ▸ 다시 연결 요청(central 이 do_reconnect 를 부른다).
+    pub reconnect_req: &'a mut Option<PaneId>,
     /// 탭 우클릭 ▸ 탭 복제 요청(central에서 duplicate_pane 호출).
     pub dup_tab: &'a mut Option<PaneId>,
     /// 이 프레임에 각 탭이 차지한 자리(화면 좌표, 논리 픽셀).
@@ -282,6 +284,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
                 .get(tab)
                 .is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
             is_ssh,
+            has_origin: self.pane_origins.contains_key(tab),
         };
         crate::tabmenu::tab_context_menu(
             ui,
@@ -294,6 +297,9 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         );
         if out.duplicate {
             *self.dup_tab = Some(*tab);
+        }
+        if out.reconnect.is_some() {
+            *self.reconnect_req = out.reconnect;
         }
         // 값이 생긴 것만 옮긴다 — 매번 덮어쓰면 다른 탭이 방금 낸 요청이 지워진다.
         if out.tear_off.is_some() {
