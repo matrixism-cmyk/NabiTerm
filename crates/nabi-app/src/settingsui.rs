@@ -80,6 +80,10 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorC
             group(ui, lang, "settings.sec.schedule");
             crate::schedui::schedule_rows(ui, lang, cx.sched, cx.sched_path);
             group(ui, lang, "settings.sec.telegram");
+            // 오너 규칙 안내는 표 **밖에** 적는다 — 칸 안에 두면 그 칸이 안내 길이만큼
+            // 넓어져 내용이 창 밖으로 밀려 난다(사용자 보고 2026-09-05, 세 번째 같은 결).
+            grid(ui, "sec_tg_chats", |ui| crate::settingstelegram::telegram_chat_rows(ui, cfg, lang));
+            help_line(ui, tr(lang, "tg.ownerhint"));
             grid(ui, "sec_telegram", |ui| crate::settingstelegram::telegram_rows(ui, cfg, lang, cx.tg_pending));
         }
         // 접근성 — 색·크기·움직임. 일부는 다른 페이지에도 있다(같은 값을 가리킨다).

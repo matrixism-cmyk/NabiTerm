@@ -4,12 +4,11 @@
 use nabi_config::AppConfig;
 use nabi_i18n::{tr, Lang};
 
-pub(crate) fn telegram_rows(
-    ui: &mut egui::Ui,
-    cfg: &mut AppConfig,
-    lang: Lang,
-    pending: &std::cell::RefCell<Vec<(i64, String, std::time::Instant)>>,
-) {
+/// 브리지를 쓸지·토큰·허용 chat 까지 — **오너 안내 앞까지**의 줄들.
+///
+/// 안내를 표 칸 안에 두면 그 칸이 안내 길이만큼 넓어져 내용이 창 밖으로 밀려 난다.
+/// 그래서 표를 여기서 한 번 끊고, 안내는 페이지가 표 밖에 적는다(settingsui::help_line).
+pub(crate) fn telegram_chat_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     let have_token = nabi_secret::keyringstore::load_telegram_token().is_some();
 
     ui.label(tr(lang, "tg.enabled"));
@@ -54,11 +53,15 @@ pub(crate) fn telegram_rows(
         cfg.telegram.allowed_chats = s.split(',').filter_map(|x| x.trim().parse::<i64>().ok()).collect();
     }
     ui.end_row();
-    // 오너 규칙 안내 — 첫 chat만 셸 제어 가능(C2, OpenClaw 오너 모델).
-    ui.label("");
-    ui.weak(tr(lang, "tg.ownerhint"));
-    ui.end_row();
 
+}
+
+pub(crate) fn telegram_rows(
+    ui: &mut egui::Ui,
+    cfg: &mut AppConfig,
+    lang: Lang,
+    pending: &std::cell::RefCell<Vec<(i64, String, std::time::Instant)>>,
+) {
     // 미지 DM 정책(C1): allowlist=무시(기존) / pairing=만료 코드 발급 후 여기서 승인.
     ui.label(tr(lang, "tg.dmpolicy"));
     ui.horizontal(|ui| {

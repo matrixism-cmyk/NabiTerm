@@ -7,24 +7,25 @@ use nabi_i18n::{tr, Lang};
 pub(crate) fn highlight_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.highlightshint"));
     list_editor(ui, &mut cfg.terminal.highlight_keywords, 220.0, tr(lang, "settings.addhighlight"));
-    ui.weak(tr(lang, "settings.highlightsregexhint")); // 정규식 문법 안내 — 모르면 없는 기능이다.
+    // 정규식 문법 안내 — 모르면 없는 기능이다. `help_line` 은 폭에 맞춰 줄을 접는다.
+    crate::settingsui::help_line(ui, tr(lang, "settings.highlightsregexhint"));
 }
 
 /// 출력 트리거 — 알림과 자동 응답이 **같은 목록**을 쓴다(액션으로 갈린다).
 pub(crate) fn alert_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     ui.label(tr(lang, "settings.alertshint"));
     list_editor(ui, &mut cfg.terminal.alert_patterns, 220.0, tr(lang, "settings.addalert"));
-    ui.weak(tr(lang, "settings.alertactions"));
+    crate::settingsui::help_line(ui, tr(lang, "settings.alertactions"));
     // 자동 응답 스위치는 규칙 목록 **바로 아래**에 둔다 — 켜야 동작한다는 것을
     // 규칙 옆에서 알려야 하기 때문이다(설정 페이지 다른 구석에 두면 못 찾는다).
     ui.add_space(4.0);
     ui.checkbox(&mut cfg.terminal.auto_reply, tr(lang, "settings.autoreply"));
-    ui.weak(tr(lang, "settings.autoreply.help"));
+    crate::settingsui::help_line(ui, tr(lang, "settings.autoreply.help"));
 }
 
 /// 터미널 낱말을 주소로 만드는 규칙.
 pub(crate) fn link_rule_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
-    ui.label(tr(lang, "settings.linkruleshint"));
+    crate::settingsui::help_line(ui, tr(lang, "settings.linkruleshint"));
     link_rules(ui, cfg, lang);
 }
 
