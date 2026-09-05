@@ -179,3 +179,27 @@ impl NabiApp {
         });
     }
 }
+
+impl NabiApp {
+    /// 지금 보고 있는 pane 의 기록을 **자동 자리에** 시작한다(상태바 REC 스위치).
+    ///
+    /// 손으로 켜는 `toggle_session_log` 는 파일 저장 창을 띄운다. 그것은 "어디에 남길지
+    /// 내가 정하겠다"는 뜻일 때 맞는 길이다. 상태바 배지를 누른 것은 그런 뜻이 아니라
+    /// "지금 남겨"라는 뜻이라, 자동 자리에 바로 시작하고 어디에 남는지 알려 준다.
+    pub(crate) fn start_rec_here(&mut self) {
+        let Some(pane) = self.focused_pane() else { return };
+        if self.session_logs.contains_key(&pane) {
+            return;
+        }
+        let host = match self.pane_origins.get(&pane) {
+            Some(nabi_session::SessionKind::Ssh { host, .. }) => host.clone(),
+            _ => "local".to_string(),
+        };
+        self.autolog_now(pane, &host);
+        // 어디에 남는지 말해 준다 — 안 말하면 켰는지도, 어디 있는지도 알 수 없다.
+        if let Some(log) = self.session_logs.get(&pane) {
+            let msg = format!("\u{25cf} {}", log.path.display());
+            self.notify = Some((msg, Instant::now()));
+        }
+    }
+}

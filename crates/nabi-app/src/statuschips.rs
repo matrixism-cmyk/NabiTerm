@@ -9,14 +9,23 @@ use nabi_types::PaneId;
 ///
 /// 눌렀는지 돌려준다. 실제로 멈추는 일은 부르는 쪽이 한다(여기는 화면만 그린다).
 pub(crate) fn rec_badge(ui: &mut egui::Ui, lang: Lang, on: bool, cast: bool) -> bool {
-    if !on {
-        return false;
-    }
     ui.separator();
-    // 붉은 점은 어디서나 "지금 기록 중"으로 읽힌다.
-    let label = if cast { "\u{25cf} REC \u{23fa}" } else { "\u{25cf} REC" };
-    let tip = format!("{}\n{}", tr(lang, "status.recording"), tr(lang, "status.recstop"));
-    ui.add(egui::Label::new(egui::RichText::new(label).color(crate::theme_ui::ERR)).sense(egui::Sense::click()))
+    // 붉은 점은 어디서나 "지금 기록 중"으로 읽힌다. 꺼져 있을 때는 흐리게 둔다 —
+    // 자리는 늘 지키되 눈에 걸리지 않게. 안 그리면 **켤 방법이 없다**(사용자 요청 2026-09-05).
+    let label = match (on, cast) {
+        (true, true) => "\u{25cf} REC \u{23fa}",
+        (true, false) => "\u{25cf} REC",
+        (false, _) => "\u{25cb} REC",
+    };
+    let color = match on {
+        true => crate::theme_ui::ERR,
+        false => ui.visuals().weak_text_color(),
+    };
+    let tip = match on {
+        true => format!("{}\n{}", tr(lang, "status.recording"), tr(lang, "status.recstop")),
+        false => tr(lang, "status.recstart").to_string(),
+    };
+    ui.add(egui::Label::new(egui::RichText::new(label).color(color)).sense(egui::Sense::click()))
         .on_hover_text(tip)
         .clicked()
 }

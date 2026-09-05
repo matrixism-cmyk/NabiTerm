@@ -82,6 +82,7 @@ windows = { version = "0.58", features = [
     "Win32_System_Com_StructuredStorage",
     "Win32_System_SystemServices",
     "Win32_Graphics_Gdi",
+    "Win32_UI_Input_KeyboardAndMouse", # 상태바 클립보드 단추가 Win+V 를 대신 눌러 준다.
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }

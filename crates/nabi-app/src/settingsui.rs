@@ -39,10 +39,13 @@ pub(crate) struct PageCtx<'a> {
 pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorConfig, lang: Lang, idx: usize, cx: &PageCtx) {
     match idx {
         // 일반(0): 언어·단축키·복원·승인 정책.
-        0 => grid(ui, "sec_general", |ui| {
+        // 이 페이지는 표를 **스스로** 조각내 연다 — 설명 줄이 두 칸을 가로질러야 해서다.
+        0 => {
             crate::settingsui2::behavior_rows(ui, cfg, lang);
-            crate::controlui::approvals_ui(ui, cx.policy, lang);
-        }),
+            grid(ui, "sec_general_approvals", |ui| {
+                crate::controlui::approvals_ui(ui, cx.policy, lang);
+            });
+        }
         // 모양(1): 글꼴 → 색상 → 커서 → 테마 가져오기.
         1 => {
             group(ui, lang, "settings.sec.font");
@@ -134,9 +137,30 @@ fn editor_rows(ui: &mut egui::Ui, e: &mut EditorConfig, lang: Lang) {
     crate::editorsyntax::settings_ui(ui, e, lang);
 }
 
+/// 라벨 칸의 폭. 표를 여러 조각으로 나눠도 이 값이 같으면 줄이 어긋나 보이지 않는다.
+const LABEL_W: f32 = 200.0;
+
 /// 2열 그리드 한 페이지(라벨 열 고정폭 + 여유 간격 — 현대식 설정 폼).
 fn grid(ui: &mut egui::Ui, id: &str, rows: impl FnOnce(&mut egui::Ui)) {
-    egui::Grid::new(id).num_columns(2).min_col_width(150.0).spacing([28.0, 12.0]).show(ui, rows);
+    egui::Grid::new(id).num_columns(2).min_col_width(LABEL_W).spacing([28.0, 12.0]).show(ui, rows);
+}
+
+/// 표를 한 조각 그린다 — 설명 줄을 사이에 끼우려고 나눌 때 쓴다.
+pub(crate) fn grid_seg(ui: &mut egui::Ui, id: &str, rows: impl FnOnce(&mut egui::Ui)) {
+    grid(ui, id, rows);
+}
+
+/// **두 칸을 가로지르는 설명 한 줄.**
+///
+/// 설명을 표의 칸 안에 넣었더니 그 칸이 설명 길이만큼 넓어져 설정 창 폭이 흐트러졌다
+/// (사용자 보고 2026-09-05). 칸 폭은 그 칸에 들어간 것 중 가장 넓은 것이 정하므로,
+/// 긴 설명 하나가 창 전체를 끌고 다닌 것이다.
+///
+/// 그래서 표 **밖에** 그린다. 표가 아니니 칸 폭에 영향을 주지 않고, 페이지 폭에 맞춰
+/// 스스로 줄을 접는다.
+pub(crate) fn help_line(ui: &mut egui::Ui, text: &str) {
+    ui.add(egui::Label::new(egui::RichText::new(text).weak().small()).wrap());
+    ui.add_space(8.0);
 }
 
 /// 글꼴·테마·UI 배율 그룹.

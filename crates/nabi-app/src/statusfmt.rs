@@ -85,3 +85,28 @@ mod tests {
     }
 
 }
+
+/// 긴 글을 `max` 글자로 줄이고 말줄임표를 붙인다. 짧으면 그대로.
+///
+/// 상태 표시줄은 자리가 정해져 있는데 서버 이름·pane 제목은 길이가 정해져 있지 않다.
+/// 하나가 길어지면 뒤쪽 칩이 통째로 화면 밖으로 밀려 났다(사용자 보고 2026-09-05).
+/// 세는 단위는 **글자**다 — 바이트로 세면 한글이 중간에서 잘린다.
+pub(crate) fn elide(s: &str, max: usize) -> String {
+    match s.chars().count() > max {
+        false => s.to_string(),
+        true => s.chars().take(max.saturating_sub(1)).collect::<String>() + "\u{2026}",
+    }
+}
+
+#[cfg(test)]
+mod elide_tests {
+    #[test]
+    fn 짧으면_그대로_길면_줄인다() {
+        assert_eq!(super::elide("web01", 24), "web01");
+        let long = super::elide("가나다라마바사아자차카타파하가나다라마바사아자차카타", 24);
+        assert_eq!(long.chars().count(), 24);
+        assert!(long.ends_with('\u{2026}'));
+        // 딱 맞으면 건드리지 않는다.
+        assert_eq!(super::elide("가나다", 3), "가나다");
+    }
+}

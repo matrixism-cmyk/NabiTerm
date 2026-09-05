@@ -4,6 +4,8 @@
 
 **네이티브 Windows 터미널 멀티플렉서 + MobaXterm식 SSH 클라이언트** — Rust로 처음부터 만든 빠르고 가벼운 단일 실행 파일.
 
+**홈페이지** → [nabisori.kr](https://nabisori.kr/nabiterm.php)
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/matrixism-cmyk/NabiTerm?filter=v*&label=release)](https://github.com/matrixism-cmyk/NabiTerm/releases)
 [![CI](https://github.com/matrixism-cmyk/NabiTerm/actions/workflows/ci.yml/badge.svg)](https://github.com/matrixism-cmyk/NabiTerm/actions)

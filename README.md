@@ -4,6 +4,8 @@
 
 **A native Windows terminal multiplexer + MobaXterm-style SSH client** — fast, lightweight, and written from scratch in Rust. Single executable, no runtime dependencies.
 
+**Homepage** → [nabisori.kr](https://nabisori.kr/nabiterm.php)
+
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/matrixism-cmyk/NabiTerm?filter=v*&label=release)](https://github.com/matrixism-cmyk/NabiTerm/releases)
 [![CI](https://github.com/matrixism-cmyk/NabiTerm/actions/workflows/ci.yml/badge.svg)](https://github.com/matrixism-cmyk/NabiTerm/actions)

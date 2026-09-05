@@ -72,7 +72,10 @@ impl NabiApp {
         let mut do_handoff: Option<nabi_types::PaneId> = None;
         let mut do_copy_prompt = false;
         let mut stop_watch = false;
-        let mut stop_rec = false; // REC 배지를 눌렀는가(배치 AK).
+        let mut toggle_rec = false; // REC 배지를 눌렀는가 — 켜고 끄는 하나의 스위치다.
+        let mut want_dims: Option<(u16, u16)> = None; // 크기 칩에서 고른 격자.
+        let mut goto_tab: Option<nabi_types::PaneId> = None; // 탭 목록에서 고른 탭.
+        let tab_list = self.all_tab_names(); // 가변 차용 전에 미리 모은다.
         let sel_info = self.selection.filter(|s| !s.is_empty()).map(|s| {
             let (sr, sc, er, ec) = s.span();
             if s.rect {
@@ -127,12 +130,18 @@ impl NabiApp {
             ui.horizontal(|ui| {
                 // 연결 종류별 색 점: SSH=시안, 로컬=녹색.
                 let dc = if is_ssh { crate::theme_ui::SESS_SSH } else { crate::theme_ui::SESS_LOCAL };
-                ui.colored_label(dc, format!("\u{25cf} {title}"));
+                // 서버 이름이 길면 뒤쪽 칩(IP·시계)이 통째로 밀려 나갔다 — 이름은 줄이고
+                // 전체는 마우스를 올리면 보여 준다(사용자 보고 2026-09-05).
+                let shown = crate::statusfmt::elide(&title, 24);
+                let r = ui.colored_label(dc, format!("\u{25cf} {shown}"));
+                if shown != title {
+                    r.on_hover_text(&title);
+                }
                 if is_ssh { crate::statuschips::ssh_badge(ui, lang, focused); }
                 // 이 pane이 파일로 기록되는 중인지. 자동으로 켜질 수 있으므로 늘 보여 준다.
                 let rec = focused.and_then(|p| self.session_logs.get(&p));
                 if crate::statuschips::rec_badge(ui, lang, rec.is_some(), rec.is_some_and(|l| l.cast)) {
-                    stop_rec = true; // 배지를 누르면 기록을 멈춘다(실제 처리는 아래에서).
+                    toggle_rec = true; // 켜져 있으면 멈추고, 꺼져 있으면 시작한다(아래에서).
                 }
                 if crate::statuschips::failed_badge(ui, lang, failed) {
                     jump_fail = true; // 누르면 실패한 자리로 간다(아래에서 처리).
@@ -145,7 +154,22 @@ impl NabiApp {
                     ui.colored_label(egui::Color32::from_rgb(r, g, b), tr(lang, tag.key()));
                 }
                 ui.separator();
-                ui.label(format!("{}: {count}", tr(lang, "status.sessions")));
+                // 세션 수를 보여 주기만 하던 자리다. 탭이 많아 오른쪽 밖으로 나간
+                // 탭은 굴려서 찾아야 했는데(사용자 보고 2026-09-05), 여기서 고르면
+                // 폭과 상관없이 한 번에 간다.
+                ui.menu_button(format!("{}: {count}", tr(lang, "status.sessions")), |ui| {
+                    ui.set_min_width(220.0);
+                    egui::ScrollArea::vertical().max_height(320.0).show(ui, |ui| {
+                        for (p, name) in &tab_list {
+                            if ui.button(name).clicked() {
+                                goto_tab = Some(*p);
+                                ui.close();
+                            }
+                        }
+                    });
+                })
+                .response
+                .on_hover_text(tr(lang, "status.tablist"));
                 if xfers > 0 {
                     ui.separator();
                     let pct = if ts > 0 { format!(" {xpct}%") } else { String::new() };
@@ -159,7 +183,23 @@ impl NabiApp {
                         focus_sftp = true; // 클릭 시 SFTP 탭으로 점프.
                     }
                 }
-                if let Some(d) = &dims { ui.separator(); ui.label(d); }
+                if let Some(d) = &dims {
+                    ui.separator();
+                    // 크기를 보여 주기만 하던 자리다. 눌러서 바꿀 수 있게 했다
+                    // (사용자 요청 2026-09-05). 격자를 직접 바꿔 봐야 다음 프레임에
+                    // 덮이므로, 고른 크기에 맞게 **창을** 옮긴다(statusdims).
+                    ui.menu_button(d, |ui| {
+                        ui.set_min_width(120.0);
+                        for (c, rr) in crate::statusdims::PRESETS {
+                            if ui.button(format!("{c}\u{00d7}{rr}")).clicked() {
+                                want_dims = Some((c, rr));
+                                ui.close();
+                            }
+                        }
+                    })
+                    .response
+                    .on_hover_text(tr(lang, "status.dims.hint"));
+                }
                 if let Some(s) = &stats_txt {
                     ui.separator(); let c = if stats_alert { crate::theme_ui::ERR } else { crate::theme_ui::SESS_SSH };
                     // 색만으로는 경고가 전달되지 않는 사용자가 있다 — 켜면 기호가 붙는다.
@@ -301,6 +341,16 @@ impl NabiApp {
                         folded.push((plain, cl));
                     }
                 }
+                // 클립보드 기록(Win+V) — 맨 오른쪽에 늘 둔다. 접지 않는 까닭은,
+                // 좁을수록 붙여넣을 것을 고르는 일이 더 잦기 때문이다.
+                ui.separator();
+                if ui
+                    .add(egui::Label::new("\u{1f4cb}").sense(egui::Sense::click()))
+                    .on_hover_text(tr(lang, "status.clipboard"))
+                    .clicked()
+                {
+                    crate::statusclip::open_clipboard_history();
+                }
                 // 접힌 것을 버리지 않는다 — 한 번 눌러 볼 수 있어야 접은 것이다.
                 if !folded.is_empty() {
                     ui.separator();
@@ -337,10 +387,23 @@ impl NabiApp {
         if stop_watch {
             self.sync_watch = None; // 상태바 칩 클릭 = 최신유지 중지.
         }
-        // REC 배지를 눌렀으면 기록을 멈춘다. 켜는 길과 같은 함수를 쓴다 — 같은 일을 하는
-        // 코드를 두 벌 두면 언젠가 한쪽만 고쳐진다(배치 AK).
-        if stop_rec {
-            self.toggle_session_log();
+        // REC 배지는 **켜고 끄는 하나의 스위치**다(사용자 요청 2026-09-05).
+        //
+        // 끌 때는 손으로 켠 길과 같은 함수를 쓴다. 켤 때는 자동 자리에 바로 시작한다 —
+        // 상태바의 작은 배지를 눌렀는데 파일 저장 창이 튀어나오면 그건 스위치가 아니다.
+        // 기록은 pane 마다 따로 잡히므로(session_logs 는 PaneId 로 찾는다) 이 스위치도
+        // 지금 보고 있는 pane 하나에만 걸린다.
+        if toggle_rec {
+            match focused.is_some_and(|p| self.session_logs.contains_key(&p)) {
+                true => self.toggle_session_log(),
+                false => self.start_rec_here(),
+            }
+        }
+        if let Some(want) = want_dims {
+            self.resize_window_for_grid(ctx, want);
+        }
+        if let Some(p) = goto_tab {
+            self.focus_tab(p);
         }
         if jump_fail {
             self.jump_failed(true); // 칩을 누르면 다음 실패한 명령으로.

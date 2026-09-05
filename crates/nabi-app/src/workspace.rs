@@ -76,6 +76,9 @@ impl NabiApp {
         } else {
             self.dock.push_to_focused_leaf(pane);
         }
+        // 탭 줄이 꽉 차 있으면 새 탭은 화면 밖에 생긴다 - 열리지 않은 것처럼 보인다.
+        // 새 탭은 늘 끝에 붙으므로 끝까지 굴리면 반드시 보인다(사용자 보고 2026-09-05).
+        self.reveal_new_tab();
     }
 
     /// 새 pane을 포커스된 leaf의 분할로 배치한다(right=오른쪽, false=아래). 불가 시 탭.

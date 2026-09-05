@@ -3,204 +3,156 @@
 use nabi_config::AppConfig;
 use nabi_i18n::{tr, Lang};
 
+/// 동작 페이지.
+///
+/// 이 페이지만 표(그리드)를 **스스로 조각내 연다.** 설명이 붙는 줄은 설명을 두 칸에
+/// 걸쳐 적어야 하는데, 표 안에서는 그렇게 할 수 없어서다 — 칸에 넣으면 그 칸이 설명
+/// 길이만큼 넓어져 창 폭이 흐트러진다(사용자 보고 2026-09-05).
+///
+/// 조각마다 라벨 칸 폭이 같아서(`settingsui::LABEL_W`) 나눠도 줄이 어긋나 보이지 않는다.
 pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
-    ui.label(tr(lang, "settings.language"));
-    egui::ComboBox::from_id_salt("set_lang")
-        .selected_text(cfg.appearance.language.clone())
-        .show_ui(ui, |ui| {
-            for (code, label) in lang_choices() {
-                ui.selectable_value(&mut cfg.appearance.language, code.to_owned(), label);
-            }
-        });
-    ui.end_row();
+    use crate::settingsui::{grid_seg, help_line};
 
-    ui.label(tr(lang, "settings.quakehotkey"));
-    ui.add(
-        egui::TextEdit::singleline(&mut cfg.appearance.quake_hotkey).hint_text("Control+Backquote"),
-    );
-    ui.end_row();
-
-    let chk = |ui: &mut egui::Ui, label: &str, v: &mut bool| {
-        ui.label(label);
-        ui.checkbox(v, "");
+    grid_seg(ui, "beh_lang", |ui| {
+        ui.label(tr(lang, "settings.language"));
+        egui::ComboBox::from_id_salt("set_lang")
+            .selected_text(cfg.appearance.language.clone())
+            .show_ui(ui, |ui| {
+                for (code, label) in lang_choices() {
+                    ui.selectable_value(&mut cfg.appearance.language, code.to_owned(), label);
+                }
+            });
         ui.end_row();
-    };
-    chk_help(
-        ui,
-        tr(lang, "settings.restorews"),
-        tr(lang, "settings.restorews.help"),
-        &mut cfg.terminal.restore_workspace,
-        true,
-    );
-    chk_help(
-        ui,
-        tr(lang, "settings.restorecmd"),
-        tr(lang, "settings.restorecmd.help"),
-        &mut cfg.terminal.restore_running_command,
-        cfg.terminal.restore_workspace,
-    );
-    chk_help(
-        ui,
-        tr(lang, "settings.restoreshaai"),
-        tr(lang, "settings.restoreshaai.help"),
-        &mut cfg.terminal.restore_ssh_ai_command,
-        cfg.terminal.restore_workspace,
-    );
-    ui.label(tr(lang, "settings.restoreai"));
-    ui.add(
-        egui::Label::new(egui::RichText::new(tr(lang, "settings.restoreai.help")).weak()).wrap(),
-    );
-    ui.end_row();
-    chk(
-        ui,
-        tr(lang, "settings.builtineditor"),
-        &mut cfg.terminal.editor_builtin,
-    );
-    chk(
-        ui,
-        tr(lang, "update.autocheck"),
-        &mut cfg.terminal.auto_check_update,
-    );
-    // 확인이 필요한 것들을 한자리에 모은다 — 흩어 두면 "어디서 끄지?"가 된다.
-    chk(
-        ui,
-        tr(lang, "settings.confirmclose"),
-        &mut cfg.terminal.confirm_close,
-    );
-    chk_help(
-        ui,
-        tr(lang, "settings.guarddangerous"),
-        tr(lang, "settings.guarddangerous.hint"),
-        &mut cfg.terminal.guard_dangerous,
-        true,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.autoreconnect"),
-        &mut cfg.terminal.auto_reconnect,
-    );
-    // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
-    ui.label(tr(lang, "settings.logkeep")); ui.add(egui::DragValue::new(&mut cfg.terminal.log_keep_days).range(0..=365).suffix(tr(lang, "settings.logkeepunithint")))
+        ui.label(tr(lang, "settings.quakehotkey"));
+        ui.add(
+            egui::TextEdit::singleline(&mut cfg.appearance.quake_hotkey)
+                .hint_text("Control+Backquote"),
+        );
+        ui.end_row();
+    });
+
+    // ── 복원 무리 ────────────────────────────────────────────────
+    chk_help(ui, "beh_rws", tr(lang, "settings.restorews"), tr(lang, "settings.restorews.help"),
+        &mut cfg.terminal.restore_workspace, true);
+    let restore = cfg.terminal.restore_workspace;
+    chk_help(ui, "beh_rcmd", tr(lang, "settings.restorecmd"), tr(lang, "settings.restorecmd.help"),
+        &mut cfg.terminal.restore_running_command, restore);
+    chk_help(ui, "beh_rai", tr(lang, "settings.restoreshaai"), tr(lang, "settings.restoreshaai.help"),
+        &mut cfg.terminal.restore_ssh_ai_command, restore);
+    // 스위치가 아니라 안내다 — 라벨만 두고 설명은 아래 줄에.
+    grid_seg(ui, "beh_rainfo", |ui| {
+        ui.label(tr(lang, "settings.restoreai"));
+        ui.label("");
+        ui.end_row();
+    });
+    help_line(ui, tr(lang, "settings.restoreai.help"));
+
+    grid_seg(ui, "beh_misc1", |ui| {
+        chk(ui, tr(lang, "settings.builtineditor"), &mut cfg.terminal.editor_builtin);
+        chk(ui, tr(lang, "update.autocheck"), &mut cfg.terminal.auto_check_update);
+        // 확인이 필요한 것들을 한자리에 모은다 — 흩어 두면 "어디서 끄지?"가 된다.
+        chk(ui, tr(lang, "settings.confirmclose"), &mut cfg.terminal.confirm_close);
+    });
+    chk_help(ui, "beh_guard", tr(lang, "settings.guarddangerous"), tr(lang, "settings.guarddangerous.hint"),
+        &mut cfg.terminal.guard_dangerous, true);
+
+    grid_seg(ui, "beh_misc2", |ui| {
+        chk(ui, tr(lang, "settings.autoreconnect"), &mut cfg.terminal.auto_reconnect);
+        // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
+        ui.label(tr(lang, "settings.logkeep"));
+        ui.add(
+            egui::DragValue::new(&mut cfg.terminal.log_keep_days)
+                .range(0..=365)
+                .suffix(tr(lang, "settings.logkeepunithint")),
+        )
         .on_hover_text(tr(lang, "settings.logkeep.hint"));
-    ui.end_row();
-    chk(
-        ui,
-        tr(lang, "settings.copyonselect"),
-        &mut cfg.appearance.copy_on_select,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.visualbell"),
-        &mut cfg.appearance.visual_bell,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.agentsound"),
-        &mut cfg.terminal.agent_sound,
-    );
-    chk(
-        ui,
-        tr(lang, "menu.ontop"),
-        &mut cfg.appearance.always_on_top,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.statusbar"),
-        &mut cfg.appearance.show_statusbar,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.splash"),
-        &mut cfg.appearance.splash,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.clock"),
-        &mut cfg.appearance.show_clock,
-    );
+        ui.end_row();
+        chk(ui, tr(lang, "settings.copyonselect"), &mut cfg.appearance.copy_on_select);
+        chk(ui, tr(lang, "settings.visualbell"), &mut cfg.appearance.visual_bell);
+        chk(ui, tr(lang, "settings.agentsound"), &mut cfg.terminal.agent_sound);
+        chk(ui, tr(lang, "menu.ontop"), &mut cfg.appearance.always_on_top);
+        chk(ui, tr(lang, "settings.statusbar"), &mut cfg.appearance.show_statusbar);
+        chk(ui, tr(lang, "settings.splash"), &mut cfg.appearance.splash);
+        chk(ui, tr(lang, "settings.clock"), &mut cfg.appearance.show_clock);
+    });
+
     // 탭에 pane 번호(#N)를 붙인다. **켤 방법이 없었다** — 설정에는 있는데 화면에
     // 스위치가 없어서 파일을 직접 고쳐야 했다(config-keys 검사로 찾았다).
     // AI 제어에서 `--pane <N>` 을 쓰라고 안내하면서 정작 그 번호를 못 켜고 있었다.
-    chk_help(
-        ui,
-        tr(lang, "settings.showpaneids"),
-        tr(lang, "settings.showpaneids.hint"),
-        &mut cfg.appearance.show_pane_ids,
-        true,
-    );
-    chk(
-        ui,
-        tr(lang, "settings.warnpaste"),
-        &mut cfg.terminal.warn_paste_newline,
-    );
-    // 개행 경고와 별개 스위치 — 눈에 보이지 않는 문자는 개행 확인을 꺼 둔 사람도 봐야 한다.
-    chk(
-        ui,
-        tr(lang, "settings.warnpasteunicode"),
-        &mut cfg.terminal.warn_paste_unicode,
-    );
+    chk_help(ui, "beh_paneids", tr(lang, "settings.showpaneids"), tr(lang, "settings.showpaneids.hint"),
+        &mut cfg.appearance.show_pane_ids, true);
 
-    // 화면을 덮어 그리는 TUI 가 다시 그리기 전에 "스크롤백을 지워라"를 보내는 일이 잦다.
-    // 그러면 사람이 올려 보려던 것이 그 순간 사라진다(사용자 보고 2026-08-31).
-    chk(
-        ui,
-        tr(lang, "settings.protectscrollback"),
-        &mut cfg.terminal.protect_scrollback,
-    );
+    grid_seg(ui, "beh_paste", |ui| {
+        chk(ui, tr(lang, "settings.warnpaste"), &mut cfg.terminal.warn_paste_newline);
+        // 개행 경고와 별개 스위치 — 눈에 보이지 않는 문자는 개행 확인을 꺼 둔 사람도 봐야 한다.
+        chk(ui, tr(lang, "settings.warnpasteunicode"), &mut cfg.terminal.warn_paste_unicode);
+        // 화면을 덮어 그리는 TUI 가 다시 그리기 전에 "스크롤백을 지워라"를 보내는 일이 잦다.
+        // 그러면 사람이 올려 보려던 것이 그 순간 사라진다(사용자 보고 2026-08-31).
+        chk(ui, tr(lang, "settings.protectscrollback"), &mut cfg.terminal.protect_scrollback);
 
-    // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
-    ui.label(tr(lang, "settings.shellinteg"));
-    ui.horizontal(|ui| {
-        let id = egui::Id::new("shellinteg_msg");
-        if ui.button(tr(lang, "settings.shellinteg.install")).clicked() {
-            let msg = match crate::shellinteg::install() {
-                Ok(m) => format!("\u{2713} {m}"),
-                Err(e) => format!("\u{2715} {e}"),
-            };
-            ui.data_mut(|d| d.insert_temp(id, msg));
-        }
-        if let Some(msg) = ui.data(|d| d.get_temp::<String>(id)) {
-            ui.weak(msg);
-        }
+        // 셸 통합: PowerShell 프로필에 OSC 133/7 스니펫 설치(명령 경계·종료코드·cwd).
+        ui.label(tr(lang, "settings.shellinteg"));
+        ui.horizontal(|ui| {
+            let id = egui::Id::new("shellinteg_msg");
+            if ui.button(tr(lang, "settings.shellinteg.install")).clicked() {
+                let msg = match crate::shellinteg::install() {
+                    Ok(m) => format!("\u{2713} {m}"),
+                    Err(e) => format!("\u{2715} {e}"),
+                };
+                ui.data_mut(|d| d.insert_temp(id, msg));
+            }
+            if let Some(msg) = ui.data(|d| d.get_temp::<String>(id)) {
+                ui.weak(msg);
+            }
+        });
+        ui.end_row();
+
+        // 에이전트 제어 평면: pane 내 프로세스가 nabiTerm을 제어(off/ask/on).
+        ui.label(tr(lang, "settings.control"));
+        ui.horizontal(|ui| {
+            for (val, key) in [
+                ("off", "settings.control.off"),
+                ("ask", "settings.control.ask"),
+                ("on", "settings.control.on"),
+            ] {
+                ui.radio_value(&mut cfg.terminal.control_mode, val.to_string(), tr(lang, key));
+            }
+        });
+        ui.end_row();
+        ui.label("OSC 7771");
+        ui.checkbox(&mut cfg.terminal.control_allow_osc, "");
+        ui.end_row();
     });
-    ui.end_row();
+    help_line(ui, tr(lang, "settings.control.osc"));
+}
 
-    // 에이전트 제어 평면: pane 내 프로세스가 nabiTerm을 제어(off/ask/on).
-    ui.label(tr(lang, "settings.control"));
-    ui.horizontal(|ui| {
-        for (val, key) in [
-            ("off", "settings.control.off"),
-            ("ask", "settings.control.ask"),
-            ("on", "settings.control.on"),
-        ] {
-            ui.radio_value(
-                &mut cfg.terminal.control_mode,
-                val.to_string(),
-                tr(lang, key),
-            );
-        }
-    });
-    ui.end_row();
-    ui.label("OSC 7771");
-    ui.label(tr(lang, "settings.control.osc"));
-    ui.checkbox(&mut cfg.terminal.control_allow_osc, "");
+/// 표 한 줄짜리 스위치.
+fn chk(ui: &mut egui::Ui, label: &str, v: &mut bool) {
+    ui.label(label);
+    ui.checkbox(v, "");
     ui.end_row();
 }
 
-fn chk_help(ui: &mut egui::Ui, label: &str, help: &str, value: &mut bool, enabled: bool) {
-    ui.vertical(|ui| {
-        ui.label(label);
-        ui.add(egui::Label::new(egui::RichText::new(help).weak().small()).wrap());
-    });
-    ui.add_enabled(enabled, egui::Checkbox::without_text(value));
-    ui.end_row();
-}
-
-/// 언어 고르기 목록.
+/// 스위치 한 줄 + **두 칸을 가로지르는 설명.**
 ///
-/// "System" 은 그것만 봐서는 **무엇으로 정해졌는지 알 수 없다.** 한국어로 나오는데
-/// 목록에는 "System" 이라고만 적혀 있으면, 이게 지금 한국어인지 영어인지 확인하려고
-/// 굳이 골라 봐야 한다. 그래서 실제로 정해진 언어를 괄호에 적는다.
+/// 표를 한 조각만 열고 닫은 뒤 설명을 표 밖에 적는다. 설명을 칸 안에 두면 그 칸이
+/// 설명 길이만큼 넓어져 창 폭이 흐트러진다(사용자 보고 2026-09-05).
+fn chk_help(
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    help: &str,
+    value: &mut bool,
+    enabled: bool,
+) {
+    crate::settingsui::grid_seg(ui, id, |ui| {
+        ui.label(label);
+        ui.add_enabled(enabled, egui::Checkbox::without_text(value));
+        ui.end_row();
+    });
+    crate::settingsui::help_line(ui, help);
+}
+
 fn lang_choices() -> [(&'static str, String); 4] {
     // `is_explicit` 은 "이 코드가 언어를 못 박는가"를 답한다. 못 박지 않는 값(system·빈 값)
     // 이면 실제로 무엇이 뽑혔는지 보여 줘야 한다.
