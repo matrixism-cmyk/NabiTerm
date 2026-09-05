@@ -61,7 +61,10 @@ pub(crate) fn page(ui: &mut egui::Ui, cfg: &mut AppConfig, _editor: &mut EditorC
         // 원격 연결(3): SSH(접속 유지·통계) → 전송·SFTP(속도·병렬·무결성·다운로드 폴더).
         3 => {
             group(ui, lang, "settings.sec.ssh"); grid(ui, "sec_ssh", |ui| crate::settingsui2::ssh_rows(ui, cfg, lang));
-            group(ui, lang, "settings.sec.transfer"); grid(ui, "sec_transfer", |ui| crate::settingsxfer::transfer_rows(ui, cfg, lang));
+            // 이 페이지도 표를 **스스로** 조각내 연다 — 설명 줄이 두 칸을 가로질러야 해서다
+            // (사용자 보고 2026-09-05: '열 더 보기' 설명이 오른쪽 칸을 넓혀 창이 늘어났다).
+            group(ui, lang, "settings.sec.transfer");
+            crate::settingsxfer::transfer_rows(ui, cfg, lang);
         }
         // 사용자 규칙(4): 키워드 강조 + 명령 스니펫(둘 다 직접 관리하는 목록).
         // 사용자 규칙(4): 한 장에 네 가지가 쌓여 있어 무엇이 무엇인지 읽기 어려웠다.

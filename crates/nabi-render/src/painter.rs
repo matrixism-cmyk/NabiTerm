@@ -230,11 +230,30 @@ fn flush_uline(p: &Painter, x0: f32, x1: f32, y: f32, ch: f32, clr: Option<Color
 
 /// 배칭된 배경 fill을 한 rect로 그린다(색이 None이면 생략).
 fn flush_fill(painter: &Painter, x0: f32, x1: f32, y: f32, ch: f32, clr: Option<Color32>) {
-    if let Some(c) = clr {
-        if x1 > x0 {
-            painter.rect_filled(Rect::from_min_size(Pos2::new(x0, y), Vec2::new(x1 - x0, ch)), egui::CornerRadius::ZERO, c);
-        }
+    let Some(c) = clr else { return };
+    if x1 <= x0 {
+        return;
     }
+    // **가장자리를 픽셀에 맞춘다.**
+    //
+    // 셀 폭은 소수다(172칸을 나눈 값). 배경을 연속 동일색끼리 묶어 한 번에 칠하는데,
+    // 그 묶음의 끝이 소수 자리에 떨어지면 다음 묶음의 시작과 반 픽셀씩 어긋난다.
+    // 그 어긋남이 **1픽셀짜리 줄무늬**로 보인다.
+    //
+    // 줄 전체가 한 색이면 묶음이 하나뿐이라 이음새가 없다. 그런데 파워셸에서 `|` 나 `@`
+    // 를 치면 앞 낱말 색이 바뀌면서 **묶음이 여럿으로 갈린다** — 그때 이음새가 생긴다
+    // (사용자 보고 2026-09-05: "`|`, `@` 를 입력하면 프롬프트가 일부 깨져 보인다").
+    //
+    // 반올림해 맞추면 묶음끼리 딱 붙는다. 글자는 셀별로 자기 자리에 그리므로 영향이 없다.
+    let (a, b) = (x0.round(), x1.round());
+    if b <= a {
+        return; // 반올림하고 나니 폭이 0이 된 아주 좁은 묶음.
+    }
+    painter.rect_filled(
+        Rect::from_min_size(Pos2::new(a, y), Vec2::new(b - a, ch)),
+        egui::CornerRadius::ZERO,
+        c,
+    );
 }
 
 fn paint_cursor(
