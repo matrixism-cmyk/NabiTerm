@@ -183,7 +183,7 @@ impl NabiApp {
             reconnect_ask: None, hostkey_prompt: None,
             trzsz: Default::default(),
             tabbar_menu: None, link_menu: None, floating_link: None, img_textures: std::collections::HashMap::new(),
-            last_win: (0.0, 0.0), last_pos: None, raise_window: false,
+            last_win: (0.0, 0.0), last_pos: None, raise_window: false, modal_was_open: false,
             control_policy,
             control_ask_rx,
             control_pending: None,

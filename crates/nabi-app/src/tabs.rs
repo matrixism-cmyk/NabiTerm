@@ -172,6 +172,8 @@ pub struct TermTabViewer<'a> {
     /// 탭 이름에 쓸 글자 수 — 탭이 늘면 줄어든다(크롬처럼). `tabwidth`.
     /// 앞이 **지금 보고 있는 탭**, 뒤가 나머지. 보고 있는 탭이 가장 자주 읽힌다.
     pub name_budget: (usize, usize),
+    /// 답을 기다리는 창이 떠 있는가 — 웹 화면(자식 창)을 숨겨 가리지 않게 한다.
+    pub modal_open: bool,
     /// 지금 보고 있는 탭 — 그 탭에만 이름을 넉넉히 준다.
     pub active_tab: Option<PaneId>,
     /// 탭 메뉴가 낸 한 줄(저장 성공·실패 등) — 중앙이 알림으로 띄운다.
@@ -332,7 +334,9 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
         // 무엇을 그리든 자리는 같으니 맨 앞에서 적는다 — 아래 갈래마다 적으면 하나를 빠뜨린다.
         self.pane_rects.insert(pane, ui.max_rect());
         // 웹 탭은 규칙이 달라 따로 뒀다(자식 창이라 그렸다고 표시해야 한다).
-        if crate::webtabui::draw_if_web(ui, pane, self.web_tabs, self.web_seen, self.hwnd, self.lang) {
+        if crate::webtabui::draw_if_web(
+            ui, pane, self.web_tabs, self.web_seen, self.hwnd, self.lang, self.modal_open,
+        ) {
             return;
         }
         if let Some(b) = self.browser_tabs.get_mut(&pane) {

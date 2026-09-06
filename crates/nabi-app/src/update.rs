@@ -177,6 +177,18 @@ impl eframe::App for NabiApp {
         self.show_support_bundle(ctx); // 진단 묶음.
         self.show_find_all(ctx); // 모든 창에서 찾기.
         self.show_whatsnew(ctx); // 업데이트 뒤 첫 실행 안내.
+        // **답을 기다리는 창이 새로 떴으면 창을 앞으로.**
+        //
+        // 분리 창이나 다른 프로그램이 앞에 있으면 메인 창의 확인 창은 그 뒤에 뜬다.
+        // 물어 놓고 답할 길을 막는 셈이다(사용자 보고 2026-09-06).
+        //
+        // **새로 뜬 순간에만** 올린다. 떠 있는 내내 올리면 사용자가 다른 창으로 옮겨 갈
+        // 수 없다 — 그것도 나름의 가둠이다.
+        let modal_now = self.blocking_modal_open();
+        if modal_now && !self.modal_was_open {
+            self.raise_window = true;
+        }
+        self.modal_was_open = modal_now;
         // 밖에서 부른 요청(탐색기 '여기서 열기')이면 창을 앞으로 — 뒤에서 열리면 열린 줄 모른다.
         if std::mem::take(&mut self.raise_window) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Minimized(false));

@@ -21,10 +21,23 @@ pub(crate) fn draw_if_web(
     seen: &mut std::collections::HashSet<PaneId>,
     hwnd: Option<isize>,
     lang: nabi_i18n::Lang,
+    modal_open: bool,
 ) -> bool {
     let Some(w) = tabs.get_mut(&pane) else {
         return false;
     };
+    // **답을 기다리는 창이 떠 있으면 통째로 숨긴다.**
+    //
+    // 아래에서 덮인 자리를 찍어 보고 도려내지만, 그것은 몇 군데를 짚어 보는 어림이다.
+    // 확인 창은 어림으로 다룰 것이 아니다 — 한 번 가려지면 사용자가 답할 길이 사라진다
+    // (사용자 보고 2026-09-06). 그려졌다는 표시는 남겨 다음 프레임에 다시 그린다.
+    if modal_open {
+        seen.insert(pane);
+        if let Some(v) = &mut w.view {
+            v.show(false);
+        }
+        return true;
+    }
     // 그렸다고 표시한다 — 표시하지 않은 웹 탭은 중앙에서 숨긴다(자식 창이라 필요하다).
     seen.insert(pane);
     // 탭 이름이 쪽 제목을 따라가게 한다 — 그릴 때만 물으면 되고, 안 보이는 탭은 마지막 이름을 쓴다.

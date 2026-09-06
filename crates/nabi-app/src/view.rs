@@ -24,6 +24,8 @@ impl NabiApp {
         let mut ai_handoff: Option<(nabi_types::PaneId, bool)> = None;
         let mut open_history: Option<nabi_types::PaneId> = None;
         let mut reconnect_req: Option<nabi_types::PaneId> = None;
+        // 답을 기다리는 창이 있으면 웹 화면(자식 창)을 숨긴다 — 안 그러면 그 위를 덮는다.
+        let blocking_modal = self.blocking_modal_open();
         // 탭이 늘면 이름을 줄인다(크롬처럼) — 굴려서 찾게 하지 않으려고.
         let dock_w = ui.available_width(); // 도크가 실제로 쓰는 폭.
         let tab_count = self.dock.iter_all_tabs().count();
@@ -201,6 +203,7 @@ impl NabiApp {
                 reconnect_req: &mut reconnect_req,
                 name_budget: crate::tabwidth::name_budgets(dock_w, tab_count),
                 active_tab: self.dock.find_active_focused().map(|(_, t)| *t),
+                modal_open: blocking_modal,
                 tab_notice: &mut tab_notice,
                 dock_float: &mut dock_float,
                 browser_tabs: &mut self.browser_tabs,

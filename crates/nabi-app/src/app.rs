@@ -106,6 +106,8 @@ pub struct NabiApp {
     pub last_pos: Option<(f32, f32)>,
     /// 창을 앞으로 가져와야 하는가(탐색기 '여기서 열기' 등 밖에서 부른 경우).
     pub raise_window: bool,
+    /// 지난 프레임에 답을 기다리는 창이 있었나 — 새로 뜬 순간에만 창을 앞으로 올린다.
+    pub modal_was_open: bool,
     /// 에이전트 제어 평면 권한 정책(서버와 공유) + 승인 요청 수신.
     pub control_policy: nabi_control::policy::ControlPolicy,
     pub control_ask_rx: crossbeam_channel::Receiver<(u64, nabi_control::policy::Group)>,

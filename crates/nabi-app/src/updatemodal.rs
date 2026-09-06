@@ -33,9 +33,15 @@ enum PromptAction {
 impl NabiApp {
     /// 새 버전 알림 모달(시작 시 1회 자동 오픈). update 루프에서 매 프레임 호출.
     pub(crate) fn show_update_prompt(&mut self, ctx: &egui::Context) {
-        // 첫 실행 환영 화면이 떠 있는 동안은 미룬다 — 모달 둘이 겹쳐서 뜨면
-        // 처음 켠 사람이 무엇을 먼저 눌러야 할지 알 수 없다(온보딩이 끝나면 그때 뜬다).
-        if self.onboarding_open {
+        // **답을 기다리는 창이 떠 있는 동안은 미룬다.**
+        //
+        // 예전에는 첫 실행 환영 화면만 봤다. 그런데 겹쳐 뜨는 것은 그것만이 아니었다 —
+        // 새 판 알림과 닫기 확인이 함께 떠서 서로를 가리는 것을 실제로 봤다(2026-09-06).
+        // 위에 뜬 창이 뒤쪽 입력을 막으므로, 아래 것은 **보이는데 눌리지 않는다.**
+        // 보이는데 안 눌리는 것이 가장 나쁘다.
+        //
+        // 이 알림은 급하지 않다. 답을 기다리는 창이 없어진 다음에 떠도 된다.
+        if self.blocking_modal_open() {
             return;
         }
         let status = self.updater.get_status();
