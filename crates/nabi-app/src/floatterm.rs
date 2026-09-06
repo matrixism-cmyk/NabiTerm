@@ -132,7 +132,9 @@ pub(crate) fn paint_floating_term(
         let _ = cmd_tx.send(cmd);
     }
 
-    let over = ui.rect_contains_pointer(rect);
+    // 탭과 같은 규칙(panewheel::wheel_over) — 분리 창은 자기 pane 만 보여주므로
+    // 자리를 모를 때는 이 pane 이 받는다.
+    let over = crate::panewheel::wheel_over(ui, rect, true);
     let (ctrl, shift, wheel) = ui.input(|i| {
         (i.modifiers.command, i.modifiers.shift, crate::paneio::raw_wheel(i).y)
     });

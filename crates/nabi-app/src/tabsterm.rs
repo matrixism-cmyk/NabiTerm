@@ -102,7 +102,9 @@ impl TermTabViewer<'_> {
         // Ctrl+휠 폰트 확대축소는 마우스 리포팅 모드(Claude Code·vim·less 등 TUI)보다 우선한다.
         // 주류 에뮬레이터(Windows Terminal·iTerm2)처럼 에뮬레이터 레벨에서 가로채 앱엔 보내지
         // 않는다 — 휠을 소비해 아래 마우스 보고/스크롤백 경로로 새지 않게 한다.
-        let over = ui.rect_contains_pointer(rect);
+        // 휠은 `rect_contains_pointer` 로 재지 않는다 — 그것은 클릭 기준이라
+        // 포인터 자리를 모르거나 레이어 지도가 낡았을 때 휠을 말없이 버린다.
+        let over = crate::panewheel::wheel_over(ui, rect, is_focused);
         let (wheel, ctrl_wheel, shift_wheel) = ui.input(|i| {
             let wheel = crate::paneio::raw_wheel(i).y;
             (wheel, over && i.modifiers.command && wheel != 0.0,

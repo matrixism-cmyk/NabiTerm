@@ -88,6 +88,49 @@ pub(crate) fn wheel_target(c: WheelCtx) -> WheelTo {
     }
 }
 
+/// 휠을 이 pane 이 받을 자리인가.
+///
+/// 클릭과 휠은 판정이 달라야 한다. 클릭은 "무엇을 눌렀나"라 위에 덮인 것까지 따져야 하지만,
+/// 휠은 "어디를 굴렸나"다. egui 의 `rect_contains_pointer` 는 클릭 기준이라, 아래 두 경우에
+/// **아무 말 없이 거짓**을 돌려준다. 둘 다 사용자에게는 "휠을 굴렸는데 아무 일도 없다"로
+/// 보인다.
+///
+/// 1. **포인터 자리를 모를 때.** 창이 포커스를 얻었는데 그 뒤로 마우스가 한 번도 움직이지
+///    않았으면 egui 는 포인터가 어디 있는지 모른다. 그런데 윈도우는 휠을 **포커스 창**에
+///    보낸다 — 받을 곳이 분명히 있는데 아무도 받지 않는 것이다. 이럴 때는 포커스 pane 이
+///    받는 것이 맞다(다른 터미널도 그렇게 한다).
+/// 2. **지난 프레임의 레이어 지도가 그 자리를 모를 때**(`layer_id_at` 이 None). 우리를
+///    덮은 것이 없다는 뜻인데도 거짓이 된다. 그림 한 장 그리는 데 오래 걸릴수록(Mesa 같은
+///    소프트웨어 렌더러) 지도가 낡아 이 틈이 자주 벌어진다.
+///
+/// 덮은 레이어가 **실제로 있을 때만** 양보한다 — 메뉴나 떠 있는 창 위에서 굴린 휠이
+/// 뒤에 있는 pane 까지 굴리면 안 되기 때문이다.
+pub(crate) fn wheel_over_at(
+    pos: Option<egui::Pos2>,
+    rect: egui::Rect,
+    top: Option<egui::LayerId>,
+    mine: egui::LayerId,
+    focused: bool,
+) -> bool {
+    let Some(p) = pos else {
+        return focused;
+    };
+    if !rect.contains(p) {
+        return false;
+    }
+    match top {
+        None => true,
+        Some(l) => l == mine,
+    }
+}
+
+/// [`wheel_over_at`] 을 egui 상태에서 뽑아 부른다(탭·분리 창이 같은 규칙을 쓰도록).
+pub(crate) fn wheel_over(ui: &egui::Ui, rect: egui::Rect, focused: bool) -> bool {
+    let pos = ui.input(|i| i.pointer.latest_pos().or_else(|| i.pointer.interact_pos()));
+    let top = pos.and_then(|p| ui.ctx().layer_id_at(p));
+    wheel_over_at(pos, rect, top, ui.layer_id(), focused)
+}
+
 /// 실행 중 명령이 "기록을 자기 오버레이에만 두는 TUI"(현재 codex)인가.
 ///
 /// 이런 pane은 토글 없이도 휠 도우미를 기본으로 켠다 — 앱 재시작으로 토글(메모리 전용)이
@@ -459,6 +502,41 @@ mod wheel_lines_tests {
         assert_eq!(wheel_lines(-1.0), -1);
     }
 
+    fn layer(n: u64) -> egui::LayerId {
+        egui::LayerId::new(egui::Order::Middle, egui::Id::new(n))
+    }
+    fn rect() -> egui::Rect {
+        egui::Rect::from_min_size(egui::pos2(0.0, 0.0), egui::vec2(100.0, 100.0))
+    }
+
+    /// 포인터 자리를 모르면 포커스 pane 이 받는다 — 윈도우가 휠을 포커스 창에 보내므로.
+    #[test]
+    fn 자리를_모르면_포커스가_받는다() {
+        assert!(wheel_over_at(None, rect(), None, layer(1), true));
+        assert!(!wheel_over_at(None, rect(), None, layer(1), false));
+    }
+
+    /// 레이어 지도가 그 자리를 모르면(None) 덮은 것이 없다는 뜻이다 — 우리가 받는다.
+    #[test]
+    fn 지도가_비었으면_우리가_받는다() {
+        let p = Some(egui::pos2(50.0, 50.0));
+        assert!(wheel_over_at(p, rect(), None, layer(1), false));
+    }
+
+    /// 덮은 레이어가 실제로 있으면 양보한다(메뉴 위에서 굴린 휠이 뒤를 굴리면 안 된다).
+    #[test]
+    fn 덮은_레이어가_있으면_양보한다() {
+        let p = Some(egui::pos2(50.0, 50.0));
+        assert!(wheel_over_at(p, rect(), Some(layer(1)), layer(1), false));
+        assert!(!wheel_over_at(p, rect(), Some(layer(2)), layer(1), false));
+    }
+
+    /// 자리를 알고 그 자리가 밖이면 포커스여도 받지 않는다.
+    #[test]
+    fn 밖이면_포커스여도_안_받는다() {
+        let p = Some(egui::pos2(500.0, 500.0));
+        assert!(!wheel_over_at(p, rect(), None, layer(1), true));
+    }
     /// 커서 키도 크기를 따른다. 예전에는 늘 3개였다.
     #[test]
     fn 커서_키도_굴린_만큼_보낸다() {
