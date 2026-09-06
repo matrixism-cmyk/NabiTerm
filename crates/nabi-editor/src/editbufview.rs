@@ -47,7 +47,11 @@ pub fn edit_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
             let n = eb.rope.len_lines();
             let mm = egui::Panel::right(ui.id().with("eb_mm")).exact_size(84.0).resizable(false);
             mm.show(ui, |ui| {
-                mm_target = crate::editorminimap::minimap_by(ui, n, |i| eb.line_len(i), oy, ch, vh);
+                mm_target = crate::editorminimap::minimap_by(ui, n, |i| eb.line_len(i), oy, ch, vh, crate::editorminimap::Marks {
+                    hits: &doc.find.matches,
+                    bookmarks: &doc.bookmarks,
+                    cur_line: doc.cur_line,
+                });
             });
         }
     }

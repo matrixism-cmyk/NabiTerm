@@ -63,7 +63,8 @@ mod extwatch; mod triggers; mod findall; mod findallui; mod findfiles; mod diffl
 mod dirtools; mod replaceui; mod sftpbookmark; mod sshcmd; mod sshjump; mod helppages; mod help; mod hostkeyui; mod knownhostsui; mod importscan; mod importui; mod logview; mod logviewui; mod menu;
 mod menuact; mod menuactio; mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod palettekeys; mod pathline; mod quake; mod qcparse; mod paneio; mod panewheel; mod paneurl;
 mod osc52policy; mod openhere; mod padrecover; mod padrecoverui; mod paste; mod promptfocus; mod qcbar; mod remotecmd; mod remotecmdui; mod reconnect; mod reconnectsess;
-mod renameui; mod scrollbar; mod selection; mod sessionsmenu; mod sessiondel;
+mod renameui; mod scrollbar;
+mod scrollbarmark; mod selection; mod sessionsmenu; mod sessiondel;
 mod snippetvars; mod recent; mod sftpact; mod sftpentries; mod sftpentryfmt; mod sftpnav; mod sftppanel; mod sftprestore; mod sftptab; mod shellinteg; mod sidebar; mod sidebarsel; mod tabbar;
 mod tiling; mod toolsmenu; mod update; mod updateui; mod viewmenu; mod sftptable; mod sftplist; mod viewmode; mod sftpview; mod syncbrowse;
 mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer;

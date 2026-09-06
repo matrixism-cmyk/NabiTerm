@@ -36,6 +36,7 @@ pub(crate) fn to_menu(a: &PaletteAction) -> Option<MenuAction> {
         PaletteAction::OpenSupportBundle => MenuAction::OpenSupportBundle,
         PaletteAction::CopyCommandBlock => MenuAction::CopyCommandBlock,
         PaletteAction::CheckAllReachable => MenuAction::CheckAllReachable,
+        PaletteAction::StopReconnect => MenuAction::StopReconnect,
         PaletteAction::ReopenClosedDoc => MenuAction::ReopenClosedDoc,
         PaletteAction::OpenForward => MenuAction::OpenForward,
         PaletteAction::OpenSettings => MenuAction::OpenSettings,

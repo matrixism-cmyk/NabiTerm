@@ -66,7 +66,7 @@ pub(crate) enum MenuAction {
     /// nabiPad 를 이 창 안(pane)에 열지, 따로 띄울지 바꾼다.
     TogglePadInWindow,
     RenameGroup(String, String), DisbandGroup(String), OpenKeygen, OpenEnvMgr, OpenWeb, OpenCmdHistory, OpenSupportBundle,
-    CopyCommandBlock, CheckAllReachable, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), BlockList, ToggleMark,
+    CopyCommandBlock, CheckAllReachable, StopReconnect, ReopenClosedDoc, TestConnection(String, u16), TogglePin(String), EditNote(String), EditAutoForwards(String), EditSessionEnv(String), BlockList, ToggleMark,
     PrevMark, NextMark, ClearMarks, PrevFailed, NextFailed,
     TearOff,
     DockFloat,

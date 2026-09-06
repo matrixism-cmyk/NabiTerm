@@ -244,4 +244,12 @@ pub(crate) const CATALOG7: &[(&str, &str, &str, &str)] = &[
     ("nabipad.savefailed", "Could not save nabiPad settings", "nabiPad 설정을 저장하지 못했습니다", "nabiPad の設定を保存できませんでした"),
     ("editor.writefailed", "Could not write the file", "파일을 쓰지 못했습니다", "ファイルを書き込めませんでした"),
     ("link.webtab", "Open in the built-in browser", "내장 브라우저로 열기", "内蔵ブラウザーで開く"),
+    ("settings.maxparallelhint", "How many files move at once on one connection. WinSCP opens up to 9 and FileZilla up to 10; more is not always faster — a slow line just splits the same bandwidth.", "한 연결에서 동시에 옮길 파일 수. WinSCP 는 9, FileZilla 는 10 까지 엽니다. 많다고 늘 빠른 것은 아닙니다 — 느린 회선에서는 같은 대역폭을 나눠 쓸 뿐입니다.", "1 つの接続で同時に送るファイル数。WinSCP は 9、FileZilla は 10 までです。多ければ速いわけではありません。"),
+    ("settings.reconntries", "Reconnect attempts", "재접속 시도 횟수", "再接続の試行回数"),
+    ("settings.reconntries.hint", "How many times to try reconnecting after a drop, counting the first try. 0 turns automatic reconnection off.", "끊긴 뒤 몇 번까지 다시 붙어 볼지(첫 시도 포함). 0 이면 자동 재접속을 하지 않습니다.", "切断後に何回再接続を試すか（初回を含む）。0 で自動再接続を切ります。"),
+    ("settings.reconnwait", "Longest gap between attempts", "재시도 간격 상한", "再試行間隔の上限"),
+    ("settings.reconnwait.hint", "The gap grows 1 → 2 → 4 → 8 seconds and stops here. Too short and the server's fail2ban may treat us as an attack; too long and it looks frozen.", "간격은 1 → 2 → 4 → 8초로 늘다가 여기서 멈춥니다. 너무 짧으면 서버 앞의 fail2ban 이 공격으로 보고, 너무 길면 멈췄 것처럼 보입니다.", "間隔は 1 → 2 → 4 → 8 秒と伸び、ここで止まります。"),
+    ("settings.wheelkeyapps", "Send the wheel as page keys for", "휠을 페이지 키로 보낼 프로그램", "ホイールをページキーとして送るプログラム"),
+    ("settings.wheelkeyapps.hint", "Some TUIs keep their history only in their own overlay, so scrollback has nothing to show. For these, the wheel is sent as PageUp/PageDown instead. Separate names with commas (codex, mytui).", "어떤 TUI 는 기록을 자기 오버레이에만 두어서 스크롤백에는 보여 줄 것이 없습니다. 그런 프로그램에서는 휠을 PageUp/PageDown 으로 바꿔 보냅니다. 이름을 쉼표로 나눔니다(codex, mytui).", "履歴を自前のオーバーレイにだけ保つ TUI 向けに、ホイールを PageUp/PageDown として送ります。名前はカンマ区切り。"),
+    ("cmd.reconnstop", "Stop reconnecting", "재접속 멈추기", "再接続を止める"),
 ];

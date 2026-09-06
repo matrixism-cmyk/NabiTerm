@@ -167,6 +167,22 @@ pub struct TerminalCfg {
     /// 휠 한 눈금에 몇 줄을 굴릴 것인가. 0이면 기본값(3)을 쓴다.
     #[serde(default = "default_wheel_lines")]
     pub wheel_lines: u8,
+    /// 휠을 페이지 키로 바꿔 보낼 프로그램 이름들(확장자 제외, 소문자).
+    ///
+    /// 자기 기록을 스크롤백에 남기지 않고 자기 오버레이에만 두는 TUI 가 있다. 그런 pane 에서
+    /// 휠은 굴려 봐야 볼 것이 없으므로 페이지 키로 바꿔 보낸다. 예전에는 `codex` 하나를
+    /// 코드에 박아 두었는데, 그런 프로그램은 계속 생긴다 — 여기서 늘릴 수 있게 한다.
+    #[serde(default = "default_wheel_key_apps")]
+    pub wheel_key_apps: Vec<String>,
+    /// 끊긴 뒤 자동으로 몇 번까지 다시 붙어 볼 것인가(첫 시도 포함). 0=끄기.
+    #[serde(default = "default_reconnect_tries")]
+    pub reconnect_max_tries: u32,
+    /// 재시도 간격의 상한(초). 간격은 1→2→4→8… 로 늘다가 여기서 멈춘다.
+    ///
+    /// 상한이 없으면 사용자는 프로그램이 멈춘 줄 안다. 반대로 너무 짧으면 서버 앞의
+    /// fail2ban 류가 우리를 공격으로 보고 막는다.
+    #[serde(default = "default_reconnect_wait")]
+    pub reconnect_max_wait_secs: u64,
     /// 기본 셸: "pwsh" | "powershell" | "cmd" | "wsl" | "gitbash"
     pub default_shell: String,
     /// 새 로컬 터미널 기본 시작 디렉터리(비우면 포커스 셸 cwd 상속→없으면 시스템 기본).
@@ -226,7 +242,8 @@ pub struct TerminalCfg {
     /// 팁 번역 캐시 파일 경로(비우면 설정 폴더). 공유 폴더·개발 서버 경로를 지정하면
     /// 여러 PC의 번역이 한 파일에 누적된다(저장 시 병합).
     #[serde(default)] pub tip_cache_path: String,
-    /// 한 원격 연결에서 동시에 진행할 전송 수(1~4). 나머지는 큐에서 대기한다.
+    /// 한 원격 연결에서 동시에 진행할 전송 수(1~[`MAX_PARALLEL_TRANSFERS`]).
+    /// 나머지는 큐에서 대기한다. 값을 읽을 때는 [`TerminalCfg::parallel_transfers`] 를 쓴다.
     pub max_parallel_transfers: u32,
     /// SFTP 다운로드 기본 폴더(비우면 로컬 창/홈). 설정 시 목적지 대화상자의 시작 위치.
     #[serde(default)] pub download_dir: String,
@@ -436,6 +453,17 @@ fn default_slow_command_secs() -> u64 { 30 }
 fn default_control_mode() -> String { "ask".into() }
 /// 휠 한 눈금 = 3줄(주류 에뮬레이터 관례).
 fn default_wheel_lines() -> u8 { 3 }
+
+fn default_wheel_key_apps() -> Vec<String> { vec!["codex".into()] }
+fn default_reconnect_tries() -> u32 { 5 }
+fn default_reconnect_wait() -> u64 { 15 }
+
+/// 동시 전송 수의 상한. WinSCP 는 9, FileZilla 는 10 까지 연다 — 우리도 거기까지 연다.
+///
+/// **이 값은 여기에만 있다.** 예전에는 설정 화면의 슬라이더·큐의 클램프·기본값 세 곳에
+/// 각각 `4` 가 적혀 있었다. 그런 숫자는 한 곳만 고치면 조용히 어긋난다.
+pub const MAX_PARALLEL_TRANSFERS: u32 = 10;
+
 fn default_kex_policy() -> String { "auto".into() }
 fn default_stats_secs() -> u64 { 3 }
 fn yes() -> bool { true }
@@ -449,6 +477,9 @@ impl Default for TerminalCfg {
             // 이미 설정 파일이 있는 사람은 그대로다 — 새로 까는 사람에게만 걸린다.
             scrollback: 20_000,
             wheel_lines: default_wheel_lines(),
+            wheel_key_apps: default_wheel_key_apps(),
+            reconnect_max_tries: default_reconnect_tries(),
+            reconnect_max_wait_secs: default_reconnect_wait(),
             default_shell: "powershell".into(),
             default_cwd: String::new(),
             encoding: "UTF-8".into(),
@@ -497,7 +528,7 @@ impl Default for TerminalCfg {
             tip_overlay: true,
             tip_translate_ai: false,
             tip_cache_path: String::new(),
-            max_parallel_transfers: 2,
+            max_parallel_transfers: 4,
             download_dir: String::new(),
             download_ask: true,
             recent_hosts: Vec::new(),

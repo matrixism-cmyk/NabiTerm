@@ -131,24 +131,23 @@ pub(crate) fn wheel_over(ui: &egui::Ui, rect: egui::Rect, focused: bool) -> bool
     wheel_over_at(pos, rect, top, ui.layer_id(), focused)
 }
 
-/// 실행 중 명령이 "기록을 자기 오버레이에만 두는 TUI"(현재 codex)인가.
-///
-/// 이런 pane은 토글 없이도 휠 도우미를 기본으로 켠다 — 앱 재시작으로 토글(메모리 전용)이
-/// 초기화되면 사용자는 "그냥 안 된다"고 느낀다(실제 보고). 감지는 셸 통합(OSC 633;E)이
-/// 준 명령의 첫 토큰으로 한다.
-pub(crate) fn is_tui_history_app(cmd: &str) -> bool {
-    let first = cmd.split_whitespace().next().unwrap_or("");
-    let base = first.rsplit(['/', '\\']).next().unwrap_or(first).to_ascii_lowercase();
-    let base = base.trim_end_matches(".exe").trim_end_matches(".cmd").trim_end_matches(".bat");
-    base == "codex"
-}
-
 impl crate::app::NabiApp {
-    /// 이 pane에서 휠 도우미가 켜져 있는가 — 명시 켬 ∪ (codex 자동 감지 − 명시 끔).
+    /// 실행 중 명령이 "기록을 자기 오버레이에만 두는 TUI"인가.
+    ///
+    /// 이런 pane은 토글 없이도 휠 도우미를 기본으로 켠다 — 앱 재시작으로 토글(메모리 전용)이
+    /// 초기화되면 사용자는 "그냥 안 된다"고 느낀다(실제 보고). 감지는 셸 통합(OSC 633;E)이
+    /// 준 명령으로 한다.
+    ///
+    /// 대상 목록은 **설정**에 있다(`terminal.wheel_key_apps`). 예전에는 `codex` 하나를
+    /// 코드에 박아 두었는데, 그런 프로그램은 계속 생기므로 사용자가 늘릴 수 있어야 한다.
+    pub(crate) fn is_tui_history_pane(&self, pane: nabi_types::PaneId) -> bool {
+        self.run_cmd.get(&pane).is_some_and(|c| self.config.terminal.is_wheel_key_app(c))
+    }
+
+    /// 이 pane에서 휠 도우미가 켜져 있는가 — 명시 켬 ∪ (자동 감지 − 명시 끔).
     pub(crate) fn wheel_keys_effective(&self, pane: nabi_types::PaneId) -> bool {
         self.wheel_keys.contains(&pane)
-            || (!self.wheel_keys_off.contains(&pane)
-                && self.run_cmd.get(&pane).is_some_and(|c| is_tui_history_app(c)))
+            || (!self.wheel_keys_off.contains(&pane) && self.is_tui_history_pane(pane))
     }
 }
 
@@ -337,19 +336,8 @@ mod tests {
         assert!(!overlay_marker(""));
     }
 
-    /// codex 자동 감지 — 경로·확장자·인자가 붙어도 첫 토큰 basename으로 잡는다.
-    #[test]
-    fn detects_codex_command() {
-        assert!(is_tui_history_app("codex"));
-        assert!(is_tui_history_app("codex resume --last"));
-        assert!(is_tui_history_app(r"C:\Users\u\AppData\Roaming\npm\codex.cmd --model x"));
-        assert!(is_tui_history_app("/usr/local/bin/codex"));
-        assert!(!is_tui_history_app("claude --continue"));
-        assert!(!is_tui_history_app("cargo build"));
-        // 이름에 codex가 '포함'된 다른 명령에 속지 않는다.
-        assert!(!is_tui_history_app("codex-helper run"));
-        assert!(!is_tui_history_app(""));
-    }
+    // 자동 감지 시험은 규칙이 사는 곳으로 옮겼다 —
+    // `nabi_config::termcfg`(설정 목록이 진짜 출처다).
 
     /// OpenTui는 Ctrl+T 한 번만 보낸다(스크롤 키를 겹쳐 보내면 열리자마자 튄다).
     #[test]

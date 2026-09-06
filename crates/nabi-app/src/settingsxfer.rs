@@ -45,7 +45,9 @@ fn sftp_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     crate::settingsui::label_cell(ui, tr(lang, "settings.speedlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.speed_limit_kbps).suffix(" KB/s")); ui.end_row();
     crate::settingsui::label_cell(ui, tr(lang, "settings.maxparallel"));
-    ui.add(egui::Slider::new(&mut cfg.terminal.max_parallel_transfers, 1..=4));
+    ui.add(egui::Slider::new(&mut cfg.terminal.max_parallel_transfers,
+        1..=nabi_config::schema::MAX_PARALLEL_TRANSFERS))
+        .on_hover_text(tr(lang, "settings.maxparallelhint"));
     ui.end_row();
     crate::settingsui::label_cell(ui, tr(lang, "settings.verifyhash"));
     ui.checkbox(&mut cfg.terminal.sftp_verify_hash, "").on_hover_text(tr(lang, "settings.verifyhashhint"));

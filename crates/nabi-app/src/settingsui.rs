@@ -333,6 +333,18 @@ fn terminal_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) {
     )
     .on_hover_text(tr(lang, "settings.wheellines.hint"));
     ui.end_row();
+    // 휠을 페이지 키로 바꿔 보낼 프로그램들. 목록은 쉼표로 나눈 한 줄 글로 주고받는다 -
+    // 목록 편집기를 따로 두면 항목 하나 늘리려고 화면을 하나 더 열어야 한다.
+    ui.label(tr(lang, "settings.wheelkeyapps"));
+    let mut apps = nabi_config::termcfg::apps_to_text(&cfg.terminal.wheel_key_apps);
+    if ui
+        .add(egui::TextEdit::singleline(&mut apps).hint_text("codex").desired_width(200.0))
+        .on_hover_text(tr(lang, "settings.wheelkeyapps.hint"))
+        .changed()
+    {
+        cfg.terminal.wheel_key_apps = nabi_config::termcfg::text_to_apps(&apps);
+    }
+    ui.end_row();
     ui.label(tr(lang, "settings.searchlimit"));
     ui.add(egui::DragValue::new(&mut cfg.terminal.search_limit).range(0..=1_000_000).suffix(tr(lang, "settings.lines"))); ui.end_row();
     crate::settingsui2::tip_rows(ui, cfg, lang); // 영문 팁 한글 오버레이.

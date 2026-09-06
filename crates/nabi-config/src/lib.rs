@@ -12,6 +12,7 @@ mod roundtrip_test;
 pub mod paths;
 pub mod persist;
 pub mod schema;
+pub mod termcfg;
 pub mod telegram;
 pub mod audit;
 

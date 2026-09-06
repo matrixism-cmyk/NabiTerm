@@ -191,6 +191,7 @@ impl NabiApp {
                 pending_send: &mut self.pending_send,
                 notify: &mut self.notify,
                 hinted: &mut self.wheel_hinted,
+                marks: self.scroll_marks.get(&pane).map(|m| m.all()).unwrap_or(&[]),
             },
         );
         if let Some((p, d)) = zoom {
@@ -290,6 +291,7 @@ impl NabiApp {
                             pending_send: &mut self.pending_send,
                             notify: &mut self.notify,
                             hinted: &mut self.wheel_hinted,
+                            marks: self.scroll_marks.get(&pane).map(|m| m.all()).unwrap_or(&[]),
                         },
                     );
                 });

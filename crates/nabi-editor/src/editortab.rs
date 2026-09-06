@@ -78,7 +78,11 @@ pub fn render_editor_tab(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang, rec
     if doc.minimap {
         let (oy, ch, vh): (f32, f32, f32) = ui.data(|d| d.get_temp(scroll_id)).unwrap_or((0.0, 1.0, 1.0));
         let mm = egui::Panel::right(ui.id().with("ed_mm")).exact_size(84.0).resizable(false);
-        mm.show(ui, |ui| mm_target = crate::editorminimap::minimap(ui, &doc.text, oy, ch, vh));
+        // 표식은 **두 화면이 같아야 한다** - 한쪽에만 넘기면 그 화면에서만 눈금이 사라진다.
+        let mk = crate::editorminimap::Marks {
+            hits: &doc.find.matches, bookmarks: &doc.bookmarks, cur_line: doc.cur_line,
+        };
+        mm.show(ui, |ui| mm_target = crate::editorminimap::minimap(ui, &doc.text, oy, ch, vh, mk));
     }
     // 개요(좌측 아웃라인)와 고정 스크롤(맨 위 고정)은 **같은 목록**을 쓴다 — 한 번만 판다.
     // 둘이 따로 파싱하면 매 프레임 두 배로 훑고, 규칙이 갈라지면 붙어 있는 이름이 거짓이 된다.

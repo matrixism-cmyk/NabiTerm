@@ -22,6 +22,9 @@ pub(crate) enum PaletteAction {
     ConnectSession(nabi_session::SavedSession),
     OpenSftp(nabi_session::SavedSession),
     DuplicateTab,
+    /// 자동 재접속을 멈춘다. 지금까지는 재접속 띠의 단추에만 있었는데, 그 띠는
+    /// 재접속을 기다리는 동안에만 뜬다 - 멈추려고 띠가 뜨기를 기다려야 했다.
+    StopReconnect,
     ReopenClosed,
     CloseOthers,
     SelectAll,

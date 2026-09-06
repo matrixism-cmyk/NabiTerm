@@ -22,6 +22,8 @@ use nabi_i18n::{tr, Lang};
 pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.agentsound", 0),
     ("settings.autoreconnect", 0),
+    ("settings.reconntries", 0),
+    ("settings.reconnwait", 0),
     ("settings.logkeep", 0),
     ("settings.builtineditor", 0),
     ("settings.clock", 0),
@@ -67,6 +69,7 @@ pub(crate) const INDEX: &[(&str, usize)] = &[
     ("settings.scrollback", 2),
     ("settings.searchlimit", 2),
     ("settings.wheellines", 2),
+    ("settings.wheelkeyapps", 2),
     ("settings.shell", 2),
     ("settings.tipai", 2),
     ("settings.tipcachepath", 2),

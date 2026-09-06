@@ -35,6 +35,11 @@ pub struct TermTabViewer<'a> {
     pub broadcast_group: &'a mut std::collections::HashSet<PaneId>,
     /// 휠을 키로 보낼 pane 집합(탭 컨텍스트 메뉴에서 켠다).
     pub wheel_keys: &'a mut std::collections::HashSet<PaneId>,
+    /// 휠을 페이지 키로 바꿔 보낼 프로그램 이름들(`terminal.wheel_key_apps`).
+    /// 판정은 `nabi_config::termcfg::is_wheel_key_app_in` 한 곳에서 한다.
+    pub wheel_key_apps: &'a [String],
+    /// 사용자가 남긴 스크롤백 표식 — 스크롤바에 눈금으로 그린다.
+    pub scroll_marks: &'a HashMap<PaneId, crate::scrollmark::Marks>,
     /// pane별 마지막 Ctrl+T(오버레이 열기) 전송 시각(재전송 방지 래치).
     pub tui_overlay: &'a mut HashMap<PaneId, std::time::Instant>,
     /// 휠 도우미를 명시적으로 끈 pane(자동 감지 무시).
@@ -284,7 +289,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
             wheel_auto: self
                 .run_cmd
                 .get(tab)
-                .is_some_and(|c| crate::panewheel::is_tui_history_app(c)),
+                .is_some_and(|c| nabi_config::termcfg::is_wheel_key_app_in(self.wheel_key_apps, c)),
             is_ssh,
             has_origin: self.pane_origins.contains_key(tab),
         };

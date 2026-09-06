@@ -222,6 +222,7 @@ impl NabiApp {
             MenuAction::OpenSupportBundle => self.open_support_bundle(),
             MenuAction::CopyCommandBlock => self.copy_command_block(ctx),
             MenuAction::CheckAllReachable => self.check_all_reachable(ctx),
+            MenuAction::StopReconnect => self.stop_all_reconnects(),
             MenuAction::ReopenClosedDoc => self.reopen_closed_doc(),
             MenuAction::TestConnection(host, port) => self.test_connection(host, port, ctx),
             MenuAction::ShowHostKey(host, port) => self.show_host_key(&host, port, ctx),

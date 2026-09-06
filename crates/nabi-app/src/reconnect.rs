@@ -67,7 +67,8 @@ impl NabiApp {
         // 이어받은 횟수가 있으면 거기서 계속한다 — 재접속하면 pane 번호가 바뀌므로
         // 이어받지 않으면 매번 처음부터 세게 되고, 그러면 영영 멈추지 않는다.
         let b = carry.map(|(b, _)| b).unwrap_or_else(crate::backoff::Backoff::first);
-        self.reconnecting.insert(pane, (b, std::time::Instant::now() + b.wait(), message));
+        let pol = self.reconnect_policy();
+        self.reconnecting.insert(pane, (b, std::time::Instant::now() + b.wait(pol), message));
     }
 
     /// 기다리던 재접속을 때가 되면 실행한다. 매 프레임 부른다.
@@ -77,19 +78,20 @@ impl NabiApp {
         if self.reconnecting.is_empty() {
             return false;
         }
+        let pol = self.reconnect_policy();
         let now = std::time::Instant::now();
         let due: Vec<nabi_types::PaneId> =
             self.reconnecting.iter().filter(|(_, (_, at, _))| *at <= now).map(|(p, _)| *p).collect();
         for pane in due {
             let Some((b, _, msg)) = self.reconnecting.remove(&pane) else { continue };
-            if !b.may_retry() {
+            if !b.may_retry(pol) {
                 // 다 썼다 — 사용자에게 넘긴다. 무한히 시도하면 되지 않는 이유를 영영 못 본다.
                 self.reconnect_ask = Some((pane, msg));
                 continue;
             }
             let next = b.attempted();
             self.notify = Some((
-                format!("\u{21bb} {} {}/{}", nabi_i18n::tr(self.lang, "reconn.trying"), next.tries, crate::backoff::MAX_TRIES),
+                format!("\u{21bb} {} {}/{}", nabi_i18n::tr(self.lang, "reconn.trying"), next.tries, pol.tries),
                 now,
             ));
             self.do_reconnect(pane);
@@ -105,11 +107,19 @@ impl NabiApp {
         self.reconnect_carry = None;
     }
 
+    /// 재접속 정책 — **설정에서 온다**(코드에 박아 두지 않는다).
+    ///
+    /// 알맞은 값은 회선마다 다르다. 사무실 유선은 두어 번이면 붙고, 자주 끊기는 무선·VPN은
+    /// 더 오래 버텨 주는 편이 낫다.
+    pub(crate) fn reconnect_policy(&self) -> crate::backoff::Policy {
+        crate::backoff::Policy::from_cfg(&self.config.terminal)
+    }
+
     /// 재접속 중인 pane이 있으면 (남은 초, 시도/최대).
     pub(crate) fn reconnect_status(&self) -> Option<(u64, u32, u32)> {
         let (_, (b, at, _)) = self.reconnecting.iter().next()?;
         let left = at.saturating_duration_since(std::time::Instant::now()).as_secs();
-        Some((left, b.tries + 1, crate::backoff::MAX_TRIES))
+        Some((left, b.tries + 1, self.reconnect_policy().tries))
     }
 }
 
@@ -135,6 +145,9 @@ pub(crate) fn reconnect_bar(app: &mut NabiApp, ui: &mut egui::Ui) {
 
 impl NabiApp {
     /// 기다리는 재접속을 전부 그만둔다.
+    ///
+    /// 부르는 곳이 둘이다 — 재접속 띠의 단추와 명령 팔레트. 띠는 재접속을 기다리는 동안에만
+    /// 뜨므로, 멈추려고 띠가 뜨기를 기다려야 하는 것은 멈춤이 아니다. 그래서 팔레트에도 둔다.
     pub(crate) fn stop_all_reconnects(&mut self) {
         let panes: Vec<nabi_types::PaneId> = self.reconnecting.keys().copied().collect();
         for p in panes {

@@ -170,7 +170,7 @@ impl NabiApp {
     /// 실패한 항목은 끝난 것으로 치므로 큐를 막지 않는다. 한도를 넘겨 보내지 않는 덕분에
     /// "대기" 상태가 실재하고, 그래서 순서 변경·일시정지가 의미를 갖는다.
     pub(crate) fn pump_transfers(&mut self, id: nabi_proto::SftpId) {
-        let limit = self.config.terminal.max_parallel_transfers.clamp(1, 4) as usize;
+        let limit = self.config.terminal.parallel_transfers();
         let mut send = Vec::new();
         if let Some(p) = self.remote_panel_mut(id) {
             let mut running = p.transfers.iter().filter(|t| t.running()).count();

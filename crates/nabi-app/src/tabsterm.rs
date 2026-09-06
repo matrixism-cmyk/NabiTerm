@@ -76,7 +76,8 @@ impl TermTabViewer<'_> {
         // 날아가므로, codex pane은 감지로 기본 동작해야 한다.
         let force_keys = self.wheel_keys.contains(&pane)
             || (!self.wheel_keys_off.contains(&pane)
-                && self.run_cmd.get(&pane).is_some_and(|c| crate::panewheel::is_tui_history_app(c)));
+                && self.run_cmd.get(&pane)
+                    .is_some_and(|c| nabi_config::termcfg::is_wheel_key_app_in(self.wheel_key_apps, c)));
         if typed {
             self.clear_ai_active(pane); // 키보드로 화면을 닫았을 수 있다 — 바의 열림 표시 해제.
             // 대상 규칙은 panegroup 한 곳에만 있다(동기 스크롤과 같은 뜻을 써야 한다).
@@ -248,7 +249,8 @@ impl TermTabViewer<'_> {
                 model.set_cell_px(ch); // 이미지 높이→줄 변환 기준(폰트 줌 반영).
                 model.set_query_colors(&self.theme); // OSC 10/11 색 질의에 현재 테마로 답하도록.
                 self.draw_inline_images(ui, rect, ch, &model);
-                crate::scrollbar::draw(ui, rect, pane, &mut model); // 우측 스크롤바(스크롤백 있을 때).
+                let um = self.scroll_marks.get(&pane).map(|m| m.all()).unwrap_or(&[]);
+                crate::scrollbar::draw(ui, rect, pane, &mut model, um); // 우측 스크롤바.
                 if crate::paneio::draw_scroll_badge(ui, rect, model.scrollback_offset()) {
                     model.scroll_to_bottom();
                 }

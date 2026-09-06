@@ -149,6 +149,8 @@ impl NabiApp {
                 lang: self.lang,
                 broadcast_group: &mut self.broadcast_group,
                 wheel_keys: &mut self.wheel_keys,
+                wheel_key_apps: &self.config.terminal.wheel_key_apps,
+                scroll_marks: &self.scroll_marks,
                 tui_overlay: &mut self.tui_overlay,
                 sync_scroll: self.sync_scroll,
                 pinned: &mut self.pinned_tabs,

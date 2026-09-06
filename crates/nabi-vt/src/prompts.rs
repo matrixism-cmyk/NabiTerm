@@ -17,6 +17,14 @@ pub struct PromptMark {
 }
 
 impl TermModel {
+    /// 기록된 명령 블록 표식 전체(절대 줄 오름차순).
+    ///
+    /// 스크롤바가 "어디에 명령이 있었고 어느 것이 실패했는가"를 그리는 데 쓴다. 화면 안만
+    /// 보는 [`visible_prompt_rows`](Self::visible_prompt_rows) 와 달리 스크롤백 전체를 준다.
+    pub fn prompt_marks(&self) -> &[crate::prompts::PromptMark] {
+        &self.prompts
+    }
+
     /// 프롬프트 시작 시점을 기록한다(orchestrator가 OSC 133;A 검출 시 호출).
     /// 절대 줄번호 = 현재 히스토리 길이 + 커서 행.
     pub fn mark_prompt(&mut self) {

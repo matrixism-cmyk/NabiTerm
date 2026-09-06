@@ -59,6 +59,16 @@ pub(crate) fn behavior_rows(ui: &mut egui::Ui, cfg: &mut AppConfig, lang: Lang) 
 
     grid_seg(ui, "beh_misc2", |ui| {
         chk(ui, tr(lang, "settings.autoreconnect"), &mut cfg.terminal.auto_reconnect);
+        // 몇 번·얼마나 기다릴지는 회선마다 다르다. 유선은 두어 번이면 붙고, 자주 끊기는
+        // 무선·VPN 은 더 오래 버텨 주는 편이 낫다.
+        label_cell(ui, tr(lang, "settings.reconntries"));
+        ui.add(egui::DragValue::new(&mut cfg.terminal.reconnect_max_tries).range(0..=20))
+            .on_hover_text(tr(lang, "settings.reconntries.hint"));
+        ui.end_row();
+        label_cell(ui, tr(lang, "settings.reconnwait"));
+        ui.add(egui::DragValue::new(&mut cfg.terminal.reconnect_max_wait_secs).range(1..=300).suffix(" s"))
+            .on_hover_text(tr(lang, "settings.reconnwait.hint"));
+        ui.end_row();
         // 진단 로그 보관 일수 — 0이면 정리하지 않는다(끄는 길을 화면에도 둔다).
         label_cell(ui, tr(lang, "settings.logkeep"));
         ui.add(

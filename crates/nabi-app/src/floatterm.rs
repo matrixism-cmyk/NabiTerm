@@ -199,7 +199,7 @@ pub(crate) fn paint_floating_term(
                 focused, blink_on, &pre,
             );
             crate::tipoverlay::draw_tip_overlay(ui, rect, ch, &font, theme.bg, pane, &model, tip);
-            crate::scrollbar::draw(ui, rect, pane, &mut model); // 탭과 같은 우측 막대.
+            crate::scrollbar::draw(ui, rect, pane, &mut model, fs.marks); // 탭과 같은 우측 막대.
             fs.copy(ui, cells, pane, &model, theme, &sp, mouse_on);
             if crate::paneio::draw_scroll_badge(ui, rect, model.scrollback_offset()) {
                 model.scroll_to_bottom();

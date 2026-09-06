@@ -12,8 +12,24 @@ pub(crate) fn over_scrollbar(rect: egui::Rect, pos: Option<egui::Pos2>) -> bool 
     pos.is_some_and(|p| rect.contains(p) && p.x >= rect.right() - SB_W)
 }
 
+/// 명령이 시작된 자리(성공/진행 중).
+const M_PROMPT: egui::Color32 = egui::Color32::from_rgb(110, 150, 200);
+/// **실패한** 명령 — 막대만 봐도 어디서 틀어졌는지 보이게 눈에 띄는 색으로.
+const M_FAIL: egui::Color32 = egui::Color32::from_rgb(220, 90, 90);
+/// 사용자가 손으로 남긴 표식.
+const M_USER: egui::Color32 = egui::Color32::from_rgb(230, 200, 90);
+
 /// 우측 스크롤바를 그리고 드래그/클릭 시 모델을 스크롤한다. 스크롤백 없으면 아무것도 안 함.
-pub(crate) fn draw(ui: &egui::Ui, rect: egui::Rect, pane: PaneId, model: &mut nabi_vt::TermModel) {
+///
+/// `user_marks` 는 사용자가 남긴 절대 줄 번호들([`crate::scrollmark`]). 탭과 분리 창이
+/// **같은 것을 넘겨야 한다** — 한쪽에만 빈 배열을 넘기면 그 창에서만 표식이 사라진다.
+pub(crate) fn draw(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    pane: PaneId,
+    model: &mut nabi_vt::TermModel,
+    user_marks: &[usize],
+) {
     if model.alt_screen() {
         return;
     }
@@ -47,6 +63,10 @@ pub(crate) fn draw(ui: &egui::Ui, rect: egui::Rect, pane: PaneId, model: &mut na
     if active {
         painter.rect_filled(track, egui::CornerRadius::same(3), egui::Color32::from_black_alpha(60));
     }
+    // 표식을 **썸보다 먼저** 그린다. 지금 보는 자리는 썸이 덮어도 되지만, 표식이 썸을
+    // 덮으면 어디를 보고 있는지가 가려진다.
+    draw_markers(&painter, track, model, user_marks, total as usize);
+
     let alpha = if active { 200 } else { 120 };
     painter.rect_filled(thumb, egui::CornerRadius::same(4), egui::Color32::from_white_alpha(alpha));
 
@@ -60,6 +80,46 @@ pub(crate) fn draw(ui: &egui::Ui, rect: egui::Rect, pane: PaneId, model: &mut na
             if delta != 0 {
                 model.scroll_by(delta as i32);
             }
+        }
+    }
+}
+
+/// 트랙 위에 명령 블록·실패·사용자 표식을 눈금으로 그린다.
+///
+/// 그리는 순서가 곧 우선순위다. 실패를 맨 나중에 그려 다른 눈금에 가리지 않게 한다 —
+/// 사람이 이 막대에서 가장 찾고 싶은 것이 그것이기 때문이다.
+fn draw_markers(
+    painter: &egui::Painter,
+    track: egui::Rect,
+    model: &nabi_vt::TermModel,
+    user_marks: &[usize],
+    total: usize,
+) {
+    let h = track.height();
+    let mut ok = Vec::new();
+    let mut fail = Vec::new();
+    for m in model.prompt_marks() {
+        let abs = m.abs.max(0) as usize;
+        match m.exit {
+            Some(c) if c != 0 => fail.push(abs),
+            _ => ok.push(abs),
+        }
+    }
+    let layers: [(&[usize], egui::Color32, bool); 3] = [
+        (&ok, M_PROMPT, false),
+        (user_marks, M_USER, false),
+        (&fail, M_FAIL, true),
+    ];
+    for (lines, color, wide) in layers {
+        for y in crate::scrollbarmark::marker_rows(lines, total, h) {
+            // 실패는 트랙을 가로지르고, 나머지는 왼쪽 절반만 — 겹쳐도 서로 읽힌다.
+            let x0 = track.left() + if wide { 0.0 } else { 1.0 };
+            let w = if wide { track.width() } else { track.width() * 0.5 };
+            let r = egui::Rect::from_min_size(
+                egui::pos2(x0, track.top() + y as f32),
+                egui::vec2(w, 2.0),
+            );
+            painter.rect_filled(r, egui::CornerRadius::ZERO, color);
         }
     }
 }

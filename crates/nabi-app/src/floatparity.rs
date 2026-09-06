@@ -39,6 +39,9 @@ pub(crate) struct FloatParity<'a> {
     pub notify: &'a mut Option<(String, std::time::Instant)>,
     /// 안내를 이미 본 창들 — 같은 말을 휠 굴릴 때마다 하면 잔소리가 된다.
     pub hinted: &'a mut std::collections::HashSet<PaneId>,
+    /// 이 창 pane 의 스크롤백 표식(절대 줄) — 스크롤바 눈금. 탭과 **같은 것**을 넘겨야
+    /// 한다. 빈 배열을 넘기면 분리 창에서만 표식이 사라지고, 그것은 아무도 못 알아챈다.
+    pub marks: &'a [usize],
 }
 
 /// 터미널이 그려지는 자리와 글자 한 칸의 크기 — 선택 계산에 늘 셋이 함께 간다.
