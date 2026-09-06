@@ -1,15 +1,38 @@
 //! PowerShell 프로필에 셸 통합 스니펫 설치.
 //!
-//! v2: OSC 133(명령 경계·종료코드) + OSC 7(cwd) + OSC 633;E(실행한 명령줄, base64).
+//! v3 이 넣는 것: OSC 133(명령 경계·종료코드), OSC 7(cwd), OSC 633;E(실행한 명령줄,
+//! base64), 그리고 PSReadLine 프롬프트 자리 바로잡기.
+//!
 //! OSC 633;E는 PSConsoleHostReadLine을 감싸 사용자가 입력한 명령줄을 base64로 보고하며,
 //! 워크스페이스 복원 시 "종료 직전 실행 중이던 명령"(claude 등) 재실행에 쓰인다.
+//!
+//! ## 프롬프트가 깨지던 것 (사용자 보고, 2026-09-06 실측)
+//!
+//! `PS C:\Users\Administrator>` 에서 `|` 나 `@` 를 치면 `PS C:\Users\Administrator|` 이
+//! 됐다. 프롬프트의 `>` 가 입력한 글자로 덮였다.
+//!
+//! 재현해서 하나씩 갈랐다.
+//!
+//! * `cmd.exe` 는 멀쩡하다 → 우리 터미널 코어가 아니다.
+//! * 우리 표식을 뺀 순수 프롬프트에서도 그렇다 → 이 스니펫의 OSC 때문이 아니다.
+//! * 창 크기를 바꿔 **전체를 다시 그려도 그대로다** → 우리 화면이 어긋난 것이 아니라
+//!   ConPTY 버퍼에 그렇게 박혀 있다. PSReadLine 이 그 자리에 쓴 것이다.
+//! * 받은 바이트는 `ESC[1;26H|` — 프롬프트가 27칸인데 26칸에 쓰라고 온다. 두 칸 왼쪽이다.
+//!
+//! PSReadLine 이 세션 처음부터 "입력이 어디서 시작하는가"를 두 칸 왼쪽으로 잡고 있었다.
+//! 평소에는 드러나지 않는다 — 글자를 이어 붙일 때는 지금 커서 자리에 쓰기 때문이다.
+//! 그런데 `|` 나 `@` 는 그것만으로 **구문이 미완성**이라 PSReadLine 이 줄을 다시 칠하고,
+//! 그때 잘못 잡아 둔 자리가 드러난다.
+//!
+//! `Set-PSReadLineOption -PromptText` 를 **한 번 부르면** 그 자리가 바로잡힌다. 값이
+//! 무엇이든 상관없었다(빈 값·`'> '`·엉뚱한 값 모두 고쳐졌다) — 부른다는 사실이 중요하다.
 
 /// 현재 버전 식별자(중복 설치 방지·업그레이드 판정). 가드 BEGIN/END에도 같은 문구.
-const MARKER: &str = "nabi shell integration v2";
+const MARKER: &str = "nabi shell integration v3";
 
 /// 프로필에 덧붙일 PowerShell 스니펫(5.1/7 공용). BEGIN/END 가드로 재설치 시 교체 가능.
 fn snippet() -> &'static str {
-    r#"# nabi shell integration v2 BEGIN
+    r#"# nabi shell integration v3 BEGIN
 function prompt {
     $gle = $global:LASTEXITCODE
     $e = [char]27; $a = [char]7
@@ -32,7 +55,12 @@ if (Get-Command PSConsoleHostReadLine -CommandType Function -ErrorAction Ignore)
         $c
     }
 }
-# nabi shell integration v2 END
+# PSReadLine 이 잡아 둔 "입력 시작 자리"를 바로잡는다(위 설명 참고). 값보다 **부른다는
+# 사실**이 중요하다. PSReadLine 이 없는 환경에서는 조용히 건너뛴다.
+if (Get-Command Set-PSReadLineOption -ErrorAction Ignore) {
+    Set-PSReadLineOption -PromptText '> '
+}
+# nabi shell integration v3 END
 "#
 }
 
