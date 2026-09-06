@@ -1,12 +1,12 @@
 //! PowerShell 프로필에 셸 통합 스니펫 설치.
 //!
-//! v3 이 넣는 것: OSC 133(명령 경계·종료코드), OSC 7(cwd), OSC 633;E(실행한 명령줄,
+//! v4 가 넣는 것: OSC 133(명령 경계·종료코드), OSC 7(cwd), OSC 633;E(실행한 명령줄,
 //! base64), 그리고 PSReadLine 프롬프트 자리 바로잡기.
 //!
 //! OSC 633;E는 PSConsoleHostReadLine을 감싸 사용자가 입력한 명령줄을 base64로 보고하며,
 //! 워크스페이스 복원 시 "종료 직전 실행 중이던 명령"(claude 등) 재실행에 쓰인다.
 //!
-//! ## 프롬프트가 깨지던 것 (사용자 보고, 2026-09-06 실측)
+//! ## 프롬프트가 깨지던 것 — **원인은 우리였다** (사용자 보고, 2026-09-06 실측)
 //!
 //! `PS C:\Users\Administrator>` 에서 `|` 나 `@` 를 치면 `PS C:\Users\Administrator|` 이
 //! 됐다. 프롬프트의 `>` 가 입력한 글자로 덮였다.
@@ -24,29 +24,50 @@
 //! 그런데 `|` 나 `@` 는 그것만으로 **구문이 미완성**이라 PSReadLine 이 줄을 다시 칠하고,
 //! 그때 잘못 잡아 둔 자리가 드러난다.
 //!
-//! `Set-PSReadLineOption -PromptText` 를 **한 번 부르면** 그 자리가 바로잡힌다. 값이
-//! 무엇이든 상관없었다(빈 값·`'> '`·엉뚱한 값 모두 고쳐졌다) — 부른다는 사실이 중요하다.
+//! ### 우회로 덮을 뻔했다
+//!
+//! `Set-PSReadLineOption` 을 한 번 부르면 자리가 바로잡히기에 그것을 넣었다. 그런데
+//! 사용자가 물었다 — "근본 원인을 찾아서 해결해야 하는 것 아니야? 왜 별도의 셸 통합을
+//! 설치해야만 하지?" 맞는 물음이었다. 남의 프로그램에 설정을 밀어 넣는 것은 우회다.
+//!
+//! 그래서 **프로필 없는 PowerShell**(`powershell -NoProfile`)로 갈라 봤다. 완전히
+//! 멀쩡했다. 즉 **원인은 우리 스니펫이었다.**
+//!
+//! ### 무엇이 문제였나
+//!
+//! 우리 `prompt` 가 돌려주는 글이 `OSC 133;B`(눈에 안 보이는 표식)로 **끝났다.**
+//! PSReadLine 은 프롬프트 글에서 "보이는 끝"이 어디인지를 스스로 재는데, 끝에 붙은
+//! 이 표식을 걷어내지 못해 자리를 잘못 잡았다.
+//!
+//! 이제 그 표식을 프롬프트에서 빼고 **입력을 읽기 직전에** 따로 적는다. 뜻으로도 그
+//! 자리가 맞다 — `133;B` 는 "이제 입력이 시작된다"는 표식이고, 우리는 이미 입력을 읽는
+//! 자리를 감싸고 있다(`PSConsoleHostReadLine`). 커서를 옮기지 않으므로 PSReadLine 의
+//! 셈에도 끼어들지 않는다.
 
 /// 현재 버전 식별자(중복 설치 방지·업그레이드 판정). 가드 BEGIN/END에도 같은 문구.
-const MARKER: &str = "nabi shell integration v3";
+const MARKER: &str = "nabi shell integration v4";
 
 /// 프로필에 덧붙일 PowerShell 스니펫(5.1/7 공용). BEGIN/END 가드로 재설치 시 교체 가능.
 fn snippet() -> &'static str {
-    r#"# nabi shell integration v3 BEGIN
+    r#"# nabi shell integration v4 BEGIN
 function prompt {
     $gle = $global:LASTEXITCODE
     $e = [char]27; $a = [char]7
     $p = $executionContext.SessionState.Path.CurrentLocation
     $path = ($p.ProviderPath -replace '\\','/')
     $global:LASTEXITCODE = $gle
+    # **보이는 글로 끝나야 한다.** 끝에 표식을 붙이면 PSReadLine 이 프롬프트 끝을
+    # 잘못 재서 입력이 프롬프트를 덮는다. 133;B 는 아래 ReadLine 감싸기에서 적는다.
     -join ("$e]133;D;$gle$a", "$e]7;file://localhost/$path$a", "$e]133;A$a",
-        "PS $p$('>' * ($nestedPromptLevel + 1)) ", "$e]133;B$a")
+        "PS $p$('>' * ($nestedPromptLevel + 1)) ")
 }
 if (Get-Command PSConsoleHostReadLine -CommandType Function -ErrorAction Ignore) {
     if (-not (Test-Path Function:\__nabiReadLine)) {
         Rename-Item Function:\PSConsoleHostReadLine __nabiReadLine
     }
     function global:PSConsoleHostReadLine {
+        # 여기가 진짜 "입력 시작"이다. 커서를 옮기지 않으므로 PSReadLine 의 셈에 끼지 않는다.
+        [Console]::Write("$([char]27)]133;B$([char]7)")
         $c = __nabiReadLine
         if ($c) {
             $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($c))
@@ -55,12 +76,7 @@ if (Get-Command PSConsoleHostReadLine -CommandType Function -ErrorAction Ignore)
         $c
     }
 }
-# PSReadLine 이 잡아 둔 "입력 시작 자리"를 바로잡는다(위 설명 참고). 값보다 **부른다는
-# 사실**이 중요하다. PSReadLine 이 없는 환경에서는 조용히 건너뛴다.
-if (Get-Command Set-PSReadLineOption -ErrorAction Ignore) {
-    Set-PSReadLineOption -PromptText '> '
-}
-# nabi shell integration v3 END
+# nabi shell integration v4 END
 "#
 }
 
