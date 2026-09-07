@@ -1,7 +1,18 @@
-//! 로컬 탐색기의 **일괄 이름변경** 창(배치 AJ).
+//! 탐색기·SFTP 공용 **일괄 이름변경** 창(배치 AJ, 2026-09-07에 원격까지 넓힘).
 //!
-//! 규칙은 [`crate::renamerule`] 한 곳에 있다 — 원격 창(SFTP)과 같은 규칙을 쓴다.
-//! 여기는 고를 것을 받고 계획을 보여 주고 실행만 한다.
+//! 규칙은 [`crate::renamerule`] 한 곳에 있다. 여기는 고를 것을 받고 계획을 보여 주고
+//! 실행만 한다.
+//!
+//! ## 왜 원격에도 같은 창을 쓰는가
+//!
+//! 2026-09-07 쌍둥이 비교에서 이 창이 **로컬 탐색기에만** 붙어 있는 것을 봤다. 그런데
+//! 규칙(`renamerule::plan_batch`)은 처음부터 공용이었고, 거기에 **이름 충돌 검사**가 들어
+//! 있다. 원격에는 그 창이 없으니 검사도 함께 없었던 셈이다 — `posix-rename` 을 지원하는
+//! 서버에서는 덮어쓰기가 조용히 성공한다.
+//!
+//! 그래서 창을 새로 만들지 않고 **대상만 바꿔** 쓴다. 다른 점은 두 가지뿐이다:
+//! 이름을 어디서 고르는가(`browser.multi` ↔ `sftp.multi`), 그리고 무엇으로 바꾸는가
+//! (`fs::rename` ↔ `Command::SftpRename`).
 //!
 //! ## 왜 미리 보여 주는가
 //!
@@ -21,19 +32,26 @@ pub(crate) struct BatchRename {
     pub replace: String,
     /// 창을 열 때 고정한 대상 — 여는 동안 선택이 바뀌어도 계획이 흔들리지 않게.
     pub names: Vec<String>,
+    /// 원격(SFTP) 목록을 바꾸는 중인가. 창을 열 때 고정한다 — 여는 동안 탭을 옮겨도
+    /// 엉뚱한 쪽을 바꾸지 않게.
+    pub remote: bool,
 }
 
 impl NabiApp {
     /// 선택한 파일들로 창을 연다. 아무것도 안 골랐으면 알리고 열지 않는다.
-    pub(crate) fn open_batch_rename(&mut self) {
-        let mut names: Vec<String> = self.browser.multi.iter().cloned().collect();
+    pub(crate) fn open_batch_rename(&mut self, remote: bool) {
+        let src = match remote {
+            true => &self.sftp.multi,
+            false => &self.browser.multi,
+        };
+        let mut names: Vec<String> = src.iter().cloned().collect();
         if names.is_empty() {
             // 조용히 아무 일도 안 하면 사용자는 메뉴가 고장 난 줄 안다.
             self.notify = Some((tr(self.lang, "browser.batchrename.none").to_string(), std::time::Instant::now()));
             return;
         }
         names.sort();
-        self.batch_rename = Some(BatchRename { names, ..Default::default() });
+        self.batch_rename = Some(BatchRename { names, remote, ..Default::default() });
     }
 
     /// 창을 그린다.
@@ -89,15 +107,19 @@ impl NabiApp {
             });
         });
         if apply {
-            self.run_batch_rename(&st.names, &next.find, &next.replace);
+            self.run_batch_rename(&st.names, &next.find, &next.replace, st.remote);
             close = true;
         }
         self.batch_rename = if close { None } else { Some(next) };
     }
 
     /// 계획대로 바꾼다. **실패한 것은 세지 않고 이름을 알린다.**
-    fn run_batch_rename(&mut self, names: &[String], find: &str, replace: &str) {
+    fn run_batch_rename(&mut self, names: &[String], find: &str, replace: &str, remote: bool) {
         let Ok(plan) = crate::renamerule::plan_batch(names, find, replace, self.lang) else { return };
+        if remote {
+            self.run_batch_rename_remote(plan);
+            return;
+        }
         let dir = self.browser.path.clone();
         let (mut done, mut failed) = (0usize, Vec::new());
         for (from, to) in plan {
@@ -117,5 +139,38 @@ impl NabiApp {
         // 없는 파일을 가리킨다.
         self.browser.multi.clear();
         self.browser.selected = None;
+    }
+}
+
+impl NabiApp {
+    /// 원격에서 계획대로 바꾼다.
+    ///
+    /// 로컬과 달리 **여기서는 결과를 알 수 없다.** 이름 바꾸기는 명령으로 보내고 응답은
+    /// 나중에 이벤트로 온다. 그래서 "몇 개 성공"이 아니라 "몇 개 보냄"을 알린다 —
+    /// 실패는 그때 각자 알린다. 안 온 답을 성공으로 세는 것이 더 나쁘다.
+    fn run_batch_rename_remote(&mut self, plan: Vec<(String, String)>) {
+        let Some(id) = self.sftp.id else {
+            self.notify = Some((
+                tr(self.lang, "copyid.needsftp").to_string(),
+                std::time::Instant::now(),
+            ));
+            return;
+        };
+        let dir = self.sftp.path.clone();
+        let n = plan.len();
+        for (from, to) in plan {
+            self.orch.send(nabi_proto::Command::SftpRename {
+                id,
+                from: crate::sftppath::join_path(&dir, &from),
+                to: crate::sftppath::join_path(&dir, &to),
+            });
+        }
+        self.notify = Some((
+            format!("{} {n}", tr(self.lang, "browser.batchrename")),
+            std::time::Instant::now(),
+        ));
+        // 옛 이름을 고르고 있으면 다음 동작이 없는 파일을 가리킨다(로컬과 같은 규칙).
+        self.sftp.multi.clear();
+        self.sftp.selected = None;
     }
 }

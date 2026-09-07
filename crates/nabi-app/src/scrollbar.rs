@@ -66,6 +66,11 @@ pub(crate) fn draw(
     // 표식을 **썸보다 먼저** 그린다. 지금 보는 자리는 썸이 덮어도 되지만, 표식이 썸을
     // 덮으면 어디를 보고 있는지가 가려진다.
     draw_markers(&painter, track, model, user_marks, total as usize);
+    // 눈금을 가리키고 있으면 그 명령이 어떻게 끝났는지 붙여 준다.
+    let resp = match marker_tip(&resp, track, model, total as usize) {
+        Some(t) => resp.on_hover_ui(|ui| { ui.monospace(t); }),
+        None => resp,
+    };
 
     let alpha = if active { 200 } else { 120 };
     painter.rect_filled(thumb, egui::CornerRadius::same(4), egui::Color32::from_white_alpha(alpha));
@@ -122,4 +127,39 @@ fn draw_markers(
             painter.rect_filled(r, egui::CornerRadius::ZERO, color);
         }
     }
+}
+
+/// 눈금 위에 마우스를 올리면 **그 명령이 어떻게 끝났는지** 알려 준다.
+///
+/// 눈금만으로는 "여기서 뭔가 있었다"까지밖에 모른다. 되짚을 자리를 고르려면 종료 코드와
+/// 걸린 시간이 필요한데, 그것을 보려고 스크롤해 내려가면 눈금을 본 뜻이 없어진다.
+///
+/// 글은 번역하지 않는다 — 기호와 숫자뿐이라 어느 말로 봐도 같다.
+fn marker_tip(
+    resp: &egui::Response,
+    track: egui::Rect,
+    model: &nabi_vt::TermModel,
+    total: usize,
+) -> Option<String> {
+    let pos = resp.hover_pos()?;
+    let y = pos.y - track.top();
+    let marks = model.prompt_marks();
+    let rows: Vec<u32> = marks
+        .iter()
+        .map(|m| crate::scrollbarmark::mark_frac(m.abs.max(0) as usize, total))
+        .map(|f| f.map(|f| (f * track.height()) as u32).unwrap_or(u32::MAX))
+        .collect();
+    let i = crate::scrollbarmark::nearest_row(&rows, y, 4.0)?;
+    let m = marks[i];
+    let mark = match m.exit {
+        None => "\u{25cf}".to_string(),           // 아직 도는 중.
+        Some(0) => "\u{2713} 0".to_string(),      // 잘 끝났다.
+        Some(c) => format!("\u{2717} {c}"),       // 실패.
+    };
+    let took = match m.ms {
+        Some(ms) if ms >= 1000 => format!("  {:.1}s", ms as f64 / 1000.0),
+        Some(ms) => format!("  {ms}ms"),
+        None => String::new(),
+    };
+    Some(format!("{mark}{took}"))
 }

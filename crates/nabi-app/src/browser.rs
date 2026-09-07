@@ -35,6 +35,8 @@ pub(crate) struct BrowserAct {
     pub new_folder: bool,
     pub new_file: bool,
     pub term_here: bool,
+    /// 고른 두 파일을 비교한다(원격 도구 메뉴와 같은 항목).
+    pub compare: bool,
     pub toggle_hidden: bool,
     pub mkdir_ok: bool,
     pub mkdir_cancel: bool,
@@ -249,7 +251,8 @@ fn render_inner(
     // 빈 공간 우클릭 메뉴: 행보다 "먼저" 배경 클릭영역을 등록한다(나중 등록되는 행이 히트테스트에서
     // 위에 있어 좌/우클릭을 가져가고, 빈 칸 우클릭만 이 배경 메뉴가 받는다 — 행 클릭 회귀 방지).
     let bg = ui.interact(ui.available_rect_before_wrap(), ui.id().with("empty_bg"), egui::Sense::click());
-    bg.context_menu(|ui| crate::browsermenu::empty_space_menu(ui, &mut a, lang, &path));
+    let sel2 = b.multi.len() == 2;
+    bg.context_menu(|ui| crate::browsermenu::empty_space_menu(ui, &mut a, lang, &path, sel2));
     let (_, payload) = ui.dnd_drop_zone::<RemoteName, _>(egui::Frame::NONE, |ui| {
         let acts = crate::browserrows::browser_rows(
             ui, &entries, &path, &filt, remote_map, can_upload, lang, b.sort, b.sort_desc,

@@ -32,9 +32,16 @@ impl NabiApp {
                 self.sftp.status = tr(self.lang, "sftp.calcsize").to_string();
             }
         }
+        if a.batch_rename {
+            self.open_batch_rename(true);
+        }
         if let Some(name) = a.open_term.take() {
             // 빠른연결을 이 원격 폴더 정보로 프리필하고 연다(비밀번호는 사용자가 입력).
-            let path = join_path(&self.sftp.path, &name);
+            // 이름이 비었으면 "지금 보고 있는 폴더"다(빈 영역 메뉴에서 온다).
+            let path = match name.is_empty() {
+                true => self.sftp.path.clone(),
+                false => join_path(&self.sftp.path, &name),
+            };
             let (h, u, p) = (self.sftp.conn_host.clone(), self.sftp.conn_user.clone(), self.sftp.conn_port.clone());
             if !h.is_empty() {
                 let qc = &mut self.quick_connect;

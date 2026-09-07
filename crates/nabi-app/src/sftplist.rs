@@ -24,6 +24,10 @@ pub(crate) fn list_zone(
         if ui.button(format!("\u{1f4cb}\u{2193} {}", t("browser.paste"))).clicked() { a.paste = true; ui.close(); } // OS 파일 붙여넣기=업로드.
         if ui.button(format!("\u{2b07} {}", t("sftp.downloaddir"))).clicked() { a.dl_cur = true; ui.close(); }
         if ui.button(format!("\u{27f3} {}", t("sftp.refresh"))).clicked() { a.go = Some(sftp.path.clone()); ui.close(); }
+        // 로컬 탐색기 빈 영역에는 있는데 원격에는 **행 메뉴(폴더 위)에만** 있었다 —
+        // 지금 보고 있는 폴더에서 열려면 아무 폴더나 하나 오른쪽 클릭해야 했다.
+        // 빈 이름은 "지금 이 폴더"라는 뜻이다(sftpops 에서 그렇게 읽는다).
+        if ui.button(format!("\u{1f4bb} {}", t("browser.termhere"))).clicked() { a.open_term = Some(String::new()); ui.close(); }
         ui.separator();
         if ui.button(format!("\u{1f50d} {}", t("sftp.search"))).clicked() { a.search = true; ui.close(); }
         if ui.button(format!("\u{1f441} {}", t("sftp.hidden"))).clicked() { sftp.show_hidden = !sftp.show_hidden; ui.close(); }
@@ -37,6 +41,9 @@ pub(crate) fn list_zone(
                 a.compare = true;
                 ui.close();
             }
+            // 이름 충돌 검사가 든 계획 창을 원격도 쓴다(browserrename.rs 머리말 참고).
+            // 그 검사가 로컬에만 있어서, posix-rename 서버에서는 조용히 덮어쓸 수 있었다.
+            if ui.button(format!("\u{270e} {}", t("browser.batchrename"))).clicked() { a.batch_rename = true; ui.close(); }
             if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() {
                 // 선택이 없으면 보이는 항목 전체(로컬 브라우저와 같은 규칙).
                 let names: Vec<String> = if sftp.multi.is_empty() {

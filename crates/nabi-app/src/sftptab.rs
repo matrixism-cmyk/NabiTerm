@@ -19,6 +19,8 @@ pub(crate) struct SftpAct {
     pub dirsize: Option<String>,
     /// 이 폴더에서 SSH 터미널 열기(빠른연결 프리필).
     pub open_term: Option<String>,
+    /// 고른 것들의 이름을 한꺼번에 바꾼다(로컬 탐색기와 같은 창).
+    pub batch_rename: bool,
     /// SFTP 세션 재연결(빠른연결 프리필로 비밀번호 재입력).
     pub reconnect: bool,
     pub dl_cur: bool,

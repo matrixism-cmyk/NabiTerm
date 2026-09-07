@@ -45,19 +45,23 @@ pub(crate) fn scrub(cmd: &mut CommandBuilder) {
     }
 }
 
-/// 이 이름을 떼어 내는가 — 시험과 설명을 위해 밖으로 낸다.
-pub fn is_stripped(name: &str) -> bool {
-    STRIP.contains(&name)
-}
-
 #[cfg(test)]
 mod tests {
+    /// 그 이름을 떼어 내는가 — **시험만 쓰는 판정**이라 여기 둔다.
+    ///
+    /// 예전에는 밖으로 낸 `pub fn` 이었다. 그러면 `xtask unused` 가 "크레이트 밖에서
+    /// 아무도 안 쓴다"고 짚고, `pub(crate)` 로 좁히면 이번엔 컴파일러가 dead_code 로
+    /// 짚는다(시험 빌드에서만 쓰이므로). 쓰는 곳 옆에 두면 둘 다 사라진다.
+    fn is_stripped(name: &str) -> bool {
+        super::STRIP.contains(&name)
+    }
+
     /// 목록은 좁아야 한다. 넓히면 사용자가 넣어 둔 것까지 지운다.
     #[test]
     fn 아는_표식만_뗀다() {
-        assert!(super::is_stripped("CLAUDE_CODE_CHILD_SESSION"));
+        assert!(is_stripped("CLAUDE_CODE_CHILD_SESSION"));
         for keep in ["PATH", "HOME", "NABI_PANE_ID", "CLAUDE_CODE_SSE_PORT", "TERM"] {
-            assert!(!super::is_stripped(keep), "{keep} 은 떼면 안 된다");
+            assert!(!is_stripped(keep), "{keep} 은 떼면 안 된다");
         }
     }
 }

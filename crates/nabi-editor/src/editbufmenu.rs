@@ -148,6 +148,38 @@ pub fn context_menu(
         }
     });
     ui.separator();
+    // 줄 편집·삽입 도구는 작은 문서 쪽 메뉴에만 있었다(2026-09-07 쌍둥이 비교).
+    // 큰 로그·설정 파일을 손볼 때야말로 줄을 복제해 고치는 일이 잦은데 그 창에만 없었다.
+    ui.add_enabled_ui(!readonly, |ui| {
+        if ui.button(tr(lang, "ctx.dupline")).clicked() {
+            eb.dup_line();
+            ui.close();
+        }
+        if ui.button(tr(lang, "ctx.delline")).clicked() {
+            eb.del_line();
+            ui.close();
+        }
+        ui.menu_button(tr(lang, "ctx.insert"), |ui| {
+            // 만드는 규칙은 작은 문서 쪽과 **같은 함수**를 쓴다(editoruuid) — 두 벌이 되면
+            // 언젠가 한쪽만 고쳐진다.
+            for (key, make) in [
+                ("ctx.uuid", crate::editoruuid::gen_uuid_v4 as fn() -> String),
+                ("ctx.datetime", crate::editoruuid::now_datetime),
+                ("ctx.unixts", crate::editoruuid::now_unix),
+                ("ctx.lorem", crate::editoruuid::lorem),
+            ] {
+                if ui.button(tr(lang, key)).clicked() {
+                    eb.insert(&make());
+                    ui.close();
+                }
+            }
+            if ui.button(tr(lang, "ctx.password")).clicked() {
+                eb.insert(&crate::editoruuid::gen_password(16));
+                ui.close();
+            }
+        });
+    });
+    ui.separator();
     if ui.button(tr(lang, "menu.find")).clicked() {
         act.find = true;
         ui.close();

@@ -6,7 +6,15 @@
 use crate::browser::BrowserAct;
 use nabi_i18n::Lang;
 /// 파일 목록 빈 공간 우클릭 메뉴 — 새 폴더/파일·붙여넣기·여기서 터미널·숨김 토글·경로 복사(툴바와 동일 동작).
-pub(crate) fn empty_space_menu(ui: &mut egui::Ui, a: &mut BrowserAct, lang: Lang, path: &std::path::Path) {
+///
+/// `sel2` = 지금 정확히 둘을 골랐는가(비교를 그때만 보여 주기 위해 — 원격과 같은 규칙).
+pub(crate) fn empty_space_menu(
+    ui: &mut egui::Ui,
+    a: &mut BrowserAct,
+    lang: Lang,
+    path: &std::path::Path,
+    sel2: bool,
+) {
     let tr = |k| nabi_i18n::tr(lang, k);
     if ui.button(format!("\u{1f4c1}+ {}", tr("sftp.newfolder"))).clicked() { a.new_folder = true; ui.close(); }
     if ui.button(format!("\u{1f4c4}+ {}", tr("sftp.newfile"))).clicked() { a.new_file = true; ui.close(); }
@@ -24,6 +32,9 @@ pub(crate) fn empty_space_menu(ui: &mut egui::Ui, a: &mut BrowserAct, lang: Lang
         if ui.button(format!("\u{2611} {}", tr("menu.selectall"))).clicked() { a.select_all = true; ui.close(); }
         if ui.button(format!("\u{21c4} {}", tr("menu.invertsel"))).clicked() { a.invert_sel = true; ui.close(); }
         if ui.button(format!("\u{1f4cb} {}", tr("menu.copypaths"))).clicked() { a.copy_paths = true; ui.close(); }
+        // 원격 SFTP 도구 메뉴에는 있는데 여기에는 없었다 — 로컬 비교는 팔레트로만 닿았다.
+        // 조건도 같게 둔다: 둘을 골랐을 때만 뜨게 해야 눌러 놓고 왜 안 되는지 묻지 않는다.
+        if sel2 && ui.button(format!("\u{21c4} {}", tr("diff.compare"))).clicked() { a.compare = true; ui.close(); }
         // 선택한 파일들을 한꺼번에 — 새 메뉴를 만들지 않고 이미 있는 도구 묶음에 넣는다.
         if ui.button(format!("\u{270e} {}", tr("browser.batchrename"))).clicked() { a.batch_rename = true; ui.close(); }
         ui.separator();

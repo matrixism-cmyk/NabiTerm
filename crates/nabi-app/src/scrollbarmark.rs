@@ -40,10 +40,49 @@ pub(crate) fn marker_rows(lines: &[usize], total: usize, track_h: f32) -> Vec<u3
     out
 }
 
+/// 포인터가 가리키는 눈금을 고른다 — `tol` 픽셀 안에서 가장 가까운 것의 색인.
+///
+/// 눈금은 2px 이라 정확히 그 위를 짚기는 어렵다. 사람이 "그 눈금을 가리켰다"고 느끼는
+/// 만큼은 허용해야 툴팁이 쓸모가 있다. 반대로 너무 넉넉하면 트랙 아무 데나 올려도 뜬다.
+pub(crate) fn nearest_row(rows: &[u32], y: f32, tol: f32) -> Option<usize> {
+    let mut best: Option<(f32, usize)> = None;
+    for (i, r) in rows.iter().enumerate() {
+        let d = (*r as f32 - y).abs();
+        if d <= tol && best.is_none_or(|(bd, _)| d < bd) {
+            best = Some((d, i));
+        }
+    }
+    best.map(|(_, i)| i)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// 눈금 위나 그 언저리를 짚으면 그 눈금을 고른다.
+    #[test]
+    fn 가까운_눈금을_고른다() {
+        let rows = [10u32, 50, 90];
+        assert_eq!(nearest_row(&rows, 10.0, 3.0), Some(0));
+        assert_eq!(nearest_row(&rows, 52.0, 3.0), Some(1));
+        assert_eq!(nearest_row(&rows, 88.0, 3.0), Some(2));
+    }
+
+    /// 멀면 아무것도 고르지 않는다 — 트랙 아무 데나 올려도 뜨면 잔소리가 된다.
+    #[test]
+    fn 멀면_고르지_않는다() {
+        let rows = [10u32, 50, 90];
+        assert_eq!(nearest_row(&rows, 30.0, 3.0), None);
+        assert_eq!(nearest_row(&[], 10.0, 3.0), None);
+    }
+
+    /// 둘 사이에 있으면 **더 가까운** 쪽이다.
+    #[test]
+    fn 둘_사이면_가까운_쪽() {
+        let rows = [10u32, 14];
+        assert_eq!(nearest_row(&rows, 11.0, 5.0), Some(0));
+        assert_eq!(nearest_row(&rows, 13.0, 5.0), Some(1));
+    }
     /// 맨 위는 0, 마지막 줄은 1보다 작다 — 트랙 밖으로 나가면 안 된다.
     #[test]
     fn 자리는_0에서_1_사이다() {

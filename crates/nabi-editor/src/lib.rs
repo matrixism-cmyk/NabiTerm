@@ -27,6 +27,7 @@ mod editbufmatchtest;
 pub mod editbufcol;
 pub mod editbufbar;
 pub mod editbuffold;
+pub mod editbufline;
 pub mod editbufedit;
 pub mod editbufkeys;
 pub mod editbufmenu;

@@ -151,7 +151,11 @@ impl NabiApp {
         };
         // 일괄 이름변경 창 열기(배치 AJ) — 실제 변경은 창에서 미리 보고 확인한 뒤에 한다.
         if a.batch_rename {
-            self.open_batch_rename();
+            self.open_batch_rename(false);
+        }
+        // 원격 도구 메뉴와 같은 항목 - 팔레트로만 닿던 것을 메뉴에도 뒀다.
+        if a.compare {
+            self.compare_selected();
         }
         if let Some(name) = a.duplicate {
             for n in bulk(&name, &self.browser.multi) {
