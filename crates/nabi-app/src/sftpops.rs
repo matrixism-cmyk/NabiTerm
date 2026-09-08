@@ -32,8 +32,12 @@ impl NabiApp {
                 self.sftp.status = tr(self.lang, "sftp.calcsize").to_string();
             }
         }
-        if a.batch_rename {
-            self.open_batch_rename(true);
+        if let Some(name) = a.props.take() {
+            // 목록이 이미 들고 온 값으로 채운다 — 여는 순간 서버에 물으면 느린 회선에서
+            // 창이 늦게 뜨고, 그러면 눌러 놓고 고장인 줄 안다.
+            if let Some(e) = self.sftp.entries.iter().find(|e| e.name == name) {
+                self.file_props = Some(crate::fileprops::from_remote(e, &self.sftp.path));
+            }
         }
         if let Some(name) = a.open_term.take() {
             // 빠른연결을 이 원격 폴더 정보로 프리필하고 연다(비밀번호는 사용자가 입력).

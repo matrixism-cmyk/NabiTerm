@@ -94,6 +94,12 @@ pub(crate) fn actions(resp: &egui::Response, e: &SftpEntry, cur: &str, lang: Lan
             click = Some(EClick::OpenTermHere(e.name.clone()));
             ui.close();
         }
+        // 속성 — 로컬 탐색기 행 메뉴에는 있는데 원격에는 낱말로 찾아도 없었다.
+        // 폴더에도 뜬다(로컬과 같다) - 권한·소유자는 폴더에서 더 자주 본다.
+        if ui.button(tr(lang, "browser.props")).clicked() {
+            click = Some(EClick::Props(e.name.clone()));
+            ui.close();
+        }
         if !e.is_dir && ui.button(tr(lang, "sftp.preview")).clicked() {
             click = Some(EClick::Preview(e.name.clone()));
             ui.close();

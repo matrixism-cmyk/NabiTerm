@@ -11,9 +11,26 @@
 use std::path::{Path, PathBuf};
 
 /// 한 파일·폴더의 속성 스냅샷(계산이 끝난 값만).
+///
+/// **로컬과 원격이 같은 자루를 쓴다.** 그리는 함수를 둘로 나누면 한쪽에만 줄이 늘고,
+/// 그것은 아무도 못 알아챈다. 원격에만 있는 값(권한·소유자)은 `Option` 으로 두어
+/// 없으면 그 줄이 안 나오게 한다.
 #[derive(Clone, Default)]
 pub(crate) struct Props {
+    /// 로컬 경로. **원격이면 비어 있다** — 해시 단추를 감출지 이 값으로 정한다.
     pub path: PathBuf,
+    /// 화면에 보일 이름. 로컬은 `path` 에서 뽑고 원격은 서버가 준 이름을 그대로 쓴다.
+    pub name: String,
+    /// 그 파일이 있는 자리(폴더 경로). 원격은 서버 경로다.
+    pub where_: String,
+    /// 원격 파일인가 — 해시를 못 내는 까닭을 화면에 적기 위해.
+    pub remote: bool,
+    /// POSIX 권한 비트(원격에서만). 0 이나 None 이면 줄을 그리지 않는다.
+    pub mode: Option<u32>,
+    /// 소유자·그룹 번호(원격에서만).
+    pub owner: Option<(Option<u32>, Option<u32>)>,
+    /// 심볼릭 링크인가(원격 목록이 알려 준다).
+    pub is_link: bool,
     pub is_dir: bool,
     pub bytes: u64,
     pub modified: Option<std::time::SystemTime>,
@@ -30,6 +47,8 @@ pub(crate) fn read(path: &Path) -> Option<Props> {
     let md = std::fs::metadata(path).ok()?;
     Some(Props {
         path: path.to_path_buf(),
+        name: path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default(),
+        where_: path.parent().map(|d| d.display().to_string()).unwrap_or_default(),
         is_dir: md.is_dir(),
         bytes: md.len(),
         modified: md.modified().ok(),
@@ -37,7 +56,33 @@ pub(crate) fn read(path: &Path) -> Option<Props> {
         readonly: md.permissions().readonly(),
         dir_total: None,
         sha256: None,
+        ..Default::default()
     })
+}
+
+/// 원격 목록 항목 하나로 같은 자루를 채운다.
+///
+/// 서버에 다시 묻지 않는다 — 목록을 받을 때 이미 온 값들이다. 여는 순간 네트워크를
+/// 타면 느린 회선에서 창이 늦게 뜨고, 그러면 눌러 놓고 고장인 줄 안다.
+pub(crate) fn from_remote(e: &nabi_proto::SftpEntry, dir: &str) -> Props {
+    Props {
+        path: PathBuf::new(), // 원격은 로컬 경로가 없다 = 해시를 낼 수 없다.
+        name: e.name.clone(),
+        where_: dir.to_string(),
+        remote: true,
+        mode: (e.mode != 0).then_some(e.mode),
+        owner: (e.uid.is_some() || e.gid.is_some()).then_some((e.uid, e.gid)),
+        is_link: e.is_link,
+        is_dir: e.is_dir,
+        bytes: e.size,
+        // 0 은 "모름"이다 — 1970년을 보여 주면 틀린 값을 보여 주는 것이다.
+        modified: (e.mtime != 0)
+            .then(|| std::time::UNIX_EPOCH + std::time::Duration::from_secs(e.mtime)),
+        created: None, // SFTP 목록에는 만든 시각이 없다.
+        readonly: false,
+        dir_total: None,
+        sha256: None,
+    }
 }
 
 /// 시각을 사람이 읽는 문자열로. 못 읽으면 빈 문자열.
@@ -146,5 +191,44 @@ mod tests {
     fn a_missing_timestamp_renders_as_nothing() {
         assert_eq!(stamp(None), "");
         assert!(stamp(Some(std::time::SystemTime::now())).len() >= 19);
+    }
+
+    fn entry(mtime: u64, mode: u32, uid: Option<u32>, gid: Option<u32>) -> nabi_proto::SftpEntry {
+        nabi_proto::SftpEntry {
+            name: "a.txt".into(), is_dir: false, is_link: false,
+            size: 12, mode, mtime, uid, gid,
+        }
+    }
+
+    /// **0 은 "모름"이지 1970년이 아니다.** 그대로 담으면 창에 1970-01-01 이 뜬다.
+    #[test]
+    fn 모르는_시각은_비워_둔다() {
+        assert!(from_remote(&entry(0, 0o644, None, None), "/srv").modified.is_none());
+        assert!(from_remote(&entry(1_700_000_000, 0o644, None, None), "/srv").modified.is_some());
+    }
+
+    /// 권한 0 도 "모름"이다 — `---------` 를 보여 주면 실제로 그런 줄 안다.
+    #[test]
+    fn 모르는_권한은_줄을_안_그린다() {
+        assert_eq!(from_remote(&entry(1, 0, None, None), "/srv").mode, None);
+        assert_eq!(from_remote(&entry(1, 0o750, None, None), "/srv").mode, Some(0o750));
+    }
+
+    /// 소유자는 **uid 0 이 root** 라 0 을 모름으로 쓸 수 없다(SftpEntry 가 Option 인 까닭).
+    #[test]
+    fn 소유자는_하나만_알아도_보여_준다() {
+        assert_eq!(from_remote(&entry(1, 0, None, None), "/srv").owner, None);
+        assert_eq!(from_remote(&entry(1, 0, Some(0), None), "/srv").owner, Some((Some(0), None)));
+        assert_eq!(from_remote(&entry(1, 0, None, Some(20)), "/srv").owner, Some((None, Some(20))));
+    }
+
+    /// 원격은 로컬 경로가 없다 = 해시 단추를 감추는 근거다.
+    #[test]
+    fn 원격은_로컬_경로가_없다() {
+        let p = from_remote(&entry(1, 0o644, None, None), "/srv/logs");
+        assert!(p.path.as_os_str().is_empty());
+        assert!(p.remote);
+        assert_eq!(p.name, "a.txt");
+        assert_eq!(p.where_, "/srv/logs");
     }
 }

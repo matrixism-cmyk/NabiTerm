@@ -41,9 +41,13 @@ pub(crate) fn list_zone(
                 a.compare = true;
                 ui.close();
             }
-            // 이름 충돌 검사가 든 계획 창을 원격도 쓴다(browserrename.rs 머리말 참고).
-            // 그 검사가 로컬에만 있어서, posix-rename 서버에서는 조용히 덮어쓸 수 있었다.
-            if ui.button(format!("\u{270e} {}", t("browser.batchrename"))).clicked() { a.batch_rename = true; ui.close(); }
+            // 원격에는 **이미** 일괄 이름 바꾸기가 있다(툴바 도구 메뉴 → 인라인 막대,
+            // `{n}`/`{nn}`/`{name}`/`{ext}` 토큰까지). 이름 충돌 검사도 로컬과 같은
+            // `renamerule::plan_batch` 로 이미 하고 있다.
+            //
+            // 없던 것은 기능이 아니라 **여기서 가는 길**이었다 — 로컬은 우클릭으로 닿는데
+            // 원격은 툴바를 거쳐야 했다. 그래서 창을 새로 열지 않고 있는 막대를 켠다.
+            if ui.button(format!("\u{270e} {}", t("sftp.batchrename"))).clicked() { a.batch_toggle = true; ui.close(); }
             if ui.button(format!("\u{1f4cb} {}", t("menu.copypaths"))).clicked() {
                 // 선택이 없으면 보이는 항목 전체(로컬 브라우저와 같은 규칙).
                 let names: Vec<String> = if sftp.multi.is_empty() {
@@ -102,6 +106,7 @@ pub(crate) fn list_zone(
         Some(EClick::DownloadDir(n)) => a.dldir = Some(n),
         Some(EClick::DirSize(n)) => a.dirsize = Some(n),
         Some(EClick::OpenTermHere(n)) => a.open_term = Some(n),
+        Some(EClick::Props(n)) => a.props = Some(n),
         Some(EClick::Edit(n)) => a.edit = Some(n),
         Some(EClick::EditHex(n)) => a.edit_hex = Some(n),
         Some(EClick::Preview(n)) => a.preview = Some(n),

@@ -135,6 +135,9 @@ pub(crate) enum EClick {
     DirSize(String),
     /// 이 폴더에서 SSH 터미널 열기(빠른연결 프리필).
     OpenTermHere(String),
+    /// 속성 창을 연다 — 로컬 탐색기에만 있던 것을 원격에도(2026-09-07 쌍둥이 비교).
+    /// 서버에 다시 묻지 않는다. 목록이 이미 크기·시각·권한·소유자를 들고 있다.
+    Props(String),
     Edit(String),
     /// HEX(이진) 편집기로 열기 — 임시로 받아 연다.
     EditHex(String),

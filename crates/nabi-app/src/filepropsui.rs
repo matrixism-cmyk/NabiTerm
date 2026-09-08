@@ -24,10 +24,13 @@ impl NabiApp {
             .default_width(520.0)
             .show(ctx, |ui| {
                 egui::Grid::new("props_grid").num_columns(2).spacing([14.0, 6.0]).show(ui, |ui| {
-                    let name = p.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                    row(ui, tr(lang, "props.name"), &name);
-                    row(ui, tr(lang, "props.where"), &p.path.parent().map(|d| d.display().to_string()).unwrap_or_default());
-                    let kind = if p.is_dir { tr(lang, "props.folder").to_string() } else { crate::fileprops::ext_of(&p.path) };
+                    row(ui, tr(lang, "props.name"), &p.name);
+                    row(ui, tr(lang, "props.where"), &p.where_);
+                    // 종류는 확장자로 본다. 원격은 로컬 경로가 없으므로 이름에서 뽑는다.
+                    let kind = match p.is_dir {
+                        true => tr(lang, "props.folder").to_string(),
+                        false => crate::fileprops::ext_of(std::path::Path::new(&p.name)),
+                    };
                     row(ui, tr(lang, "props.kind"), &kind);
                     let size = match p.dir_total {
                         Some((files, bytes)) => format!("{} \u{00b7} {files}", crate::browserfs::human(bytes)),
@@ -35,9 +38,28 @@ impl NabiApp {
                     };
                     row(ui, tr(lang, "props.size"), &size);
                     row(ui, tr(lang, "props.modified"), &crate::fileprops::stamp(p.modified));
-                    row(ui, tr(lang, "props.created"), &crate::fileprops::stamp(p.created));
-                    row(ui, tr(lang, "props.readonly"), if p.readonly { "\u{2713}" } else { "" });
+                    // 만든 시각은 SFTP 목록에 없다 — 빈 줄을 그리면 "비어 있다"로 읽힌다.
+                    if !p.remote {
+                        row(ui, tr(lang, "props.created"), &crate::fileprops::stamp(p.created));
+                        row(ui, tr(lang, "props.readonly"), if p.readonly { "\u{2713}" } else { "" });
+                    }
+                    // 권한·소유자는 원격에만 있다(목록이 이미 들고 온 값이라 다시 안 묻는다).
+                    if let Some(mode) = p.mode {
+                        let rwx = crate::sftpentryfmt::mode_to_rwx(mode, p.is_dir, p.is_link);
+                        row(ui, tr(lang, "props.perms"), &format!("{rwx}  {mode:04o}"));
+                    }
+                    if let Some((uid, gid)) = p.owner {
+                        let f = |v: Option<u32>| v.map(|n| n.to_string()).unwrap_or_else(|| "?".into());
+                        row(ui, tr(lang, "props.owner"), &format!("{}:{}", f(uid), f(gid)));
+                    }
                 });
+                if p.remote {
+                    // 원격 파일의 해시는 내려받아야 나온다. 여기서 조용히 감추면 "왜 없지"가
+                    // 되므로 까닭을 적는다(전송할 때는 설정으로 검증할 수 있다).
+                    ui.separator();
+                    ui.weak(tr(lang, "props.remotehash"));
+                    return;
+                }
                 if p.is_dir {
                     return; // 폴더에는 해시가 없다.
                 }

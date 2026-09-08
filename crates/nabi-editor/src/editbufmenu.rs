@@ -159,6 +159,14 @@ pub fn context_menu(
             eb.del_line();
             ui.close();
         }
+        if ui.button(tr(lang, "ctx.moveup")).clicked() {
+            eb.move_line(true);
+            ui.close();
+        }
+        if ui.button(tr(lang, "ctx.movedown")).clicked() {
+            eb.move_line(false);
+            ui.close();
+        }
         ui.menu_button(tr(lang, "ctx.insert"), |ui| {
             // 만드는 규칙은 작은 문서 쪽과 **같은 함수**를 쓴다(editoruuid) — 두 벌이 되면
             // 언젠가 한쪽만 고쳐진다.
