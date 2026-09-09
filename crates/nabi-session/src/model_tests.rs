@@ -262,3 +262,49 @@ fn an_untagged_session_does_not_match_a_tag_word() {
     assert!(!session_matches(&plain, "prod"));
     assert!(!session_matches(&plain, "dev"));
 }
+
+/// 기계가 읽는 종류 이름과 기록 이름 — **새 종류가 생겼을 때 가장 조용히 빠지는 자리다.**
+///
+/// 2026-09-09에 직렬을 더했을 때 세 곳이 전부 `_ => "local"` 로 떨어지고 있었다
+/// (기록 파일 이름 둘, 제어 평면이 에이전트에게 주는 목록 하나). 컴파일러는
+/// 포괄 가지 때문에 아무 말도 안 했다.
+#[cfg(test)]
+mod kind_key_tests {
+    use crate::model::SessionKind;
+
+    fn all() -> Vec<SessionKind> {
+        vec![
+            SessionKind::Local { shell: "pwsh".into() },
+            SessionKind::Ssh {
+                host: "h.example".into(), port: 22, user: "u".into(),
+                credential_ref: None, key_path: None, jump: None, agent_forward: false,
+            },
+            SessionKind::Serial { port: "COM3".into(), baud: 9600, frame: "8N1".into() },
+        ]
+    }
+
+    /// 종류마다 **다른** 이름이어야 한다. 하나라도 겹치면 에이전트가 갈래를 못 나눈다.
+    #[test]
+    fn 종류_이름이_겹치지_않는다() {
+        let keys: Vec<&str> = all().iter().map(|k| k.kind_key()).collect();
+        assert_eq!(keys, ["local", "ssh", "serial"]);
+        let uniq: std::collections::HashSet<_> = keys.iter().collect();
+        assert_eq!(uniq.len(), keys.len(), "종류 이름이 겹친다: {keys:?}");
+    }
+
+    /// 기록 이름은 "어디 것인가"에 답해야 한다 — 직렬이 `local` 이면 어느 장비인지 모른다.
+    #[test]
+    fn 기록_이름이_어디인지_말한다() {
+        let names: Vec<String> = all().iter().map(|k| k.log_name()).collect();
+        assert_eq!(names, ["local", "h.example", "COM3"]);
+    }
+
+    /// 종류 이름은 소문자·ASCII 여야 한다(파일 이름과 JSON 에 그대로 들어간다).
+    #[test]
+    fn 종류_이름은_소문자_ascii() {
+        for k in all() {
+            let s = k.kind_key();
+            assert!(!s.is_empty() && s.chars().all(|c| c.is_ascii_lowercase()), "{s}");
+        }
+    }
+}

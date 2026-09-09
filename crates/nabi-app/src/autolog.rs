@@ -119,10 +119,9 @@ impl NabiApp {
                 continue;
             }
             // 출처를 알면 그 이름으로, 모르면 local 로 짓는다.
-            let host = match self.pane_origins.get(&pane) {
-                Some(nabi_session::SessionKind::Ssh { host, .. }) => host.clone(),
-                _ => "local".to_string(),
-            };
+            // 규칙은 `SessionKind::log_name` 한 곳에 있다 — 세 곳에 흩어져 있었고,
+            // 직렬 콘솔이 생겼을 때 세 곳 다 `local` 로 잘못 짓고 있었다(2026-09-09).
+            let host = self.pane_origins.get(&pane).map(|k| k.log_name()).unwrap_or_else(|| "local".into());
             self.maybe_autolog(pane, &host);
         }
     }

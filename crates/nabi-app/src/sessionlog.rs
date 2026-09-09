@@ -194,10 +194,7 @@ impl NabiApp {
             return;
         }
         self.rec_off.remove(&pane); // 다시 켰으니 "껐다"는 기억을 지운다.
-        let host = match self.pane_origins.get(&pane) {
-            Some(nabi_session::SessionKind::Ssh { host, .. }) => host.clone(),
-            _ => "local".to_string(),
-        };
+        let host = self.pane_origins.get(&pane).map(|k| k.log_name()).unwrap_or_else(|| "local".into());
         self.autolog_now(pane, &host);
         // 어디에 남는지 말해 준다 — 안 말하면 켰는지도, 어디 있는지도 알 수 없다.
         if let Some(log) = self.session_logs.get(&pane) {

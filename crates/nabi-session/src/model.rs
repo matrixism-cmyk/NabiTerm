@@ -153,6 +153,33 @@ impl SavedSession {
     }
 }
 
+impl SessionKind {
+    /// 기계가 읽는 종류 이름 — 제어 평면이 에이전트에게 주는 목록에 쓴다.
+    ///
+    /// 화면용 [`SavedSession::kind_label`] 과 달리 소문자 고정이다. 에이전트는 이 값으로
+    /// 갈래를 나누므로 언어나 표기가 흔들리면 안 된다.
+    pub fn kind_key(&self) -> &'static str {
+        match self {
+            SessionKind::Ssh { .. } => "ssh",
+            SessionKind::Local { .. } => "local",
+            SessionKind::Serial { .. } => "serial",
+        }
+    }
+
+    /// 기록 파일 이름에 쓸 이름 — "이 기록이 **어디** 것인가".
+    ///
+    /// SSH 는 호스트, 직렬은 포트 이름이다. 예전에는 SSH 만 보고 나머지를 전부 `local` 로
+    /// 지었는데, 그러면 장비 콘솔 기록이 죄다 `local-…` 이 되어 **어느 스위치 것인지
+    /// 구분할 수 없다.** 콘솔 기록은 여러 장비를 오가며 쌓이는 것이라 더 그렇다.
+    pub fn log_name(&self) -> String {
+        match self {
+            SessionKind::Ssh { host, .. } => host.clone(),
+            SessionKind::Serial { port, .. } => port.clone(),
+            SessionKind::Local { .. } => "local".to_string(),
+        }
+    }
+}
+
 /// 세션이 질의(대소문자 무시)에 매칭되는지 — 이름/폴더/호스트/사용자를 통합 검색.
 /// 빈 질의는 항상 true. 세션 트리 필터와 메뉴 검색바가 같은 기준을 쓰도록 공용으로 둔다.
 pub fn session_matches(s: &SavedSession, query: &str) -> bool {

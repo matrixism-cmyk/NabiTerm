@@ -300,10 +300,9 @@ impl NabiApp {
             let title = self.orch.panes.read().ok()
                 .and_then(|m| m.get(p).map(|v| v.title.clone()))
                 .unwrap_or_default();
-            let kind_s = match kind {
-                Some(nabi_session::SessionKind::Ssh { .. }) => "ssh",
-                _ => "local",
-            };
+            // 에이전트가 이 값으로 갈래를 나눈다 — 직렬 콘솔을 "local" 이라고 알려 주면
+            // 잘못된 정보를 주는 것이다(규칙은 `SessionKind::kind_key` 한 곳).
+            let kind_s = kind.as_ref().map_or("local", |k| k.kind_key());
             panes.push(serde_json::json!({
                 "title": title, "kind": kind_s, "cwd": cwd, "command": cmd,
             }));
