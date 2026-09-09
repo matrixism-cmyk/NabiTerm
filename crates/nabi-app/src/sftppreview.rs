@@ -26,6 +26,12 @@ pub(crate) enum Preview {
         /// 파일이 더 있는데 잘랐는가.
         truncated: bool,
     },
+    /// 그림이다 — 그대로 보여 준다.
+    ///
+    /// WinSCP 는 2026년까지도 이미지 미리보기가 없다(리뷰의 지적사항이다). 우리는
+    /// 터미널 인라인 이미지를 위해 이미 디코더를 갖고 있으므로(`nabi_image`) 여기서
+    /// 그대로 쓴다 — 새로 만드는 것이 아니라 있는 것을 부르는 일이다.
+    Image { width: u32, height: u32, rgba: Vec<u8> },
     /// 글이 아니다 — 앞부분을 16진으로 보여 준다.
     Binary { hex: String, shown: usize },
     /// 빈 파일.
@@ -36,16 +42,28 @@ pub(crate) enum Preview {
 const HEX_COLS: usize = 16;
 /// 16진으로 보여 줄 최대 바이트(이진 파일은 앞 몇 줄이면 정체가 드러난다).
 const HEX_MAX: usize = 256;
+/// 글로 읽어 화면에 얹을 최대 바이트.
+const TEXT_MAX: usize = 64 * 1024;
 
 /// 읽어 온 바이트를 화면에 낼 모양으로 바꾼다. `more`는 뒤에 내용이 더 있는지.
 pub(crate) fn describe(bytes: &[u8], more: bool) -> Preview {
     if bytes.is_empty() {
         return Preview::Empty;
     }
+    // 그림인지 **먼저** 본다. 이진 판정이 앞에 있으면 PNG 가 16진 덤프로 보인다.
+    // 잘린 것은 디코드가 실패하므로 아래로 떨어진다 — 반쪽 그림을 보여 주지 않는다.
+    if !more {
+        if let Some(img) = nabi_image::decode_image_bytes(bytes) {
+            return Preview::Image { width: img.width, height: img.height, rgba: img.rgba };
+        }
+    }
     if nabi_editor::edithex::is_binary(bytes) {
         let n = bytes.len().min(HEX_MAX);
         return Preview::Binary { hex: hex_dump(&bytes[..n]), shown: n };
     }
+    // 글은 앞 64KB 만 디코드한다. 그림을 받으려고 상한을 크게 잡았을 때, 큰 글 파일을
+    // 통째로 디코드해 화면에 얹으면 창이 멈춘 것처럼 보인다.
+    let bytes = &bytes[..bytes.len().min(TEXT_MAX)];
     let enc = nabi_editor::editload::detect_encoding(bytes);
     let (text, _, _) = enc.decode(bytes);
     // 마지막 줄은 잘린 중간일 수 있다 — 더 있으면 그 줄을 버려 반 토막 글자를 안 보여 준다.

@@ -9,6 +9,12 @@ use nabi_i18n::tr;
 
 /// 받아 올 최대 바이트. 텍스트 설정 파일이면 이 안에서 거의 다 보인다.
 pub(crate) const MAX: usize = 64 * 1024;
+/// 그림일 때 받아 올 최대 바이트.
+///
+/// 그림은 통째로 와야 디코드된다 — 64KB 만 받으면 반쪽이라 못 푼다. 그렇다고 모든
+/// 파일에 이 상한을 쓰면 느린 회선에서 "확인 한 번"이 다시 비싸진다. 그래서
+/// **이름이 그림일 때만** 넉넉히 받는다.
+pub(crate) const IMAGE_MAX: usize = 2 * 1024 * 1024;
 
 /// 창이 들고 있는 것.
 pub(crate) struct PreviewState {
@@ -22,7 +28,11 @@ impl NabiApp {
     pub(crate) fn request_preview(&mut self, path: String) {
         let Some(id) = self.sftp.id else { return };
         self.preview = Some(PreviewState { path: path.clone(), result: None });
-        self.orch.send(nabi_proto::Command::SftpPreview { id, path, max: MAX });
+        let max = match crate::previewbody::looks_like_image(&path) {
+            true => IMAGE_MAX,
+            false => MAX,
+        };
+        self.orch.send(nabi_proto::Command::SftpPreview { id, path, max });
     }
 
     /// 결과가 도착했다.
@@ -63,7 +73,7 @@ impl NabiApp {
                     ui.colored_label(egui::Color32::from_rgb(0xd0, 0x4a, 0x3a), e);
                 }
                 Some(Ok(p)) => {
-                    body(ui, lang, p, &mut copy);
+                    crate::previewbody::body(ui, lang, p, &mut copy);
                     ui.separator();
                     ui.horizontal(|ui| {
                         go_edit = ui.button(tr(lang, "sftp.edit")).clicked();
@@ -94,43 +104,4 @@ impl NabiApp {
             self.preview = None;
         }
     }
-}
-
-/// 결과 본문.
-fn body(ui: &mut egui::Ui, lang: nabi_i18n::Lang, p: &Preview, copy: &mut Option<String>) {
-    match p {
-        Preview::Empty => {
-            ui.weak(tr(lang, "sftp.preview.empty"));
-        }
-        Preview::Text { body, encoding, truncated } => {
-            ui.horizontal(|ui| {
-                ui.weak(encoding); // 깨져 보이면 이게 첫 실마리다.
-                if *truncated {
-                    ui.weak(tr(lang, "sftp.preview.partial"));
-                }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if ui.small_button(tr(lang, "menu.copy")).clicked() {
-                        *copy = Some(body.clone());
-                    }
-                });
-            });
-            ui.separator();
-            scroll(ui, "prev_text", body);
-        }
-        Preview::Binary { hex, shown } => {
-            ui.horizontal(|ui| {
-                ui.weak(tr(lang, "sftp.preview.binary"));
-                ui.weak(format!("{shown} B"));
-            });
-            ui.separator();
-            scroll(ui, "prev_hex", hex);
-        }
-    }
-}
-
-/// 넓은 줄이 창을 밀어내지 않게 가로도 함께 스크롤한다.
-fn scroll(ui: &mut egui::Ui, salt: &str, text: &str) {
-    egui::ScrollArea::both().id_salt(salt).auto_shrink([false, false]).show(ui, |ui| {
-        ui.add(egui::Label::new(egui::RichText::new(text).monospace()).wrap_mode(egui::TextWrapMode::Extend));
-    });
 }

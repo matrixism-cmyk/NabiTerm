@@ -27,29 +27,60 @@ impl NabiApp {
         doc.dirty = true; self.add_editor_tab(doc); // 메모리 문서 — 저장 시 다른 이름으로.
     }
 
-    /// 파일 빠른 미리보기(E9) — 앞 64KB만 디코드해 최대 200줄을 팝업에 띄운다(열지 않고 확인).
+    /// 앞부분만 읽는 상한. 원격 미리보기와 **같은 뜻**이다 — 몇 GB짜리를 실수로
+    /// 끌어올 길을 아예 만들지 않는다.
+    ///
+    /// 그림은 통째로 읽혀야 디코드된다(반쪽 PNG 는 못 푼다). 그래서 그림 확장자면
+    /// 넉넉히 잡는다 — 대신 그만큼만이다. 예전에는 `fs::read` 로 **파일 전체**를
+    /// 올린 뒤 잘랐다. 4GB 로그를 미리보기로 누르면 4GB 를 먹었다는 뜻이다.
+    const PREVIEW_CAP: u64 = 64 * 1024;
+    const IMAGE_CAP: u64 = 8 * 1024 * 1024;
+
+    /// 파일 빠른 미리보기(E9) — 앞부분만 읽어 팝업에 띄운다(열지 않고 확인).
+    ///
+    /// 갈라 보는 일은 원격 미리보기와 **같은 함수**([`crate::sftppreview::describe`])가
+    /// 한다. 예전에는 여기서 따로 디코드해 200줄을 그냥 뿌렸는데, 그래서 **이진 파일을
+    /// 열면 깨진 글자가 화면을 채웠다** — 무엇인지도, 인코딩 탓인지도 알 수 없었다.
     pub(crate) fn open_file_preview(&mut self, path: PathBuf) {
+        use std::io::Read;
         let title = file_name(&path);
-        let body = std::fs::read(&path).ok().map(|b| {
-            let cap = b.len().min(64 * 1024);
-            crate::editload::decode(&b[..cap]).0
-        }).unwrap_or_default();
-        let text: String = body.lines().take(200).collect::<Vec<_>>().join("\n");
-        self.file_preview = Some((title, text));
+        let cap = match crate::previewbody::looks_like_image(&path.to_string_lossy()) {
+            true => Self::IMAGE_CAP,
+            false => Self::PREVIEW_CAP,
+        };
+        // 상한보다 **한 바이트 더** 읽어 본다 — 그래야 "뒤에 더 있다"를 알 수 있다.
+        let mut head = Vec::new();
+        let _ = std::fs::File::open(&path)
+            .map(|f| f.take(cap + 1).read_to_end(&mut head));
+        let more = head.len() as u64 > cap;
+        head.truncate(cap as usize);
+        self.file_preview = Some((title, path, crate::sftppreview::describe(&head, more)));
     }
 
-    /// 미리보기 팝업 렌더(스크롤·모노스페이스). 닫으면 상태 해제.
+    /// 미리보기 팝업 렌더. 닫으면 상태 해제.
+    ///
+    /// 확인 다음은 대개 "고치기"다 — 원격 미리보기가 그렇게 하고 있었고, 창을 닫고 다시
+    /// 목록에서 찾게 하면 그 사이가 끊긴다. 로컬에도 같은 이어가기를 둔다.
     pub(crate) fn file_preview_modal(&mut self, ctx: &egui::Context) {
-        let Some((title, text)) = self.file_preview.clone() else { return };
-        let mut open = true;
+        let Some((title, path, prev)) = self.file_preview.clone() else { return };
+        let lang = self.lang;
+        let (mut open, mut copy, mut go_edit) = (true, None, false);
         egui::Window::new(format!("\u{1f441} {title}"))
-            .open(&mut open).resizable(true).default_size([640.0, 480.0])
+            .open(&mut open).resizable(true).default_size([760.0, 520.0])
             .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
             .show(ctx, |ui| {
-                egui::ScrollArea::both().show(ui, |ui| {
-                    ui.add(egui::Label::new(egui::RichText::new(&text).monospace()).wrap_mode(egui::TextWrapMode::Extend));
-                });
+                crate::previewbody::body(ui, lang, &prev, &mut copy);
+                ui.separator();
+                go_edit = ui.button(tr(lang, "sftp.edit")).clicked();
             });
+        if let Some(c) = copy {
+            ctx.copy_text(c);
+        }
+        if go_edit {
+            self.file_preview = None;
+            self.open_editor_local(path); // 목록에서 연 것과 같은 길(중복 탭·분리 창 규칙 그대로).
+            return;
+        }
         if !open {
             self.file_preview = None;
         }

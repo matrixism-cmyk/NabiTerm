@@ -349,7 +349,10 @@ pub struct NabiApp {
     pub quick_select_open: bool, pub editor_close_ask: Option<PaneId>,
     /// 삭제 확인 대기 중인 저장 세션 이름(sessiondel).
     pub session_delete_ask: Option<String>,
-    pub file_preview: Option<(String, String)>, pub clip_history: Vec<String>,
+    /// 빠른 미리보기 — (제목, 경로, 갈라 본 결과). 원격 미리보기와 **같은 자루**를
+    /// 쓴다(crate::sftppreview::Preview) — 그래야 그리는 함수도 하나로 둘 수 있다.
+    pub file_preview: Option<(String, std::path::PathBuf, crate::sftppreview::Preview)>,
+    pub clip_history: Vec<String>,
     /// 지금 무엇으로 화면을 그리고 있나(상태바 표시). 시작할 때 한 번 물어 둔다.
     pub gpu: crate::gpuinfo::GpuInfo,
     /// 사용자가 **직접 끈** 기록 pane 들. "모든 세션 기록"이 다시 켜지 못하게 막는다.
