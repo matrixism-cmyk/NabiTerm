@@ -39,6 +39,37 @@ fn detect_eol(head: &[u8]) -> &'static str {
     crate::eolmix::count_eols(&String::from_utf8_lossy(head)).dominant()
 }
 
+/// 줄 인덱스가 쓸 수 있는 메모리의 상한(바이트).
+///
+/// ## 왜 상한이 필요한가
+///
+/// 이 편집기는 파일을 메모리에 올리지 않는다 — 그것이 존재 이유다. 그런데 **줄 인덱스만은
+/// 메모리에 있다.** 줄마다 8바이트이므로 평균 48바이트짜리 로그라면 파일의 약 1/6 이다.
+///
+/// 100GB 로그를 열면 17GB 를 한 번에 잡으려 든다. 잡히면 기계가 늪에 빠지고, 안 잡히면
+/// 그 자리에서 죽는다. 둘 다 "열리지 않는다"보다 나쁘다 — 무엇이 일어났는지 알 수 없다.
+///
+/// ## 왜 1GB 인가
+///
+/// 6GB 남짓한 로그까지는 그대로 편집된다(평균 48바이트 기준). 그보다 큰 파일은 읽기 전용
+/// 뷰어로 보낸다 — 그쪽은 인덱스를 **곁 스레드에서 조금씩** 세우므로 창이 곧바로 뜨고,
+/// 줄 번호가 뒤에서 채워진다. 편집을 잃는 대신 열리기는 한다.
+pub const MAX_INDEX_BYTES: u64 = 1024 * 1024 * 1024;
+
+/// 줄 하나가 평균 몇 바이트라고 보는가. `LineIndex::build` 의 어림과 같은 값을 쓴다 —
+/// 두 곳이 다른 수를 쓰면 "된다고 했는데 안 되는" 크기가 생긴다.
+const AVG_LINE_BYTES: u64 = 48;
+
+/// 이 크기의 파일이면 줄 인덱스가 얼마나 될까(바이트).
+pub fn estimated_index_bytes(file_bytes: u64) -> u64 {
+    (file_bytes / AVG_LINE_BYTES).saturating_add(1).saturating_mul(8)
+}
+
+/// 인덱스를 세워도 되는 크기인가.
+pub fn index_fits(file_bytes: u64) -> bool {
+    estimated_index_bytes(file_bytes) <= MAX_INDEX_BYTES
+}
+
 impl TextData {
     /// 메모리에 있는 바이트로 문서를 만든다(작은 파일·시험).
     pub fn from_vec(v: Vec<u8>) -> Self {
@@ -59,6 +90,14 @@ impl TextData {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "CR-only line endings are not supported by the streaming editor",
+            ));
+        }
+        // **세우기 전에 얼마나 될지 먼저 잰다.** 세우고 나서 알면 이미 늦다 —
+        // 그때는 메모리를 다 쓴 뒤다.
+        if !index_fits(data.len() as u64) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::OutOfMemory,
+                "line index would not fit in memory",
             ));
         }
         let index = Self::build_index(&data);
@@ -400,5 +439,43 @@ mod tests {
         d.splice(6, 5, b"BRAVO!");
         assert_eq!(all(&d), vec!["alpha", "BRAVO!", "charlie", ""]);
         let _ = std::fs::remove_file(&p);
+    }
+}
+
+#[cfg(test)]
+mod index_guard_tests {
+    use super::{estimated_index_bytes, index_fits, MAX_INDEX_BYTES};
+
+    /// 흔한 크기는 그대로 열려야 한다 — 상한이 기능을 잡아먹으면 안 된다.
+    #[test]
+    fn 흔한_크기는_그대로_연다() {
+        for mb in [1u64, 100, 1024, 4096] {
+            assert!(index_fits(mb * 1024 * 1024), "{mb}MB 가 막혔다");
+        }
+    }
+
+    /// 감당 못 할 크기는 막는다 — 100GB 로그가 17GB 를 잡으려 들면 기계가 죽는다.
+    #[test]
+    fn 감당_못_할_크기는_막는다() {
+        for gb in [12u64, 100, 1000] {
+            assert!(!index_fits(gb * 1024 * 1024 * 1024), "{gb}GB 가 통과했다");
+        }
+    }
+
+    /// 어림은 넘치지 않아야 한다(u64 를 곱하다 감싸면 거대한 파일이 통과한다).
+    #[test]
+    fn 어림이_넘치지_않는다() {
+        assert!(estimated_index_bytes(u64::MAX) > MAX_INDEX_BYTES);
+        assert!(!index_fits(u64::MAX));
+        assert_eq!(estimated_index_bytes(0), 8); // 빈 파일도 줄 하나(시작)는 있다.
+    }
+
+    /// 경계에서 갑자기 뒤집히지 않아야 한다.
+    #[test]
+    fn 경계가_이어진다() {
+        // 어림에는 첫 줄 시작 몫으로 `+1` 이 들어간다 — 경계는 그만큼 아래다.
+        let edge = (MAX_INDEX_BYTES / 8 - 1) * 48;
+        assert!(index_fits(edge), "상한 바로 아래가 막혔다");
+        assert!(!index_fits(edge + 48 * 8), "상한을 넘겼는데 통과했다");
     }
 }

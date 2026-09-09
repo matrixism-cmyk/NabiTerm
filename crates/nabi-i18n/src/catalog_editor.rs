@@ -236,6 +236,7 @@ pub(crate) const CATALOG_EDITOR: &[(&str, &str, &str, &str)] = &[
     ("editor.readonly", "Read-only", "읽기 전용", "読取専用"),
     ("editor.eol", "Line ending (click to convert)", "줄 끝(클릭하면 변환)", "改行コード(クリックで変換)"),
     ("editor.toobig", "File too large to edit in-app", "앱에서 편집하기엔 파일이 너무 큽니다", "アプリで編集するには大きすぎます"),
+    ("editor.hugeviewonly", "Too large to edit — the line index would not fit in memory. Opened read only; line numbers fill in as it scans.", "편집하기엔 너무 큽니다 — 줄 목록이 메모리에 들어가지 않습니다. 읽기 전용으로 열었고, 줄 번호는 훑으면서 채워집니다.", "編集するには大きすぎます — 行インデックスがメモリに収まりません。読み取り専用で開きました。行番号は走査しながら埋まります。"),
     // 찾기/바꾸기 바.
     ("find.placeholder", "Find…", "찾기…", "検索…"),
     ("find.nomatch", "Not found in the scrollback", "스크롤백에 없습니다", "スクロールバックにありません"),

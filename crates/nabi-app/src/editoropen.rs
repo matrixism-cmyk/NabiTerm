@@ -179,8 +179,20 @@ impl NabiApp {
     /// 사용자 지적). 이제는 편집이 된다. 그래도 열 수 없는 경우(CR 전용 줄바꿈 등)에만
     /// 뷰어로 물러난다.
     fn open_huge_editor(&mut self, path: PathBuf) {
-        let Ok(data) = nabi_editor::textdata::TextData::open(&path) else {
-            return self.open_big_viewer(path);
+        let data = match nabi_editor::textdata::TextData::open(&path) {
+            Ok(d) => d,
+            Err(e) => {
+                // **왜 편집기가 아니라 뷰어로 열렸는지 말한다.** 조용히 물러나면 사용자는
+                // "이 파일은 왜 못 고치지"를 알 길이 없다. 줄 인덱스가 메모리에 안 들어가는
+                // 크기(수 GB 로그)에서 실제로 이 길로 온다.
+                if e.kind() == std::io::ErrorKind::OutOfMemory {
+                    self.notify = Some((
+                        tr(self.lang, "editor.hugeviewonly").to_string(),
+                        Instant::now(),
+                    ));
+                }
+                return self.open_big_viewer(path);
+            }
         };
         let (title, encoding, eol) = (file_name(&path), data.encoding().to_string(), data.eol);
         // 어떤 편집기가 골라졌는지 로그에 남긴다 — 사후 진단과 e2e 확인에 쓴다.
