@@ -207,6 +207,14 @@ fn copy_runtime_dlls(root: &Path, stage: &Path) -> Result<(), ()> {
     }
     for dll in &extra {
         let name = dll.as_str();
+        if is_redistributable(name) {
+            // 이건 우리가 빌드 폴더에서 찾을 수 있는 종류가 아니다 — 남의 PC 에
+            // Visual C++ 재배포판을 깔라고 요구하게 된다. 동봉하는 대신 아예 안 부르게 한다.
+            eprintln!("{name} 을 요구한다 — 이건 윈도우에 없는 Visual C++ 재배포 런타임이다.");
+            eprintln!("  .cargo/config.toml 의 `-C target-feature=+crt-static` 이 풀렸다.");
+            eprintln!("  이대로 내보내면 재배포판이 없는 PC 에서 프로그램이 아예 뜨지 않는다.");
+            return Err(());
+        }
         let Some(src) = find_build_dll(root, name) else {
             eprintln!("{name} 을 찾지 못했다 — 이게 없으면 설치본이 실행되지 않는다.");
             eprintln!("  찾은 곳: target/release/build/*/out/**/");
@@ -233,12 +241,35 @@ fn copy_runtime_dlls(root: &Path, stage: &Path) -> Result<(), ()> {
 ///
 /// `api-ms-win-*` 와 `ext-ms-*` 는 파일이 아니라 이름표다(윈도우가 속으로 다른 파일로
 /// 연결해 준다). 폴더에 없지만 우리가 넣을 것도 아니므로 따로 넘긴다.
+///
+/// ## ⚠️ "System32 에 있다"가 "윈도우 것"은 아니다 (2026-09-10 사용자 보고)
+///
+/// 재배포 런타임(Visual C++ 의 `VCRUNTIME140*`·`MSVCP140*` 등)은 **설치하면** System32 에
+/// 생긴다. 개발 기계에는 늘 깔려 있으므로 이 물음은 늘 "예"라고 답했고, 그래서 우리는
+/// 그것을 넣지 않았다. 재배포판이 없는 PC 에서는 프로그램이 아예 뜨지 않았다 —
+/// "VCRUNTIME140_1.dll 이 없어 코드 실행을 진행할 수 없습니다"라는 대화상자 하나만 뜬다.
+///
+/// 그 자리는 이제 정적 링크로 없앴지만(`.cargo/config.toml`), 검사는 남긴다.
+/// 다음에 어떤 의존성이 `MSVCP140` 을 끌고 오면 **그때는 여기서 걸려야 한다.**
 fn is_system_dll(name: &str) -> bool {
+    if is_redistributable(name) {
+        return false; // 깔려 있어도 우리 것이다 — 남의 PC 에는 없다.
+    }
     if name.starts_with("api-ms-win-") || name.starts_with("ext-ms-") {
         return true;
     }
     let sysdir = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
     Path::new(&sysdir).join("System32").join(name).exists()
+}
+
+/// 따로 설치해야 생기는 런타임인가(윈도우에 기본으로 없다).
+///
+/// `ucrtbase.dll` 은 뺀다 — 그것은 윈도우 10 부터 운영체제의 일부다.
+pub(crate) fn is_redistributable(name: &str) -> bool {
+    let n = name.to_ascii_lowercase();
+    ["vcruntime", "msvcp", "msvcr", "concrt", "vccorlib"]
+        .iter()
+        .any(|p| n.starts_with(p))
 }
 
 /// 빌드 스크립트가 놓아 둔 DLL 을 찾는다. 크레이트 폴더 이름에 해시가 붙어 훑어야 한다.
@@ -337,4 +368,50 @@ fn workspace_root() -> PathBuf {
         .parent()
         .expect("xtask는 워크스페이스 멤버")
         .to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_redistributable, is_system_dll};
+
+    /// **재배포 런타임은 윈도우 것이 아니다.** 개발 기계에 깔려 있다고 남의 PC 에도
+    /// 있는 것이 아니다 — 이 물음을 틀리게 답해서 실행조차 안 되는 판을 내보냈다
+    /// (2026-09-10 사용자 보고: "VCRUNTIME140_1.dll 이 없어…").
+    #[test]
+    fn 재배포_런타임은_윈도우_것이_아니다() {
+        for n in [
+            "VCRUNTIME140.dll",
+            "VCRUNTIME140_1.dll",
+            "vcruntime140d.dll",
+            "MSVCP140.dll",
+            "msvcp140_1.dll",
+            "concrt140.dll",
+            "vccorlib140.dll",
+        ] {
+            assert!(is_redistributable(n), "{n}");
+            // 이 기계에 깔려 있어도(그래서 System32 에 있어도) 우리가 넣어야 한다.
+            assert!(!is_system_dll(n), "{n} 을 윈도우 것으로 봤다");
+        }
+    }
+
+    /// 진짜 윈도우 것은 그대로 넘어가야 한다 — 넓게 잡으면 넣을 수 없는 것을 찾다 멈춘다.
+    #[test]
+    fn 윈도우_것은_그대로_넘어간다() {
+        // 이름표는 파일이 아니다.
+        assert!(is_system_dll("api-ms-win-crt-stdio-l1-1-0.dll"));
+        assert!(is_system_dll("ext-ms-win-something.dll"));
+        // ucrtbase 는 윈도우 10 부터 운영체제의 일부다 — 재배포판이 아니다.
+        assert!(!is_redistributable("ucrtbase.dll"));
+        // 흔한 시스템 DLL(이 기계에 반드시 있다).
+        assert!(is_system_dll("kernel32.dll"));
+        assert!(is_system_dll("user32.dll"));
+    }
+
+    /// 우리가 동봉하는 것은 재배포 런타임으로 오해되면 안 된다.
+    #[test]
+    fn 동봉_dll_은_오해되지_않는다() {
+        for n in ["WebView2Loader.dll", "opengl32.dll", "libgallium_wgl.dll"] {
+            assert!(!is_redistributable(n), "{n}");
+        }
+    }
 }

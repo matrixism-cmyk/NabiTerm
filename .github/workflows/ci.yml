@@ -17,36 +17,39 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  windows-gnu:
+  windows-msvc:
     # windows-latest는 예고 없이 이미지가 바뀐다 → 고정.
-    # 이 이미지에는 MinGW(gcc, ucrt)와 Inno Setup이 이미 들어 있어 별도 설치 단계가 없다.
     runs-on: windows-2025
 
     steps:
       - uses: actions/checkout@v5
 
-      # 러너 이미지가 바뀌어 링커 도구가 사라지면, 40분짜리 링크 오류 대신 3초 만에 명확히 실패시킨다.
-      # (gnu 타깃은 rustc가 gcc를 링커로 부르고, wgpu의 DX12 백엔드는 MinGW 사이루트의
-      #  libdxgi/libd3d12 등을 필요로 한다 — rustup self-contained에는 없다)
-      - name: MinGW 도구 확인
-        shell: pwsh
-        run: |
-          foreach ($t in 'gcc','ld','ar','dlltool','windres') {
-            $p = (Get-Command "$t.exe" -ErrorAction SilentlyContinue).Source
-            if (-not $p) { throw "없음: $t.exe — 러너 이미지의 MinGW 구성이 바뀌었다" }
-            Write-Host "$t -> $p"
-          }
-          gcc --version
-
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-gnu
           components: rustfmt, clippy
+
+      # 우리가 **실제로 배포하는 타깃**을 CI가 재고 있는지 확인한다.
+      #
+      # 2026-09-10까지 이 잡은 이름이 `windows-gnu`였고 `targets: x86_64-pc-windows-gnu`를
+      # 설치했지만, 정작 어느 단계에도 `--target`이 없어 **호스트(=msvc)를 빌드하고 있었다.**
+      # 이름과 실제가 다르면 다음 사람이 "gnu는 검증됐다"고 믿는다. 그래서 이름을 맞추고,
+      # 여기서 한 번 세어 둔다 — 호스트가 바뀌면 3초 만에 명확히 실패한다.
+      #
+      # 같은 날 "VCRUNTIME140_1.dll이 없다"로 프로그램이 아예 안 뜨던 결함의 뿌리가 이것이다:
+      # 검사가 재는 대상과 우리가 보내는 물건이 달랐다.
+      - name: 타깃 확인 (배포 대상과 같은가)
+        shell: pwsh
+        run: |
+          $host_triple = (rustc -vV | Select-String '^host: ').ToString().Split(' ')[1]
+          Write-Host "host = $host_triple"
+          if ($host_triple -ne 'x86_64-pc-windows-msvc') {
+            throw "CI가 $host_triple 을 빌드한다 — 배포 대상(x86_64-pc-windows-msvc)과 다르다"
+          }
 
       # 캐시 키에 rustc 버전이 들어가므로 반드시 툴체인 설치 뒤에 온다.
       - uses: Swatinem/rust-cache@v2
         with:
-          shared-key: win-gnu
+          shared-key: win-msvc
           cache-on-failure: true
           # 캐시 저장은 main에서만 — PR마다 저장하면 10GB 한도를 금방 넘겨 서로 밀어낸다.
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -86,5 +89,5 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check
-          # deny.toml이 대상 트리플을 windows-gnu로 고정하므로 러너 OS와 무관하게 같은 그래프를 본다.
+          # deny.toml이 대상 트리플을 windows-msvc(=배포 대상)로 고정하므로 러너 OS와 무관하게 같은 그래프를 본다.
           arguments: --all-features

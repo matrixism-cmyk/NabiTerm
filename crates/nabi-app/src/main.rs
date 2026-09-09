@@ -74,7 +74,8 @@ mod serialui;
 mod sshkeygenui; mod syncplan; mod syncmove; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod cmdbase; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
-mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingslog; mod settingsxfer; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcuts; mod blocklistui; mod
+mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingslog; mod settingsxfer; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcutdrift;
+mod shortcuts; mod blocklistui; mod
 editspotsui; mod wordcompui; mod autolog; mod copyidui; mod cues; mod egress; mod redact; mod secretscan; mod csvcheckui; mod secretui; mod diffrestore; mod opendoc; mod zipops; mod zipui; mod errkey; mod
 panegroup; mod scrollmark; mod scrollmarkui; mod slowcmd;
 mod castplain; mod modalstate; mod floatsize; mod relaunch; mod panecell; mod hostkeyview; mod histview; mod menuimport; mod sessionimport; mod panehistory; mod selfupdate; mod webctl; mod webact; mod splitmenu; mod statusbar; mod statusfit; mod statusfmt; mod statusclicks; mod statusclip; mod statusdims; mod tabwidth; mod agentverbs; mod gpuinfo; mod tabmenu; mod tabreveal; mod taboutputmenu; mod tabops; mod tabspawn;
