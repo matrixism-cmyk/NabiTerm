@@ -40,7 +40,10 @@ pub(crate) fn run_ps(job: &ActionJob, script: &str, lo: f32, hi: f32, label: &st
     let started = Instant::now();
     if let Some(out) = child.stdout.take() {
         let mut out = out;
-        let (mut buf, mut line) = ([0u8; 4096], String::new());
+        // 줄을 **바이트로 모았다가** 끝에서 UTF-8 로 읽는다. 바이트마다 `as char` 로 밀면
+        // Latin-1 해석이라 한 글자가 여러 바이트인 출력(한글·일본어·이모지)이 깨진다 —
+        // 같은 결함을 PuTTY 이름 디코드에서 먼저 찾았고(2026-09-09), 여기도 같았다.
+        let (mut buf, mut line) = ([0u8; 4096], Vec::<u8>::new());
         loop {
             let n = match out.read(&mut buf) {
                 Ok(0) | Err(_) => break,
@@ -48,14 +51,14 @@ pub(crate) fn run_ps(job: &ActionJob, script: &str, lo: f32, hi: f32, label: &st
             };
             for &b in &buf[..n] {
                 if b == b'\n' || b == b'\r' {
-                    note(job, &mut frac, hi, label, &line, started);
+                    note(job, &mut frac, hi, label, &String::from_utf8_lossy(&line), started);
                     line.clear();
                 } else if line.len() < 400 {
-                    line.push(b as char);
+                    line.push(b);
                 }
             }
         }
-        note(job, &mut frac, hi, label, &line, started);
+        note(job, &mut frac, hi, label, &String::from_utf8_lossy(&line), started);
     }
     let status = child.wait()?;
     let stderr = err.and_then(|h| h.join().ok()).unwrap_or_default();
