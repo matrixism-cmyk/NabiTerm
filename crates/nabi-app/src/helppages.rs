@@ -80,7 +80,7 @@ pub(crate) fn features_page(ui: &mut egui::Ui, lang: Lang) {
 }
 
 /// 사용한 주요 오픈소스 (이름, 용도, 라이선스). 전이 의존성 660여 개는 대부분 MIT/Apache-2.0.
-const LICENSES: [(&str, &str, &str); 22] = [
+const LICENSES: [(&str, &str, &str); 23] = [
     ("alacritty_terminal", "terminal core / VT", "Apache-2.0"),
     (
         "egui · eframe · epaint",
@@ -102,6 +102,7 @@ const LICENSES: [(&str, &str, &str); 22] = [
     ),
     ("image", "PNG/JPEG/GIF decode", "MIT OR Apache-2.0"),
     ("portable-pty", "local PTY (ConPTY)", "MIT"),
+    ("serialport", "serial console (COM)", "MPL-2.0"),
     ("russh · russh-sftp", "SSH / SFTP", "Apache-2.0"),
     ("suppaftp", "FTP client", "MIT OR Apache-2.0"),
     ("tokio", "async runtime", "MIT"),

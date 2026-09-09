@@ -35,6 +35,22 @@ pub enum Command {
     /// 보기 전용 pane에 내용을 밀어 넣는다. **입력이 아니라 출력**이다 — 전송으로 나가지
     /// 않고 화면 모델에만 들어간다.
     FeedPane { pane: PaneId, data: Vec<u8> },
+    /// **직렬 콘솔**(COM 포트)을 새 pane으로 연다.
+    ///
+    /// 셸도 SSH도 아니다 — 선 너머에 프로세스가 아니라 장비가 있다. 그래서 종료 코드도
+    /// 없고(끊기는 것은 케이블이 빠지는 것이다), 크기 변경도 알릴 상대가 없다.
+    /// pane 쪽에서 보면 나머지는 같다: 바이트가 들어오고 나간다.
+    SpawnSerialPane {
+        /// `COM3` 같은 포트 이름.
+        port: String,
+        baud: u32,
+        /// 데이터 비트·패리티·정지 비트(`8N1`). 장비 설명서의 표기를 그대로 쓴다.
+        frame: String,
+        size: GridSize,
+        scrollback: usize,
+        encoding: String,
+        reply_seq: Option<u64>,
+    },
     /// SSH 원격 pane 연결.
     ConnectSsh {
         params: SshParams,

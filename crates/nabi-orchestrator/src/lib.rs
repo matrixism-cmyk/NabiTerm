@@ -20,6 +20,7 @@ mod sftppool;
 mod sftppool_test;
 mod sftpretry;
 pub mod spawn_pane;
+mod spawn_serial;
 pub mod trzszfile;
 pub mod trzszpane;
 

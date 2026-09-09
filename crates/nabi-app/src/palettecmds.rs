@@ -116,6 +116,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "block.copy").to_string(), PaletteAction::CopyCommandBlock),
         (tr(lang, "reach.all").to_string(), PaletteAction::CheckAllReachable),
         (tr(lang, "cmd.reconnstop").to_string(), PaletteAction::StopReconnect),
+        (tr(lang, "serial.newmenu").to_string(), PaletteAction::OpenSerial),
         (tr(lang, "editor.reopenclosed").to_string(), PaletteAction::ReopenClosedDoc),
         (tr(lang, "sync.title").to_string(), PaletteAction::OpenSync),
         (tr(lang, "handoff.last").to_string(), PaletteAction::HandoffLast),

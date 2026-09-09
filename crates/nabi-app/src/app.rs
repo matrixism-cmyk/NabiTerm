@@ -165,6 +165,8 @@ pub struct NabiApp {
     pub ctl_sftp: crate::controlsftp::CtlSftp,
     /// SSH 키 생성 모달 상태(Some=열림).
     pub keygen: Option<crate::sshkeygenui::KeygenState>,
+    /// 직렬 콘솔 열기 창(COM 포트).
+    pub serial_open: Option<crate::serialui::SerialOpen>,
     /// 폴더 동기화 다이얼로그(S6-51) + 트리 수집 상관 seq.
     pub sync_dlg: Option<crate::sftpsyncui::SyncDlg>,
     pub sync_seq: u64,

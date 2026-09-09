@@ -11,6 +11,7 @@ nabi-proto = { workspace = true }
 nabi-trzsz = { workspace = true }
 nabi-vt = { workspace = true }
 nabi-pty = { workspace = true }
+nabi-serial = { workspace = true }  # 직렬 콘솔(COM) pane.
 nabi-osc = { workspace = true }
 nabi-ssh = { workspace = true }
 nabi-ssh-ext = { workspace = true }

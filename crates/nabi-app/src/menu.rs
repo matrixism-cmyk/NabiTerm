@@ -30,6 +30,8 @@ pub(crate) enum MenuAction {
     DuplicateSession(SavedSession),
     EditSession(SavedSession),
     NewSshConnection,
+    /// 직렬 콘솔(COM) 열기 — 장비 콘솔 케이블로 붙는 길.
+    OpenSerial,
     DeleteSession(String),
     ExportSessions,
     /// 이 호스트의 저장된 호스트키를 보여 준다(호스트, 포트).
@@ -168,6 +170,11 @@ impl NabiApp {
                             }
                         }
                     });
+                    // 직렬은 셸도 SSH도 아니지만 **새로 여는 것**이라 여기 둔다.
+                    if ui.button(tr(lang, "serial.newmenu")).clicked() {
+                        action = Some(MenuAction::OpenSerial);
+                        ui.close();
+                    }
                     ui.menu_button(tr(lang, "menu.newai"), |ui| {
                         let profiles = &self.config.terminal.ai_profiles;
                         for (i, p) in profiles.iter().enumerate() {

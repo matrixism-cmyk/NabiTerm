@@ -36,6 +36,17 @@ pub fn handle_command(
                 .insert(pane, crate::pane_registry::PaneView::new(model, title, "viewer"));
             let _ = event_tx.send(Event::PaneSpawned { pane, seq: reply_seq });
         }
+        // 직렬 콘솔 — 여는 것이 곧 붙는 것이다(핸드셰이크가 없다). 그래서 로컬 셸처럼
+        // 곁 스레드로 미루지 않고 여기서 바로 연다. 열리면 pane, 아니면 까닭을 보낸다.
+        Command::SpawnSerialPane { port, baud, frame, size, scrollback, encoding, reply_seq } => {
+            crate::spawn_serial::open_serial_pane(
+                crate::spawn_serial::SerialSpawn { port, baud, frame, size, scrollback, encoding, reply_seq },
+                state,
+                panes,
+                out_tx,
+                event_tx,
+            );
+        }
         // 화면 모델에만 넣는다. 전송이 없으므로 밖으로 나가는 것도 없다.
         Command::FeedPane { pane, data } => {
             if let Some(view) = crate::pane_registry::panes_read(panes).get(&pane) {

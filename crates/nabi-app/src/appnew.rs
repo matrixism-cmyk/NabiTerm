@@ -279,6 +279,7 @@ impl NabiApp {
             ssh_alert_on: HashMap::new(), ctx_alert_on: HashMap::new(),
             blocked_alert: HashMap::new(), ai_dash_open: false, floating_on_top: false,
             snippet_prompt: None, dir_save_at: std::time::Instant::now(),
+            serial_open: None,
             quick_select_open: false, editor_close_ask: None, session_delete_ask: None, file_preview: None,
             clip_history: Vec::new(), rec_off: Default::default(), gpu, find_count_cache: None, session_logs: HashMap::new(), replays: Default::default(), pending_replay: None,
             agent_trail_open: false, denial_noticed: false, verify_skip_noticed: false, autolog_fail_noticed: false, rules_drop_noticed: false, batch_rename: None,

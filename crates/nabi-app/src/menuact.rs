@@ -172,6 +172,7 @@ impl NabiApp {
             MenuAction::DuplicateSession(s) => { let mut dup = s.clone(); dup.name = self.sessions.unique_copy_name(&s.name); self.sessions.add(dup); self.save_sessions(); }
             MenuAction::EditSession(s) => self.edit_session(&s),
             MenuAction::NewSshConnection => self.new_ssh_connection(),
+            MenuAction::OpenSerial => self.open_serial_dialog(),
             // 즉시 지우지 않고 한 번 묻는다 — ✕가 ✏ 옆이라 오클릭이 쉽고 되돌릴 수 없다(sessiondel).
             MenuAction::DeleteSession(name) => self.session_delete_ask = Some(name),
             MenuAction::ExportSessions => self.export_sessions(),
