@@ -78,7 +78,16 @@ pub(crate) fn to_ini(sessions: &[SavedSession]) -> String {
 fn parse_session(name: &str, val: &str, folder: Option<&str>) -> Option<SavedSession> {
     let (typ, rest) = val.trim_start_matches('#').split_once('#')?;
     if typ != "109" {
-        return None; // SSH 세션만.
+        // SSH(109) 세션만. 텔넷(98)은 아직 못 열고, **직렬은 자리를 확인하지 못했다.**
+        //
+        // 2026-09-09에 PuTTY·Xshell 의 직렬 세션을 가져오게 하면서 여기도 보려 했는데,
+        // MobaXterm 의 직렬 항목은 값이 `%` 로 나뉜 자리 배열이고 **어느 자리가 속도·
+        // 패리티인지가 공개 문서에 없다.** 이 PC 에 확인할 `MobaXterm.ini` 도 없다.
+        //
+        // 짐작해서 넣으면 가장 나쁜 결과가 나온다 — 연결은 되는데 글자가 깨지고, 그때
+        // 사람은 케이블이나 장비를 의심하지 가져오기를 의심하지 않는다. 실물 `.ini` 를
+        // 손에 넣으면 그때 넣는다(그전까지 이 자리를 다시 조사하지 말 것).
+        return None;
     }
     let fields: Vec<&str> = rest.split('%').collect();
     let host = fields.get(1).map(|s| s.trim()).unwrap_or("");

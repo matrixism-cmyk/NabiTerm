@@ -8,9 +8,19 @@
 use nabi_session::{SavedSession, SessionKind};
 use std::path::{Path, PathBuf};
 
-/// `.xsh` INI 텍스트 → 저장 세션(SSH만). `folder`는 세션 그룹(하위 폴더명 등).
+/// `.xsh` INI 텍스트 → 저장 세션. `folder`는 세션 그룹(하위 폴더명 등).
+///
+/// **SSH 와 직렬(SERIAL)을 가져온다.** 예전에는 SSH 만 가져왔는데, 그때는 우리에게 직렬
+/// 콘솔이 없어서 가져와도 열 수가 없었다(2026-09-09에 생겼다). Xshell 은 국내 장비 관리에
+/// 널리 쓰이고, 그 목록에는 콘솔 세션이 섞여 있다.
+///
+/// 텔넷·rlogin 은 아직 가져오지 않는다 — 열 수 없는 세션을 목록에 채워 두면 눌렀을 때
+/// 아무 일도 일어나지 않는다.
 pub(crate) fn parse_xsh(name: &str, folder: Option<String>, text: &str) -> Option<SavedSession> {
     let (mut host, mut port, mut user, mut proto) = (String::new(), 22u16, String::new(), String::from("ssh"));
+    // 직렬 값들. 없으면 Xshell 의 기본값(9600 8N1)으로 본다.
+    let (mut line_name, mut baud, mut data_bits, mut parity, mut stop) =
+        (String::new(), 9600u32, 8u8, String::from("none"), 1u8);
     let mut section = String::new();
     for line in text.lines() {
         let line = line.trim().trim_start_matches('\u{feff}');
@@ -25,21 +35,64 @@ pub(crate) fn parse_xsh(name: &str, folder: Option<String>, text: &str) -> Optio
             ("CONNECTION", "PORT") => port = v.parse().unwrap_or(22),
             ("CONNECTION", "PROTOCOL") => proto = v.to_ascii_lowercase(),
             ("CONNECTION:AUTHENTICATION", "USERNAME") => user = v.to_string(),
+            // 직렬: Xshell 은 포트 이름을 `SerialPort`(COM3)로, 나머지는 낱말로 적는다.
+            ("CONNECTION:SERIAL", "SERIALPORT") | ("CONNECTION", "SERIALPORT") => {
+                line_name = v.to_string()
+            }
+            ("CONNECTION:SERIAL", "BAUDRATE") | ("CONNECTION", "BAUDRATE") => {
+                baud = v.parse().unwrap_or(9600)
+            }
+            ("CONNECTION:SERIAL", "DATABITS") | ("CONNECTION", "DATABITS") => {
+                data_bits = v.parse().unwrap_or(8)
+            }
+            ("CONNECTION:SERIAL", "PARITY") | ("CONNECTION", "PARITY") => {
+                parity = v.to_ascii_lowercase()
+            }
+            ("CONNECTION:SERIAL", "STOPBITS") | ("CONNECTION", "STOPBITS") => {
+                // "1.5" 는 우리가 못 낸다 — 0 으로 두어 아래에서 걸러지게 한다.
+                stop = v.parse().unwrap_or(0)
+            }
             _ => {}
         }
     }
-    if host.is_empty() || !proto.contains("ssh") {
-        return None; // telnet/serial/rlogin 등 제외.
-    }
+    let kind = if proto.contains("serial") {
+        serial_kind(&line_name, baud, data_bits, &parity, stop)?
+    } else if proto.contains("ssh") && !host.is_empty() {
+        SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None, agent_forward: false }
+    } else {
+        return None; // telnet/rlogin 등 — 아직 열 수 없다.
+    };
     Some(SavedSession {
         name: name.to_string(),
         folder,
-        kind: SessionKind::Ssh { host, port, user, credential_ref: None, key_path: None, jump: None, agent_forward: false },
+        kind,
         on_connect: None,
         cwd: None,
         is_ftp: false,
         open_sftp: false,
         tag: Default::default(),
+    })
+}
+
+/// Xshell 의 직렬 값들을 우리 종류로. **못 여는 조합이면 None**(목록에 채우지 않는다).
+///
+/// 조용히 8N1 로 바꾸지 않는다 — 설정이 다르면 연결은 되는데 글자가 깨지고, 그때 사람은
+/// 케이블이나 장비를 의심하지 가져오기를 의심하지 않는다.
+fn serial_kind(port: &str, baud: u32, data_bits: u8, parity: &str, stop: u8) -> Option<SessionKind> {
+    if port.is_empty() || !(5..=8).contains(&data_bits) || !(1..=2).contains(&stop) {
+        return None;
+    }
+    // 마크·스페이스 패리티는 우리가 못 낸다.
+    let p = match parity {
+        "none" | "no" | "n" => 'N',
+        "even" | "e" => 'E',
+        "odd" | "o" => 'O',
+        _ => return None,
+    };
+    Some(SessionKind::Serial {
+        port: port.to_string(),
+        baud,
+        frame: format!("{data_bits}{p}{stop}"),
     })
 }
 
@@ -116,8 +169,45 @@ mod tests {
     #[test]
     fn rejects_non_ssh() {
         let ini = "[CONNECTION]\nHost=x\nProtocol=TELNET\n";
+        // 텔넷은 아직 못 연다 — 열 수 없는 세션을 목록에 채우지 않는다.
         assert!(parse_xsh("t", None, ini).is_none(), "telnet 제외");
         assert!(parse_xsh("h", None, "[CONNECTION]\nProtocol=SSH\n").is_none(), "호스트 없음 제외");
+    }
+
+    /// 직렬 세션을 가져온다 — Xshell 표기를 우리 표기로 옮긴다.
+    #[test]
+    fn 직렬_세션을_가져온다() {
+        let ini = "[CONNECTION]\r\nProtocol=SERIAL\r\n\
+                   [CONNECTION:SERIAL]\r\nSerialPort=COM4\r\nBaudRate=115200\r\n\
+                   DataBits=7\r\nParity=even\r\nStopBits=2\r\n";
+        let s = parse_xsh("현장 스위치", Some("장비".into()), ini).expect("직렬 세션");
+        assert_eq!(s.name, "현장 스위치"); // 한글 이름이 깨지지 않아야 한다.
+        assert_eq!(
+            s.kind,
+            SessionKind::Serial { port: "COM4".into(), baud: 115200, frame: "7E2".into() }
+        );
+    }
+
+    /// 값을 안 적었으면 Xshell 의 기본값(9600 8N1)으로 본다.
+    #[test]
+    fn 안_적은_값은_기본값이다() {
+        let ini = "[CONNECTION]\nProtocol=SERIAL\nSerialPort=COM1\n";
+        let s = parse_xsh("c", None, ini).expect("직렬 세션");
+        assert_eq!(
+            s.kind,
+            SessionKind::Serial { port: "COM1".into(), baud: 9600, frame: "8N1".into() }
+        );
+    }
+
+    /// **못 여는 것은 가져오지 않는다.** 조용히 8N1 로 바꾸면 글자가 깨지는데 이유를 모른다.
+    #[test]
+    fn 못_여는_직렬은_거른다() {
+        let head = "[CONNECTION]\nProtocol=SERIAL\nSerialPort=COM9\n";
+        for bad in ["Parity=mark\n", "Parity=space\n", "StopBits=1.5\n", "DataBits=4\n"] {
+            assert!(parse_xsh("x", None, &format!("{head}{bad}")).is_none(), "{bad}");
+        }
+        // 포트 이름이 없으면 열 수가 없다.
+        assert!(parse_xsh("y", None, "[CONNECTION]\nProtocol=SERIAL\n").is_none());
     }
 
     #[test]
