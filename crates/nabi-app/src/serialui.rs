@@ -24,6 +24,12 @@ pub(crate) struct SerialOpen {
     pub baud: u32,
     /// `8N1`.
     pub frame: String,
+    /// 세션 목록에 남길 이름(비우면 남기지 않는다).
+    ///
+    /// 콘솔은 **같은 장비에 반복해서** 붙는다. 매번 포트와 속도를 다시 고르게 하면
+    /// 그 반복이 그대로 비용이 된다 — 그런데 세션 저장을 다른 화면으로 미루면 아무도
+    /// 안 한다. 그래서 붙는 자리에서 함께 남긴다.
+    pub save_as: String,
 }
 
 impl NabiApp {
@@ -32,7 +38,8 @@ impl NabiApp {
         let ports = nabi_serial::ports();
         let port = ports.first().map(|p| p.name.clone()).unwrap_or_default();
         let cfg = SerialCfg::default();
-        self.serial_open = Some(SerialOpen { ports, port, baud: cfg.baud, frame: cfg.frame() });
+        self.serial_open =
+            Some(SerialOpen { ports, port, baud: cfg.baud, frame: cfg.frame(), save_as: String::new() });
     }
 
     /// 창을 그린다.
@@ -65,6 +72,14 @@ impl NabiApp {
                     ui.add(egui::TextEdit::singleline(&mut st.frame).desired_width(70.0))
                         .on_hover_text(tr(lang, "serial.frame.hint"));
                     ui.end_row();
+
+                    ui.label(tr(lang, "serial.saveas"));
+                    ui.add(
+                        egui::TextEdit::singleline(&mut st.save_as)
+                            .hint_text(tr(lang, "serial.saveas.hint"))
+                            .desired_width(220.0),
+                    );
+                    ui.end_row();
                 });
                 // 표기가 이상하면 **누르기 전에** 알려 준다. 눌러 놓고 실패를 보는 것보다
                 // 낫다 — 직렬은 실패해도 원인이 여럿이라 하나라도 미리 지워 주는 편이 좋다.
@@ -82,7 +97,8 @@ impl NabiApp {
                 });
             });
         if go {
-            self.spawn_serial_pane(&st);
+            self.save_serial_session(&st);
+            self.spawn_serial(st.port.trim().to_string(), st.baud, st.frame.clone());
             return; // 창은 닫는다(상태를 되돌려 놓지 않는다).
         }
         if open {
@@ -90,18 +106,35 @@ impl NabiApp {
         }
     }
 
-    /// 고른 값으로 pane 을 연다.
-    fn spawn_serial_pane(&mut self, st: &SerialOpen) {
-        let cfg = &self.config.terminal;
-        self.orch.send(nabi_proto::Command::SpawnSerialPane {
-            port: st.port.trim().to_string(),
-            baud: st.baud,
-            frame: st.frame.clone(),
-            size: nabi_types::GridSize::new(80, 24),
-            scrollback: cfg.scrollback,
-            encoding: cfg.encoding.clone(),
-            reply_seq: None,
+    /// 이름을 적었으면 세션 목록에 남긴다.
+    ///
+    /// 같은 이름이 있으면 덮어쓴다(빠른 연결의 저장과 같은 규칙) — 고쳐 저장하는 것이
+    /// 흔한 일이라 매번 지우고 다시 적게 하면 번거롭다.
+    fn save_serial_session(&mut self, st: &SerialOpen) {
+        let name = st.save_as.trim().to_string();
+        if name.is_empty() {
+            return;
+        }
+        self.sessions.remove(&name);
+        self.sessions.add(nabi_session::SavedSession {
+            name: name.clone(),
+            folder: None,
+            kind: nabi_session::SessionKind::Serial {
+                port: st.port.trim().to_string(),
+                baud: st.baud,
+                frame: st.frame.clone(),
+            },
+            on_connect: None,
+            cwd: None,
+            is_ftp: false,
+            open_sftp: false,
+            tag: Default::default(),
         });
+        self.save_sessions();
+        self.notify = Some((
+            format!("{} {name}", tr(self.lang, "qc.save")),
+            std::time::Instant::now(),
+        ));
     }
 }
 

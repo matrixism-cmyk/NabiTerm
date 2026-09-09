@@ -94,6 +94,7 @@ pub fn open(
     port_name: &str,
     cfg: SerialCfg,
     out_tx: Sender<(PaneId, Bytes)>,
+    on_closed: Box<dyn FnOnce() + Send>,
 ) -> io::Result<SerialChannel> {
     let port = serialport::new(port_name, cfg.baud)
         .data_bits(data_bits(cfg.data_bits))
@@ -104,12 +105,17 @@ pub fn open(
         .map_err(|e| explain(port_name, e))?;
     // 읽기는 복제한 손잡이로 한다 — 쓰기와 같은 것을 나눠 쓰면 서로를 막는다.
     let reader = port.try_clone().map_err(|e| explain(port_name, e))?;
-    spawn_reader(pane, reader, out_tx);
+    spawn_reader(pane, reader, out_tx, on_closed);
     Ok(SerialChannel { port })
 }
 
 /// 리더 스레드 — 읽은 것을 출력 버스로 흘린다(PTY 와 같은 길).
-fn spawn_reader(pane: PaneId, mut port: Box<dyn serialport::SerialPort>, out_tx: Sender<(PaneId, Bytes)>) {
+fn spawn_reader(
+    pane: PaneId,
+    mut port: Box<dyn serialport::SerialPort>,
+    out_tx: Sender<(PaneId, Bytes)>,
+    on_closed: Box<dyn FnOnce() + Send>,
+) {
     let _ = std::thread::Builder::new()
         .name(format!("serial-reader-{}", pane.get()))
         .spawn(move || {
@@ -125,7 +131,12 @@ fn spawn_reader(pane: PaneId, mut port: Box<dyn serialport::SerialPort>, out_tx:
                     }
                     // 시간이 다 된 것은 오류가 아니다. 그 밖의 오류는 선이 빠진 것이다.
                     Err(e) if e.kind() == io::ErrorKind::TimedOut => continue,
-                    Err(_) => break,
+                    Err(_) => {
+                        // **조용히 죽지 않는다.** 직렬은 끊겨도 화면이 그대로 남아 있어,
+                        // 알리지 않으면 "장비가 아무 말이 없다"와 구분되지 않는다.
+                        on_closed();
+                        break;
+                    }
                 }
             }
         });
@@ -183,7 +194,7 @@ mod tests {
     #[test]
     fn 없는_포트는_까닭을_말한다() {
         let (tx, _rx) = crossbeam_channel::unbounded();
-        let Err(e) = open(PaneId::new(1), "COM_NOPE_999", SerialCfg::default(), tx) else {
+        let Err(e) = open(PaneId::new(1), "COM_NOPE_999", SerialCfg::default(), tx, Box::new(|| {})) else {
             panic!("없는 포트가 열렸다");
         };
         let coded = e.get_ref().and_then(|r| r.downcast_ref::<nabi_error::Coded>());
@@ -207,7 +218,7 @@ mod tests {
     fn 실물_포트를_열고_쓴다() {
         let name = std::env::var("NABI_SERIAL_PORT").unwrap_or_else(|_| "COM1".into());
         let (tx, _rx) = crossbeam_channel::unbounded();
-        let mut ch = match open(PaneId::new(1), &name, SerialCfg::default(), tx) {
+        let mut ch = match open(PaneId::new(1), &name, SerialCfg::default(), tx, Box::new(|| {})) {
             Ok(c) => c,
             Err(e) => panic!("{name} 을 열지 못했다: {e}"),
         };

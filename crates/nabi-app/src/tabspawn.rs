@@ -70,4 +70,26 @@ impl NabiApp {
             reply_seq: Some(seq),
         });
     }
+
+    /// 직렬 콘솔 pane 을 띄운다(창에서 고른 값·저장 세션이 같은 길을 탄다).
+    ///
+    /// 출처(`SessionKind::Serial`)를 함께 등록하는 것이 중요하다 — 그래야 이 pane 이
+    /// 워크스페이스에 담기고, 재접속·세션 저장이 무엇으로 열린 창인지 알 수 있다.
+    pub(crate) fn spawn_serial(&mut self, port: String, baud: u32, frame: String) {
+        let origin = nabi_session::SessionKind::Serial {
+            port: port.clone(),
+            baud,
+            frame: frame.clone(),
+        };
+        let seq = self.register_spawn(origin, None);
+        self.orch.send(nabi_proto::Command::SpawnSerialPane {
+            port,
+            baud,
+            frame,
+            size: nabi_types::GridSize::default(),
+            scrollback: self.config.terminal.scrollback,
+            encoding: self.config.terminal.encoding.clone(),
+            reply_seq: Some(seq),
+        });
+    }
 }

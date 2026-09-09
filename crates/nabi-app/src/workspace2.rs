@@ -24,6 +24,8 @@ impl NabiApp {
                     let (cwd, on_connect) = match kind {
                         SessionKind::Local { .. } => self.saved_local_state(*p),
                         SessionKind::Ssh { .. } => (None, self.saved_ssh_ai_command(*p)),
+                        // 직렬은 되살릴 cwd 도 명령도 없다 — 선 너머는 우리 프로세스가 아니다.
+                        SessionKind::Serial { .. } => (None, None),
                     };
                     (
                         SavedSession {

@@ -47,7 +47,18 @@ pub fn open_serial_pane(
         return;
     };
     let cfg = SerialCfg { baud: s.baud, data_bits, parity, stop_bits };
-    match nabi_serial::open(pane, &s.port, cfg, out_tx.clone()) {
+    // 선이 끊기면 알린다. 직렬은 끊겨도 화면이 그대로 남아 있어서, 말해 주지 않으면
+    // **"장비가 조용한 것"과 구분되지 않는다** — 그러면 케이블을 확인할 생각을 못 한다.
+    // 아래 크레이트는 화면 언어를 모르므로 옮기는 일은 여기서 한다(T8-1).
+    let closed_tx = event_tx.clone();
+    let closed_port = s.port.clone();
+    let on_closed: Box<dyn FnOnce() + Send> = Box::new(move || {
+        let _ = closed_tx.send(Event::Notify {
+            pane,
+            text: format!("{} {closed_port}", nabi_i18n::trc("serial.closed")),
+        });
+    });
+    match nabi_serial::open(pane, &s.port, cfg, out_tx.clone(), on_closed) {
         Ok(ch) => {
             // 제목에 설정을 함께 적는다 — 콘솔은 속도를 잘못 잡으면 글자가 깨지는데,
             // 그때 가장 먼저 보고 싶은 것이 지금 무엇으로 붙어 있는가다.

@@ -27,6 +27,8 @@ pub enum SessionKind {
         #[serde(default)]
         agent_forward: bool,
     },
+    /// 직렬 콘솔(COM 포트).
+    Serial { port: String, baud: u32, frame: String },
 }
 
 /// 저장된 한 세션 항목.
@@ -134,15 +136,19 @@ impl SavedSession {
                 }
             }
             SessionKind::Local { shell } => shell.clone(),
+            // 직렬은 "어디에 붙었나"가 곧 포트와 속도다 — 속도가 틀리면 글자가 깨지므로
+            // 목록에서도 함께 보여야 한다(pane 제목과 같은 꼴로).
+            SessionKind::Serial { port, baud, frame } => format!("{port} {baud} {frame}"),
         }
     }
 
-    /// 종류 라벨(표시 배지용): "FTP" / "SSH" / "Local".
+    /// 종류 라벨(표시 배지용): "FTP" / "SSH" / "Local" / "Serial".
     pub fn kind_label(&self) -> &'static str {
         match &self.kind {
             SessionKind::Ssh { .. } if self.is_ftp => "FTP",
             SessionKind::Ssh { .. } => "SSH",
             SessionKind::Local { .. } => "Local",
+            SessionKind::Serial { .. } => "Serial",
         }
     }
 }
@@ -223,6 +229,7 @@ impl SessionTree {
         let keyof = |s: &SavedSession| match &s.kind {
             SessionKind::Ssh { host, .. } => host.to_lowercase(),
             SessionKind::Local { shell } => shell.to_lowercase(),
+            SessionKind::Serial { port, .. } => port.to_lowercase(),
         };
         self.sessions.sort_by(|a, b| keyof(a).cmp(&keyof(b)).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase())));
     }
@@ -351,6 +358,8 @@ impl SessionTree {
             let key = match &s.kind {
                 SessionKind::Ssh { host, port, user, .. } => format!("s:{host}:{port}:{user}:{}", s.is_ftp),
                 SessionKind::Local { shell } => format!("l:{shell}"),
+                // 같은 포트라도 속도가 다르면 다른 세션이다(장비마다 다르게 잡는다).
+                SessionKind::Serial { port, baud, frame } => format!("c:{port}:{baud}:{frame}"),
             };
             seen.insert(key)
         });

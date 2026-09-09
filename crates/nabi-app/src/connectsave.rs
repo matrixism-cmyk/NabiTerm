@@ -71,6 +71,19 @@ impl NabiApp {
 
     /// 저장된 SSH 세션을 Quick Connect에 불러와 수정(이름/호스트/포트/사용자/키)하게 한다.
     pub(crate) fn edit_session(&mut self, s: &nabi_session::SavedSession) {
+        // 직렬은 빠른 연결 창이 아니라 자기 창이 편집기다. 이 갈래가 없으면 목록에서
+        // **편집을 눌러도 아무 일이 없다** — 사용자가 보기에 그것은 고장이다.
+        if let nabi_session::SessionKind::Serial { port, baud, frame } = &s.kind {
+            self.open_serial_dialog();
+            if let Some(st) = self.serial_open.as_mut() {
+                st.port = port.clone();
+                st.baud = *baud;
+                st.frame = frame.clone();
+                // 이름을 채워 두면 저장이 곧 덮어쓰기가 된다(새 이름을 또 적지 않아도 된다).
+                st.save_as = s.name.clone();
+            }
+            return;
+        }
         if let nabi_session::SessionKind::Ssh {
             host,
             port,

@@ -36,4 +36,7 @@ pub const CATALOG_CONN: &[(&str, &str, &str, &str)] = &[
     ("serial.busy", "{0} is already in use by another program. Close that program (a terminal, a logger, or a vendor tool) and try again.", "{0} 을(를) 다른 프로그램이 이미 쓰고 있습니다. 그 프로그램(터미널·로거·장비 도구)을 닫고 다시 시도하세요.", "{0} は他のプログラムが使用中です。そのプログラム(端末・ロガー・機器ツール)を閉じて再試行してください。"),
     ("serial.nodevice", "{0} is not there. The adapter may have been unplugged, or the name may be wrong.", "{0} 이(가) 없습니다. 어댑터가 빠졌거나 이름이 틀렸을 수 있습니다.", "{0} が見つかりません。アダプターが外れているか、名前が違う可能性があります。"),
     ("serial.openfail", "Could not open {0}: {1}", "{0} 을(를) 열지 못했습니다: {1}", "{0} を開けませんでした: {1}"),
+    ("serial.saveas", "Save as session", "세션으로 저장", "セッションとして保存"),
+    ("serial.saveas.hint", "name (leave empty not to save)", "이름(비우면 저장 안 함)", "名前(空なら保存しない)"),
+    ("serial.closed", "The serial port closed — the cable may have been unplugged:", "직렬 포트가 닫혔습니다 — 케이블이 빠졌을 수 있습니다:", "シリアルポートが閉じました — ケーブルが外れた可能性があります:"),
 ];

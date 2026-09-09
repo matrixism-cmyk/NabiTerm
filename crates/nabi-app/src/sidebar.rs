@@ -293,6 +293,7 @@ fn kind_icon(s: &SavedSession) -> &'static str {
         match s.kind {
             SessionKind::Local { .. } => "\u{1f4bb}", // 💻 로컬 셸
             SessionKind::Ssh { .. } => "\u{1f5a5}",   // 🖥 SSH
+            SessionKind::Serial { .. } => "\u{1f50c}", // 🔌 직렬 콘솔
         }
     }
 }

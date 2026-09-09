@@ -83,6 +83,41 @@ mod tests {
         std::env::temp_dir().join(format!("nabi-store-{}-{name}.toml", std::process::id()))
     }
 
+    /// **직렬 세션도 오갔다 와야 한다.** 새 종류를 더할 때 가장 조용히 깨지는 자리가
+    /// 여기다 — 화면에서는 잘 만들어지는데 다시 켜면 사라진다(또는 파일 전체가 날아간다).
+    #[test]
+    fn 직렬_세션이_오간다() {
+        let p = tmp("serial");
+        let _ = std::fs::remove_file(&p);
+        let mut tree = SessionTree::default();
+        tree.sessions.push(SavedSession {
+            name: "스위치 콘솔".into(),
+            folder: Some("장비".into()),
+            kind: SessionKind::Serial { port: "COM3".into(), baud: 115200, frame: "8N1".into() },
+            on_connect: None,
+            cwd: None,
+            is_ftp: false,
+            open_sftp: false,
+            tag: Default::default(),
+        });
+        // 같은 파일에 SSH 도 함께 둔다 — 한 종류가 다른 종류를 밀어내지 않아야 한다.
+        tree.sessions.push(ssh("server", "example.com"));
+        save_tree(&p, &tree).expect("저장");
+        let (back, bak) = load_tree_reporting(&p);
+        assert!(bak.is_none(), "멀쩡한 파일을 망가진 것으로 봤다");
+        assert_eq!(back.sessions.len(), 2);
+        let s = &back.sessions[0];
+        assert_eq!(s.name, "스위치 콘솔");
+        assert_eq!(
+            s.kind,
+            SessionKind::Serial { port: "COM3".into(), baud: 115200, frame: "8N1".into() }
+        );
+        // 목록에 보이는 글도 확인한다 — 속도가 틀리면 글자가 깨지므로 함께 보여야 한다.
+        assert_eq!(s.target_string(), "COM3 115200 8N1");
+        assert_eq!(s.kind_label(), "Serial");
+        let _ = std::fs::remove_file(&p);
+    }
+
     #[test]
     fn missing_file_is_not_corruption() {
         let p = tmp("missing");

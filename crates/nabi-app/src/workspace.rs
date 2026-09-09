@@ -165,6 +165,8 @@ impl NabiApp {
     pub(crate) fn session_will_spawn(&self, kind: &SessionKind) -> bool {
         match kind {
             SessionKind::Local { .. } => true,
+            // 직렬은 물어볼 비밀이 없다 — 포트만 있으면 곧바로 연다.
+            SessionKind::Serial { .. } => true,
             SessionKind::Ssh {
                 credential_ref,
                 key_path,

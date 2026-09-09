@@ -201,6 +201,8 @@ impl NabiApp {
             SessionKind::Local { shell } => {
                 self.spawn_local_cwd(crate::workspace::shell_from_str(&shell), oncmd, saved_cwd)
             }
+            // 직렬은 붙는 데 물어볼 것이 없다 — 창을 거치지 않고 바로 연다.
+            SessionKind::Serial { port, baud, frame } => self.spawn_serial(port, baud, frame),
             SessionKind::Ssh {
                 host,
                 port,
