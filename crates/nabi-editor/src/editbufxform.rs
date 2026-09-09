@@ -88,8 +88,7 @@ mod tests {
     use crate::editbuf::EditBuf;
 
     fn buf(s: &str) -> EditBuf {
-        EditBuf::new_buf(s, "UTF-8".into(), "
-")
+        EditBuf::new_buf(s, "UTF-8".into(), "\n")
     }
 
     #[test]

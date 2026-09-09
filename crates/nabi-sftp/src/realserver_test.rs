@@ -344,10 +344,8 @@ async fn realserver_reports_a_changed_host_key() {
     // 이 호스트의 키라고 **거짓으로** 적어 둔다(형식은 맞지만 다른 키).
     let fake = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGb7GQ2p7DbFPuhVpzOSVQXHDzHfF1lVMSCUmJ8UN0Rp";
     let line = match p.port {
-        22 => format!("{} {fake}
-", p.host),
-        n => format!("[{}]:{n} {fake}
-", p.host),
+        22 => format!("{} {fake}\n", p.host),
+        n => format!("[{}]:{n} {fake}\n", p.host),
     };
     std::fs::write(&kh, line).expect("known_hosts 쓰기");
 

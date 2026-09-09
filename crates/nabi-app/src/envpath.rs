@@ -122,10 +122,8 @@ mod tests {
     #[test]
     fn a_value_with_spaces_survives() {
         let out = concat!(
-            "HKEY_LOCAL_MACHINE@@@...@@@Environment
-",
-            "    Path    REG_EXPAND_SZ    C:@@@Program Files@@@GitHub CLI@@@;C:@@@Windows
-",
+            "HKEY_LOCAL_MACHINE@@@...@@@Environment\n",
+            "    Path    REG_EXPAND_SZ    C:@@@Program Files@@@GitHub CLI@@@;C:@@@Windows\n",
         )
         .replace("@@@", SEP);
         let want = format!("C:{SEP}Program Files{SEP}GitHub CLI{SEP};C:{SEP}Windows");

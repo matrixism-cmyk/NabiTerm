@@ -132,67 +132,37 @@ mod tests {
     #[test]
     fn paste_distributes_one_line_per_caret() {
         // 이것이 이 변경의 전부다 — 예전에는 세 캐럿 모두에 세 줄이 통째로 들어갔다.
-        let mut eb = buf("aa
-bb
-cc
-");
+        let mut eb = buf("aa\nbb\ncc\n");
         eb.box_select((0, 1), (2, 1)); // 각 줄 1열 캐럿 박스.
-        eb.paste_multi("1
-22
-333");
-        assert_eq!(eb.rope.to_string(), "a1a
-b22b
-c333c
-");
+        eb.paste_multi("1\n22\n333");
+        assert_eq!(eb.rope.to_string(), "a1a\nb22b\nc333c\n");
         assert_eq!(eb.sel.len(), 3, "붙여넣기 뒤에도 멀티캐럿 유지");
     }
 
     #[test]
     fn paste_undoes_in_one_step() {
-        let mut eb = buf("aa
-bb
-cc
-");
+        let mut eb = buf("aa\nbb\ncc\n");
         eb.box_select((0, 1), (2, 1));
-        eb.paste_multi("1
-2
-3");
+        eb.paste_multi("1\n2\n3");
         eb.undo();
-        assert_eq!(eb.rope.to_string(), "aa
-bb
-cc
-", "한 번의 undo 로 전부 되돌린다");
+        assert_eq!(eb.rope.to_string(), "aa\nbb\ncc\n", "한 번의 undo 로 전부 되돌린다");
     }
 
     #[test]
     fn paste_replaces_the_selected_box() {
         // 범위를 잡은 박스면 그 글자를 지우고 대신 넣는다.
-        let mut eb = buf("aXa
-bYb
-cZc
-");
+        let mut eb = buf("aXa\nbYb\ncZc\n");
         eb.box_select((0, 1), (2, 2));
-        eb.paste_multi("1
-2
-3");
-        assert_eq!(eb.rope.to_string(), "a1a
-b2b
-c3c
-");
+        eb.paste_multi("1\n2\n3");
+        assert_eq!(eb.rope.to_string(), "a1a\nb2b\nc3c\n");
     }
 
     #[test]
     fn mismatched_paste_keeps_the_old_behaviour() {
         // 줄 수가 안 맞으면 예전대로 통째로 — 예상할 수 없는 결과를 만들지 않는다.
-        let mut eb = buf("aa
-bb
-cc
-");
+        let mut eb = buf("aa\nbb\ncc\n");
         eb.box_select((0, 1), (2, 1));
         eb.paste_multi("X");
-        assert_eq!(eb.rope.to_string(), "aXa
-bXb
-cXc
-");
+        assert_eq!(eb.rope.to_string(), "aXa\nbXb\ncXc\n");
     }
 }

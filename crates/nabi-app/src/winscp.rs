@@ -320,9 +320,7 @@ mod tests {
     /// 이름 안의 진짜 `/`는 그룹이 아니다 — `%2F`로 와서 이름 그대로 남아야 한다.
     #[test]
     fn an_encoded_slash_stays_inside_the_name() {
-        let got = parse("[Sessions/a%2Fb]
-HostName=h
-");
+        let got = parse("[Sessions/a%2Fb]\nHostName=h\n");
         assert_eq!(got.len(), 1);
         assert_eq!(got[0].name, "a/b");
         assert!(got[0].folder.is_none());

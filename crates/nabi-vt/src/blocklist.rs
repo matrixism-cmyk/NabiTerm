@@ -165,8 +165,7 @@ mod tests {
     fn a_finished_command_knows_how_long_it_took() {
         let mut m = TermModel::new(GridSize::new(60, 6), 300);
         m.mark_prompt();
-        m.process(b"$ sleep
-");
+        m.process(b"$ sleep\n");
         assert_eq!(m.command_blocks()[0].ms, None, "도는 명령에 시간이 붙었다");
         m.mark_command_done(Some(0));
         assert!(m.command_blocks()[0].ms.is_some(), "끝났는데 시간이 없다");

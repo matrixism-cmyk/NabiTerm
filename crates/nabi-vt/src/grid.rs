@@ -447,8 +447,7 @@ mod tests {
     fn jumping_to_an_absolute_line_brings_it_on_screen() {
         let mut m = TermModel::new(GridSize::new(20, 4), 500);
         for i in 0..100 {
-            m.process(format!("line {i}
-").as_bytes());
+            m.process(format!("line {i}\n").as_bytes());
         }
         let total = m.total_abs_lines();
         m.scroll_to_abs_line(10);
@@ -464,8 +463,7 @@ mod tests {
     #[test]
     fn jumping_past_the_end_is_clamped_not_a_panic() {
         let mut m = TermModel::new(GridSize::new(20, 4), 100);
-        m.process(b"only one line
-");
+        m.process(b"only one line\n");
         m.scroll_to_abs_line(999_999);
         assert_eq!(m.scrollback_offset(), 0, "미래로는 갈 수 없다");
     }

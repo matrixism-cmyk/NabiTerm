@@ -179,10 +179,8 @@ mod tests {
                 diff(&want_m, got.get(other).unwrap(), other, &mut d);
                 assert!(
                     d.is_empty(),
-                    "[{broken}] 이 깨졌다고 [{other}] 까지 잃었다:
-  {}",
-                    d.join("
-  ")
+                    "[{broken}] 이 깨졌다고 [{other}] 까지 잃었다:\n{}",
+                    d.join("\n")
                 );
             }
         }

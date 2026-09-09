@@ -89,10 +89,7 @@ use crate::textdata::TextData;
 
     #[test]
     fn going_to_a_line_moves_the_caret_and_scrolls() {
-        let mut b = buf("첫째
-둘째
-셋째
-넷째");
+        let mut b = buf("첫째\n둘째\n셋째\n넷째");
         b.go_to_line(2, None);
         assert_eq!(b.caret_line(), 2, "셋째 줄");
         assert_eq!(b.caret_col(), 0);
@@ -102,9 +99,7 @@ use crate::textdata::TextData;
     #[test]
     fn a_line_past_the_end_lands_on_the_last_line() {
         // 아무 일도 안 하면 사용자는 자기가 잘못 눌렀는지 무시당했는지 알 수 없다.
-        let mut b = buf("하나
-둘
-셋");
+        let mut b = buf("하나\n둘\n셋");
         b.go_to_line(999, None);
         assert_eq!(b.caret_line(), 2, "마지막 줄");
         // 커서만 보면 이 시험은 방어를 빼도 통과한다 — `go()` 가 이미 총 길이로 자르기
@@ -116,8 +111,7 @@ use crate::textdata::TextData;
     #[test]
     fn a_column_is_counted_in_characters() {
         // 바이트로 세면 한글 줄에서 커서가 글자 가운데에 떨어진다.
-        let mut b = buf("가나다라
-다음");
+        let mut b = buf("가나다라\n다음");
         b.go_to_line(0, Some(2));
         assert_eq!(b.caret_col(), 2);
         assert_eq!(b.caret, 6, "두 글자 = 6바이트");
@@ -125,23 +119,14 @@ use crate::textdata::TextData;
 
     #[test]
     fn the_view_starts_two_lines_above_so_context_is_visible() {
-        let mut b = buf("1
-2
-3
-4
-5
-6
-7
-8");
+        let mut b = buf("1\n2\n3\n4\n5\n6\n7\n8");
         b.go_to_line(5, None);
         assert_eq!(b.scroll_to, Some(3), "찾던 줄이 맨 위에 딱 붙으면 앞 맥락이 안 보인다");
     }
 
     #[test]
     fn near_the_top_the_view_does_not_go_negative() {
-        let mut b = buf("1
-2
-3");
+        let mut b = buf("1\n2\n3");
         b.go_to_line(1, None);
         assert_eq!(b.scroll_to, Some(0));
     }
@@ -150,8 +135,7 @@ use crate::textdata::TextData;
     fn a_found_range_is_selected_not_just_pointed_at() {
         // 커서만 옮기면 사용자가 무엇이 걸렸는지 눈으로 확인해야 한다. 선택돼 있으면
         // 바로 복사하거나 덮어쓸 수 있다.
-        let mut b = buf("port 22
-port 80");
+        let mut b = buf("port 22\nport 80");
         b.select_range(8, 12);
         assert!(b.has_selection());
         assert_eq!(b.selected_text(), "port");
@@ -160,8 +144,7 @@ port 80");
 
     #[test]
     fn selecting_a_range_in_a_hangul_document_keeps_the_bytes() {
-        let mut b = buf("앞줄
-포트 설정");
+        let mut b = buf("앞줄\n포트 설정");
         // "포트" 는 앞줄(6바이트) + 개행(1) 다음 6바이트.
         b.select_range(7, 13);
         assert_eq!(b.selected_text(), "포트");

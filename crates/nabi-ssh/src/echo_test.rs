@@ -68,7 +68,7 @@ impl server::Handler for Echo {
 }
 
 // 고정 테스트 호스트키(ssh-key 픽스처). rng 버전 의존을 피하려고 임베드한다.
-const SERVER_KEY: &str = "-----BEGIN OPENSSH PRIVATE KEY-----
+const SERVER_KEY: &str = r"-----BEGIN OPENSSH PRIVATE KEY-----
 b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
 QyNTUxOQAAACCzPq7zfqLffKoBDe/eo04kH2XxtSmk9D7RQyf1xUqrYgAAAJgAIAxdACAM
 XQAAAAtzc2gtZWQyNTUxOQAAACCzPq7zfqLffKoBDe/eo04kH2XxtSmk9D7RQyf1xUqrYg

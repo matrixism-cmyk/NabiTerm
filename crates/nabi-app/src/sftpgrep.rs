@@ -185,9 +185,7 @@ mod tests {
         // 이 시험이 이 배치에서 가장 중요하다. 한국 서버에는 CP949 파일이 흔한데,
         // `from_utf8_lossy` 로 읽으면 한글이 대체 문자로 뭉개져 **한글 질의는 영원히
         // 아무것도 못 찾는다.** 못 찾은 이유가 화면에 드러나지도 않는다.
-        let (bytes, _, _) = encoding_rs::EUC_KR.encode("첫 줄
-포트 설정은 2222 입니다
-끝");
+        let (bytes, _, _) = encoding_rs::EUC_KR.encode("첫 줄\n포트 설정은 2222 입니다\n끝");
         let f = scan_file("etc/설정.conf", &bytes, "포트", true, false)
             .expect("CP949 한글 파일에서 한글을 찾아야 한다");
         assert_eq!(f.lines.len(), 1);
@@ -196,8 +194,7 @@ mod tests {
 
     #[test]
     fn a_utf8_korean_file_is_searchable_too() {
-        let f = scan_file("x", "설정
-포트 2222".as_bytes(), "포트", true, false).unwrap();
+        let f = scan_file("x", "설정\n포트 2222".as_bytes(), "포트", true, false).unwrap();
         assert_eq!(f.lines.len(), 1);
     }
 

@@ -37,8 +37,7 @@ async fn agent_forwarding_gives_the_remote_its_own_socket() {
     let out = run_remote(&host, &user, true, "echo SOCK=[$SSH_AUTH_SOCK]").await;
     assert!(
         out.contains("SOCK=[/") || out.contains("SOCK=[\\"),
-        "포워딩을 켰는데 원격에 에이전트 소켓이 없다:
-{out}"
+        "포워딩을 켰는데 원격에 에이전트 소켓이 없다:\n{out}"
     );
 }
 
@@ -49,8 +48,7 @@ async fn agent_forwarding_gives_the_remote_its_own_socket() {
 async fn without_forwarding_the_remote_has_no_socket() {
     let Some((host, user)) = target() else { return };
     let out = run_remote(&host, &user, false, "echo SOCK=[$SSH_AUTH_SOCK]").await;
-    assert!(out.contains("SOCK=[]"), "포워딩을 껐는데 원격에 소켓이 있다:
-{out}");
+    assert!(out.contains("SOCK=[]"), "포워딩을 껐는데 원격에 소켓이 있다:\n{out}");
 }
 
 /// 검증 대상. 준비가 안 됐거나 **루프백이면 건너뛴다** — 자기 자신은 판별력이 없다.

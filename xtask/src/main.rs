@@ -30,6 +30,7 @@ mod e2everbs;
 mod glyphs;
 mod i18nkeys;
 mod errswallow;
+mod rawnewline;
 mod rswalk;
 
 use std::process::ExitCode;
@@ -49,6 +50,9 @@ fn main() -> ExitCode {
         "config-keys" => configkeys::run(),
         // 실패해도 아무도 모르는 저장·쓰기 — 모아 둔 헬퍼가 지켜지는지 본다(errswallow.rs).
         "err-swallow" => errswallow::run(),
+        // 백슬래시가 벗겨져 문자열 안에 진짜 개행이 박힌 자리(rawnewline.rs).
+        // 컴파일도 시험도 통과하므로 이것 말고는 잡을 길이 없다.
+        "raw-newline" => rawnewline::run(),
         "dist" => dist::run(),
         "dist-standalone" => dist::standalone(),
         "dist-mesa" => dist::mesa(),

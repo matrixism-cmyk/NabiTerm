@@ -220,13 +220,7 @@ pub(crate) const CATALOG5: &[(&str, &str, &str, &str)] = &[
     ("rcmd.running", "Running…", "실행 중…", "実行中…"),
     ("rcmd.ok", "Finished", "끝났습니다", "完了しました"),
     ("rcmd.nocode", "The server did not report an exit code", "서버가 종료 코드를 주지 않았습니다", "サーバーが終了コードを返しませんでした"),
-    ("rcmd.truncated", "
-[output was cut here]
-", "
-[여기서 출력을 끊었습니다]
-", "
-[ここで出力を打ち切りました]
-"),
+    ("rcmd.truncated", "\n[output was cut here]\n", "\n[여기서 출력을 끊었습니다]\n", "\n[ここで出力を打ち切りました]\n"),
     ("sftp.exec.ftp", "FTP cannot run commands", "FTP는 명령을 실행하지 못합니다", "FTPはコマンドを実行できません"),
     ("rcmd.gzip", "Compress (gzip)", "압축(gzip)", "圧縮(gzip)"),
     ("rcmd.gunzip", "Decompress (gunzip)", "압축 풀기(gunzip)", "展開(gunzip)"),

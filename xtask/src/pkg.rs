@@ -99,8 +99,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
             format!("PackageIdentifier: {WINGET_ID}"),
             format!("PackageVersion: {version}"),
         ]
-        .join("
-")
+        .join("\n")
     };
 
     let version_yaml = [
@@ -110,8 +109,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
-    .join("
-");
+    .join("\n");
 
     let installer_yaml = [
         head("installer"),
@@ -135,8 +133,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
-    .join("
-");
+    .join("\n");
 
     let locale_yaml = [
         head("defaultLocale"),
@@ -165,8 +162,7 @@ pub fn winget_manifests(version: &str, url: &str, sha: &str) -> Vec<(String, Str
         "ManifestVersion: 1.12.0".into(),
         String::new(),
     ]
-    .join("
-");
+    .join("\n");
 
     vec![
         (format!("{WINGET_ID}.yaml"), version_yaml),
@@ -397,8 +393,7 @@ mod tests {
         assert_eq!(names.len(), 3, "{names:?}");
         assert!(names.iter().any(|n| n.ends_with(".installer.yaml")), "{names:?}");
         assert!(names.iter().any(|n| n.ends_with(".locale.en-US.yaml")), "{names:?}");
-        let all: String = w.iter().map(|(_, b)| b.as_str()).collect::<Vec<_>>().join("
-");
+        let all: String = w.iter().map(|(_, b)| b.as_str()).collect::<Vec<_>>().join("\n");
         assert!(all.contains("PackageVersion: 1.2.3"));
         assert!(all.contains(&url));
         assert!(all.contains("ABC123"), "winget 해시는 대문자다");

@@ -152,12 +152,10 @@ pub fn len() -> usize {
 /// 물어보는 사람에게 보여 줄 수 있어야 기록이 쓸모가 있다. 탭으로 나눠 표 모양이라
 /// 그대로 붙여넣어도 읽히고, 표 계산기에도 들어간다.
 pub fn export(list: &[Entry]) -> String {
-    let mut out = String::from("time(s)	from	verb	target	outcome	bytes
-");
+    let mut out = String::from("time(s)	from	verb	target	outcome	bytes\n");
     for e in list {
         out.push_str(&format!(
-            "{}	{}	{}	{}	{}	{}
-",
+            "{}	{}	{}	{}	{}	{}\n",
             e.at_secs, e.from, e.verb, e.target, e.outcome.label(), e.bytes
         ));
     }
