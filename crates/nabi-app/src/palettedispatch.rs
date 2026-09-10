@@ -177,9 +177,21 @@ impl NabiApp {
 
     /// 히스토리에서 고른 명령을 포커스 pane에 개행과 함께 보낸다(재실행).
     pub(crate) fn run_history_cmd(&mut self, cmd: String) {
+        self.put_history_cmd(cmd, true);
+    }
+
+    /// 기록의 명령을 pane 으로 보낸다. `run` 이 거짓이면 **줄바꿈을 붙이지 않는다** —
+    /// 프롬프트에 올려만 두고 사용자가 고쳐서 누르게 한다.
+    ///
+    /// 목록에서 한 줄을 누르면 곧바로 실행된다. 기록에 `rm -rf` 같은 것이 있으면 한 번
+    /// 잘못 누르는 것으로 끝난다. 그래서 "올려만 두기"를 우클릭에 둔다 — 되돌릴 수 없는
+    /// 일에는 한 걸음이 더 있어야 한다.
+    pub(crate) fn put_history_cmd(&mut self, cmd: String, run: bool) {
         let Some(pane) = self.focused_pane() else { return };
         let mut data = cmd.into_bytes();
-        data.push(b'\r');
+        if run {
+            data.push(b'\r');
+        }
         self.orch.send(nabi_proto::Command::WriteInput { pane, data: bytes::Bytes::from(data) });
     }
 

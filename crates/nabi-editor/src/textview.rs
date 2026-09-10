@@ -38,9 +38,47 @@ pub fn huge_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAc
     egui::Panel::bottom(ui.id().with("tv_status")).show(ui, |ui| {
         crate::textbar::status(ui, doc, (line, col), sel, lines, lang);
     });
-    body(ui, doc);
+    let m = body(ui, doc, lang);
+    apply_menu(ui, doc, lang, m, &mut act);
     refused_notice(ui, doc, lang);
     act
+}
+
+/// 우클릭 메뉴가 고른 것을 실제로 한다.
+///
+/// 클로저 안에서 `doc` 을 또 빌릴 수 없어 밖으로 내왔다 — rope 편집기(`editbufview`)와
+/// **같은 모양**이다. 두 창이 다르게 생기면 다음에 한쪽만 고쳐진다.
+fn apply_menu(
+    ui: &egui::Ui,
+    doc: &mut EditorDoc,
+    lang: Lang,
+    m: crate::editbufmenu::BufMenuAct,
+    act: &mut EditorAct,
+) {
+    if let Some(t) = m.copy.filter(|t| !t.is_empty()) {
+        ui.ctx().copy_text(t);
+    }
+    let readonly = doc.readonly;
+    if let Some(tb) = doc.huge.as_mut() {
+        // 잘라내기는 **복사한 뒤에** 지운다 — 지우고 나면 꺼낼 것이 없다.
+        if m.cut && !readonly {
+            tb.erase(false);
+        }
+        if m.paste && !readonly {
+            if let Some(t) = crate::uiutil::clipboard_text() {
+                // 넣을 수 없는 글자를 만나면 그 사실을 상태 표시로 알린다(조용한 무시 금지).
+                if !tb.insert(&t.replace("\r\n", "\n")) {
+                    tb.refused_at = Some(std::time::Instant::now());
+                }
+            }
+        }
+    }
+    if m.find {
+        doc.find.open = true;
+    }
+    if let Some(k) = m.note {
+        act.note = Some(tr(lang, k).to_string());
+    }
 }
 
 /// 못 적는 글자를 거절했으면 잠깐 이유를 보여 준다. 3초 뒤 스스로 사라진다.
@@ -83,12 +121,14 @@ fn sel_in_line(tb: &TextBuf, i: usize, d: &DispLine) -> Option<(usize, usize)> {
     Some((a, b))
 }
 
-fn body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
+fn body(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> crate::editbufmenu::BufMenuAct {
     let (fsize, readonly, show_lineno) = (doc.font_size, doc.readonly, doc.show_lineno);
+    let (mpath, mhint) = (doc.path.clone(), doc.lang_ext().to_string());
+    let mut menu = crate::editbufmenu::BufMenuAct::default();
     let font = egui::FontId::monospace(fsize);
     let row_h = ui.fonts_mut(|f| f.row_height(&font)).max(1.0);
     let char_w = ui.fonts_mut(|f| f.glyph_width(&font, '0')).max(6.0);
-    let Some(tb) = doc.huge.as_mut() else { return };
+    let Some(tb) = doc.huge.as_mut() else { return menu };
     tb.readonly = readonly;
     let lines = tb.data.lines();
     let gutter_w = char_w * (lines.to_string().len().max(4) as f32) + 12.0;
@@ -109,6 +149,10 @@ fn body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
         let (top, left) = (ui.min_rect().top(), ui.min_rect().left());
         let v = View { row_h, font: font.clone(), text_left: left + gutter_w, top };
         let resp = ui.interact(ui.clip_rect(), ui.id().with("tv_area"), egui::Sense::click_and_drag());
+        // 우클릭 메뉴 — 형제 창 셋에는 있고 여기에만 없었다(2026-09-10).
+        resp.context_menu(|ui| {
+            menu = crate::textmenu::context_menu(ui, tb, lang, readonly, &mpath, &mhint);
+        });
         if resp.clicked() || resp.dragged() {
             resp.request_focus();
             if let Some(p) = ui.ctx().pointer_interact_pos() {
@@ -126,6 +170,7 @@ fn body(ui: &mut egui::Ui, doc: &mut EditorDoc) {
         }
         paint(ui, tb, &v, first, last, show_lineno, resp.has_focus());
     });
+    menu
 }
 
 /// 포인터 위치 → 문서 바이트 오프셋(갤리 기준).

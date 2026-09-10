@@ -116,12 +116,13 @@ impl NabiApp {
         let lang = self.lang;
         // 사본을 먼저 뜬다 — self를 통째로 빌려 주면서 설정도 함께 빌릴 수 없다.
         let recent = self.config.terminal.local_recent.clone();
+        let bms = self.config.terminal.browser_bookmarks.clone();
         let mut act: Option<BrowserAct> = None;
         egui::Panel::right("file_browser")
             .default_size(300.0)
             .size_range(180.0..=560.0) // 터미널을 가리지 않도록 상한 제한.
             .show(ui, |ui| {
-                act = Some(render_browser_tab(ui, &mut self.browser, &remote_map, can_upload, lang, 0, &recent));
+                act = Some(render_browser_tab(ui, &mut self.browser, &remote_map, can_upload, lang, 0, &recent, &bms));
             });
         if let Some(a) = act {
             if let Some(r) = a.rect {
@@ -174,6 +175,11 @@ impl NabiApp {
         if a.dir_stats { self.open_dir_stats(); }
         self.apply_zip_acts(a.zip_make.take(), a.zip_extract.take());
         if let Some(name) = a.props { self.open_file_props(path.join(&name)); }
+        // 즐겨찾기 — 지금 폴더를 꽂거나 뺀다(규칙은 원격과 한 곳에서 나눠 쓴다).
+        if a.bookmark_add || a.bookmark_del.is_some() {
+            let here = a.bookmark_add.then(|| path.to_string_lossy().into_owned());
+            self.handle_browser_bookmarks(here, a.bookmark_del.take());
+        }
         if let Some(name) = a.calc_size {
             let (files, bytes) = crate::browserops::dir_stats(&path.join(&name));
             self.notify = Some((format!("{name}: {} \u{00b7} {files}", crate::browserfs::human(bytes)), std::time::Instant::now()));

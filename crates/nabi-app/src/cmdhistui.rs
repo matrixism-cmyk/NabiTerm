@@ -36,6 +36,9 @@ impl NabiApp {
         let mut filter: Filter = ctx.data(|d| d.get_temp(f_id)).unwrap_or_default();
         let mut run: Option<String> = None;
         let mut copy: Option<String> = None;
+        // 실행하지 않고 프롬프트에 **올려만 두기**, 그리고 그때 있던 폴더로 가기.
+        let mut put: Option<String> = None;
+        let mut go_cwd: Option<String> = None;
         let redacting = self.config.terminal.redact_history;
         egui::Window::new(tr(lang, "cmdhist.title"))
             .open(&mut open)
@@ -68,9 +71,30 @@ impl NabiApp {
                     for r in &rows {
                         ui.horizontal(|ui| {
                             mark(ui, r.exit);
-                            if ui.selectable_label(false, short(&r.cmd, 70)).on_hover_text(&r.cmd).clicked() {
+                            let row = ui.selectable_label(false, short(&r.cmd, 70)).on_hover_text(&r.cmd);
+                            if row.clicked() {
                                 run = Some(r.cmd.clone());
                             }
+                            // 우클릭 — 누르면 곧바로 실행되므로, **실행하지 않는 길**이
+                            // 있어야 한다(기록에는 되돌릴 수 없는 명령도 들어 있다).
+                            row.context_menu(|ui| {
+                                if ui.button(tr(lang, "cmdhist.run")).clicked() {
+                                    run = Some(r.cmd.clone());
+                                    ui.close();
+                                }
+                                if ui.button(tr(lang, "cmdhist.put")).clicked() {
+                                    put = Some(r.cmd.clone());
+                                    ui.close();
+                                }
+                                if ui.button(tr(lang, "menu.copy")).clicked() {
+                                    copy = Some(r.cmd.clone());
+                                    ui.close();
+                                }
+                                if !r.cwd.is_empty() && ui.button(tr(lang, "cmdhist.gocwd")).clicked() {
+                                    go_cwd = Some(r.cwd.clone());
+                                    ui.close();
+                                }
+                            });
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                 if ui.small_button("\u{1f4cb}").on_hover_text(tr(lang, "menu.copy")).clicked() {
                                     copy = Some(r.cmd.clone());
@@ -100,6 +124,22 @@ impl NabiApp {
             // 팔레트의 재실행과 **같은 길**을 쓴다 — 두 벌로 나뉘면 곧 어긋난다.
             self.run_history_cmd(c);
             self.cmd_hist_open = false;
+        }
+        if let Some(c) = put {
+            // 올려만 두고 창을 닫는다 — 고칠 자리가 프롬프트이므로 거기로 보내야 한다.
+            self.put_history_cmd(c, false);
+            self.cmd_hist_open = false;
+        }
+        if let Some(p) = go_cwd {
+            // 그때 그 폴더로 — 없어졌으면 아무 일도 하지 않는다(빈 화면으로 데려가지 않는다).
+            let dir = std::path::PathBuf::from(p);
+            if dir.is_dir() {
+                self.browser.path = dir;
+                self.browser.open = true;
+                self.browser.cache_dirty = true;
+            } else {
+                self.notify = Some((tr(lang, "cmdhist.gone").to_string(), std::time::Instant::now()));
+            }
         }
         if !open {
             self.cmd_hist_open = false;

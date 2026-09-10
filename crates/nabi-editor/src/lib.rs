@@ -48,7 +48,10 @@ pub mod textbuf;
 pub mod textbufedit;
 pub mod textdata;
 pub mod textfind;
-pub mod textmove;
+#[cfg(test)]
+mod ctxdrift;
+pub mod textmenu;
+mod textmove;
 pub mod textkeys;
 pub mod textindex;
 pub mod textview;

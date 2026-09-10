@@ -120,6 +120,8 @@ pub struct TermTabViewer<'a> {
     pub sftp_act: &'a mut crate::sftptab::SftpAct,
     /// SFTP 원격 경로 북마크(FileZilla식).
     pub sftp_bookmarks: &'a [String],
+    /// 로컬 탐색기 북마크(원격과 짝).
+    pub browser_bookmarks: &'a [String],
     /// 스스로 쌓인 최근 원격 경로(북마크와 같은 메뉴에 붙는다).
     pub sftp_recent: &'a [String],
     /// 최근 로컬 폴더(원격과 같은 규칙 — `recentpaths`).
@@ -350,6 +352,7 @@ impl egui_dock::TabViewer for TermTabViewer<'_> {
                 pane,
                 crate::browser::render_browser_tab(
                     ui, b, self.remote_map, self.can_upload, self.lang, pane.get(), self.local_recent,
+                    self.browser_bookmarks,
                 ),
             ));
             return;

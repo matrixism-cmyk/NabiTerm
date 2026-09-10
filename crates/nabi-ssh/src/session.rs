@@ -334,31 +334,105 @@ async fn pump(
     Ok(())
 }
 
+/// 서버가 무엇을 받는지 묻는다.
+///
+/// `none` 인증을 한 번 보내면 서버가 "이런 방법들을 써라"라고 답한다. OpenSSH 클라이언트도
+/// 늘 이것부터 한다. 답을 못 받으면 "모른다"로 두고 걸러내지 않는다 —
+/// 여기서 실패했다고 접속 자체를 포기하면 안 된다.
+async fn probe_methods(
+    handle: &mut client::Handle<ClientHandler>,
+    user: &str,
+) -> Result<crate::authchain::ServerAccepts, ()> {
+    use russh::client::AuthResult;
+    use russh::MethodKind;
+    match handle.authenticate_none(user).await {
+        // 서버가 `none` 을 받아 준 것이다 — 이미 들어갔다.
+        Ok(AuthResult::Success) => Err(()),
+        Ok(AuthResult::Failure { remaining_methods, .. }) => {
+            Ok(crate::authchain::ServerAccepts {
+                publickey: remaining_methods.contains(&MethodKind::PublicKey),
+                password: remaining_methods.contains(&MethodKind::Password),
+                known: true,
+            })
+        }
+        Err(_) => Ok(crate::authchain::ServerAccepts::unknown()),
+    }
+}
+
+/// 계획을 세울 재료를 모은다. 화면도 네트워크도 건드리지 않는다.
+fn plan_inputs(params: &SshParams) -> (Option<String>, bool, bool) {
+    match &params.auth {
+        SshAuth::KeyFile { path, .. } => (Some(path.clone()), false, false),
+        SshAuth::Password(pw) => (None, !pw.is_empty(), false),
+        SshAuth::Agent => (None, false, true),
+        SshAuth::None => (None, false, false),
+    }
+}
+
+/// **여러 방법을 차례로 시도한다**(자세한 규칙과 상한은 [`crate::authchain`]).
+///
+/// 예전에는 고른 것 하나만 써 보고 끝냈다. 그래서 `~/.ssh` 에 맞는 키가 있는데도
+/// 세션에 적어 둔 것이 옛것이면 그냥 실패했다 — OpenSSH 로는 붙는 서버인데도.
 async fn authenticate(
     handle: &mut client::Handle<ClientHandler>,
     params: &SshParams,
 ) -> Result<(), russh::Error> {
+    use crate::authchain::Attempt;
     use russh::client::AuthResult;
-    let result = match &params.auth {
-        SshAuth::None => return Err(russh::Error::NotAuthenticated),
-        SshAuth::Password(pw) => handle.authenticate_password(&params.user, pw).await?,
-        SshAuth::KeyFile { path, passphrase } => {
-            let key = russh::keys::load_secret_key(path, passphrase.as_deref())?;
-            let with_hash = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
-            handle.authenticate_publickey(&params.user, with_hash).await?
-        }
-        SshAuth::Agent => {
-            crate::agent::authenticate_agent(handle, &params.user)
-                .await
-                .map_err(|_| russh::Error::NotAuthenticated)?;
-            AuthResult::Success
-        }
-    };
-    if matches!(result, AuthResult::Success) {
-        Ok(())
-    } else {
-        Err(russh::Error::NotAuthenticated)
+    if matches!(params.auth, SshAuth::None) {
+        return Err(russh::Error::NotAuthenticated);
     }
+    // 서버가 `none` 을 받아 주면 이미 들어간 것이다.
+    let accepts = match probe_methods(handle, &params.user).await {
+        Ok(a) => a,
+        Err(()) => return Ok(()),
+    };
+    let (chosen, has_pw, chose_agent) = plan_inputs(params);
+    let present = crate::authorder::scan(&crate::authorder::default_dir());
+    let agent_running = !crate::agent::agent_identities().await.is_empty();
+    let plan = crate::authchain::plan(
+        chosen.as_deref(),
+        has_pw,
+        chose_agent,
+        &present,
+        agent_running,
+        accepts,
+    );
+    let dir = crate::authorder::default_dir();
+    for attempt in &plan {
+        let ok = match attempt {
+            Attempt::Agent => crate::agent::authenticate_agent(handle, &params.user).await.is_ok(),
+            Attempt::Password => match &params.auth {
+                SshAuth::Password(pw) => {
+                    matches!(handle.authenticate_password(&params.user, pw).await, Ok(AuthResult::Success))
+                }
+                // 비밀번호를 우리가 만들어 내지 않는다. 고른 것이 아니면 건너뛴다.
+                _ => false,
+            },
+            Attempt::Key { name, source } => {
+                // 고른 키는 사용자가 적어 준 경로와 암호를 그대로 쓰고, 거드는 키는
+                // `~/.ssh` 에서 이름으로 찾는다(암호 걸린 키는 여기서 조용히 걸러진다 —
+                // 열지 못한 것은 **서버에 던지지도 않으므로** 시도 횟수를 깎지 않는다).
+                let (path, pass) = match (source, &params.auth) {
+                    (crate::authorder::Source::Chosen, SshAuth::KeyFile { path, passphrase }) => {
+                        (std::path::PathBuf::from(path), passphrase.clone())
+                    }
+                    _ => (dir.join(name), None),
+                };
+                match russh::keys::load_secret_key(&path, pass.as_deref()) {
+                    Ok(key) => {
+                        let wh = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
+                        matches!(handle.authenticate_publickey(&params.user, wh).await, Ok(AuthResult::Success))
+                    }
+                    Err(_) => false,
+                }
+            }
+        };
+        if ok {
+            return Ok(());
+        }
+    }
+    Err(russh::Error::NotAuthenticated)
 }
 
 #[cfg(test)]

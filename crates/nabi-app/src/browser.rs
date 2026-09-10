@@ -38,6 +38,10 @@ pub(crate) struct BrowserAct {
     /// 고른 두 파일을 비교한다(원격 도구 메뉴와 같은 항목).
     pub compare: bool,
     pub toggle_hidden: bool,
+    /// 지금 폴더를 북마크에 넣는다(원격 별표와 같은 규칙).
+    pub bookmark_add: bool,
+    /// 이 북마크를 뺀다.
+    pub bookmark_del: Option<String>,
     pub mkdir_ok: bool,
     pub mkdir_cancel: bool,
     pub rename_start: Option<String>,
@@ -82,9 +86,10 @@ pub(crate) fn render_browser_tab(
     lang: Lang,
     scope: u64,
     recent: &[String],
+    bookmarks: &[String],
 ) -> BrowserAct {
     ui.push_id(("browser_scope", scope), |ui| {
-        render_inner(ui, b, remote_map, can_upload, lang, recent)
+        render_inner(ui, b, remote_map, can_upload, lang, recent, bookmarks)
     })
     .inner
 }
@@ -96,6 +101,7 @@ fn render_inner(
     can_upload: bool,
     lang: Lang,
     recent: &[String],
+    bookmarks: &[String],
 ) -> BrowserAct {
     let mut a = BrowserAct {
         // 시작 시점 min_rect는 비어 있어 ui_contains_pointer가 항상 false —
@@ -169,7 +175,7 @@ fn render_inner(
         if ui.button("\u{1f5a5}").on_hover_text(nabi_i18n::tr(lang, "browser.mycomputer")).clicked() {
             a.nav = Some(std::path::PathBuf::new());
         }
-        crate::browserplaces::places_menu(ui, lang, recent, &mut a);
+        crate::browserplaces::places_menu(ui, lang, recent, bookmarks, &mut a);
         // 아이콘 + 번역된 툴팁 — 옆 버튼들·SFTP 툴바와 같은 방식(한국어를 라벨에 박아 두면
         // 일본어·영어 사용자에게 그대로 보인다).
         if ui.button("\u{2b06}").on_hover_text(nabi_i18n::tr(lang, "browser.up")).clicked() {

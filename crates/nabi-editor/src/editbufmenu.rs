@@ -12,6 +12,12 @@ use nabi_i18n::{tr, Lang};
 pub struct BufMenuAct {
     /// 클립보드로 보낼 텍스트(복사·잘라내기).
     pub copy: Option<String>,
+    /// 복사한 뒤 **지우기까지** 해야 하나(잘라내기).
+    ///
+    /// rope 편집기는 메뉴가 `&mut` 를 들고 있어 그 자리에서 지운다. 무제한 편집기는
+    /// 읽기만 하는 참조로 메뉴를 그리므로(선택 범위를 바이트로 꺼내야 한다) 지우는 일을
+    /// 부르는 쪽에 넘긴다. 그래서 이 깃발은 `textmenu` 만 세운다.
+    pub cut: bool,
     /// 클립보드에서 붙여넣기.
     pub paste: bool,
     /// 찾기 막대 열기.
@@ -26,7 +32,9 @@ pub struct BufMenuAct {
 
 /// AI 에게 넘길 글의 상한(문자). 이보다 크면 어느 AI 의 문맥에도 안 들어가고,
 /// 클립보드에 담는 것만으로도 화면이 멈춘다. 상한을 넘으면 **왜 안 되는지 말해 준다.**
-const MAX_AI_COPY: usize = 200_000;
+/// 무제한 편집기(`textmenu`)도 **같은 값**을 쓴다 — 창마다 상한이 다르면
+/// 사용자는 어느 창에서 왜 안 됐는지 알 수 없다.
+pub(crate) const MAX_AI_COPY: usize = 200_000;
 
 /// 출처 경로 머리글 — AI 가 어느 파일 이야기인지 알게 한다. 경로가 없으면 빈 글.
 fn path_header(path: &std::path::Path) -> String {

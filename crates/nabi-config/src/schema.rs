@@ -435,6 +435,13 @@ pub struct TerminalCfg {
     /// SFTP 원격 경로 북마크(FileZilla식 즐겨찾기).
     #[serde(default)]
     pub sftp_bookmarks: Vec<String>,
+    /// 로컬 탐색기 폴더 북마크.
+    ///
+    /// 원격에는 처음부터 있었는데 로컬에는 없었다(2026-09-10에 두 별표 메뉴를 나란히
+    /// 세어 보고 알았다). 로컬 별표에는 바탕화면·문서·다운로드처럼 **정해진 곳**과
+    /// 다녀온 곳만 있어서, 자주 가는 작업 폴더를 스스로 꽂아 둘 자리가 없었다.
+    #[serde(default)]
+    pub browser_bookmarks: Vec<String>,
     /// AI CLI(Claude Code·Codex)를 시작 시 자동으로 최신으로 올린다. 기본 false —
     /// 남의 프로그램을 말없이 갈아 끼우는 일이라 사용자가 켠 경우에만 한다.
     #[serde(default)]
@@ -506,6 +513,7 @@ impl Default for TerminalCfg {
             log_keep_days: default_log_keep_days(),
             external_editor: String::new(),
             sftp_bookmarks: Vec::new(),
+            browser_bookmarks: Vec::new(),
             ai_cli_auto_update: false,
             ai_cli_checked_at: 0,
             agent_sound: false,
