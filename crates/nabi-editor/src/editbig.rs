@@ -54,6 +54,14 @@ impl BigFile {
     }
 
     /// 현재까지 인덱싱된 줄 수.
+    /// 이 줄이 파일의 몇 번째 바이트에서 시작하나(아직 색인 전이면 `None`).
+    ///
+    /// 구간 편집(`textrange`)이 "지금 보고 있는 자리"를 바이트로 알아야 해서 낸다.
+    /// 줄 번호로는 원본 파일을 못 자른다 — 자르는 것은 바이트다.
+    pub fn line_start(&self, i: usize) -> Option<u64> {
+        self.starts.read().ok().and_then(|v| v.get(i).map(|n| *n as u64))
+    }
+
     pub fn line_count(&self) -> usize {
         self.starts.read().map(|s| s.len().saturating_sub(1).max(1)).unwrap_or(1)
     }

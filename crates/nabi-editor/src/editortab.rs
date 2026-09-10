@@ -175,6 +175,18 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
         ui.separator();
         ui.label(format!("{}px", fsize as i32));
     });
+    // **읽기 전용으로 끝내지 않는다.** 왜 못 고치는지 말해 주기만 하고 길이 없으면
+    // 사용자가 할 수 있는 일이 없다. 지금 보고 있는 자리부터 한 구간을 꺼내 준다
+    // (EmEditor 의 Large File Controller 와 같은 답).
+    ui.horizontal(|ui| {
+        if ui
+            .button(format!("\u{270e} {}", tr(lang, "editor.editrange")))
+            .on_hover_text(tr(lang, "editor.editrange.hint"))
+            .clicked()
+        {
+            act.edit_range = true;
+        }
+    });
     ui.separator();
     let mono = egui::FontId::monospace(fsize);
     let row_h = ui.fonts_mut(|f| f.row_height(&mono)).max(1.0);
@@ -186,8 +198,11 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
     if let Some(l) = scroll_line {
         sa = sa.vertical_scroll_offset((l as f32 * row_h - ui.available_height() * 0.4).max(0.0)); // 대상 줄 ≈40% 지점(맥락 표시).
     }
+    // 지금 화면에 보이는 첫 줄 — "이 자리부터 편집"이 여기서 시작한다.
+    let mut top_line = 0usize;
     sa.show_viewport(ui, |ui, vp| {
         let first = (vp.top() / row_h).floor().max(0.0) as usize;
+        top_line = first;
         let last = ((vp.bottom() / row_h) as usize + 2).min(lc);
         let lines: Vec<String> = (first..last).map(|i| big.line(i)).collect(); // 한 번만 디코드.
         let maxcols = lines.iter().map(|s| s.chars().count()).max().unwrap_or(0);
@@ -204,6 +219,7 @@ fn big_view(ui: &mut egui::Ui, doc: &mut EditorDoc, lang: Lang) -> EditorAct {
         }
     });
     if !ready { ui.ctx().request_repaint(); } // 인덱싱 진행 중 갱신.
+    act.big_top_line = top_line;
     act
 }
 

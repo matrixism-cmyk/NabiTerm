@@ -308,3 +308,74 @@ mod kind_key_tests {
         }
     }
 }
+
+/// **같은 자리에 이미 붙어 있나** — 사이드바의 "연결 중" 표시가 이 판정에 기댄다.
+///
+/// 2026-09-10까지 그 표시는 SSH 만 봤다. 직렬을 더한 뒤에도 안 고쳐서, 직렬·로컬 세션은
+/// 열려 있어도 사이드바가 꺼진 것으로 보여 줬다 — 그래서 같은 데를 또 열게 된다.
+#[cfg(test)]
+mod same_target_tests {
+    use crate::model::SessionKind;
+
+    fn ssh(host: &str, port: u16, user: &str) -> SessionKind {
+        SessionKind::Ssh {
+            host: host.into(), port, user: user.into(),
+            credential_ref: None, key_path: None, jump: None, agent_forward: false,
+        }
+    }
+
+    /// **접속 방법이 달라도 같은 자리다.** 저장된 세션에는 키 경로가 있고 실제로 붙은
+    /// pane 에는 없을 수 있다(빠른 연결로 붙었을 때). 통째로 견주면 그때 표시가 꺼진다.
+    #[test]
+    fn 접속_방법이_달라도_같은_자리다() {
+        let saved = SessionKind::Ssh {
+            host: "h.example".into(), port: 22, user: "u".into(),
+            credential_ref: Some("vault:1".into()), key_path: Some("C:/k".into()),
+            jump: Some("b@bastion:22".into()), agent_forward: true,
+        };
+        assert!(saved.same_target(&ssh("h.example", 22, "u")));
+        assert_ne!(saved, ssh("h.example", 22, "u"), "통째 비교로는 다르다 — 그래서 같은자리 판정이 따로 있다");
+    }
+
+    /// 호스트 대소문자는 무시한다(DNS 이름은 대소문자를 안 가린다).
+    #[test]
+    fn 호스트_대소문자는_무시한다() {
+        assert!(ssh("H.Example", 22, "u").same_target(&ssh("h.example", 22, "u")));
+    }
+
+    /// 사용자·포트가 다르면 다른 자리다 — 같은 서버라도 계정이 다르면 다른 세션이다.
+    #[test]
+    fn 사용자나_포트가_다르면_다르다() {
+        assert!(!ssh("h", 22, "u").same_target(&ssh("h", 2222, "u")));
+        assert!(!ssh("h", 22, "u").same_target(&ssh("h", 22, "root")));
+    }
+
+    /// **직렬도 켜져야 한다.** 이것이 빠져 있어서 이 판정을 만들었다.
+    /// 속도가 달라도 한 포트에는 하나만 붙는다 — 같은 장비다.
+    #[test]
+    fn 직렬은_포트가_같으면_같은_자리다() {
+        let a = SessionKind::Serial { port: "COM3".into(), baud: 9600, frame: "8N1".into() };
+        let b = SessionKind::Serial { port: "com3".into(), baud: 115200, frame: "8N1".into() };
+        assert!(a.same_target(&b));
+        let c = SessionKind::Serial { port: "COM4".into(), baud: 9600, frame: "8N1".into() };
+        assert!(!a.same_target(&c));
+    }
+
+    /// 로컬도 켜져야 한다.
+    #[test]
+    fn 로컬은_셸이_같으면_같은_자리다() {
+        let a = SessionKind::Local { shell: "pwsh".into() };
+        assert!(a.same_target(&SessionKind::Local { shell: "pwsh".into() }));
+        assert!(!a.same_target(&SessionKind::Local { shell: "cmd".into() }));
+    }
+
+    /// 종류가 다르면 절대 같은 자리가 아니다.
+    #[test]
+    fn 종류가_다르면_다르다() {
+        let l = SessionKind::Local { shell: "pwsh".into() };
+        let s = SessionKind::Serial { port: "COM3".into(), baud: 9600, frame: "8N1".into() };
+        assert!(!l.same_target(&ssh("h", 22, "u")));
+        assert!(!s.same_target(&l));
+        assert!(!ssh("h", 22, "u").same_target(&s));
+    }
+}

@@ -27,6 +27,11 @@ pub(crate) enum MenuAction {
     RemoveSnippet(usize),
     ConnectSaved(SavedSession),
     OpenSftp(SavedSession),
+    /// 이미 열려 있는 그 pane 으로 간다(사이드바의 초록 아이콘을 눌렀을 때).
+    ///
+    /// 같은 데를 또 여는 대신 있는 곳으로 데려간다 — 세션이 수십 개면 어느 탭이
+    /// 그것인지 찾는 일 자체가 일이다.
+    JumpToPane(nabi_types::PaneId),
     DuplicateSession(SavedSession),
     EditSession(SavedSession),
     NewSshConnection,

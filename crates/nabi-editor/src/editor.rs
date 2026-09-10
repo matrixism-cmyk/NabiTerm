@@ -176,6 +176,13 @@ pub struct EditorAct {
     /// 마지막 고친 자리로 이동(누를 때마다 최근 자리를 돌아간다).
     pub goto_last_edit: bool,
     pub new_doc: bool, pub open_file: bool,
+    /// 읽기 전용 뷰어에서 **지금 보고 있는 자리부터 한 구간을 꺼내 편집**하라는 요청.
+    ///
+    /// 어디부터인지는 `big_top_line` 이 말한다 — 줄 번호로는 파일을 못 자르므로,
+    /// 앱이 그 줄의 바이트 자리를 물어서 읽는다.
+    pub edit_range: bool,
+    /// 뷰어에서 지금 화면 맨 위에 있는 줄(0부터).
+    pub big_top_line: usize,
     /// 최근 파일 메뉴에서 선택한 경로(열기).
     pub open_recent: Option<String>,
     /// 현재 문서를 디스크 원본과 비교(변경사항 diff).

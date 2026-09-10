@@ -73,6 +73,7 @@ impl NabiApp {
             if a.toggle_menu_bar { self.toggle_editor_menu_bar(); }
             if a.toggle_hex { self.toggle_editor_hex(p); }
             if a.reload { self.reload_editor_doc(p); }
+            if a.edit_range { self.open_range_from_viewer(p, a.big_top_line); }
             if a.goto_last_edit { self.goto_last_edit(p); }
             if a.complete_word { self.complete_word(p); }
             if let Some(s) = a.diff_restore { self.restore_diff_side(p, s); }

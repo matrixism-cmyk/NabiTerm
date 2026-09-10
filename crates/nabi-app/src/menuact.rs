@@ -43,6 +43,12 @@ impl NabiApp {
             }
             MenuAction::ConnectSaved(s) => self.connect_saved(s),
             MenuAction::OpenSftp(s) => self.open_sftp_saved(s, false),
+            MenuAction::JumpToPane(p) => {
+                // 팔레트의 pane 이동과 **같은 길**이다 — 두 벌이면 한쪽만 고쳐진다.
+                if let Some(loc) = self.dock.find_tab(&p) {
+                    let _ = self.dock.set_active_tab(loc);
+                }
+            }
             MenuAction::ImportSshConfig => {
                 // `~/.ssh/config` 는 윈도우에서 **없는 편이 흔하다.** 예전에는 그때 아무 일도
                 // 일어나지 않아서, 사용자가 보는 것은 반응 없는 메뉴였다. 이제 없다고 말한다.

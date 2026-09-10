@@ -28,8 +28,12 @@ impl NabiApp {
         let pinned = self.config.appearance.pinned_sessions.clone();
         let notes = self.config.appearance.session_notes.clone();
         // 연결중 표시(🟢)·마지막 접속 시간 — "세션 관리" 메뉴와 동일 정보(완전 통합).
-        let active: std::collections::HashSet<String> = self.pane_origins.values().filter_map(|k| match k {
-            SessionKind::Ssh { host, user, port, .. } => Some(format!("{user}@{host}:{port}")), _ => None }).collect();
+        //
+        // 2026-09-10까지 여기는 **SSH 만** 봤다. 직렬을 더한 뒤에도 안 고쳐서, 직렬·로컬
+        // 세션은 열려 있어도 사이드바가 꺼진 것으로 보여 줬다 — 그래서 같은 데를 또 연다.
+        // 이제 종류를 가리지 않고 `same_target` 이 판정한다(새 종류가 생기면 컴파일러가 짚는다).
+        let active: Vec<(SessionKind, nabi_types::PaneId)> =
+            self.pane_origins.iter().map(|(p, k)| (k.clone(), *p)).collect();
         let last_conn = self.config.terminal.last_connected.clone();
         let now = chrono::Local::now().timestamp();
         // 일괄 확인 결과를 세션 이름 기준으로 한 번만 펴 둔다(행마다 잠그지 않게).
@@ -139,13 +143,15 @@ impl NabiApp {
                 let fails = self.last_fail.clone();
                 let mut click_out: Option<(String, bool, bool)> = None;
                 let mut drag_row = |ui: &mut egui::Ui, s: &SavedSession, sel: Option<&str>, ns: &mut Option<String>| -> Option<MenuAction> {
-                    let live = matches!(&s.kind, SessionKind::Ssh { host, user, port, .. } if active.contains(&format!("{user}@{host}:{port}")));
+                    // 이미 붙어 있는 pane 이 있으면 그 자리를 들고 온다(눌러서 갈 수 있게).
+                    let live_pane = active.iter().find(|(k, _)| k.same_target(&s.kind)).map(|(_, p)| *p);
+                    let live = live_pane.is_some();
                     let last = last_conn.get(&s.name).copied();
                     let reach = reach_map.get(&s.name).copied();
                     // 실패는 접속 정보로 찾는다 — 이름은 바뀌어도 접속 정보는 그대로다.
                     let fail = fails.get(&s.kind).cloned();
                     // 드래그 소스는 side_row 내부에서 이름 라벨에만 적용 — 우측 아이콘 클릭이 드래그에 가로채이지 않게.
-                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, RowState { live, reach, fail }, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
+                    side_row(ui, lang, s, sel, ns, &all_folders, &notes, RowState { live, live_pane, reach, fail }, last, now, marked.contains(&s.name), &mut click_out, menu_row.as_deref() == Some(s.name.as_str()), &mut menu_now)
                 };
                 // 선택 막대: 몇 개 골랐는지 + 한 번에 연결 / 선택 해제.
                 if !self.sidebar_marked.is_empty() {
@@ -303,6 +309,8 @@ fn kind_icon(s: &SavedSession) -> &'static str {
 pub(crate) struct RowState {
     /// 지금 연결돼 있는가.
     pub live: bool,
+    /// 붙어 있다면 어느 pane 인가 — 종류 아이콘을 누르면 그리로 간다.
+    pub live_pane: Option<nabi_types::PaneId>,
     /// 마지막 일괄 확인 결과(안 훑었으면 None).
     pub reach: Option<crate::reachall::Reach>,
     /// 마지막 연결 실패(성공하면 지워진다).
@@ -330,6 +338,8 @@ fn side_row(
     menu_open_out: &mut Option<String>,
 ) -> Option<MenuAction> {
     let mut action = None;
+    // 초록 아이콘을 눌렀을 때 갈 곳. 그리는 도중에 정해지므로 따로 받아 둔다.
+    let mut jump: Option<nabi_types::PaneId> = None;
     let is_ssh = matches!(s.kind, SessionKind::Ssh { .. }) && !s.is_ftp;
     let selected = cur_sel == Some(s.name.as_str()) || marked;
     // 행 전체 사각형을 **먼저** 잡는다. 배경을 이름 영역에만 칠하면 강조 막대가 오른쪽
@@ -369,6 +379,17 @@ fn side_row(
         }
         let kcolor = if st.live { crate::theme_ui::OK } else { crate::theme_ui::session_color(s.is_ftp, is_ssh) };
         ui.painter().text(egui::pos2(rect.left() + 5.0, rect.center().y), egui::Align2::LEFT_CENTER, kind_icon(s), font.clone(), kcolor);
+        // **초록 아이콘을 누르면 그 탭으로 간다**(같은 데를 또 여는 대신).
+        //
+        // 행 전체의 클릭은 그대로 "연결"이다 — 오래 쓰던 동작을 바꾸면, 붙어 있는 줄
+        // 모르고 누른 사람이 갑자기 다른 데로 끌려간다. 새 능력은 아이콘에만 붙인다.
+        if let Some(p) = st.live_pane {
+            let hit = egui::Rect::from_min_size(egui::pos2(rect.left() + 2.0, rect.top()), egui::vec2(14.0, rect.height()));
+            let r = ui.interact(hit, ui.id().with(("jump", &s.name)), egui::Sense::click());
+            if r.on_hover_text(tr(lang, "sessions.jumphere")).clicked() {
+                jump = Some(p);
+            }
+        }
         // 일괄 확인 결과 — 이름 앞에 작은 점. 연결돼 있으면 이미 초록 아이콘이 있으므로
         // 겹쳐 그리지 않는다.
         if let (Some(rc), false) = (st.reach, st.live) {
@@ -448,6 +469,11 @@ fn side_row(
     resp.context_menu(|ui| {
         if let Some(a) = crate::sessionctx::session_menu_items(ui, s, lang, folders) { action = Some(a); }
     });
+    // 초록 아이콘을 눌렀으면 그것이 이긴다 — 행 클릭(연결)보다 뒤에 두어 덮어쓴다.
+    // 아이콘은 행 안에 있으므로 두 판정이 같은 프레임에 함께 참일 수 있다.
+    if let Some(p) = jump {
+        action = Some(MenuAction::JumpToPane(p));
+    }
     action
 }
 

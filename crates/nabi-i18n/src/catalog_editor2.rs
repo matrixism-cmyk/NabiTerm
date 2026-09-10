@@ -52,6 +52,7 @@ pub(crate) const CATALOG_EDITOR2: &[(&str, &str, &str, &str)] = &[
     ("nabipad.bmclear", "Clear all bookmarks", "북마크 모두 지우기", "ブックマークを全消去"),
     ("editor.autosave", "Auto-save (periodic)", "자동 저장(주기적)", "自動保存(定期)"),
     ("sessions.togglepin", "Pin / unpin", "고정 / 고정 해제", "ピン / 解除"),
+    ("sessions.jumphere", "Already open \u{2014} go to that tab", "이미 열려 있습니다 \u{2014} 그 탭으로 가기", "すでに開いています \u{2014} そのタブへ"),
     ("sessions.editnote", "Edit note", "메모 편집", "メモを編集"),
     ("sessions.notehint", "Note shown on hover…", "마우스 올리면 보이는 메모…", "ホバーで表示されるメモ…"),
     ("sessions.pinned", "Pinned", "고정됨", "ピン留め"),

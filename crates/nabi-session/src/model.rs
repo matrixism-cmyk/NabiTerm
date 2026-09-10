@@ -154,6 +154,39 @@ impl SavedSession {
 }
 
 impl SessionKind {
+    /// **같은 곳을 가리키는가** — 열려 있는 pane 이 이 세션의 것인지 볼 때 쓴다.
+    ///
+    /// ## 왜 `==` 가 아닌가
+    ///
+    /// `SessionKind` 를 통째로 견주면 안 된다. 저장된 세션에는 키 경로·자격증명 핸들·
+    /// 에이전트 포워딩 같은 **접속 방법**이 들어 있는데, 이미 붙어 있는 pane 의 출처에는
+    /// 그것이 다를 수 있다(빠른 연결로 붙었거나, 세션을 고친 뒤일 수 있다).
+    /// 우리가 묻는 것은 "같은 설정인가"가 아니라 **"같은 자리에 이미 붙어 있나"** 다.
+    ///
+    /// 그래서 **목적지만** 본다 — SSH 는 사용자·호스트·포트, 직렬은 포트 이름, 로컬은 셸.
+    ///
+    /// ## 한 가지 감수하는 것
+    ///
+    /// 같은 서버를 가리키는 세션이 둘이면(이름만 다르게 저장해 둔 경우) 둘 다 켜진 것으로
+    /// 보인다. 그래도 이 편이 맞다 — 사용자가 알고 싶은 것은 "저기에 이미 붙어 있나"이고,
+    /// 그 답은 실제로 "그렇다"이기 때문이다.
+    pub fn same_target(&self, other: &SessionKind) -> bool {
+        match (self, other) {
+            (
+                SessionKind::Ssh { host: h1, port: p1, user: u1, .. },
+                SessionKind::Ssh { host: h2, port: p2, user: u2, .. },
+            ) => h1.eq_ignore_ascii_case(h2) && p1 == p2 && u1 == u2,
+            // 직렬은 한 포트에 하나만 붙을 수 있다 — 속도가 달라도 같은 장비다.
+            (SessionKind::Serial { port: a, .. }, SessionKind::Serial { port: b, .. }) => {
+                a.eq_ignore_ascii_case(b)
+            }
+            (SessionKind::Local { shell: a }, SessionKind::Local { shell: b }) => a == b,
+            // 종류가 다르면 같은 자리일 수 없다. **포괄 가지를 쓰지 않는다** —
+            // 새 종류가 생기면 컴파일러가 여기를 짚어 준다(그게 이 모양의 값어치다).
+            (SessionKind::Ssh { .. }, _) | (SessionKind::Serial { .. }, _) | (SessionKind::Local { .. }, _) => false,
+        }
+    }
+
     /// 기계가 읽는 종류 이름 — 제어 평면이 에이전트에게 주는 목록에 쓴다.
     ///
     /// 화면용 [`SavedSession::kind_label`] 과 달리 소문자 고정이다. 에이전트는 이 값으로

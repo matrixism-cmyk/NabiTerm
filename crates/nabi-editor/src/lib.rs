@@ -52,6 +52,7 @@ pub mod textfind;
 mod ctxdrift;
 pub mod textmenu;
 mod textmove;
+pub mod textrange;
 pub mod textkeys;
 pub mod textindex;
 pub mod textview;
