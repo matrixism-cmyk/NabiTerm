@@ -8,10 +8,25 @@ use crate::syncplan::{plan, to_map, walk_local, SyncAction, SyncBy, SyncDir};
 use nabi_i18n::tr;
 use nabi_proto::Command;
 
+/// 맞은편이 어디인가.
+///
+/// **열거형으로 둔다.** 새 갈래를 더하면 러스트가 이것을 받는 `match` 를 전부 찾아
+/// 이름과 줄 번호까지 대 준다. 여기에 `bool` 을 뒀다면 배선을 빠뜨려도 아무 말이 없다
+/// (이 저장소가 같은 실수를 여러 번 했다).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum SyncPeer {
+    /// 붙어 있는 SFTP 서버.
+    Remote,
+    /// 같은 PC 의 다른 폴더 — 백업 디스크·USB·네트워크 드라이브.
+    Local,
+}
+
 /// 다이얼로그 상태(Some=열림).
 pub struct SyncDlg {
     pub local: String,
+    /// 맞은편 경로. `peer` 가 [`SyncPeer::Local`] 이면 로컬 폴더 경로다.
     pub remote: String,
+    pub peer: SyncPeer,
     pub dir: SyncDir,
     pub mirror: bool,
     pub by: SyncBy,
@@ -31,12 +46,51 @@ impl NabiApp {
         self.sync_dlg = Some(SyncDlg {
             local: self.browser.path.to_string_lossy().into_owned(),
             remote: self.sftp.path.clone(),
+            peer: SyncPeer::Remote,
             dir: SyncDir::Up,
             mirror: false,
             by: SyncBy::SizeAndTime,
             pending: None,
             items: None,
         });
+    }
+
+    /// **로컬 폴더끼리** 동기화 창을 연다 — SFTP 연결이 없어도 된다.
+    ///
+    /// 맞은편 기본값은 비워 둔다. 여기에 그럴듯한 폴더를 넣어 두면, 미러 모드에서
+    /// 사용자가 안 읽고 실행했을 때 **엉뚱한 폴더를 지운다.** 빈 칸은 실행을 막는다.
+    pub(crate) fn open_local_sync_dialog(&mut self) {
+        self.sync_dlg = Some(SyncDlg {
+            local: self.browser.path.to_string_lossy().into_owned(),
+            remote: String::new(),
+            peer: SyncPeer::Local,
+            dir: SyncDir::Up,
+            mirror: false,
+            by: SyncBy::SizeAndTime,
+            pending: None,
+            items: None,
+        });
+    }
+
+    /// 양쪽이 모두 로컬일 때의 미리보기 — 서버에 물을 것이 없으니 그 자리에서 끝난다.
+    fn preview_local(&mut self, dlg: &mut SyncDlg) {
+        let (a, b) = (std::path::Path::new(&dlg.local), std::path::Path::new(&dlg.remote));
+        if !a.is_dir() || !b.is_dir() {
+            self.notify = Some((tr(self.lang, "sync.badlocal").to_string(), std::time::Instant::now()));
+            return;
+        }
+        // 같은 폴더를 양쪽에 넣으면 미러가 자기 자신을 지우려 든다. 막는다.
+        if a == b {
+            self.notify = Some((tr(self.lang, "sync.samedir").to_string(), std::time::Instant::now()));
+            return;
+        }
+        let (ma, mb) = (to_map(&walk_local(a)), to_map(&walk_local(b)));
+        let (src, dst) = match dlg.dir {
+            SyncDir::Up => (&ma, &mb),
+            SyncDir::Down => (&mb, &ma),
+        };
+        let acts = crate::syncmove::detect_moves(plan(src, dst, dlg.by, dlg.mirror), src, dst);
+        dlg.items = Some(acts.into_iter().map(|x| { let del = matches!(x, SyncAction::Delete(_)); (x, !del) }).collect());
     }
 
     /// 원격 트리 회신(Event::SftpTree) — 로컬 walk와 비교해 계획을 만든다.
@@ -89,12 +143,32 @@ impl NabiApp {
                     ui.add(egui::TextEdit::singleline(&mut dlg.local).desired_width(380.0));
                 });
                 ui.horizontal(|ui| {
-                    ui.label(tr(lang, "sync.remote"));
+                    // 맞은편이 서버냐 폴더냐에 따라 이름이 달라야 한다 — 로컬 폴더 칸에
+                    // "원격"이라고 적혀 있으면 사용자는 서버 경로를 적는다.
+                    let label = match dlg.peer {
+                        SyncPeer::Remote => "sync.remote",
+                        SyncPeer::Local => "sync.otherlocal",
+                    };
+                    ui.label(tr(lang, label));
                     ui.add(egui::TextEdit::singleline(&mut dlg.remote).desired_width(380.0));
+                    if dlg.peer == SyncPeer::Local
+                        && ui.button("\u{1f4c1}").on_hover_text(tr(lang, "sync.pick")).clicked()
+                    {
+                        if let Some(p) = rfd::FileDialog::new().pick_folder() {
+                            dlg.remote = p.to_string_lossy().into_owned();
+                        }
+                    }
                 });
                 ui.horizontal(|ui| {
-                    ui.selectable_value(&mut dlg.dir, SyncDir::Up, tr(lang, "sync.up"));
-                    ui.selectable_value(&mut dlg.dir, SyncDir::Down, tr(lang, "sync.down"));
+                    // 방향 이름도 맞은편에 따라 달라야 한다. 로컬끼리인데 "로컬 → 원격"이라고
+                    // 적혀 있으면, 어느 폴더가 원본인지 읽어 낼 수가 없다 — 그리고 그 오해가
+                    // 미러 모드에서는 **엉뚱한 폴더를 지우는** 일이 된다.
+                    let (up, down) = match dlg.peer {
+                        SyncPeer::Remote => ("sync.up", "sync.down"),
+                        SyncPeer::Local => ("sync.uplocal", "sync.downlocal"),
+                    };
+                    ui.selectable_value(&mut dlg.dir, SyncDir::Up, tr(lang, up));
+                    ui.selectable_value(&mut dlg.dir, SyncDir::Down, tr(lang, down));
                     ui.separator();
                     ui.selectable_value(&mut dlg.by, SyncBy::SizeAndTime, tr(lang, "sync.bytime"));
                     ui.selectable_value(&mut dlg.by, SyncBy::Size, tr(lang, "sync.bysize"));
@@ -107,6 +181,10 @@ impl NabiApp {
                     if watch_on {
                         if ui.button(format!("\u{23f9} {}", tr(lang, "watch.stop"))).clicked() { stop_watch = true; }
                     } else if dlg.dir == SyncDir::Up
+                        // 최신유지는 원격에만 있다. 로컬끼리도 뜻은 있지만 감시기가 원격
+                        // 전송 큐를 전제로 만들어져 있어, 배선 없이 단추만 두면 **눌러도
+                        // 아무 일이 없다** — 그건 사용자에게 고장으로 보인다.
+                        && dlg.peer == SyncPeer::Remote
                         && ui.button(format!("\u{1f441} {}", tr(lang, "watch.start"))).on_hover_text(tr(lang, "watch.hint")).clicked()
                     {
                         do_watch = true;
@@ -148,15 +226,26 @@ impl NabiApp {
             dlg.items = None;
         }
         if do_preview {
-            if let Some(id) = self.sftp.id {
-                self.sync_seq += 1;
-                dlg.pending = Some(self.sync_seq);
-                dlg.items = None;
-                self.orch.send(Command::SftpListTree { id, root: dlg.remote.clone(), seq: self.sync_seq });
+            match dlg.peer {
+                SyncPeer::Local => {
+                    dlg.items = None;
+                    self.preview_local(&mut dlg);
+                }
+                SyncPeer::Remote => {
+                    if let Some(id) = self.sftp.id {
+                        self.sync_seq += 1;
+                        dlg.pending = Some(self.sync_seq);
+                        dlg.items = None;
+                        self.orch.send(Command::SftpListTree { id, root: dlg.remote.clone(), seq: self.sync_seq });
+                    }
+                }
             }
         }
         if do_run {
-            self.run_sync(&mut dlg);
+            match dlg.peer {
+                SyncPeer::Local => self.run_sync_local(&mut dlg),
+                SyncPeer::Remote => self.run_sync(&mut dlg),
+            }
         }
         if do_watch {
             self.sync_watch = Some(crate::sftpwatch::SyncWatch::new(dlg.local.clone(), dlg.remote.clone()));
@@ -168,6 +257,35 @@ impl NabiApp {
         if open {
             self.sync_dlg = Some(dlg);
         }
+    }
+
+    /// 로컬↔로컬 실행 — 전송 큐를 타지 않는다. 같은 디스크 안이라 곧바로 끝나고,
+    /// 큐에 넣으면 진행률만 번쩍이고 사라진다.
+    ///
+    /// 안 된 것이 있으면 **몇 개인지 말한다.** 조용히 넘기면 "다 됐다"로 읽힌다.
+    fn run_sync_local(&mut self, dlg: &mut SyncDlg) {
+        let items: Vec<SyncAction> = dlg
+            .items
+            .take()
+            .into_iter()
+            .flatten()
+            .filter(|(a, c)| *c && crate::syncplan::safe_rel(a.path()))
+            .map(|(a, _)| a)
+            .collect();
+        let (a, b) = (std::path::PathBuf::from(&dlg.local), std::path::PathBuf::from(&dlg.remote));
+        let (src, dst) = match dlg.dir {
+            SyncDir::Up => (&a, &b),
+            SyncDir::Down => (&b, &a),
+        };
+        let done = crate::synclocal::run(src, dst, &items);
+        let tail = match done.failed {
+            0 => String::new(),
+            n => format!(" \u{00b7} {} {n}", tr(self.lang, "sync.failed")),
+        };
+        self.notify = Some((
+            format!("{} {}{tail}", tr(self.lang, "sync.done"), done.total()),
+            std::time::Instant::now(),
+        ));
     }
 
     /// 체크된 항목 실행 — 복사/갱신은 전송 큐, 삭제는 파일 작업. 실행 후 목록 초기화.

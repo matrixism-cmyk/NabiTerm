@@ -185,10 +185,27 @@ mod tests {
         assert_eq!(safe_rel("a\\b.txt").unwrap(), Path::new("a").join("b.txt"));
     }
 
+    /// 시험용 임시 폴더 — **판마다 다른 이름**을 쓴다.
+    ///
+    /// 예전에는 `nabi_zip_rt` 처럼 고정 이름이었다. 그래서 시험을 두 벌 동시에 돌리면
+    /// (사람이 두 번 띄웠거나 CI 가 다시 돌릴 때) 한쪽이 `remove_dir_all` 하는 사이
+    /// 다른 쪽이 그 폴더에 쓰다가 죽었다. 2026-09-10에 실제로 그렇게 한 번 빨개졌고,
+    /// 혼자 돌리면 통과해서 **원인을 찾는 데가 아니라 "가끔 실패한다"로 남을 뻔했다.**
+    ///
+    /// 고정 이름은 이 파일 말고도 여러 곳에 있다(`grep 'temp_dir().join("'`).
+    /// 실제로 문 자리부터 고친다 — 안 아픈 데까지 한꺼번에 건드리면 회귀만 늘어난다.
+    fn tmp_base(tag: &str) -> std::path::PathBuf {
+        let n = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        std::env::temp_dir().join(format!("nabi_zip_{tag}_{n}"))
+    }
+
     /// 묶었다 풀면 **내용이 같아야 한다**(왕복).
     #[test]
     fn a_round_trip_keeps_the_contents() {
-        let base = std::env::temp_dir().join("nabi_zip_rt");
+        let base = tmp_base("rt");
         let (src, out) = (base.join("src"), base.join("out"));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(src.join("sub")).unwrap();
@@ -207,7 +224,7 @@ mod tests {
     /// 한글 이름도 왕복해야 한다(우리 사용자의 파일 이름이 그렇다).
     #[test]
     fn hangul_names_survive_the_round_trip() {
-        let base = std::env::temp_dir().join("nabi_zip_ko");
+        let base = tmp_base("ko");
         let (src, out) = (base.join("src"), base.join("out"));
         let _ = std::fs::remove_dir_all(&base);
         std::fs::create_dir_all(&src).unwrap();

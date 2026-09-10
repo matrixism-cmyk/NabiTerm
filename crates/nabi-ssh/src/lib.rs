@@ -14,6 +14,7 @@ pub mod knownhosts;
 pub mod agent;
 pub mod agentfwd;
 pub mod authchain;
+pub mod authtrace;
 pub mod authorder;
 pub mod diagnose;
 pub mod envvars;

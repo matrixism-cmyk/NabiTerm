@@ -119,6 +119,7 @@ pub(crate) fn palette_commands(
         (tr(lang, "serial.newmenu").to_string(), PaletteAction::OpenSerial),
         (tr(lang, "editor.reopenclosed").to_string(), PaletteAction::ReopenClosedDoc),
         (tr(lang, "sync.title").to_string(), PaletteAction::OpenSync),
+        (tr(lang, "sync.localtitle").to_string(), PaletteAction::OpenLocalSync),
         (tr(lang, "handoff.last").to_string(), PaletteAction::HandoffLast),
         (tr(lang, "handoff.copymd").to_string(), PaletteAction::CopyLastMd),
         (tr(lang, "sftp.history").to_string(), PaletteAction::XferHistory),

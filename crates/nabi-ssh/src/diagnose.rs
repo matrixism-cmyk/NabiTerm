@@ -214,7 +214,12 @@ mod tests {
 /// `keys` 는 `~/.ssh` 에서 찾은 후보들([`crate::authorder`]). **인증 실패일 때만** 쓴다 —
 /// 이름을 못 찾은 것과 키를 못 쓴 것은 다른 문제라, 다른 실패에 키 목록을 붙이면 엉뚱한
 /// 곳을 파게 만든다.
-pub fn render(raw: &str, auth: AuthKind, keys: &[crate::authorder::Candidate]) -> String {
+pub fn render(
+    raw: &str,
+    auth: AuthKind,
+    keys: &[crate::authorder::Candidate],
+    steps: &[crate::authtrace::Step],
+) -> String {
     let d = diagnose(raw, auth);
     let t = |k: &str| nabi_i18n::trc(k).to_string();
     let mut out = String::new();
@@ -223,6 +228,14 @@ pub fn render(raw: &str, auth: AuthKind, keys: &[crate::authorder::Candidate]) -
     out.push_str(&format!("  {}:\r\n", t("ssh.diag.try")));
     for h in &d.hints {
         out.push_str(&format!("   - {}\r\n", t(h)));
+    }
+    // **실제로 시도한 것이 먼저다.** "쓸 수 있었던 키" 목록보다 이쪽이 사실이고,
+    // 사실을 아래에 두면 사람은 위만 읽고 엉뚱한 곳을 판다.
+    if !steps.is_empty() {
+        out.push_str(&format!("  {}:\r\n", t("ssh.diag.steps")));
+        for (i, (what, how)) in steps.iter().enumerate() {
+            out.push_str(&format!("   {}. {what} \u{2014} {}\r\n", i + 1, t(crate::authtrace::key_of(*how))));
+        }
     }
     if d.cause == Cause::AuthFailed && !keys.is_empty() {
         out.push_str(&format!("  {}:\r\n", t("ssh.diag.keys")));
@@ -242,6 +255,44 @@ pub fn render(raw: &str, auth: AuthKind, keys: &[crate::authorder::Candidate]) -
 #[cfg(test)]
 mod render_tests {
     use super::*;
+    use crate::authtrace::{Outcome, Step};
+
+    fn steps() -> Vec<Step> {
+        vec![
+            ("work_key".to_string(), Outcome::Rejected),
+            ("id_ed25519".to_string(), Outcome::NotSent),
+            ("password".to_string(), Outcome::Skipped),
+        ]
+    }
+
+    /// **네 가지 결과가 화면에서 서로 달라 보여야 한다.**
+    ///
+    /// 이것이 이 기능의 전부다. 던졌다가 거절당한 것(서버 이야기), 못 열어서 안 보낸 것
+    /// (내 키 이야기), 서버가 안 받아 건너뛴 것(서버 설정 이야기)은 **고칠 곳이 전혀 다르다.**
+    /// 셋이 같은 말로 나오면 사용자는 셋 중 아무 데나 판다.
+    #[test]
+    fn 시도_결과가_서로_달라_보인다() {
+        let out = render("Not authenticated", AuthKind::KeyFile, &[], &steps());
+        for (name, _) in steps() {
+            assert!(out.contains(&name), "{name} 이 화면에 없다:\n{out}");
+        }
+        let words: Vec<String> = [Outcome::Rejected, Outcome::NotSent, Outcome::Skipped]
+            .iter()
+            .map(|o| nabi_i18n::trc(crate::authtrace::key_of(*o)).to_string())
+            .collect();
+        let uniq: std::collections::HashSet<&String> = words.iter().collect();
+        assert_eq!(uniq.len(), words.len(), "결과 문구가 겹친다: {words:?}");
+        for w in &words {
+            assert!(out.contains(w.as_str()), "'{w}' 가 화면에 없다:\n{out}");
+        }
+    }
+
+    /// 시도 기록이 없으면 그 칸 자체가 안 나온다 — 빈 제목만 뜨면 고장으로 보인다.
+    #[test]
+    fn 시도_기록이_없으면_그_칸도_없다() {
+        let out = render("Not authenticated", AuthKind::Password, &[], &[]);
+        assert!(!out.contains(nabi_i18n::trc("ssh.diag.steps")), "{out}");
+    }
 
     /// 흔한 표기 "auth failed"도 인증 실패로 본다 — 놓치면 가장 잦은 실패가 미분류로 떨어진다.
     #[test]
@@ -254,14 +305,14 @@ mod render_tests {
     #[test]
     fn the_original_message_is_always_kept() {
         let raw = "IO error: Connection refused (os error 10061)";
-        let out = render(raw, AuthKind::Agent, &[]);
+        let out = render(raw, AuthKind::Agent, &[], &[]);
         assert!(out.contains(raw), "{out}");
     }
 
     /// 터미널에 찍히므로 줄바꿈은 CRLF여야 한다 — LF만 쓰면 계단처럼 밀린다.
     #[test]
     fn lines_end_with_crlf_for_the_terminal() {
-        let out = render("refused", AuthKind::Agent, &[]);
+        let out = render("refused", AuthKind::Agent, &[], &[]);
         assert!(out.contains("\r\n"));
         assert!(!out.replace("\r\n", "").contains('\n'), "맨 LF가 섞였다: {out:?}");
     }
@@ -269,7 +320,7 @@ mod render_tests {
     /// 실마리가 한 줄도 안 나오면 진단이 아니라 그냥 오류 메시지다.
     #[test]
     fn at_least_one_hint_is_shown() {
-        let out = render("Not authenticated", AuthKind::Password, &[]);
+        let out = render("Not authenticated", AuthKind::Password, &[], &[]);
         assert!(out.matches(" - ").count() >= 2, "{out}");
     }
 
@@ -282,7 +333,7 @@ mod render_tests {
     fn the_key_list_actually_reaches_the_screen() {
         use crate::authorder::Source;
         let keys = [cand("mykey", Source::Chosen, true), cand("id_rsa", Source::Default, false)];
-        let out = render("Not authenticated", AuthKind::KeyFile, &keys);
+        let out = render("Not authenticated", AuthKind::KeyFile, &keys, &[]);
         assert!(out.contains("mykey"), "쓴 키가 안 보인다: {out}");
         assert!(out.contains("id_rsa"), "다른 키가 안 보인다: {out}");
         assert!(out.contains("1.") && out.contains("2."), "순서 번호가 없다: {out}");
@@ -293,7 +344,7 @@ mod render_tests {
     #[test]
     fn other_failures_do_not_get_a_key_list() {
         let keys = [cand("id_rsa", crate::authorder::Source::Default, true)];
-        let out = render("No such host is known.", AuthKind::KeyFile, &keys);
+        let out = render("No such host is known.", AuthKind::KeyFile, &keys, &[]);
         assert!(!out.contains("id_rsa"), "DNS 실패에 키 목록이 붙었다: {out}");
     }
 }

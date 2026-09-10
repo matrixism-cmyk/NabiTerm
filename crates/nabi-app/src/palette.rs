@@ -113,6 +113,8 @@ pub(crate) enum PaletteAction {
     ReopenClosedDoc,
     /// 폴더 동기화 다이얼로그(S6-51).
     OpenSync,
+    /// 로컬 폴더끼리 동기화(SFTP 연결이 없어도 된다).
+    OpenLocalSync,
     /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
     HandoffLast, CopyLastMd,
     /// SFTP 전송 히스토리 창(S6-60).

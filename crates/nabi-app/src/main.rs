@@ -71,7 +71,7 @@ mod tiling; mod toolsmenu; mod update; mod updateui; mod viewmenu; mod sftptable
 mod tabsterm; mod termlink; mod telegrambridge; mod telegramheartbeat; mod settingstelegram; mod sftppath; mod sftpxfer;
 mod notices; mod renamerule; mod browserrename; mod sftpfind; mod sftpgrep; mod sftpgrepui; mod sftpfindui; mod sftphistory; mod controlsftp; mod splash;
 mod serialui;
-mod sshkeygenui; mod syncplan; mod syncmove; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod cmdbase; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
+mod sshkeygenui; mod synclocal; mod syncplan; mod syncmove; mod sftpsyncui; mod sftpwatch; mod aihandoff; mod cmdbase; mod statuschips; mod sftpqueue; mod sftpqpersist; mod sftpqact; mod sftpdownload; mod sftpperms; mod sftptoolbar;
 mod sftpops; mod eventsftp;
 
 mod sftpdiff; mod recentpaths; mod sshconfig; mod sshinclude; mod settings; mod settingslists; mod settingslsp; mod settingsprev; mod settingsshell; mod settingslog; mod settingsxfer; mod settingsui; mod settingsa11y; mod settingsui2; mod shortcutdrift;

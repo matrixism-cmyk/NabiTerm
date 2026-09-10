@@ -70,7 +70,11 @@ pub fn connect(
                 chosen.as_deref(),
                 &crate::authorder::scan(&crate::authorder::default_dir()),
             );
-            let _ = out.send((pane, Bytes::from(crate::diagnose::render(e, auth_kind, &keys))));
+            // **실제로 시도한 것**을 함께 적는다. 이것이 없으면 아래 키 목록은 "쓸 수
+            // 있었던 것"일 뿐이라, 서버가 안 받아 안 던진 것과 던졌다가 거절당한 것이
+            // 똑같아 보인다(2026-09-10에 사슬을 넣으면서 생긴 거짓말).
+            let steps = crate::authtrace::take(pane);
+            let _ = out.send((pane, Bytes::from(crate::diagnose::render(e, auth_kind, &keys, &steps))));
         }
         on_close(err);
     });
@@ -94,7 +98,7 @@ async fn run(
     // 직접 연결 또는 점프 호스트(ProxyJump) 경유. jump는 터널 유지를 위해 살려둔다.
     // kex 슬롯: 목적지 연결의 협상 결과(KEX·암호)를 받아 pane 레지스트리에 기록(PQ 배지).
     let kex_slot = crate::kexinfo::new_slot();
-    let (handle, jump, old) = open_authed(&params, opts, known_hosts, verifier, kex_slot.clone()).await?;
+    let (handle, jump, old) = open_authed(&params, opts, pane, known_hosts, verifier, kex_slot.clone()).await?;
     // 점프 핸들을 Arc 로 묶는다 — 레지스트리와 이 함수가 **함께** 들고 있어야 하기 때문이다.
     // 여기서 드롭되면 터널이 닫히고, SFTP 가 받아 간 목적지 핸들은 쓸모없어진다.
     // 홉이 여럿일 수 있다 — **전부** 들고 있어야 그 위의 터널이 살아 있다.
@@ -211,6 +215,7 @@ fn jump_chain(params: &SshParams) -> Vec<&SshParams> {
 async fn open_authed(
     params: &SshParams,
     opts: ConnOpts,
+    pane: PaneId,
     known_hosts: PathBuf,
     verifier: Option<crate::verify::HostKeyVerifier>,
     kex_slot: crate::kexinfo::KexSlot,
@@ -246,7 +251,8 @@ async fn open_authed(
             }
         })
         .await?;
-        authenticate(&mut h, hop).await?;
+        // 점프 호스트의 인증도 같은 기록에 남는다 — 어느 구간에서 막혔는지 알아야 한다.
+        authenticate(&mut h, hop, pane).await?;
         old_any |= old;
         hops.push(h);
     }
@@ -276,7 +282,7 @@ async fn open_authed(
         }
     })
     .await?;
-    authenticate(&mut target, params).await?;
+    authenticate(&mut target, params, pane).await?;
     Ok((target, hops, old_any || old_t))
 }
 
@@ -376,8 +382,10 @@ fn plan_inputs(params: &SshParams) -> (Option<String>, bool, bool) {
 async fn authenticate(
     handle: &mut client::Handle<ClientHandler>,
     params: &SshParams,
+    pane: PaneId,
 ) -> Result<(), russh::Error> {
     use crate::authchain::Attempt;
+    use crate::authtrace::Outcome;
     use russh::client::AuthResult;
     if matches!(params.auth, SshAuth::None) {
         return Err(russh::Error::NotAuthenticated);
@@ -399,15 +407,24 @@ async fn authenticate(
         accepts,
     );
     let dir = crate::authorder::default_dir();
+    // 무엇을 시도했고 어떻게 됐는지 남긴다 — 실패 화면이 이것을 그대로 적는다.
+    // 남기지 않으면 "안 던진 것"과 "던졌다가 거절당한 것"이 똑같아 보인다.
+    crate::authtrace::clear(pane);
     for attempt in &plan {
-        let ok = match attempt {
-            Attempt::Agent => crate::agent::authenticate_agent(handle, &params.user).await.is_ok(),
+        let how = match attempt {
+            Attempt::Agent => match crate::agent::authenticate_agent(handle, &params.user).await {
+                Ok(()) => Outcome::Ok,
+                Err(_) => Outcome::Rejected,
+            },
             Attempt::Password => match &params.auth {
                 SshAuth::Password(pw) => {
-                    matches!(handle.authenticate_password(&params.user, pw).await, Ok(AuthResult::Success))
+                    match handle.authenticate_password(&params.user, pw).await {
+                        Ok(AuthResult::Success) => Outcome::Ok,
+                        _ => Outcome::Rejected,
+                    }
                 }
                 // 비밀번호를 우리가 만들어 내지 않는다. 고른 것이 아니면 건너뛴다.
-                _ => false,
+                _ => Outcome::Skipped,
             },
             Attempt::Key { name, source } => {
                 // 고른 키는 사용자가 적어 준 경로와 암호를 그대로 쓰고, 거드는 키는
@@ -422,13 +439,18 @@ async fn authenticate(
                 match russh::keys::load_secret_key(&path, pass.as_deref()) {
                     Ok(key) => {
                         let wh = russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key), None);
-                        matches!(handle.authenticate_publickey(&params.user, wh).await, Ok(AuthResult::Success))
+                        match handle.authenticate_publickey(&params.user, wh).await {
+                            Ok(AuthResult::Success) => Outcome::Ok,
+                            _ => Outcome::Rejected,
+                        }
                     }
-                    Err(_) => false,
+                    // 못 연 것은 **서버 이야기가 아니다.** 섞어 보여 주면 서버 설정을 뒤진다.
+                    Err(_) => Outcome::NotSent,
                 }
             }
         };
-        if ok {
+        crate::authtrace::push(pane, crate::authchain::label(attempt), how);
+        if how == Outcome::Ok {
             return Ok(());
         }
     }

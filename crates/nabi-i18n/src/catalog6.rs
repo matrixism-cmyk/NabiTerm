@@ -76,6 +76,11 @@ pub(crate) const CATALOG6: &[(&str, &str, &str, &str)] = &[
     ("ssh.diag.keys.used", "used", "이번에 쓴 키", "今回使用"),
     ("ssh.diag.keys.untried", "tried as a fallback", "고른 것이 안 되면 거들어 본 것", "予備として試行"),
     ("ssh.diag.keys.nopub", "no .pub beside it", ".pub 이 없음", ".pub がない"),
+    ("ssh.diag.steps", "What was actually tried", "실제로 시도한 것", "実際に試したもの"),
+    ("ssh.diag.step.ok", "accepted", "받아들여짐", "受け入れられた"),
+    ("ssh.diag.step.rejected", "rejected by the server", "서버가 거절함", "サーバーが拒否"),
+    ("ssh.diag.step.notsent", "could not be opened \u{2014} never sent (passphrase?)", "열지 못해 보내지 않음(암호가 걸린 키?)", "開けず送信せず(パスフレーズ?)"),
+    ("ssh.diag.step.skipped", "skipped \u{2014} the server does not accept it", "서버가 안 받는 방법이라 건너뜀", "サーバーが受け付けないため省略"),
     ("ssh.diag.raw", "Original message", "원문 메시지", "元のメッセージ"),
     (
         "ssh.diag.dns",
