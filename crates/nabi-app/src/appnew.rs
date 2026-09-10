@@ -228,6 +228,7 @@ impl NabiApp {
             closed_sessions: Vec::new(),
             workspace_path,
             selection: None,
+            mark_mode: None,
             blink_start: std::time::Instant::now(),
             window_title: String::new(),
             cwds: HashMap::new(), run_cmd: HashMap::new(), net_info: crate::netinfo::NetInfo::new(ip_lookup),

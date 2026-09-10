@@ -115,6 +115,8 @@ pub(crate) enum PaletteAction {
     OpenSync,
     /// 로컬 폴더끼리 동기화(SFTP 연결이 없어도 된다).
     OpenLocalSync,
+    /// 표시 모드 — 마우스 없이 터미널 글을 고르고 복사한다.
+    MarkMode,
     /// 마지막 명령 출력 AI 인계/마크다운 복사(터미널→AI 동선).
     HandoffLast, CopyLastMd,
     /// SFTP 전송 히스토리 창(S6-60).

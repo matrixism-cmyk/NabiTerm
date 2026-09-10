@@ -62,7 +62,7 @@ mod sessionlog; mod sessionnote; mod sessenvui; mod sessionctx;
 mod extwatch; mod triggers; mod findall; mod findallui; mod findfiles; mod difflines; mod dupfiles; mod largefiles;
 
 mod dirtools; mod replaceui; mod sftpbookmark; mod sshcmd; mod sshjump; mod helppages; mod help; mod hostkeyui; mod knownhostsui; mod importscan; mod importui; mod logview; mod logviewui; mod menu;
-mod menuact; mod menuactio; mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod palettekeys; mod pathline; mod quake; mod qcparse; mod paneio; mod panewheel; mod paneurl;
+mod markmode; mod menuact; mod menuactio; mod palconv; mod palette; mod palettecmds; mod palettedispatch; mod palettekeys; mod pathline; mod quake; mod qcparse; mod paneio; mod panewheel; mod paneurl;
 mod osc52policy; mod openhere; mod padrecover; mod padrecoverui; mod paste; mod promptfocus; mod qcbar; mod remotecmd; mod remotecmdui; mod reconnect; mod reconnectsess;
 mod renameui; mod scrollbar;
 mod scrollbarmark; mod selection; mod sessionsmenu; mod sessiondel;

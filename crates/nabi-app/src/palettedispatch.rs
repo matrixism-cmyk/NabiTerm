@@ -77,6 +77,7 @@ impl NabiApp {
             PaletteAction::LspFormat => { if let Some(p) = self.focused_pane() { self.lsp_format_for(p); } }
             PaletteAction::OpenSync => self.open_sync_dialog(),
             PaletteAction::OpenLocalSync => self.open_local_sync_dialog(),
+            PaletteAction::MarkMode => self.start_mark_mode(),
             PaletteAction::HandoffLast => {
                 if let Some(p) = self.focused_pane() {
                     match (self.command_context(p), self.find_ai_pane(p)) {

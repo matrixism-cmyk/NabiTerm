@@ -35,6 +35,8 @@ impl NabiApp {
         let mut browser_closed: Option<nabi_types::PaneId> = None;
         let mut web_closed: Option<nabi_types::PaneId> = None;
         let mut editor_act: Vec<(nabi_types::PaneId, crate::editor::EditorAct)> = Vec::new();
+        // 표시 모드에서 Enter/Ctrl+C 로 확정했는가(그리기가 끝난 뒤 한 길로 복사한다).
+        let mut mark_copy = false;
         let mut editor_closed: Option<nabi_types::PaneId> = None;
         let remote_map = self.remote_compare_map();
         let can_upload = self.sftp.open && self.sftp.id.is_some();
@@ -157,6 +159,8 @@ impl NabiApp {
                 wheel_keys_off: &mut self.wheel_keys_off,
                 window_panes: &window_panes,
                 selection: &mut self.selection,
+                mark_mode: &mut self.mark_mode,
+                mark_copy: &mut mark_copy,
                 tab_colors: &mut self.tab_colors,
                 pending_pathline: &mut self.pending_pathline,
                 blink_on,
@@ -302,6 +306,11 @@ impl NabiApp {
             self.close_web_tab(p); // 자식 창까지 함께 닫는다 — 안 치우면 엣지 프로세스가 남는다.
         }
         self.apply_browser_tab_acts(ctx, browser_act, browser_closed);
+        // 표시 모드 확정 — **복사는 여기 한 길뿐이다**(클립보드 기록이 함께 남는다).
+        if mark_copy {
+            self.copy_selection(ctx);
+            self.selection = None;
+        }
         self.apply_editor_tab_acts(editor_act, editor_closed);
         // 도크 에디터가 연 nabiPad 설정 창은 메인 ctx에 렌더(분리 창은 floating_editor에서 vctx).
         if self.editor_settings_for.is_some_and(|p| !self.floating.contains(&p)) {

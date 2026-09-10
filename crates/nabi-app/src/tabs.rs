@@ -48,6 +48,13 @@ pub struct TermTabViewer<'a> {
     pub window_panes: &'a std::collections::HashSet<PaneId>,
     /// 마우스 텍스트 선택 상태(드래그→릴리스 자동 복사).
     pub selection: &'a mut Option<Sel>,
+    /// 표시 모드가 켜진 pane(마우스 없이 고르는 중).
+    pub mark_mode: &'a mut Option<PaneId>,
+    /// 표시 모드에서 확정했다 — 앱이 이번 프레임 끝에 복사한다.
+    ///
+    /// 여기서 바로 복사하지 않는 까닭: 복사는 클립보드 기록까지 남기는 한 길
+    /// (`copy_selection`)로만 해야 한다. 두 길이 되면 한쪽만 기록이 빠진다.
+    pub mark_copy: &'a mut bool,
     /// 탭 색상 라벨(PaneId별).
     pub tab_colors: &'a mut std::collections::HashMap<PaneId, egui::Color32>,
     /// 터미널 `파일:줄` 더블클릭 결과(경로, 0기반 줄) — dock 표시 후 NabiApp이 에디터로 연다.

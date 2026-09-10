@@ -51,6 +51,9 @@ const CATALOG: &[(&str, &str, &str, &str)] = &[
     ("tab.selectall", "Select all (copy)", "전체 선택(복사)", "全選択(コピー)"),
     ("menu.zoompane", "Maximize pane (zoom)", "페인 최대화(줌)", "ペイン最大化(ズーム)"),
     ("term.reset", "Reset terminal", "터미널 리셋", "端末リセット"),
+    ("mark.title", "Select with the keyboard (mark mode)", "키보드로 고르기(표시 모드)", "キーボードで選択(マークモード)"),
+    ("mark.on", "Mark mode: arrows move \u{00b7} Shift+arrows select \u{00b7} Enter copies \u{00b7} Esc cancels", "표시 모드: 화살표 이동 \u{00b7} Shift+화살표 선택 \u{00b7} Enter 복사 \u{00b7} Esc 취소", "マークモード: 矢印で移動 \u{00b7} Shift+矢印で選択 \u{00b7} Enterでコピー \u{00b7} Escで中止"),
+    ("mark.nopane", "Focus a terminal first.", "먼저 터미널을 선택하세요.", "先に端末を選んでください。"),
     (
         "tab.bcastgroup",
         "In broadcast group",

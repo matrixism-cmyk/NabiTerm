@@ -71,7 +71,13 @@ impl TermTabViewer<'_> {
         // 쓰이지 않고 모두 PTY로 가게 한다(Tab=셸 자동완성). 싱크는 blocked 판정에서 제외.
         crate::paneio::grab_term_focus(ui, is_focused);
         let blocked = crate::paneio::term_input_blocked(ui.ctx());
-        let typed = is_focused && !bytes.is_empty() && !blocked;
+        // **표시 모드**가 켜져 있으면 키는 셸로 가지 않는다 — 글을 고르는 도중에 명령이
+        // 실행되면 안 된다. 모드가 모르는 키까지 삼키는 것이 그래서 맞다.
+        let marking = is_focused && *self.mark_mode == Some(pane);
+        if marking && !blocked {
+            self.handle_mark_keys(ui, pane, grid);
+        }
+        let typed = is_focused && !bytes.is_empty() && !blocked && !marking;
         // 휠 도우미: 명시 켬 ∪ (codex 자동 감지 − 명시 끔). 토글은 메모리 전용이라 재시작에
         // 날아가므로, codex pane은 감지로 기본 동작해야 한다.
         let force_keys = self.wheel_keys.contains(&pane)

@@ -214,6 +214,8 @@ pub struct NabiApp {
     pub workspace_path: std::path::PathBuf,
     /// 마우스 텍스트 선택(드래그→릴리스 시 자동 복사).
     pub selection: Option<crate::selection::Sel>,
+    /// 표시 모드가 켜진 pane — 마우스 없이 글을 고르는 중이다(`markmode`).
+    pub mark_mode: Option<PaneId>,
     pub blink_start: std::time::Instant,
     pub window_title: String,
     /// pane별 cwd(OSC 7) + 실행 중 명령(OSC 633;E, 복원 재실행용) + 상태바 네트워크 정보(NIC/공인 IP).
