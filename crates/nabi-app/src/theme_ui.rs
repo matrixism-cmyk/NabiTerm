@@ -33,6 +33,21 @@ pub const SESS_FTP: Color32 = Color32::from_rgb(232, 165, 70); // #E8A546
 /// 폴더(금빛 — 탐색기식).
 pub const FOLDER: Color32 = Color32::from_rgb(232, 190, 90); // #E8BE5A
 
+/// 이 색 **위에** 글자를 얹을 때 쓸 색 — 검정 또는 흰색 중 더 잘 읽히는 쪽.
+///
+/// 표식 띠 위에 글자 하나를 그리려는데, 띠 색이 밝은 것(스테이징 노랑)도 어두운 것도
+/// 있어서 한 색으로 고정하면 한쪽에서 안 읽힌다. **대비를 재서 고른다** —
+/// 재는 함수는 접근성 페이지가 쓰는 그것과 같은 것이다(규칙이 두 벌이면 어긋난다).
+pub fn on_color(bg: Color32) -> Color32 {
+    let c = (bg.r(), bg.g(), bg.b());
+    let on_black = nabi_types::contrast::contrast_ratio(c, (0, 0, 0));
+    let on_white = nabi_types::contrast::contrast_ratio(c, (255, 255, 255));
+    match on_black >= on_white {
+        true => Color32::BLACK,
+        false => Color32::WHITE,
+    }
+}
+
 /// 저장 세션의 종류별 강조색.
 pub fn session_color(is_ftp: bool, ssh: bool) -> Color32 {
     if is_ftp {
@@ -182,4 +197,56 @@ pub fn dock_style(base: &egui::Style) -> egui_dock::Style {
     s.buttons.close_tab_active_color = TEXT_BRIGHT;
     s.overlay.selection_color = Color32::from_rgba_unmultiplied(64, 180, 230, 70);
     s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::on_color;
+    use nabi_types::contrast::contrast_ratio;
+
+    fn rgb(c: egui::Color32) -> (u8, u8, u8) {
+        (c.r(), c.g(), c.b())
+    }
+
+    /// **어떤 표식 색 위에도 읽을 만한 글자를 고른다.**
+    ///
+    /// 한 색으로 고정하면 밝은 띠(스테이징 노랑)나 어두운 띠 중 한쪽에서 안 읽힌다.
+    /// 실제 표식 색들로 재 본다 — 지어낸 색이 아니라 화면에 나오는 그 색이다.
+    #[test]
+    fn 표식_색_위에서_읽을_만하다() {
+        for t in [
+            nabi_session::SessionTag::Prod,
+            nabi_session::SessionTag::Staging,
+            nabi_session::SessionTag::Dev,
+            nabi_session::SessionTag::Note,
+        ] {
+            let (r, g, b) = t.rgb();
+            let bg = egui::Color32::from_rgb(r, g, b);
+            let ratio = contrast_ratio(rgb(on_color(bg)), (r, g, b));
+            // 작은 글자 하나라 본문 기준(4.5)까지는 아니어도, 큰 글자 기준(3.0)은 넘어야 한다.
+            assert!(ratio >= 3.0, "{t:?} 띠 위 글자 대비가 {ratio:.1}:1 뿐이다");
+        }
+    }
+
+    /// **더 나은 쪽을 고른다** — 두 후보 중 대비가 큰 쪽이어야 한다.
+    /// 이것이 없으면 늘 검정을 돌려줘도 위 시험이 통과할 수 있다.
+    #[test]
+    fn 둘_중_나은_쪽을_고른다() {
+        for c in [
+            egui::Color32::from_rgb(255, 255, 255),
+            egui::Color32::from_rgb(0, 0, 0),
+            egui::Color32::from_rgb(240, 220, 90),
+            egui::Color32::from_rgb(30, 40, 90),
+        ] {
+            let picked = contrast_ratio(rgb(on_color(c)), rgb(c));
+            let other = contrast_ratio(
+                rgb(match on_color(c) == egui::Color32::BLACK {
+                    true => egui::Color32::WHITE,
+                    false => egui::Color32::BLACK,
+                }),
+                rgb(c),
+            );
+            assert!(picked >= other, "{c:?} 에서 더 나쁜 쪽을 골랐다 ({picked:.1} < {other:.1})");
+        }
+    }
 }
