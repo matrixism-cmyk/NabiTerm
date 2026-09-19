@@ -1,0 +1,152 @@
+나비텀(nabiTerm) 최종 사용자 사용권 계약서
+nabiTerm End User License Agreement
+
+Copyright (c) 2025-2026 aeo (nabisori) <the@aeokorea.com>
+All rights reserved. / 모든 권리 보유.
+
+버전 1.0 — 2026-09-19 (v0.1.529 이후 판에 적용)
+
+--------------------------------------------------------------------------
+한국어
+--------------------------------------------------------------------------
+
+이 프로그램(나비텀, 이하 "본 소프트웨어")을 설치하거나 사용하면 아래 내용에 동의하는
+것으로 봅니다. 동의하지 않으시면 설치하지 마시고 이미 받으신 파일을 지워 주십시오.
+
+1. 사용 허락
+
+   본 소프트웨어는 **프리웨어**입니다. 개인, 기업, 공공기관 누구나 대수 제한 없이
+   무료로 설치해서 쓰실 수 있고, 업무에 쓰셔도 됩니다. 사용료는 없습니다.
+
+2. 하시면 안 되는 것
+
+   (가) 본 소프트웨어를 팔거나, 빌려주거나, 다른 제품에 끼워 넣어 배포하는 것.
+        내려받기는 아래 3항의 공식 배포처에서만 이루어져야 합니다.
+   (나) 본 소프트웨어를 고치거나, 거꾸로 분석하거나(역어셈블·역컴파일·리버스
+        엔지니어링), 그렇게 해서 얻은 것으로 파생 제품을 만드는 것.
+   (다) 저작권 표시나 이 사용권 문서를 지우거나 바꾸는 것.
+
+   다만 (나)에 대해서는 두 가지 예외가 있습니다.
+   - 법이 반드시 허용하도록 정한 범위(예: 호환성 확보를 위한 최소한의 분석)는
+     이 조항으로 제한되지 않습니다.
+   - 본 소프트웨어에 함께 담긴 제3자 구성요소는 각자의 라이선스를 따릅니다.
+     그 라이선스가 허용하는 행위를 이 조항이 막지 않습니다(아래 5항).
+
+3. 공식 배포처
+
+   https://github.com/matrixism-cmyk/NabiTerm/releases
+   https://nabisori.kr
+
+   다른 곳에서 받으신 파일은 저희가 만든 것인지 보증하지 않습니다. 릴리스마다
+   설치 파일의 SHA-256 값을 함께 올리니 받으신 뒤 맞춰 보시기 바랍니다.
+
+4. 저작권
+
+   본 소프트웨어의 저작권은 저작권자에게 있습니다. 이 문서는 사용을 허락하는
+   것이지 소유권을 넘기는 것이 아닙니다. "나비텀", "nabiTerm", "나비소리" 이름과
+   로고에 대한 권리는 따로 보호되며 이 허락에 들어 있지 않습니다.
+
+5. 제3자 구성요소
+
+   본 소프트웨어는 제3자가 만든 오픈소스 구성요소를 함께 담고 있습니다. 그 구성요소
+   각각에는 원래의 라이선스(MIT, Apache-2.0, BSD, ISC, MPL-2.0, OFL-1.1 등)가
+   그대로 적용되며, 이 문서의 어떤 조항도 그 라이선스가 여러분께 준 권리를 줄이지
+   않습니다. 전체 목록과 각 라이선스 전문은 같은 폴더의 `NOTICE` 파일과 앱 안의
+   **도움말 ▸ 오픈소스** 화면에 있습니다.
+
+6. 보증하지 않습니다
+
+   본 소프트웨어는 "있는 그대로" 제공됩니다. 특정 목적에 맞는다거나, 오류가 없다거나,
+   끊기지 않는다는 것을 보증하지 않습니다.
+
+7. 책임의 한계
+
+   법이 허용하는 최대한의 범위에서, 저작권자는 본 소프트웨어의 사용이나 사용 불능으로
+   생긴 어떤 손해(자료 손실, 영업 중단, 간접·부수적·결과적 손해를 포함합니다)에 대해
+   책임지지 않습니다.
+
+8. 예전 판에 대하여
+
+   2026-09-19 이전에 배포된 판(v0.1.528 및 그 이전)은 Apache License 2.0으로
+   공개되었습니다. 그 판을 이미 받으신 분께 주어진 권리는 그대로 유효합니다.
+   이 문서는 그 이후에 배포되는 판에만 적용됩니다.
+
+9. 준거법
+
+   이 계약은 대한민국 법을 따릅니다.
+
+문의: the@aeokorea.com
+
+--------------------------------------------------------------------------
+English
+--------------------------------------------------------------------------
+
+By installing or using nabiTerm (the "Software") you agree to the terms
+below. If you do not agree, do not install it and delete any copy you have.
+
+1. Grant of use
+
+   The Software is freeware. Individuals, companies and public institutions
+   may install and use it free of charge, on any number of machines,
+   including for commercial purposes. There is no license fee.
+
+2. Restrictions
+
+   (a) You may not sell, rent, lease, or bundle the Software into another
+       product for distribution. Downloads must come from the official
+       sources listed in section 3.
+   (b) You may not modify, disassemble, decompile, or reverse engineer the
+       Software, or create derivative works from anything so obtained.
+   (c) You may not remove or alter any copyright notice or this license.
+
+   Two exceptions apply to (b): anything that applicable law requires to be
+   permitted (such as the minimum analysis needed for interoperability), and
+   any act permitted by the license of a third-party component (section 5).
+
+3. Official sources
+
+   https://github.com/matrixism-cmyk/NabiTerm/releases
+   https://nabisori.kr
+
+   Copies obtained elsewhere are not warranted to be genuine. Every release
+   publishes the SHA-256 of the installer so you can verify what you got.
+
+4. Ownership
+
+   The Software is licensed, not sold. All rights are retained by the
+   copyright holder. The names and logos "nabiTerm", "나비텀" and "나비소리"
+   are separately protected and are not licensed by this agreement.
+
+5. Third-party components
+
+   The Software includes open source components created by third parties.
+   Each remains under its own license (MIT, Apache-2.0, BSD, ISC, MPL-2.0,
+   OFL-1.1 and others). Nothing in this agreement reduces the rights those
+   licenses grant you. The full list and license texts are in the NOTICE
+   file shipped alongside the Software and in Help ▸ Open Source in the app.
+
+6. No warranty
+
+   The Software is provided "AS IS", without warranty of any kind, express
+   or implied, including but not limited to the warranties of
+   merchantability, fitness for a particular purpose and non-infringement.
+
+7. Limitation of liability
+
+   To the maximum extent permitted by law, the copyright holder shall not be
+   liable for any damages whatsoever (including loss of data, business
+   interruption, or indirect, incidental or consequential damages) arising
+   from the use of or inability to use the Software.
+
+8. Previously released versions
+
+   Versions released before 2026-09-19 (v0.1.528 and earlier) were published
+   under the Apache License 2.0. Rights already granted to recipients of
+   those versions remain in effect. This agreement applies only to versions
+   released from that date onward.
+
+9. Governing law
+
+   This agreement is governed by the laws of the Republic of Korea.
+
+Contact: the@aeokorea.com
